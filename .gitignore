@@ -1,0 +1,18 @@
+node_modules/
+config.json
+tokens.json
+accounts.json
+auth.json
+*.log
+server_out.log
+.env
+.env.*
+data/
+backup/
+memory/
+
+# Claude Code - archivos locales
+todo.md
+.claude-cache/
+.mcp.config
+.claude/
