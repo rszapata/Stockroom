@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c0c0e">
+<meta name="description" content="Sincronización de stock entre cuentas — MercadoLibre">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>STOCKROOM — Vinculaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0c0c0e; --s1:#141416; --s2:#1c1c20; --s3:#242428;
+  --b1:#2a2a30; --b2:#3a3a42; --b3:#55556a;
+  --tx:#e8e8f0; --t2:#8888a0; --t3:#55556a;
+  --ye:#e8ff47; --cy:#47ffe8; --re:#ff4747; --or:#ff9547; --gr:#47ff8a; --pu:#b847ff;
+  --mono:'Space Mono',monospace; --sans:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--b1) 1px,transparent 1px),linear-gradient(90deg,var(--b1) 1px,transparent 1px);background-size:40px 40px;opacity:.25;pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+
+header{border-bottom:1px solid var(--b1);background:rgba(12,12,14,.97);backdrop-filter:blur(16px);position:sticky;top:0;z-index:200;padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px}
+.logo{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:.18em;color:var(--ye);display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-dot{width:8px;height:8px;background:var(--ye);border-radius:50%;animation:pulse 2s infinite}
+.live{display:flex;align-items:center;gap:5px;color:var(--gr);font-family:var(--mono);font-size:11px}
+.live-d{width:6px;height:6px;background:var(--gr);border-radius:50%;animation:pulse 1.5s infinite}
+.meli-badge{background:rgba(255,230,0,.12);border:1px solid rgba(255,230,0,.25);color:#ffe600;padding:3px 9px;font-size:10px;font-family:var(--mono);letter-spacing:.1em}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+.hright{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px}
+.nav-btn{height:32px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center}
+.nav-btn:hover{border-color:var(--b2);color:var(--tx)}
+.nav-btn.active{border-color:var(--ye);color:var(--ye)}
+.btn{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{border-color:var(--b2);color:var(--tx)}
+.btn.primary{background:var(--ye);color:#0c0c0e;border-color:var(--ye);font-weight:700}
+.btn.primary:hover{background:#d4eb3a}
+.btn.sm{height:32px;padding:0 12px;font-size:9px}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.btn.danger{border-color:rgba(255,71,71,.4);color:var(--re)}
+.btn.danger:hover{background:rgba(255,71,71,.1)}
+
+main{padding:24px 28px;flex:1}
+.card{background:var(--s1);border:1px solid var(--b1);margin-bottom:14px}
+.card-header{padding:13px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase}
+.card-body{padding:18px}
+
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--t3);text-transform:uppercase;margin-bottom:5px}
+.field select,.field input[type=text]{width:100%;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:12px;padding:0 12px;height:38px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355556a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
+.field select option{background:#1c1c20}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* Search results */
+.search-results{max-height:250px;overflow-y:auto;border:1px solid var(--b1);background:var(--s2);margin-top:4px}
+.search-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(42,42,48,.5);cursor:pointer;transition:background .2s;font-size:12px}
+.search-item:hover{background:rgba(232,255,71,.05)}
+.search-item img{width:36px;height:36px;object-fit:cover;border:1px solid var(--b1);flex-shrink:0}
+.search-item .si-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.search-item .si-id{font-family:var(--mono);font-size:9px;color:var(--t3)}
+.search-item .si-stock{font-family:var(--mono);font-size:10px;color:var(--cy)}
+
+/* Link groups */
+.link-group{border:1px solid var(--b1);background:var(--s1);margin-bottom:12px;transition:border-color .3s}
+.link-group.syncing{border-color:var(--ye);box-shadow:0 0 12px rgba(232,255,71,.08)}
+.lg-header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--b1);background:rgba(71,255,232,.03)}
+.lg-name{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--cy);flex:1}
+.lg-stock{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ye);min-width:60px;text-align:center}
+.lg-stock-label{font-family:var(--mono);font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;text-align:center}
+.lg-items{padding:8px 0}
+.lg-item{display:flex;align-items:center;gap:10px;padding:6px 16px;font-size:12px}
+.lg-item img{width:32px;height:32px;object-fit:cover;border:1px solid var(--b1)}
+.lg-item .li-acct{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--b2);color:var(--t2);min-width:80px;text-align:center}
+.lg-item .li-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg-item .li-id{font-family:var(--mono);font-size:9px;color:var(--t3)}
+.lg-item .li-stock{font-family:var(--mono);font-size:11px;min-width:50px;text-align:right}
+.lg-item .li-stock.ok{color:var(--gr)}
+.lg-item .li-stock.warn{color:var(--or)}
+.lg-item .li-stock.err{color:var(--re)}
+.lg-item .btn-rm{background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;transition:color .2s}
+.lg-item .btn-rm:hover{color:var(--re)}
+.lg-actions{padding:8px 16px;border-top:1px solid var(--b1);display:flex;gap:8px;justify-content:flex-end}
+
+/* Status badge */
+.sync-badge{font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:2px 6px;border:1px solid}
+.sync-ok{color:var(--gr);border-color:rgba(71,255,138,.3);background:rgba(71,255,138,.08)}
+.sync-pending{color:var(--or);border-color:rgba(255,149,71,.3);background:rgba(255,149,71,.08)}
+.sync-err{color:var(--re);border-color:rgba(255,71,71,.3);background:rgba(255,71,71,.08)}
+
+/* Log */
+.log-wrap{max-height:180px;overflow-y:auto;padding:10px 13px}
+.log-e{font-family:var(--mono);font-size:10px;line-height:1.85}
+.log-e.info{color:var(--t2)}.log-e.ok{color:var(--gr)}.log-e.err{color:var(--re)}.log-e.warn{color:var(--or)}
+
+/* Auto-sync indicator */
+.auto-sync-bar{display:flex;align-items:center;gap:10px;padding:10px 18px;background:rgba(71,255,232,.04);border-bottom:1px solid var(--b1);font-family:var(--mono);font-size:10px;color:var(--t2)}
+.auto-dot{width:8px;height:8px;border-radius:50%;background:var(--t3);transition:background .3s}
+.auto-dot.active{background:var(--gr);animation:pulse 2s infinite}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--t3)}
+.empty-state h3{font-family:var(--mono);font-size:13px;color:var(--t2);margin-bottom:10px}
+.empty-state p{font-size:12px;line-height:1.6;max-width:400px;margin:0 auto}
+
+/* Detection / suggestions */
+.detect-progress{padding:12px 18px;font-family:var(--mono);font-size:10px;color:var(--t2)}
+.detect-bar{width:100%;height:4px;background:var(--s3);margin-top:6px;overflow:hidden}
+.detect-fill{height:100%;background:var(--cy);transition:width .3s}
+.suggestion{border:1px solid var(--b2);background:var(--s1);margin-bottom:10px;transition:opacity .3s}
+.suggestion.accepted{border-color:var(--gr);opacity:.6;pointer-events:none}
+.suggestion.dismissed{display:none}
+.sg-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(71,255,232,.04);border-bottom:1px solid var(--b1)}
+.sg-title{font-family:var(--mono);font-size:11px;color:var(--cy);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sg-count{font-family:var(--mono);font-size:9px;color:var(--t3);padding:2px 6px;border:1px solid var(--b2)}
+.sg-items{padding:6px 0}
+.sg-item{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:11px}
+.sg-item img{width:28px;height:28px;object-fit:cover;border:1px solid var(--b1)}
+.sg-item .sg-acct{font-family:var(--mono);font-size:8px;padding:1px 5px;border:1px solid var(--b2);color:var(--t2);min-width:60px;text-align:center}
+.sg-item .sg-id{font-family:var(--mono);font-size:9px;color:var(--t3)}
+.sg-item .sg-stk{font-family:var(--mono);font-size:10px;color:var(--ye);min-width:40px;text-align:right}
+.sg-actions{display:flex;gap:8px;padding:8px 14px;border-top:1px solid var(--b1);justify-content:flex-end}
+
+.hidden{display:none!important}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+</style>
+<link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>STOCKROOM</div>
+  <div class="hright">
+    <div class="meli-badge">MLA</div>
+    <div class="live"><div class="live-d"></div>LIVE</div>
+    <a href="/" class="nav-btn">STOCK</a>
+    <a href="/analytics.html" class="nav-btn">ANALYTICS</a>
+    <a href="/cobros.html" class="nav-btn">COBROS</a>
+    <a href="/publicaciones.html" class="nav-btn">+ PUBLICAR</a>
+    <a href="/migracion.html" class="nav-btn">MIGRAR</a>
+    <a href="/vinculaciones.html" class="nav-btn active">SYNC</a>
+    <div id="acct-wrap" style="position:relative">
+      <button class="btn sm" id="acct-btn" onclick="toggleAcctMenu()">
+        <span id="acct-label">—</span> &#9662;
+      </button>
+      <div id="acct-menu" style="display:none;position:absolute;right:0;top:38px;background:#141416;border:1px solid #3a3a42;min-width:190px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+        <div id="acct-list"></div>
+        <div style="border-top:1px solid #2a2a30;padding:8px 12px">
+          <a href="/oauth/start" style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#55556a;text-decoration:none;display:block;transition:color .2s"
+             onmouseover="this.style.color='#e8ff47'" onmouseout="this.style.color='#55556a'">+ AUTORIZAR NUEVA CUENTA</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- AUTO SYNC BAR -->
+  <div class="auto-sync-bar">
+    <div class="auto-dot" id="auto-dot"></div>
+    <span>AUTO-SYNC</span>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+      <input type="checkbox" id="auto-sync-chk" onchange="toggleAutoSync(this.checked)" style="accent-color:var(--ye)">
+      <span id="auto-sync-label">OFF</span>
+    </label>
+    <span style="color:var(--t3);margin-left:8px">Cada</span>
+    <select id="auto-interval" onchange="updateAutoInterval()" style="background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;padding:2px 8px;height:24px">
+      <option value="60000">1 min</option>
+      <option value="120000">2 min</option>
+      <option value="300000" selected>5 min</option>
+      <option value="600000">10 min</option>
+      <option value="1800000">30 min</option>
+    </select>
+    <span id="auto-status" style="margin-left:auto;color:var(--t3)">—</span>
+  </div>
+
+  <!-- DETECTAR + CREAR GRUPO -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">01 — VINCULAR PUBLICACIONES</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn sm" onclick="startDetection()" id="btn-detect">DETECTAR AUTOMATICAMENTE</button>
+        <button class="btn primary sm" onclick="showNewGroup()" id="btn-new">+ NUEVO GRUPO</button>
+      </div>
+    </div>
+
+    <!-- Detection progress -->
+    <div class="detect-progress" id="detect-progress" style="display:none">
+      <div id="detect-status">Escaneando publicaciones...</div>
+      <div class="detect-bar"><div class="detect-fill" id="detect-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Suggestions from auto-detect -->
+    <div class="card-body" id="suggestions-wrap" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.1em">
+          COINCIDENCIAS DETECTADAS — <span id="sg-count">0</span> grupos
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm" onclick="acceptAllSuggestions()">ACEPTAR TODOS</button>
+          <button class="btn sm" onclick="dismissAllSuggestions()">DESCARTAR TODOS</button>
+        </div>
+      </div>
+      <div id="suggestions-list"></div>
+    </div>
+
+    <!-- Manual form -->
+    <div class="card-body" id="new-group-form" style="display:none">
+      <div class="field">
+        <label>Nombre del grupo</label>
+        <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80">
+      </div>
+
+      <div style="margin-top:12px;border:1px solid var(--b1);padding:12px;background:var(--s2)">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:8px;letter-spacing:.1em">ITEMS VINCULADOS</div>
+        <div id="ng-items"></div>
+        <div style="margin-top:10px;display:flex;gap:10px;align-items:end">
+          <div class="field" style="flex:1;margin-bottom:0">
+            <label>Cuenta</label>
+            <select id="ng-acct"></select>
+          </div>
+          <div class="field" style="flex:2;margin-bottom:0">
+            <label>Buscar publicacion (titulo o MLA ID)</label>
+            <input type="text" id="ng-search" placeholder="Ej: iPhone 15 o MLA123456789" oninput="debounceSearch(this.value)">
+          </div>
+        </div>
+        <div id="ng-results" class="search-results" style="display:none"></div>
+      </div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn sm" onclick="cancelNewGroup()">CANCELAR</button>
+        <button class="btn primary sm" onclick="saveNewGroup()" id="btn-save-group">GUARDAR GRUPO</button>
+      </div>
+    </div>
+
+    <div class="card-body" id="empty-hint">
+      <div class="empty-state">
+        <h3>SIN VINCULACIONES</h3>
+        <p>Vincula publicaciones iguales de distintas cuentas para mantener el stock sincronizado automaticamente. Cuando se vende en una cuenta, se descuenta en las otras.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRUPOS EXISTENTES -->
+  <div class="card" id="groups-card" style="display:none">
+    <div class="card-header">
+      <span class="card-title">02 — GRUPOS VINCULADOS</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn sm" onclick="refreshAllStocks()">ACTUALIZAR STOCKS</button>
+        <button class="btn primary sm" onclick="syncAll()">SINCRONIZAR TODO</button>
+      </div>
+    </div>
+    <div class="card-body" id="groups-list"></div>
+  </div>
+
+  <!-- LOG -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">LOG</span>
+      <button class="btn sm" onclick="clearLog()">LIMPIAR</button>
+    </div>
+    <div class="log-wrap" id="log">
+      <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
+    </div>
+  </div>
+</main>
+
+</div>
+
+<script src="/theme.js"></script>
+<script>
+// ── State ────────────────────────────────────────────────────
+let accounts = [];
+let groups = [];
+let suggestions = []; // detected groups pending confirmation
+let newGroupItems = []; // temp items while creating a group
+let autoSyncTimer = null;
+let searchTimer = null;
+let detecting = false;
+
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  await loadAccounts();
+  await loadGroups();
+  renderGroups();
+}
+init();
+
+async function loadAccounts() {
+  try {
+    const r = await fetch('/accounts');
+    const d = await r.json();
+    accounts = d.accounts || [];
+    // Populate account selects
+    const sel = document.getElementById('ng-acct');
+    sel.innerHTML = accounts.map(a =>
+      '<option value="' + a.id + '">' + esc(a.label || a.id) + '</option>'
+    ).join('');
+    // Header
+    const active = accounts.find(a => a.active) || accounts[0];
+    if (active) document.getElementById('acct-label').textContent = active.label || active.id;
+    renderAcctMenu();
+  } catch(e) { log('err', 'Error cargando cuentas: ' + e.message); }
+}
+
+async function loadGroups() {
+  try {
+    const r = await fetch('/vinculaciones');
+    const d = await r.json();
+    groups = d.groups || [];
+  } catch(e) { groups = []; }
+}
+
+async function saveGroups() {
+  await fetch('/vinculaciones', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groups })
+  });
+}
+
+// ── Account menu ─────────────────────────────────────────────
+function toggleAcctMenu() {
+  const m = document.getElementById('acct-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  const w = document.getElementById('acct-wrap');
+  if (!w.contains(e.target)) document.getElementById('acct-menu').style.display = 'none';
+});
+function renderAcctMenu() {
+  const list = document.getElementById('acct-list');
+  list.innerHTML = accounts.map(a =>
+    '<div style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;color:' +
+    (a.active ? 'var(--ye)' : 'var(--t2)') + ';transition:color .2s" ' +
+    'onmouseover="this.style.color=\'var(--ye)\'" onmouseout="this.style.color=\'' +
+    (a.active ? 'var(--ye)' : 'var(--t2)') + '\'"' +
+    '>' + esc(a.label || a.id) + (a.active ? ' *' : '') + '</div>'
+  ).join('');
+}
+
+// ── New Group ────────────────────────────────────────────────
+function showNewGroup() {
+  newGroupItems = [];
+  document.getElementById('ng-name').value = '';
+  document.getElementById('ng-search').value = '';
+  document.getElementById('ng-results').style.display = 'none';
+  renderNewGroupItems();
+  document.getElementById('new-group-form').style.display = 'block';
+  document.getElementById('empty-hint').style.display = 'none';
+  document.getElementById('btn-new').style.display = 'none';
+}
+function cancelNewGroup() {
+  document.getElementById('new-group-form').style.display = 'none';
+  document.getElementById('btn-new').style.display = '';
+  if (!groups.length) document.getElementById('empty-hint').style.display = '';
+}
+
+function renderNewGroupItems() {
+  const c = document.getElementById('ng-items');
+  if (!newGroupItems.length) {
+    c.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:8px 0">No hay items agregados. Busca y selecciona publicaciones abajo.</div>';
+    return;
+  }
+  c.innerHTML = newGroupItems.map((it, i) =>
+    '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">' +
+      (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:28px;height:28px;object-fit:cover;border:1px solid var(--b1)">' : '') +
+      '<span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--b2);color:var(--cy)">' + esc(it.acctLabel) + '</span>' +
+      '<span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.title) + '</span>' +
+      '<span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + it.itemId + '</span>' +
+      '<span style="font-family:var(--mono);font-size:10px;color:var(--ye)">x' + it.stock + '</span>' +
+      '<button onclick="removeNewGroupItem(' + i + ')" style="background:none;border:none;color:var(--re);cursor:pointer;font-size:14px;padding:2px 4px" title="Quitar">&times;</button>' +
+    '</div>'
+  ).join('');
+}
+function removeNewGroupItem(i) {
+  newGroupItems.splice(i, 1);
+  renderNewGroupItems();
+}
+
+// ── Search ───────────────────────────────────────────────────
+function debounceSearch(q) {
+  clearTimeout(searchTimer);
+  if (q.length < 3) { document.getElementById('ng-results').style.display = 'none'; return; }
+  searchTimer = setTimeout(() => doSearch(q), 400);
+}
+
+async function doSearch(q) {
+  const acctId = document.getElementById('ng-acct').value;
+  const acct = accounts.find(a => a.id === acctId);
+  if (!acct || !acct.user_id) { log('err', 'Cuenta sin user_id'); return; }
+
+  const results = document.getElementById('ng-results');
+  results.style.display = 'block';
+  results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--t3)">Buscando...</div>';
+
+  try {
+    // If it looks like an MLA ID, fetch directly
+    if (/^MLA\d+$/i.test(q.trim())) {
+      const r = await fetch('/api-as/' + acctId + '/items/' + q.trim().toUpperCase());
+      const item = await r.json();
+      if (r.ok && item.id) {
+        renderSearchResults([item], acctId);
+        return;
+      }
+    }
+
+    // Search by query
+    const r = await fetch('/api-as/' + acctId + '/users/' + acct.user_id + '/items/search?q=' + encodeURIComponent(q) + '&limit=20');
+    const d = await r.json();
+    if (!d.results || !d.results.length) {
+      results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--t3)">Sin resultados</div>';
+      return;
+    }
+
+    // Fetch item details (batch by 20)
+    const ids = d.results.slice(0, 20);
+    const r2 = await fetch('/api-as/' + acctId + '/items?ids=' + ids.join(','));
+    const items = await r2.json();
+    const realItems = Array.isArray(items) ? items.map(x => x.body || x).filter(x => x.id) : [];
+    renderSearchResults(realItems, acctId);
+  } catch(e) {
+    results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--re)">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderSearchResults(items, acctId) {
+  const results = document.getElementById('ng-results');
+  const acct = accounts.find(a => a.id === acctId);
+  const acctLabel = acct ? (acct.label || acct.id) : acctId;
+
+  results.innerHTML = items.map(it => {
+    const thumb = it.pictures && it.pictures[0] ? (it.pictures[0].secure_url || it.pictures[0].url || '') : '';
+    const alreadyAdded = newGroupItems.some(x => x.itemId === it.id);
+    return '<div class="search-item' + (alreadyAdded ? '" style="opacity:.4;pointer-events:none' : '') + '" ' +
+      'onclick=\'addSearchItem(' + JSON.stringify({
+        accountId: acctId,
+        acctLabel: acctLabel,
+        itemId: it.id,
+        title: it.title || '',
+        thumb: thumb,
+        stock: it.available_quantity || 0,
+        price: it.price || 0,
+      }).replace(/'/g, '&#39;') + ')\'>' +
+      (thumb ? '<img src="' + esc(thumb) + '">' : '<div style="width:36px;height:36px;background:var(--s3)"></div>') +
+      '<div class="si-title">' + esc(it.title || '—') + '</div>' +
+      '<div class="si-id">' + it.id + '</div>' +
+      '<div class="si-stock">x' + (it.available_quantity || 0) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function addSearchItem(item) {
+  if (newGroupItems.some(x => x.itemId === item.itemId)) return;
+  newGroupItems.push(item);
+  renderNewGroupItems();
+  // Auto-fill name if empty
+  const nameInput = document.getElementById('ng-name');
+  if (!nameInput.value.trim() && item.title) {
+    nameInput.value = item.title.substring(0, 80);
+  }
+  // Clear search
+  document.getElementById('ng-search').value = '';
+  document.getElementById('ng-results').style.display = 'none';
+}
+
+async function saveNewGroup() {
+  const name = document.getElementById('ng-name').value.trim();
+  if (!name) { alert('Ingresa un nombre para el grupo'); return; }
+  if (newGroupItems.length < 2) { alert('Agrega al menos 2 publicaciones de distintas cuentas'); return; }
+
+  const group = {
+    id: 'lg_' + Date.now(),
+    name: name,
+    items: newGroupItems.map(it => ({
+      accountId: it.accountId,
+      acctLabel: it.acctLabel,
+      itemId: it.itemId,
+      title: it.title,
+      thumb: it.thumb,
+      lastStock: it.stock,
+    })),
+    createdAt: new Date().toISOString(),
+    lastSync: null,
+  };
+
+  groups.push(group);
+  await saveGroups();
+  log('ok', 'Grupo "' + name + '" creado con ' + group.items.length + ' items');
+
+  document.getElementById('new-group-form').style.display = 'none';
+  document.getElementById('btn-new').style.display = '';
+  renderGroups();
+}
+
+// ── Render Groups ────────────────────────────────────────────
+function renderGroups() {
+  const card = document.getElementById('groups-card');
+  const list = document.getElementById('groups-list');
+  const empty = document.getElementById('empty-hint');
+
+  if (!groups.length) {
+    card.style.display = 'none';
+    empty.style.display = '';
+    return;
+  }
+
+  card.style.display = '';
+  empty.style.display = 'none';
+
+  list.innerHTML = groups.map(g => {
+    const stocks = g.items.map(it => it.lastStock ?? '?');
+    const allSame = stocks.every(s => s === stocks[0]) && stocks[0] !== '?';
+    const syncClass = allSame ? 'sync-ok' : 'sync-pending';
+    const syncText = allSame ? 'SINCRONIZADO' : 'PENDIENTE';
+    const numericStocks = g.items.filter(it => typeof it.lastStock === 'number').map(it => it.lastStock);
+    const maxStock = numericStocks.length ? Math.max(...numericStocks) : null;
+    const minStock = numericStocks.length ? Math.min(...numericStocks) : null;
+
+    return '<div class="link-group" id="lg-' + g.id + '">' +
+      '<div class="lg-header">' +
+        '<div class="lg-name">' + esc(g.name) + '</div>' +
+        '<span class="sync-badge ' + syncClass + '">' + syncText + '</span>' +
+        '<div style="text-align:center">' +
+          '<div class="lg-stock">' + (maxStock !== null ? maxStock : '?') + '</div>' +
+          '<div class="lg-stock-label">STOCK</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:6px 14px;font-family:var(--mono);font-size:9px;color:var(--t3);border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:6px">' +
+        '<span style="width:14px"></span>' +
+        '<span style="width:28px"></span>' +
+        '<span style="min-width:60px">CUENTA</span>' +
+        '<span style="flex:1">TITULO</span>' +
+        '<span style="min-width:100px">ID</span>' +
+        '<span style="min-width:50px;text-align:right">STOCK</span>' +
+        '<span style="width:24px"></span>' +
+      '</div>' +
+      '<div class="lg-items">' +
+        g.items.map(it => {
+          const stockNum = typeof it.lastStock === 'number' ? it.lastStock : null;
+          const isMax = stockNum !== null && stockNum === maxStock && maxStock !== minStock;
+          const isMin = stockNum !== null && stockNum === minStock && maxStock !== minStock;
+          const stockClass = stockNum === null ? '' : (isMin ? 'warn' : 'ok');
+          const radioName = 'src_' + g.id;
+          return '<div class="lg-item" style="' + (isMax ? 'background:rgba(71,255,138,.04)' : (isMin ? 'background:rgba(255,149,71,.04)' : '')) + '">' +
+            '<input type="radio" name="' + radioName + '" value="' + it.itemId + '"' +
+              (isMax ? ' checked' : '') +
+              ' style="accent-color:var(--cy);width:14px;height:14px;cursor:pointer" title="Usar este stock como referencia">' +
+            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:32px;height:32px;background:var(--s3)"></div>') +
+            '<span class="li-acct">' + esc(it.acctLabel || it.accountId) + '</span>' +
+            '<span class="li-title">' + esc(it.title || '—') + '</span>' +
+            '<span class="li-id">' + it.itemId + '</span>' +
+            '<span class="li-stock ' + stockClass + '">x' + (stockNum ?? '?') +
+              (isMin ? ' <span style="font-size:8px;color:var(--or)">(desactualizada)</span>' : '') +
+              (isMax ? ' <span style="font-size:8px;color:var(--gr)">(correcta)</span>' : '') +
+            '</span>' +
+            '<button class="btn-rm" onclick="removeGroupItem(\'' + g.id + '\',\'' + it.itemId + '\')" title="Quitar">&times;</button>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="lg-actions">' +
+        '<button class="btn sm" onclick="refreshGroupStocks(\'' + g.id + '\')" title="Leer stock real de ML">ACTUALIZAR</button>' +
+        '<button class="btn sm" onclick="addItemToGroup(\'' + g.id + '\')">+ ITEM</button>' +
+        '<button class="btn sm" onclick="syncGroup(\'' + g.id + '\')">SYNC (MINIMO)</button>' +
+        '<button class="btn primary sm" onclick="syncGroupFromSource(\'' + g.id + '\')">SYNC DESDE SELECCIONADA</button>' +
+        '<button class="btn sm danger" onclick="deleteGroup(\'' + g.id + '\')">ELIMINAR</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Group Actions ────────────────────────────────────────────
+function syncGroupFromSource(gid) {
+  // Read which radio button is selected
+  const radio = document.querySelector('input[name="src_' + gid + '"]:checked');
+  if (!radio) { log('err', 'Selecciona una publicacion como fuente de stock'); return; }
+  syncGroup(gid, radio.value);
+}
+
+async function syncGroup(gid, sourceItemId) {
+  const g = groups.find(x => x.id === gid);
+  if (!g) return;
+
+  const el = document.getElementById('lg-' + gid);
+  if (el) el.classList.add('syncing');
+
+  const mode = sourceItemId ? 'desde ' + sourceItemId : 'al minimo';
+  log('info', 'Sincronizando "' + g.name + '" (' + mode + ')...');
+
+  try {
+    const payload = { group: g };
+    if (sourceItemId) payload.sourceItemId = sourceItemId;
+
+    const r = await fetch('/vinculaciones/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      const targetStock = d.targetStock;
+      // Build set of successfully updated item IDs
+      const updatedOk = new Set();
+      if (d.updates) d.updates.forEach(u => { if (u.ok) updatedOk.add(u.itemId); });
+      // Update local stocks: use realStock from server for each item
+      if (d.results) {
+        for (const res of d.results) {
+          const it = g.items.find(x => x.itemId === res.itemId);
+          if (!it) continue;
+          if (typeof res.realStock === 'number') {
+            // If this item was updated successfully, it's now at targetStock
+            // If it wasn't updated, it was already at targetStock or had an error
+            if (updatedOk.has(res.itemId)) {
+              it.lastStock = targetStock;
+            } else if (res.realStock === targetStock) {
+              it.lastStock = targetStock; // already correct
+            } else {
+              it.lastStock = res.realStock; // keep real value (update failed or not attempted)
+            }
+          }
+        }
+      }
+      g.lastSync = new Date().toISOString();
+      await saveGroups();
+      renderGroups();
+
+      const failedUpdates = d.updates ? d.updates.filter(u => !u.ok) : [];
+      if (d.updates && d.updates.length) {
+        for (const u of d.updates) {
+          log(u.ok ? 'ok' : 'err', '  ' + u.itemId + ': ' + u.from + ' -> ' + u.to + (u.ok ? '' : ' ERROR: ' + u.error));
+        }
+        if (failedUpdates.length) {
+          log('warn', '"' + g.name + '" — ' + failedUpdates.length + ' items fallaron. Usa ACTUALIZAR para ver stocks reales.');
+        } else {
+          log('ok', '"' + g.name + '" sincronizado — stock: ' + targetStock);
+        }
+      } else {
+        log('ok', '"' + g.name + '" ya estaba sincronizado — stock: ' + targetStock);
+      }
+    } else {
+      log('err', 'Error sincronizando "' + g.name + '": ' + (d.error || 'unknown'));
+      // Even on error, try to update local stocks from whatever data we got
+      if (d.results) {
+        for (const res of d.results) {
+          const it = g.items.find(x => x.itemId === res.itemId);
+          if (it && typeof res.realStock === 'number') it.lastStock = res.realStock;
+        }
+        await saveGroups();
+        renderGroups();
+      }
+    }
+  } catch(e) {
+    log('err', 'Error sincronizando "' + g.name + '": ' + e.message);
+  }
+
+  if (el) el.classList.remove('syncing');
+}
+
+async function syncAll() {
+  log('info', 'Sincronizando todos los grupos...');
+  for (const g of groups) {
+    await syncGroup(g.id);
+  }
+  log('ok', 'Sincronizacion completa');
+}
+
+async function refreshGroupStocks(gid) {
+  const g = groups.find(x => x.id === gid);
+  if (!g) return;
+  const el = document.getElementById('lg-' + gid);
+  if (el) el.classList.add('syncing');
+  log('info', 'Actualizando stocks de "' + g.name + '"...');
+  for (const it of g.items) {
+    try {
+      const r = await fetch('/api-as/' + it.accountId + '/items/' + it.itemId);
+      const d = await r.json();
+      if (r.ok) {
+        // Si tiene variaciones, sumar stock de todas
+        const vars = d.variations || [];
+        if (vars.length) {
+          it.lastStock = vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0);
+          log('info', '  ' + it.itemId + ' (' + (it.acctLabel || it.accountId) + '): x' + it.lastStock + ' (' + vars.length + ' variaciones)');
+        } else {
+          it.lastStock = d.available_quantity != null ? d.available_quantity : 0;
+          log('info', '  ' + it.itemId + ' (' + (it.acctLabel || it.accountId) + '): x' + it.lastStock);
+        }
+      } else {
+        log('warn', '  ' + it.itemId + ': error — ' + (d.message || d.error || 'HTTP ' + r.status));
+      }
+    } catch(e) {
+      log('warn', '  ' + it.itemId + ': error — ' + e.message);
+    }
+  }
+  await saveGroups();
+  renderGroups();
+  if (el) el.classList.remove('syncing');
+  log('ok', 'Stocks de "' + g.name + '" actualizados');
+}
+
+async function refreshAllStocks() {
+  log('info', 'Actualizando stocks...');
+  for (const g of groups) {
+    for (const it of g.items) {
+      try {
+        const r = await fetch('/api-as/' + it.accountId + '/items/' + it.itemId);
+        const d = await r.json();
+        if (r.ok) {
+          const vars = d.variations || [];
+          it.lastStock = vars.length
+            ? vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0)
+            : (d.available_quantity != null ? d.available_quantity : 0);
+        }
+      } catch(e) { /* skip */ }
+    }
+  }
+  await saveGroups();
+  renderGroups();
+  log('ok', 'Stocks actualizados');
+}
+
+async function deleteGroup(gid) {
+  if (!confirm('Eliminar este grupo de vinculacion?')) return;
+  groups = groups.filter(g => g.id !== gid);
+  await saveGroups();
+  renderGroups();
+  log('info', 'Grupo eliminado');
+}
+
+async function removeGroupItem(gid, itemId) {
+  const g = groups.find(x => x.id === gid);
+  if (!g) return;
+  g.items = g.items.filter(it => it.itemId !== itemId);
+  if (g.items.length < 1) {
+    groups = groups.filter(x => x.id !== gid);
+  }
+  await saveGroups();
+  renderGroups();
+}
+
+function addItemToGroup(gid) {
+  const g = groups.find(x => x.id === gid);
+  if (!g) return;
+  // Reuse the new group form but in "add item" mode
+  const name = prompt('Ingresa el MLA ID del item a agregar (ej: MLA1234567890):');
+  if (!name || !name.trim()) return;
+  const acctId = prompt('ID de la cuenta donde esta este item (ej: nueva, vieja):');
+  if (!acctId || !acctId.trim()) return;
+
+  // Fetch item info
+  fetch('/api-as/' + acctId.trim() + '/items/' + name.trim().toUpperCase())
+    .then(r => r.json())
+    .then(async d => {
+      if (!d.id) { alert('No se encontro el item'); return; }
+      const acct = accounts.find(a => a.id === acctId.trim());
+      g.items.push({
+        accountId: acctId.trim(),
+        acctLabel: acct ? (acct.label || acct.id) : acctId.trim(),
+        itemId: d.id,
+        title: d.title || '',
+        thumb: d.pictures && d.pictures[0] ? (d.pictures[0].secure_url || '') : '',
+        lastStock: d.available_quantity || 0,
+      });
+      await saveGroups();
+      renderGroups();
+      log('ok', 'Item ' + d.id + ' agregado a "' + g.name + '"');
+    })
+    .catch(e => alert('Error: ' + e.message));
+}
+
+// ── Auto Detection ───────────────────────────────────────────
+async function startDetection() {
+  if (detecting) return;
+  if (accounts.length < 2) { log('err', 'Se necesitan al menos 2 cuentas para detectar coincidencias'); return; }
+  detecting = true;
+  suggestions = [];
+
+  const btn = document.getElementById('btn-detect');
+  btn.disabled = true;
+  btn.textContent = 'ESCANEANDO...';
+  document.getElementById('detect-progress').style.display = '';
+  document.getElementById('suggestions-wrap').style.display = 'none';
+  const fillEl = document.getElementById('detect-fill');
+  const statusEl = document.getElementById('detect-status');
+
+  // Collect all active-status items from every account
+  // Map: title (normalized) → [ {accountId, acctLabel, itemId, title, thumb, stock} ]
+  const titleMap = {};
+  const total = accounts.length;
+  let done = 0;
+
+  for (const acct of accounts) {
+    if (!acct.user_id || !acct.has_token) { done++; continue; }
+    statusEl.textContent = 'Escaneando ' + (acct.label || acct.id) + '...';
+    fillEl.style.width = Math.round((done / total) * 100) + '%';
+
+    try {
+      // Fetch all items (paginated, up to 1000)
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const url = '/api-as/' + acct.id + '/users/' + acct.user_id + '/items/search?status=active&offset=' + offset + '&limit=50';
+        const r = await fetch(url);
+        const d = await r.json();
+        if (!r.ok || !d.results || !d.results.length) { hasMore = false; break; }
+
+        // Fetch item details in batches of 20
+        for (let i = 0; i < d.results.length; i += 20) {
+          const batch = d.results.slice(i, i + 20);
+          const r2 = await fetch('/api-as/' + acct.id + '/items?ids=' + batch.join(','));
+          const items = await r2.json();
+          const realItems = Array.isArray(items) ? items.map(x => x.body || x).filter(x => x.id) : [];
+
+          for (const it of realItems) {
+            const normTitle = (it.title || '').trim();
+            if (!normTitle) continue;
+            if (!titleMap[normTitle]) titleMap[normTitle] = [];
+            // Don't add duplicates (same item ID)
+            if (titleMap[normTitle].some(x => x.itemId === it.id)) continue;
+            titleMap[normTitle].push({
+              accountId: acct.id,
+              acctLabel: acct.label || acct.id,
+              itemId: it.id,
+              title: it.title,
+              thumb: it.pictures && it.pictures[0] ? (it.pictures[0].secure_url || it.pictures[0].url || '') : '',
+              stock: it.available_quantity || 0,
+              price: it.price || 0,
+            });
+          }
+          statusEl.textContent = 'Escaneando ' + (acct.label || acct.id) + '... (' + (offset + i + batch.length) + ' items)';
+        }
+
+        offset += d.results.length;
+        const totalItems = d.paging ? d.paging.total : d.results.length;
+        if (offset >= totalItems || offset >= 1000) hasMore = false;
+      }
+    } catch(e) {
+      log('warn', 'Error escaneando ' + (acct.label || acct.id) + ': ' + e.message);
+    }
+    done++;
+    fillEl.style.width = Math.round((done / total) * 100) + '%';
+  }
+
+  fillEl.style.width = '100%';
+  statusEl.textContent = 'Analizando coincidencias...';
+
+  // Build existing linked item IDs set to skip already-linked items
+  const linkedIds = new Set();
+  for (const g of groups) {
+    for (const it of g.items) linkedIds.add(it.itemId);
+  }
+
+  // Find titles that appear in 2+ different accounts
+  suggestions = [];
+  for (const [title, items] of Object.entries(titleMap)) {
+    // Must have items from at least 2 different accounts
+    const uniqueAccounts = new Set(items.map(x => x.accountId));
+    if (uniqueAccounts.size < 2) continue;
+    // Skip if all items are already linked in an existing group
+    const unlinked = items.filter(x => !linkedIds.has(x.itemId));
+    if (unlinked.length < 2) continue;
+    const unlinkedAccounts = new Set(unlinked.map(x => x.accountId));
+    if (unlinkedAccounts.size < 2) continue;
+
+    suggestions.push({
+      id: 'sg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      title: title,
+      items: unlinked,
+      status: 'pending', // pending | accepted | dismissed
+    });
+  }
+
+  // Sort by number of items desc
+  suggestions.sort((a, b) => b.items.length - a.items.length);
+
+  detecting = false;
+  btn.disabled = false;
+  btn.textContent = 'DETECTAR AUTOMATICAMENTE';
+  document.getElementById('detect-progress').style.display = 'none';
+
+  if (suggestions.length) {
+    log('ok', suggestions.length + ' coincidencias detectadas por titulo exacto');
+    renderSuggestions();
+  } else {
+    log('info', 'No se encontraron publicaciones con titulo identico en distintas cuentas');
+    document.getElementById('suggestions-wrap').style.display = 'none';
+  }
+}
+
+function renderSuggestions() {
+  const pending = suggestions.filter(s => s.status === 'pending');
+  if (!pending.length) {
+    document.getElementById('suggestions-wrap').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('suggestions-wrap').style.display = '';
+  document.getElementById('sg-count').textContent = pending.length;
+
+  document.getElementById('suggestions-list').innerHTML = pending.map(sg =>
+    '<div class="suggestion" id="sg-' + sg.id + '">' +
+      '<div class="sg-header">' +
+        '<input type="checkbox" checked class="sg-chk" data-sgid="' + sg.id + '" style="accent-color:var(--ye);width:14px;height:14px;cursor:pointer">' +
+        '<div class="sg-title">' + esc(sg.title) + '</div>' +
+        '<div class="sg-count">' + sg.items.length + ' items / ' + new Set(sg.items.map(x => x.accountId)).size + ' cuentas</div>' +
+      '</div>' +
+      '<div class="sg-items">' +
+        sg.items.map(it =>
+          '<div class="sg-item">' +
+            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:28px;height:28px;background:var(--s3)"></div>') +
+            '<span class="sg-acct">' + esc(it.acctLabel) + '</span>' +
+            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--t2)">' + it.itemId + '</span>' +
+            '<span class="sg-stk">x' + it.stock + '</span>' +
+          '</div>'
+        ).join('') +
+      '</div>' +
+      '<div class="sg-actions">' +
+        '<button class="btn sm danger" onclick="dismissSuggestion(\'' + sg.id + '\')">DESCARTAR</button>' +
+        '<button class="btn sm" style="border-color:rgba(71,255,138,.4);color:var(--gr)" onclick="acceptSuggestion(\'' + sg.id + '\')">CONFIRMAR</button>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+}
+
+async function acceptSuggestion(sgId) {
+  const sg = suggestions.find(s => s.id === sgId);
+  if (!sg) return;
+  sg.status = 'accepted';
+
+  // Create a real group from this suggestion
+  const group = {
+    id: 'lg_' + Date.now(),
+    name: sg.title.substring(0, 80),
+    items: sg.items.map(it => ({
+      accountId: it.accountId,
+      acctLabel: it.acctLabel,
+      itemId: it.itemId,
+      title: it.title,
+      thumb: it.thumb,
+      lastStock: it.stock,
+    })),
+    createdAt: new Date().toISOString(),
+    lastSync: null,
+  };
+  groups.push(group);
+  await saveGroups();
+  log('ok', 'Grupo confirmado: "' + sg.title.substring(0, 50) + '" (' + sg.items.length + ' items)');
+
+  renderSuggestions();
+  renderGroups();
+}
+
+function dismissSuggestion(sgId) {
+  const sg = suggestions.find(s => s.id === sgId);
+  if (sg) sg.status = 'dismissed';
+  renderSuggestions();
+}
+
+async function acceptAllSuggestions() {
+  const pending = suggestions.filter(s => s.status === 'pending');
+  if (!pending.length) return;
+  for (const sg of pending) {
+    sg.status = 'accepted';
+    groups.push({
+      id: 'lg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+      name: sg.title.substring(0, 80),
+      items: sg.items.map(it => ({
+        accountId: it.accountId,
+        acctLabel: it.acctLabel,
+        itemId: it.itemId,
+        title: it.title,
+        thumb: it.thumb,
+        lastStock: it.stock,
+      })),
+      createdAt: new Date().toISOString(),
+      lastSync: null,
+    });
+  }
+  await saveGroups();
+  log('ok', pending.length + ' grupos confirmados');
+  renderSuggestions();
+  renderGroups();
+}
+
+function dismissAllSuggestions() {
+  suggestions.forEach(s => { if (s.status === 'pending') s.status = 'dismissed'; });
+  renderSuggestions();
+  log('info', 'Sugerencias descartadas');
+}
+
+// ── Auto Sync ────────────────────────────────────────────────
+function toggleAutoSync(on) {
+  if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
+  const dot = document.getElementById('auto-dot');
+  const label = document.getElementById('auto-sync-label');
+
+  if (on) {
+    dot.classList.add('active');
+    label.textContent = 'ON';
+    const ms = parseInt(document.getElementById('auto-interval').value) || 300000;
+    autoSyncTimer = setInterval(autoCheck, ms);
+    log('info', 'Auto-sync activado cada ' + (ms / 1000) + 's');
+    autoCheck(); // run immediately
+  } else {
+    dot.classList.remove('active');
+    label.textContent = 'OFF';
+    log('info', 'Auto-sync desactivado');
+  }
+}
+
+function updateAutoInterval() {
+  if (document.getElementById('auto-sync-chk').checked) {
+    toggleAutoSync(true); // restart with new interval
+  }
+}
+
+async function autoCheck() {
+  const status = document.getElementById('auto-status');
+  status.textContent = 'Revisando...';
+  try {
+    const r = await fetch('/vinculaciones/check-orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const d = await r.json();
+    const now = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    if (d.synced > 0) {
+      status.textContent = now + ' — ' + d.synced + ' ajustados';
+      status.style.color = 'var(--ye)';
+      log('ok', '[auto] ' + d.synced + ' stocks ajustados');
+      // Reload groups to reflect changes
+      await loadGroups();
+      await refreshAllStocks();
+    } else {
+      status.textContent = now + ' — todo OK';
+      status.style.color = 'var(--gr)';
+    }
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--re)';
+  }
+}
+
+// ── Utils ────────────────────────────────────────────────────
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function log(type, msg) {
+  const wrap = document.getElementById('log');
+  const ts = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  wrap.innerHTML += '<div class="log-e ' + type + '">[' + ts + '] ' + esc(msg) + '</div>';
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log').innerHTML = '<div class="log-e info">— Log limpiado</div>';
+}
+</script>
+</body>
+</html>

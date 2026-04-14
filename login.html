@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stockroom — Login</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#0c0c0e;color:#e8e8f0;font-family:'Space Mono',ui-monospace,Menlo,monospace}
+  body{display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse 80% 60% at 50% 30%,rgba(40,70,120,.18),transparent 70%),#0c0c0e}
+  .box{width:100%;max-width:360px;border:1px solid #1e2a38;background:#101820;padding:30px 28px}
+  .logo{font-size:18px;letter-spacing:.3em;color:#e8ff47;text-align:center;margin-bottom:6px}
+  .sub{font-size:10px;letter-spacing:.2em;color:#6b7a8d;text-align:center;margin-bottom:26px;text-transform:uppercase}
+  label{display:block;font-size:10px;letter-spacing:.18em;color:#6b7a8d;text-transform:uppercase;margin-bottom:8px}
+  input{width:100%;background:#0b0f14;border:1px solid #1e2a38;color:#e8e8f0;font-family:inherit;font-size:14px;padding:12px 14px;outline:none}
+  input:focus{border-color:#8ab4f8}
+  button{width:100%;margin-top:18px;background:#8ab4f8;color:#0b0f14;border:none;font-family:inherit;font-size:11px;letter-spacing:.18em;padding:13px;cursor:pointer;text-transform:uppercase;font-weight:bold}
+  button:hover{background:#a8c7fa}
+  button:disabled{opacity:.5;cursor:wait}
+  .err{margin-top:14px;color:#c47070;font-size:11px;text-align:center;min-height:14px}
+</style>
+</head>
+<body>
+  <form class="box" id="f">
+    <div class="logo">STOCKROOM</div>
+    <div class="sub">Acceso restringido</div>
+    <label for="p">Contraseña</label>
+    <input id="p" type="password" autocomplete="current-password" autofocus required>
+    <button type="submit" id="b">Entrar</button>
+    <div class="err" id="e"></div>
+  </form>
+<script>
+  const f = document.getElementById('f');
+  const p = document.getElementById('p');
+  const b = document.getElementById('b');
+  const e = document.getElementById('e');
+  f.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    e.textContent = '';
+    b.disabled = true;
+    b.textContent = 'Verificando...';
+    try {
+      const r = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: p.value })
+      });
+      if (r.ok) {
+        location.href = '/';
+        return;
+      }
+      const j = await r.json().catch(() => ({}));
+      e.textContent = j.error === 'invalid_password' ? 'Contraseña incorrecta' : (j.error || 'Error');
+    } catch(err) {
+      e.textContent = 'Error de red';
+    }
+    b.disabled = false;
+    b.textContent = 'Entrar';
+    p.select();
+  });
+</script>
+</body>
+</html>

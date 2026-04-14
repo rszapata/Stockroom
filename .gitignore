@@ -3,6 +3,7 @@ config.json
 tokens.json
 accounts.json
 auth.json
+auth*.json
 *.log
 server_out.log
 .env
@@ -16,3 +17,11 @@ todo.md
 .claude-cache/
 .mcp.config
 .claude/
+
+# IDEs
+.idea/
+.vscode/
+
+# Archivos de test/preview
+test_flex_preview.pdf
+test_*.pdf
