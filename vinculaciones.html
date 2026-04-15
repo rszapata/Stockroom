@@ -3,279 +3,485 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0c0c0e">
-<meta name="description" content="Sincronización de stock entre cuentas — MercadoLibre">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="description" content="Vinculaciones — Sincronización de stock multi-cuenta">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>STOCKROOM — Vinculaciones</title>
+<title>Stockroom — Vinculaciones</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="/shell.js" defer></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          brand: {
+            DEFAULT: '#FFE600',
+            50:  '#FFFBE5',
+            100: '#FFF7B8',
+            200: '#FFEF70',
+            300: '#FFE82E',
+            400: '#FFE600',
+            500: '#E6CF00',
+            600: '#B8A600',
+          },
+        },
+        boxShadow: {
+          'soft': '0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.2)',
+          'pop':  '0 10px 30px -10px rgb(0 0 0 / 0.6)',
+          'ring': '0 0 0 1px rgb(255 230 0 / 0.3)',
+        },
+      },
+    },
+  }
+</script>
+
 <style>
-:root {
-  --bg:#0c0c0e; --s1:#141416; --s2:#1c1c20; --s3:#242428;
-  --b1:#2a2a30; --b2:#3a3a42; --b3:#55556a;
-  --tx:#e8e8f0; --t2:#8888a0; --t3:#55556a;
-  --ye:#e8ff47; --cy:#47ffe8; --re:#ff4747; --or:#ff9547; --gr:#47ff8a; --pu:#b847ff;
-  --mono:'Space Mono',monospace; --sans:'DM Sans',sans-serif;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;min-height:100vh;overflow-x:hidden}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--b1) 1px,transparent 1px),linear-gradient(90deg,var(--b1) 1px,transparent 1px);background-size:40px 40px;opacity:.25;pointer-events:none;z-index:0}
-.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
-header{border-bottom:1px solid var(--b1);background:rgba(12,12,14,.97);backdrop-filter:blur(16px);position:sticky;top:0;z-index:200;padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px}
-.logo{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:.18em;color:var(--ye);display:flex;align-items:center;gap:10px;text-decoration:none}
-.logo-dot{width:8px;height:8px;background:var(--ye);border-radius:50%;animation:pulse 2s infinite}
-.live{display:flex;align-items:center;gap:5px;color:var(--gr);font-family:var(--mono);font-size:11px}
-.live-d{width:6px;height:6px;background:var(--gr);border-radius:50%;animation:pulse 1.5s infinite}
-.meli-badge{background:rgba(255,230,0,.12);border:1px solid rgba(255,230,0,.25);color:#ffe600;padding:3px 9px;font-size:10px;font-family:var(--mono);letter-spacing:.1em}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
-.hright{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px}
-.nav-btn{height:32px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center}
-.nav-btn:hover{border-color:var(--b2);color:var(--tx)}
-.nav-btn.active{border-color:var(--ye);color:var(--ye)}
-.btn{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.btn:hover{border-color:var(--b2);color:var(--tx)}
-.btn.primary{background:var(--ye);color:#0c0c0e;border-color:var(--ye);font-weight:700}
-.btn.primary:hover{background:#d4eb3a}
-.btn.sm{height:32px;padding:0 12px;font-size:9px}
-.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
-.btn.danger{border-color:rgba(255,71,71,.4);color:var(--re)}
-.btn.danger:hover{background:rgba(255,71,71,.1)}
+  /* CSS vars for JS-generated HTML */
+  :root {
+    --ye: #FFE600; --gr: #4ade80; --re: #f87171; --cy: #60a5fa;
+    --or: #fb923c; --pu: #c084fc;
+    --t2: #a1a1aa; --t3: #52525b;
+    --b1: #262626; --b2: #3f3f46;
+    --s2: #171717; --s3: #0f0f0f;
+    --tx: #d4d4d8;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
 
-main{padding:24px 28px;flex:1}
-.card{background:var(--s1);border:1px solid var(--b1);margin-bottom:14px}
-.card-header{padding:13px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
-.card-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase}
-.card-body{padding:18px}
+  /* scrollbar */
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
+  *::-webkit-scrollbar-thumb:hover { background: #404040; }
 
-.field{margin-bottom:14px}
-.field:last-child{margin-bottom:0}
-.field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--t3);text-transform:uppercase;margin-bottom:5px}
-.field select,.field input[type=text]{width:100%;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:12px;padding:0 12px;height:38px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
-.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355556a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
-.field select option{background:#1c1c20}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  /* subtle grid background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,230,0,0.04) 0%, transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(120,180,255,0.03) 0%, transparent 40%);
+    pointer-events: none; z-index: 0;
+  }
 
-/* Search results */
-.search-results{max-height:250px;overflow-y:auto;border:1px solid var(--b1);background:var(--s2);margin-top:4px}
-.search-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(42,42,48,.5);cursor:pointer;transition:background .2s;font-size:12px}
-.search-item:hover{background:rgba(232,255,71,.05)}
-.search-item img{width:36px;height:36px;object-fit:cover;border:1px solid var(--b1);flex-shrink:0}
-.search-item .si-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.search-item .si-id{font-family:var(--mono);font-size:9px;color:var(--t3)}
-.search-item .si-stock{font-family:var(--mono);font-size:10px;color:var(--cy)}
+  /* card hover lift */
+  .card-lift { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s; }
+  .card-lift:hover { transform: translateY(-2px); border-color: #3f3f46; box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
 
-/* Link groups */
-.link-group{border:1px solid var(--b1);background:var(--s1);margin-bottom:12px;transition:border-color .3s}
-.link-group.syncing{border-color:var(--ye);box-shadow:0 0 12px rgba(232,255,71,.08)}
-.lg-header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--b1);background:rgba(71,255,232,.03)}
-.lg-name{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--cy);flex:1}
-.lg-stock{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ye);min-width:60px;text-align:center}
-.lg-stock-label{font-family:var(--mono);font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;text-align:center}
-.lg-items{padding:8px 0}
-.lg-item{display:flex;align-items:center;gap:10px;padding:6px 16px;font-size:12px}
-.lg-item img{width:32px;height:32px;object-fit:cover;border:1px solid var(--b1)}
-.lg-item .li-acct{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--b2);color:var(--t2);min-width:80px;text-align:center}
-.lg-item .li-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lg-item .li-id{font-family:var(--mono);font-size:9px;color:var(--t3)}
-.lg-item .li-stock{font-family:var(--mono);font-size:11px;min-width:50px;text-align:right}
-.lg-item .li-stock.ok{color:var(--gr)}
-.lg-item .li-stock.warn{color:var(--or)}
-.lg-item .li-stock.err{color:var(--re)}
-.lg-item .btn-rm{background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px 6px;transition:color .2s}
-.lg-item .btn-rm:hover{color:var(--re)}
-.lg-actions{padding:8px 16px;border-top:1px solid var(--b1);display:flex;gap:8px;justify-content:flex-end}
+  /* sidebar item */
+  .side-item {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 12px;
+    color: #71717a; transition: background .2s, color .2s;
+  }
+  .side-item:hover { background: #171717; color: #e4e4e7; }
+  .side-item.active { background: #1a1a1a; color: #FFE600; }
+  .side-item.active::before {
+    content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 22px; background: #FFE600; border-radius: 2px;
+  }
+  .side-item .tip {
+    position: absolute; left: 60px; top: 50%; transform: translateY(-50%);
+    background: #171717; color: #e4e4e7; font-size: 11px; font-weight: 500;
+    padding: 6px 10px; border-radius: 8px; border: 1px solid #262626;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity .15s, transform .15s; letter-spacing: .02em; z-index: 60;
+  }
+  .side-item:hover .tip { opacity: 1; transform: translateY(-50%) translateX(4px); }
 
-/* Status badge */
-.sync-badge{font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:2px 6px;border:1px solid}
-.sync-ok{color:var(--gr);border-color:rgba(71,255,138,.3);background:rgba(71,255,138,.08)}
-.sync-pending{color:var(--or);border-color:rgba(255,149,71,.3);background:rgba(255,149,71,.08)}
-.sync-err{color:var(--re);border-color:rgba(255,71,71,.3);background:rgba(255,71,71,.08)}
+  /* animated fade */
+  .fade-in { animation: fadeUp .5s ease-out both; }
+  .fade-in.d1 { animation-delay: .05s; }
+  .fade-in.d2 { animation-delay: .1s; }
+  .fade-in.d3 { animation-delay: .15s; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
-/* Log */
-.log-wrap{max-height:180px;overflow-y:auto;padding:10px 13px}
-.log-e{font-family:var(--mono);font-size:10px;line-height:1.85}
-.log-e.info{color:var(--t2)}.log-e.ok{color:var(--gr)}.log-e.err{color:var(--re)}.log-e.warn{color:var(--or)}
+  /* pulse dot */
+  .pulse-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+  .pulse-dot::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    background: #22c55e; opacity: .35; animation: ring 2s ease-out infinite;
+  }
+  @keyframes ring { 0% { transform: scale(0.6); opacity: .6; } 100% { transform: scale(1.8); opacity: 0; } }
 
-/* Auto-sync indicator */
-.auto-sync-bar{display:flex;align-items:center;gap:10px;padding:10px 18px;background:rgba(71,255,232,.04);border-bottom:1px solid var(--b1);font-family:var(--mono);font-size:10px;color:var(--t2)}
-.auto-dot{width:8px;height:8px;border-radius:50%;background:var(--t3);transition:background .3s}
-.auto-dot.active{background:var(--gr);animation:pulse 2s infinite}
+  /* drp-panel pop */
+  .drp-panel { transform-origin: top right; animation: pop .18s ease-out both; }
+  @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
 
-.empty-state{text-align:center;padding:60px 20px;color:var(--t3)}
-.empty-state h3{font-family:var(--mono);font-size:13px;color:var(--t2);margin-bottom:10px}
-.empty-state p{font-size:12px;line-height:1.6;max-width:400px;margin:0 auto}
+  /* btn-primary glow */
+  .btn-primary { position: relative; }
+  .btn-primary::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,230,0,.4), transparent 40%); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .btn-primary:hover::after { opacity: 1; }
 
-/* Detection / suggestions */
-.detect-progress{padding:12px 18px;font-family:var(--mono);font-size:10px;color:var(--t2)}
-.detect-bar{width:100%;height:4px;background:var(--s3);margin-top:6px;overflow:hidden}
-.detect-fill{height:100%;background:var(--cy);transition:width .3s}
-.suggestion{border:1px solid var(--b2);background:var(--s1);margin-bottom:10px;transition:opacity .3s}
-.suggestion.accepted{border-color:var(--gr);opacity:.6;pointer-events:none}
-.suggestion.dismissed{display:none}
-.sg-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(71,255,232,.04);border-bottom:1px solid var(--b1)}
-.sg-title{font-family:var(--mono);font-size:11px;color:var(--cy);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sg-count{font-family:var(--mono);font-size:9px;color:var(--t3);padding:2px 6px;border:1px solid var(--b2)}
-.sg-items{padding:6px 0}
-.sg-item{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:11px}
-.sg-item img{width:28px;height:28px;object-fit:cover;border:1px solid var(--b1)}
-.sg-item .sg-acct{font-family:var(--mono);font-size:8px;padding:1px 5px;border:1px solid var(--b2);color:var(--t2);min-width:60px;text-align:center}
-.sg-item .sg-id{font-family:var(--mono);font-size:9px;color:var(--t3)}
-.sg-item .sg-stk{font-family:var(--mono);font-size:10px;color:var(--ye);min-width:40px;text-align:right}
-.sg-actions{display:flex;gap:8px;padding:8px 14px;border-top:1px solid var(--b1);justify-content:flex-end}
+  /* chips */
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; letter-spacing: .02em; }
+  .chip-green   { background: rgba(34,197,94,.12);  color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+  .chip-red     { background: rgba(239,68,68,.12);  color: #f87171; border: 1px solid rgba(239,68,68,.25); }
+  .chip-neutral { background: #171717; color: #a1a1aa; border: 1px solid #262626; }
+  .chip-brand   { background: rgba(255,230,0,.1);   color: #FFE600; border: 1px solid rgba(255,230,0,.25); }
+  .chip-blue    { background: rgba(96,165,250,.1);  color: #60a5fa; border: 1px solid rgba(96,165,250,.25); }
 
-.hidden{display:none!important}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+  /* ── Buttons (used in JS-generated HTML) ── */
+  .btn {
+    height: 34px; padding: 0 14px; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .08em; border: 1px solid #262626; background: #171717;
+    color: #a1a1aa; cursor: pointer; transition: all .2s; white-space: nowrap;
+    text-decoration: none; display: inline-flex; align-items: center;
+    justify-content: center; gap: 6px; border-radius: 10px;
+  }
+  .btn:hover { border-color: #3f3f46; color: #d4d4d8; background: #1a1a1a; }
+  .btn.sm { height: 28px; padding: 0 10px; font-size: 9px; border-radius: 8px; }
+  .btn.primary { background: #FFE600; color: #0a0a0a; border-color: #FFE600; font-weight: 700; }
+  .btn.primary:hover { background: #FFE82E; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+  .btn.danger { border-color: rgba(248,113,113,.3); color: #f87171; }
+  .btn.danger:hover { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.5); }
+
+  /* ── Form fields (used in new-group-form) ── */
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: #52525b; text-transform: uppercase; margin-bottom: 5px; }
+  .field select, .field input[type=text] {
+    width: 100%; background: #171717; border: 1px solid #262626; color: #d4d4d8;
+    font-family: var(--mono); font-size: 12px; padding: 0 12px; height: 36px;
+    outline: none; transition: border-color .2s; border-radius: 8px;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field select:focus, .field input[type=text]:focus { border-color: #3f3f46; }
+  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2352525b'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
+  .field select option { background: #171717; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* ── Search results ── */
+  .search-results { max-height: 240px; overflow-y: auto; border: 1px solid #262626; background: #171717; border-radius: 10px; margin-top: 4px; }
+  .search-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid rgba(38,38,38,.6); cursor: pointer; transition: background .15s; font-size: 12px; }
+  .search-item:hover { background: rgba(255,230,0,.04); }
+  .search-item img { width: 34px; height: 34px; object-fit: cover; border: 1px solid #262626; border-radius: 6px; flex-shrink: 0; }
+  .search-item .si-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d4d4d8; }
+  .search-item .si-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
+  .search-item .si-stock { font-family: var(--mono); font-size: 10px; color: #60a5fa; }
+
+  /* ── Link groups (rendered in JS) ── */
+  .link-group { border: 1px solid #262626; background: #0f0f0f; margin-bottom: 10px; border-radius: 12px; overflow: hidden; transition: border-color .3s, box-shadow .3s; }
+  .link-group.syncing { border-color: rgba(255,230,0,.4); box-shadow: 0 0 20px rgba(255,230,0,.06); }
+  .lg-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #1a1a1a; background: rgba(255,255,255,.02); }
+  .lg-name { font-family: var(--mono); font-weight: 600; font-size: 12px; color: #d4d4d8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lg-stock { font-family: var(--mono); font-size: 22px; font-weight: 700; color: #FFE600; min-width: 52px; text-align: center; line-height: 1; }
+  .lg-stock-label { font-family: var(--mono); font-size: 8px; color: #52525b; text-transform: uppercase; letter-spacing: .1em; text-align: center; margin-top: 2px; }
+  .lg-items { padding: 4px 0; }
+  .lg-item { display: flex; align-items: center; gap: 10px; padding: 6px 16px; font-size: 12px; transition: background .1s; }
+  .lg-item:hover { background: rgba(255,255,255,.02); }
+  .lg-item img { width: 30px; height: 30px; object-fit: cover; border: 1px solid #262626; border-radius: 5px; flex-shrink: 0; }
+  .lg-item .li-acct { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 5px; min-width: 72px; text-align: center; white-space: nowrap; }
+  .lg-item .li-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #a1a1aa; }
+  .lg-item .li-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
+  .lg-item .li-stock { font-family: var(--mono); font-size: 11px; min-width: 44px; text-align: right; }
+  .lg-item .li-stock.ok   { color: #4ade80; }
+  .lg-item .li-stock.warn { color: #fb923c; }
+  .lg-item .li-stock.err  { color: #f87171; }
+  .lg-item .btn-rm { background: none; border: none; color: #52525b; cursor: pointer; font-size: 16px; padding: 2px 6px; transition: color .15s; line-height: 1; }
+  .lg-item .btn-rm:hover { color: #f87171; }
+  .lg-actions { padding: 8px 14px; border-top: 1px solid #1a1a1a; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+  /* ── Sync badges ── */
+  .sync-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .sync-ok      { color: #4ade80; border-color: rgba(74,222,128,.3);  background: rgba(74,222,128,.08);  }
+  .sync-pending { color: #fb923c; border-color: rgba(251,146,60,.3);  background: rgba(251,146,60,.08);  }
+  .sync-err     { color: #f87171; border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.08); }
+
+  /* ── Suggestions ── */
+  .suggestion { border: 1px solid #262626; background: #0f0f0f; margin-bottom: 10px; border-radius: 12px; overflow: hidden; transition: opacity .3s, border-color .3s; }
+  .suggestion.accepted { border-color: rgba(74,222,128,.3); opacity: .6; pointer-events: none; }
+  .suggestion.dismissed { display: none; }
+  .sg-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,.02); border-bottom: 1px solid #1a1a1a; }
+  .sg-title { font-family: var(--mono); font-size: 11px; color: #d4d4d8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sg-count { font-family: var(--mono); font-size: 9px; color: #52525b; padding: 2px 7px; border: 1px solid #262626; border-radius: 6px; white-space: nowrap; }
+  .sg-items { padding: 4px 0; }
+  .sg-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 11px; }
+  .sg-item img { width: 26px; height: 26px; object-fit: cover; border: 1px solid #262626; border-radius: 4px; flex-shrink: 0; }
+  .sg-item .sg-acct { font-family: var(--mono); font-size: 8px; padding: 1px 5px; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 4px; min-width: 56px; text-align: center; }
+  .sg-item .sg-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
+  .sg-item .sg-stk { font-family: var(--mono); font-size: 10px; color: #FFE600; min-width: 36px; text-align: right; }
+  .sg-actions { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid #1a1a1a; justify-content: flex-end; }
+
+  /* ── Auto-sync dot ── */
+  .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: #3f3f46; transition: background .3s; flex-shrink: 0; }
+  .auto-dot.active { background: #4ade80; animation: ring 2s ease-out infinite; }
+
+  /* ── Log ── */
+  .log-wrap { max-height: 200px; overflow-y: auto; padding: 10px 14px; }
+  .log-e { font-family: var(--mono); font-size: 10px; line-height: 1.9; }
+  .log-e.info { color: #52525b; }
+  .log-e.ok   { color: #4ade80; }
+  .log-e.err  { color: #f87171; }
+  .log-e.warn { color: #fb923c; }
+
+  /* ── Detect progress ── */
+  .detect-bar { width: 100%; height: 3px; background: #1a1a1a; margin-top: 8px; border-radius: 2px; overflow: hidden; }
+  .detect-fill { height: 100%; background: #60a5fa; transition: width .3s; border-radius: 2px; }
+
+  /* ── Empty state ── */
+  .empty-state { text-align: center; padding: 56px 20px; color: #52525b; }
+  .empty-state h3 { font-family: var(--mono); font-size: 12px; color: #71717a; margin-bottom: 8px; letter-spacing: .08em; }
+  .empty-state p { font-size: 12px; line-height: 1.7; max-width: 380px; margin: 0 auto; color: #3f3f46; }
+
+  /* hide number spinner */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 </style>
-<link rel="stylesheet" href="/mobile.css">
 </head>
-<body data-shell-page="vinculaciones" data-shell-title="Vinculaciones" data-shell-subtitle="Sincronización de stock multi-cuenta">
-<div class="app">
+<body class="bg-neutral-950 text-neutral-200 antialiased min-h-screen">
 
-<header class="legacy">
-  <div class="logo"><div class="logo-dot"></div>STOCKROOM</div>
-  <div class="hright">
-    <div class="meli-badge">MLA</div>
-    <div class="live"><div class="live-d"></div>LIVE</div>
-    <a href="/" class="nav-btn">STOCK</a>
-    <a href="/analytics.html" class="nav-btn">ANALYTICS</a>
-    <a href="/cobros.html" class="nav-btn">COBROS</a>
-    <a href="/publicaciones.html" class="nav-btn">+ PUBLICAR</a>
-    <a href="/migracion.html" class="nav-btn">MIGRAR</a>
-    <a href="/vinculaciones.html" class="nav-btn active">SYNC</a>
-    <div id="acct-wrap" style="position:relative">
-      <button class="btn sm" id="acct-btn" onclick="toggleAcctMenu()">
-        <span id="acct-label">—</span> &#9662;
-      </button>
-      <div id="acct-menu" style="display:none;position:absolute;right:0;top:38px;background:#141416;border:1px solid #3a3a42;min-width:190px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.5)">
-        <div id="acct-list"></div>
-        <div style="border-top:1px solid #2a2a30;padding:8px 12px">
-          <a href="/oauth/start" style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#55556a;text-decoration:none;display:block;transition:color .2s"
-             onmouseover="this.style.color='#e8ff47'" onmouseout="this.style.color='#55556a'">+ AUTORIZAR NUEVA CUENTA</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</header>
-
-<main>
-  <!-- AUTO SYNC BAR -->
-  <div class="auto-sync-bar">
-    <div class="auto-dot" id="auto-dot"></div>
-    <span>AUTO-SYNC</span>
-    <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-      <input type="checkbox" id="auto-sync-chk" onchange="toggleAutoSync(this.checked)" style="accent-color:var(--ye)">
-      <span id="auto-sync-label">OFF</span>
-    </label>
-    <span style="color:var(--t3);margin-left:8px">Cada</span>
-    <select id="auto-interval" onchange="updateAutoInterval()" style="background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;padding:2px 8px;height:24px">
-      <option value="60000">1 min</option>
-      <option value="120000">2 min</option>
-      <option value="300000" selected>5 min</option>
-      <option value="600000">10 min</option>
-      <option value="1800000">30 min</option>
-    </select>
-    <span id="auto-status" style="margin-left:auto;color:var(--t3)">—</span>
+<!-- ────────────────────────────────────────────────────── SIDEBAR ──── -->
+<aside class="fixed left-0 top-0 bottom-0 w-16 bg-neutral-900 border-r border-neutral-800 flex flex-col items-center py-4 z-40">
+  <!-- logo -->
+  <div class="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mb-6 shadow-pop">
+    <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
+    </svg>
   </div>
 
-  <!-- DETECTAR + CREAR GRUPO -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">01 — VINCULAR PUBLICACIONES</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn sm" onclick="startDetection()" id="btn-detect">DETECTAR AUTOMATICAMENTE</button>
-        <button class="btn primary sm" onclick="showNewGroup()" id="btn-new">+ NUEVO GRUPO</button>
+  <!-- nav -->
+  <nav class="flex flex-col gap-1 flex-1">
+    <a href="/" class="side-item" aria-label="Dashboard">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+      <span class="tip">Dashboard</span>
+    </a>
+    <a href="/analytics.html" class="side-item" aria-label="Analytics">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      <span class="tip">Stock &amp; Analytics</span>
+    </a>
+    <a href="/publicaciones.html" class="side-item" aria-label="Publicaciones">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span class="tip">Publicar</span>
+    </a>
+    <a href="/vinculaciones.html" class="side-item active" aria-label="Vinculaciones">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+      <span class="tip">Vinculaciones</span>
+    </a>
+    <a href="/migracion.html" class="side-item" aria-label="Migración">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      <span class="tip">Migración</span>
+    </a>
+    <a href="/cobros.html" class="side-item" aria-label="Cobros">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+      <span class="tip">Cobros</span>
+    </a>
+  </nav>
+
+  <!-- bottom nav -->
+  <div class="flex flex-col gap-1 mt-auto">
+    <button class="side-item" aria-label="Configuración">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="tip">Configuración</span>
+    </button>
+    <a href="/logout" class="side-item" aria-label="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="tip">Cerrar sesión</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ────────────────────────────────────────────────────── MAIN ──── -->
+<div class="pl-16 min-h-screen relative z-10">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-30 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800">
+    <div class="flex items-center justify-between px-8 py-4 gap-4">
+      <div class="min-w-0">
+        <h1 class="text-xl font-semibold tracking-tight text-neutral-100">Vinculaciones</h1>
+        <p class="text-xs text-neutral-500 mt-0.5 flex items-center gap-2">
+          <span class="pulse-dot"></span>
+          <span>Sincronización de stock multi-cuenta</span>
+        </p>
       </div>
-    </div>
 
-    <!-- Detection progress -->
-    <div class="detect-progress" id="detect-progress" style="display:none">
-      <div id="detect-status">Escaneando publicaciones...</div>
-      <div class="detect-bar"><div class="detect-fill" id="detect-fill" style="width:0%"></div></div>
-    </div>
+      <div class="flex items-center gap-2 flex-wrap justify-end">
 
-    <!-- Suggestions from auto-detect -->
-    <div class="card-body" id="suggestions-wrap" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.1em">
-          COINCIDENCIAS DETECTADAS — <span id="sg-count">0</span> grupos
+        <!-- Auto-sync control -->
+        <div class="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2">
+          <div class="auto-dot" id="auto-dot"></div>
+          <span class="text-[11px] font-mono text-neutral-500 uppercase tracking-wider">Auto-sync</span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="auto-sync-chk" onchange="toggleAutoSync(this.checked)" style="accent-color:#FFE600;width:13px;height:13px">
+            <span id="auto-sync-label" class="text-[11px] font-mono text-neutral-400">OFF</span>
+          </label>
+          <span class="text-neutral-700 text-[11px]">·</span>
+          <select id="auto-interval" onchange="updateAutoInterval()"
+            class="bg-transparent border-0 text-neutral-400 font-mono text-[11px] outline-none cursor-pointer">
+            <option value="60000">1 min</option>
+            <option value="120000">2 min</option>
+            <option value="300000" selected>5 min</option>
+            <option value="600000">10 min</option>
+            <option value="1800000">30 min</option>
+          </select>
+          <span id="auto-status" class="text-[11px] font-mono text-neutral-600 ml-1 hidden sm:inline">—</span>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn sm" onclick="acceptAllSuggestions()">ACEPTAR TODOS</button>
-          <button class="btn sm" onclick="dismissAllSuggestions()">DESCARTAR TODOS</button>
-        </div>
-      </div>
-      <div id="suggestions-list"></div>
-    </div>
 
-    <!-- Manual form -->
-    <div class="card-body" id="new-group-form" style="display:none">
-      <div class="field">
-        <label>Nombre del grupo</label>
-        <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80">
-      </div>
-
-      <div style="margin-top:12px;border:1px solid var(--b1);padding:12px;background:var(--s2)">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-bottom:8px;letter-spacing:.1em">ITEMS VINCULADOS</div>
-        <div id="ng-items"></div>
-        <div style="margin-top:10px;display:flex;gap:10px;align-items:end">
-          <div class="field" style="flex:1;margin-bottom:0">
-            <label>Cuenta</label>
-            <select id="ng-acct"></select>
+        <!-- Account switcher -->
+        <div class="relative" id="acct-wrap">
+          <button id="acct-btn" onclick="toggleAcctMenu()"
+            class="flex items-center gap-2 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl px-3 py-2 text-sm transition-colors">
+            <span class="w-6 h-6 rounded-full bg-gradient-to-br from-brand to-yellow-500 flex items-center justify-center text-[10px] font-bold text-neutral-950">?</span>
+            <span id="acct-label" class="hidden sm:inline text-xs font-medium text-neutral-200 max-w-[120px] truncate">—</span>
+            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="acct-menu" style="display:none"
+            class="absolute right-0 mt-2 w-64 bg-neutral-900 border border-neutral-800 rounded-xl shadow-pop drp-panel overflow-hidden z-50">
+            <div id="acct-list" class="max-h-56 overflow-y-auto py-1"></div>
+            <div class="p-2 border-t border-neutral-800">
+              <a href="/oauth/start"
+                class="block text-center text-xs text-neutral-400 hover:text-neutral-100 bg-neutral-800 hover:bg-neutral-700 rounded-lg py-1.5 transition">
+                + Nueva cuenta
+              </a>
+            </div>
           </div>
-          <div class="field" style="flex:2;margin-bottom:0">
-            <label>Buscar publicacion (titulo o MLA ID)</label>
-            <input type="text" id="ng-search" placeholder="Ej: iPhone 15 o MLA123456789" oninput="debounceSearch(this.value)">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="p-4 md:p-8 max-w-[1400px] mx-auto">
+
+    <!-- ──────────── CARD: VINCULAR PUBLICACIONES ──────────── -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d1 mb-4">
+
+      <!-- Card header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">01</div>
+          <h3 class="text-sm font-semibold text-neutral-100">Vincular Publicaciones</h3>
+        </div>
+        <div class="flex items-center gap-2" id="header-btns">
+          <button class="btn sm" onclick="startDetection()" id="btn-detect">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Detectar
+          </button>
+          <button class="btn primary sm" onclick="showNewGroup()" id="btn-new">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo grupo
+          </button>
+        </div>
+      </div>
+
+      <!-- Detection progress -->
+      <div id="detect-progress" style="display:none" class="px-6 py-4 border-b border-neutral-800">
+        <div id="detect-status" class="text-xs font-mono text-neutral-400">Escaneando publicaciones...</div>
+        <div class="detect-bar mt-2"><div class="detect-fill" id="detect-fill" style="width:0%"></div></div>
+      </div>
+
+      <!-- Suggestions from auto-detect -->
+      <div id="suggestions-wrap" style="display:none" class="px-6 py-4 border-b border-neutral-800">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="chip chip-blue">
+              <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              Coincidencias detectadas
+            </span>
+            <span id="sg-count" class="text-[11px] font-mono text-neutral-500">0</span>
+            <span class="text-[11px] text-neutral-600">grupos</span>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn sm" onclick="acceptAllSuggestions()">Aceptar todos</button>
+            <button class="btn sm danger" onclick="dismissAllSuggestions()">Descartar todos</button>
           </div>
         </div>
-        <div id="ng-results" class="search-results" style="display:none"></div>
+        <div id="suggestions-list"></div>
       </div>
 
-      <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn sm" onclick="cancelNewGroup()">CANCELAR</button>
-        <button class="btn primary sm" onclick="saveNewGroup()" id="btn-save-group">GUARDAR GRUPO</button>
+      <!-- Manual new group form -->
+      <div id="new-group-form" style="display:none" class="px-6 py-5 border-b border-neutral-800">
+        <div class="field">
+          <label>Nombre del grupo</label>
+          <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80">
+        </div>
+
+        <div class="mt-4 bg-neutral-950/60 border border-neutral-800 rounded-xl p-4">
+          <div class="text-[10px] font-mono uppercase tracking-wider text-neutral-600 mb-3">Items vinculados</div>
+          <div id="ng-items"></div>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div class="field" style="margin-bottom:0">
+              <label>Cuenta</label>
+              <select id="ng-acct"></select>
+            </div>
+            <div class="field sm:col-span-2" style="margin-bottom:0">
+              <label>Buscar publicación (título o MLA ID)</label>
+              <input type="text" id="ng-search" placeholder="Ej: iPhone 15 o MLA123456789" oninput="debounceSearch(this.value)">
+            </div>
+          </div>
+          <div id="ng-results" class="search-results" style="display:none"></div>
+        </div>
+
+        <div class="mt-4 flex gap-2 justify-end">
+          <button class="btn sm" onclick="cancelNewGroup()">Cancelar</button>
+          <button class="btn primary sm" onclick="saveNewGroup()" id="btn-save-group">Guardar grupo</button>
+        </div>
+      </div>
+
+      <!-- Empty hint -->
+      <div id="empty-hint">
+        <div class="empty-state">
+          <div class="w-12 h-12 rounded-2xl bg-neutral-800 border border-neutral-700 flex items-center justify-center mx-auto mb-4">
+            <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-neutral-600" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <h3>Sin vinculaciones</h3>
+          <p>Vincula publicaciones iguales de distintas cuentas para mantener el stock sincronizado. Cuando se vende en una cuenta, se descuenta en las otras.</p>
+        </div>
       </div>
     </div>
 
-    <div class="card-body" id="empty-hint">
-      <div class="empty-state">
-        <h3>SIN VINCULACIONES</h3>
-        <p>Vincula publicaciones iguales de distintas cuentas para mantener el stock sincronizado automaticamente. Cuando se vende en una cuenta, se descuenta en las otras.</p>
+    <!-- ──────────── CARD: GRUPOS VINCULADOS ──────────── -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d2 mb-4" id="groups-card" style="display:none">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">02</div>
+          <h3 class="text-sm font-semibold text-neutral-100">Grupos Vinculados</h3>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn sm" onclick="refreshAllStocks()">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Actualizar stocks
+          </button>
+          <button class="btn primary sm" onclick="syncAll()">Sincronizar todo</button>
+        </div>
+      </div>
+      <div class="p-4" id="groups-list"></div>
+    </div>
+
+    <!-- ──────────── CARD: LOG ──────────── -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden fade-in d3 mb-8">
+      <div class="flex items-center justify-between px-6 py-3 border-b border-neutral-800">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-neutral-700"></div>
+          <span class="text-[11px] font-mono uppercase tracking-wider text-neutral-500">Log de actividad</span>
+        </div>
+        <button onclick="clearLog()" class="text-[11px] text-neutral-600 hover:text-neutral-400 font-mono transition">Limpiar</button>
+      </div>
+      <div class="log-wrap" id="log">
+        <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
       </div>
     </div>
-  </div>
 
-  <!-- LOG -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">LOG</span>
-      <button class="btn sm" onclick="clearLog()">LIMPIAR</button>
-    </div>
-    <div class="log-wrap" id="log">
-      <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
-    </div>
-  </div>
-
-  <!-- GRUPOS EXISTENTES -->
-  <div class="card" id="groups-card" style="display:none">
-    <div class="card-header">
-      <span class="card-title">02 — GRUPOS VINCULADOS</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn sm" onclick="refreshAllStocks()">ACTUALIZAR STOCKS</button>
-        <button class="btn primary sm" onclick="syncAll()">SINCRONIZAR TODO</button>
-      </div>
-    </div>
-    <div class="card-body" id="groups-list"></div>
-  </div>
-</main>
-
+  </main>
 </div>
 
 <script src="/theme.js"></script>
@@ -370,17 +576,17 @@ function cancelNewGroup() {
 function renderNewGroupItems() {
   const c = document.getElementById('ng-items');
   if (!newGroupItems.length) {
-    c.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:8px 0">No hay items agregados. Busca y selecciona publicaciones abajo.</div>';
+    c.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:6px 0">No hay items agregados. Busca y selecciona publicaciones abajo.</div>';
     return;
   }
   c.innerHTML = newGroupItems.map((it, i) =>
     '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">' +
-      (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:28px;height:28px;object-fit:cover;border:1px solid var(--b1)">' : '') +
-      '<span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--b2);color:var(--cy)">' + esc(it.acctLabel) + '</span>' +
-      '<span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.title) + '</span>' +
+      (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:28px;height:28px;object-fit:cover;border:1px solid var(--b1);border-radius:5px">' : '') +
+      '<span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--b2);color:var(--cy);border-radius:5px">' + esc(it.acctLabel) + '</span>' +
+      '<span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)">' + esc(it.title) + '</span>' +
       '<span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + it.itemId + '</span>' +
       '<span style="font-family:var(--mono);font-size:10px;color:var(--ye)">x' + it.stock + '</span>' +
-      '<button onclick="removeNewGroupItem(' + i + ')" style="background:none;border:none;color:var(--re);cursor:pointer;font-size:14px;padding:2px 4px" title="Quitar">&times;</button>' +
+      '<button onclick="removeNewGroupItem(' + i + ')" style="background:none;border:none;color:var(--re);cursor:pointer;font-size:16px;padding:2px 4px;line-height:1" title="Quitar">&times;</button>' +
     '</div>'
   ).join('');
 }
@@ -406,17 +612,12 @@ async function doSearch(q) {
   results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--t3)">Buscando...</div>';
 
   try {
-    // If it looks like an MLA ID, fetch directly
     if (/^MLA\d+$/i.test(q.trim())) {
       const r = await fetch('/api-as/' + acctId + '/items/' + q.trim().toUpperCase());
       const item = await r.json();
-      if (r.ok && item.id) {
-        renderSearchResults([item], acctId);
-        return;
-      }
+      if (r.ok && item.id) { renderSearchResults([item], acctId); return; }
     }
 
-    // Search by query
     const r = await fetch('/api-as/' + acctId + '/users/' + acct.user_id + '/items/search?q=' + encodeURIComponent(q) + '&limit=20');
     const d = await r.json();
     if (!d.results || !d.results.length) {
@@ -424,7 +625,6 @@ async function doSearch(q) {
       return;
     }
 
-    // Fetch item details (batch by 20)
     const ids = d.results.slice(0, 20);
     const r2 = await fetch('/api-as/' + acctId + '/items?ids=' + ids.join(','));
     const items = await r2.json();
@@ -445,15 +645,11 @@ function renderSearchResults(items, acctId) {
     const alreadyAdded = newGroupItems.some(x => x.itemId === it.id);
     return '<div class="search-item' + (alreadyAdded ? '" style="opacity:.4;pointer-events:none' : '') + '" ' +
       'onclick=\'addSearchItem(' + JSON.stringify({
-        accountId: acctId,
-        acctLabel: acctLabel,
-        itemId: it.id,
-        title: it.title || '',
-        thumb: thumb,
-        stock: it.available_quantity || 0,
-        price: it.price || 0,
+        accountId: acctId, acctLabel: acctLabel, itemId: it.id,
+        title: it.title || '', thumb: thumb,
+        stock: it.available_quantity || 0, price: it.price || 0,
       }).replace(/'/g, '&#39;') + ')\'>' +
-      (thumb ? '<img src="' + esc(thumb) + '">' : '<div style="width:36px;height:36px;background:var(--s3)"></div>') +
+      (thumb ? '<img src="' + esc(thumb) + '">' : '<div style="width:34px;height:34px;background:var(--s3);border-radius:5px"></div>') +
       '<div class="si-title">' + esc(it.title || '—') + '</div>' +
       '<div class="si-id">' + it.id + '</div>' +
       '<div class="si-stock">x' + (it.available_quantity || 0) + '</div>' +
@@ -465,12 +661,8 @@ function addSearchItem(item) {
   if (newGroupItems.some(x => x.itemId === item.itemId)) return;
   newGroupItems.push(item);
   renderNewGroupItems();
-  // Auto-fill name if empty
   const nameInput = document.getElementById('ng-name');
-  if (!nameInput.value.trim() && item.title) {
-    nameInput.value = item.title.substring(0, 80);
-  }
-  // Clear search
+  if (!nameInput.value.trim() && item.title) nameInput.value = item.title.substring(0, 80);
   document.getElementById('ng-search').value = '';
   document.getElementById('ng-results').style.display = 'none';
 }
@@ -481,24 +673,17 @@ async function saveNewGroup() {
   if (newGroupItems.length < 2) { alert('Agrega al menos 2 publicaciones de distintas cuentas'); return; }
 
   const group = {
-    id: 'lg_' + Date.now(),
-    name: name,
+    id: 'lg_' + Date.now(), name: name,
     items: newGroupItems.map(it => ({
-      accountId: it.accountId,
-      acctLabel: it.acctLabel,
-      itemId: it.itemId,
-      title: it.title,
-      thumb: it.thumb,
-      lastStock: it.stock,
+      accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId,
+      title: it.title, thumb: it.thumb, lastStock: it.stock,
     })),
-    createdAt: new Date().toISOString(),
-    lastSync: null,
+    createdAt: new Date().toISOString(), lastSync: null,
   };
 
   groups.push(group);
   await saveGroups();
   log('ok', 'Grupo "' + name + '" creado con ' + group.items.length + ' items');
-
   document.getElementById('new-group-form').style.display = 'none';
   document.getElementById('btn-new').style.display = '';
   renderGroups();
@@ -519,7 +704,6 @@ function renderGroups() {
   card.style.display = '';
   empty.style.display = 'none';
 
-  // Grupos no sincronizados (stocks distintos) primero, sincronizados al final
   const sortedGroups = groups.slice().sort((a, b) => {
     const sa = a.items.map(it => it.lastStock ?? '?');
     const sb = b.items.map(it => it.lastStock ?? '?');
@@ -547,14 +731,14 @@ function renderGroups() {
           '<div class="lg-stock-label">STOCK</div>' +
         '</div>' +
       '</div>' +
-      '<div style="padding:6px 14px;font-family:var(--mono);font-size:9px;color:var(--t3);border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:6px">' +
+      '<div style="padding:5px 14px;font-family:var(--mono);font-size:9px;color:var(--t3);border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:6px;letter-spacing:.06em">' +
         '<span style="width:14px"></span>' +
-        '<span style="width:28px"></span>' +
-        '<span style="min-width:60px">CUENTA</span>' +
+        '<span style="width:30px"></span>' +
+        '<span style="min-width:72px">CUENTA</span>' +
         '<span style="flex:1">TITULO</span>' +
         '<span style="min-width:100px">ID</span>' +
-        '<span style="min-width:50px;text-align:right">STOCK</span>' +
-        '<span style="width:24px"></span>' +
+        '<span style="min-width:44px;text-align:right">STOCK</span>' +
+        '<span style="width:28px"></span>' +
       '</div>' +
       '<div class="lg-items">' +
         g.items.map(it => {
@@ -563,11 +747,11 @@ function renderGroups() {
           const isMin = stockNum !== null && stockNum === minStock && maxStock !== minStock;
           const stockClass = stockNum === null ? '' : (isMin ? 'warn' : 'ok');
           const radioName = 'src_' + g.id;
-          return '<div class="lg-item" style="' + (isMax ? 'background:rgba(71,255,138,.04)' : (isMin ? 'background:rgba(255,149,71,.04)' : '')) + '">' +
+          return '<div class="lg-item" style="' + (isMax ? 'background:rgba(74,222,128,.03)' : (isMin ? 'background:rgba(251,146,60,.03)' : '')) + '">' +
             '<input type="radio" name="' + radioName + '" value="' + it.itemId + '"' +
               (isMax ? ' checked' : '') +
-              ' style="accent-color:var(--cy);width:14px;height:14px;cursor:pointer" title="Usar este stock como referencia">' +
-            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:32px;height:32px;background:var(--s3)"></div>') +
+              ' style="accent-color:var(--ye);width:14px;height:14px;cursor:pointer" title="Usar este stock como referencia">' +
+            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:30px;height:30px;background:var(--s3);border-radius:5px;flex-shrink:0"></div>') +
             '<span class="li-acct">' + esc(it.acctLabel || it.accountId) + '</span>' +
             '<span class="li-title">' + esc(it.title || '—') + '</span>' +
             '<span class="li-id">' + it.itemId + '</span>' +
@@ -577,11 +761,11 @@ function renderGroups() {
         }).join('') +
       '</div>' +
       '<div class="lg-actions">' +
-        '<button class="btn sm" onclick="refreshGroupStocks(\'' + g.id + '\')" title="Leer stock real de ML">ACTUALIZAR</button>' +
-        '<button class="btn sm" onclick="addItemToGroup(\'' + g.id + '\')">+ ITEM</button>' +
-        '<button class="btn sm" onclick="syncGroup(\'' + g.id + '\')">SYNC (MINIMO)</button>' +
-        '<button class="btn primary sm" onclick="syncGroupFromSource(\'' + g.id + '\')">SYNC DESDE SELECCIONADA</button>' +
-        '<button class="btn sm danger" onclick="deleteGroup(\'' + g.id + '\')">ELIMINAR</button>' +
+        '<button class="btn sm" onclick="refreshGroupStocks(\'' + g.id + '\')" title="Leer stock real de ML">Actualizar</button>' +
+        '<button class="btn sm" onclick="addItemToGroup(\'' + g.id + '\')">+ Item</button>' +
+        '<button class="btn sm" onclick="syncGroup(\'' + g.id + '\')">Sync mínimo</button>' +
+        '<button class="btn primary sm" onclick="syncGroupFromSource(\'' + g.id + '\')">Sync desde seleccionada</button>' +
+        '<button class="btn sm danger" onclick="deleteGroup(\'' + g.id + '\')">Eliminar</button>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -589,7 +773,6 @@ function renderGroups() {
 
 // ── Group Actions ────────────────────────────────────────────
 function syncGroupFromSource(gid) {
-  // Read which radio button is selected
   const radio = document.querySelector('input[name="src_' + gid + '"]:checked');
   if (!radio) { log('err', 'Selecciona una publicacion como fuente de stock'); return; }
   syncGroup(gid, radio.value);
@@ -598,27 +781,22 @@ function syncGroupFromSource(gid) {
 async function syncGroup(gid, sourceItemId) {
   const g = groups.find(x => x.id === gid);
   if (!g) return;
-
   const el = document.getElementById('lg-' + gid);
   if (el) el.classList.add('syncing');
-
   const mode = sourceItemId ? 'desde ' + sourceItemId : 'al minimo';
   log('info', 'Sincronizando "' + g.name + '" (' + mode + ')...');
 
   try {
     const payload = { group: g };
     if (sourceItemId) payload.sourceItemId = sourceItemId;
-
     const r = await fetch('/vinculaciones/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     const d = await r.json();
 
     if (d.ok) {
       const targetStock = d.targetStock;
-      // Items que fallaron la lectura (token expirado, item inexistente, etc)
       const readErrors = (d.results || []).filter(r => r.error);
       if (readErrors.length) {
         for (const re of readErrors) {
@@ -629,49 +807,39 @@ async function syncGroup(gid, sourceItemId) {
           log('err', '  No se pudo leer ' + re.itemId + ' (' + label + '): ' + friendly);
         }
       }
-      // Build set of successfully updated item IDs
       const updatedOk = new Set();
       if (d.updates) d.updates.forEach(u => { if (u.ok) updatedOk.add(u.itemId); });
-      // Update local stocks: use realStock from server for each item
       if (d.results) {
         for (const res of d.results) {
           const it = g.items.find(x => x.itemId === res.itemId);
           if (!it) continue;
           if (typeof res.realStock === 'number') {
-            // If this item was updated successfully, it's now at targetStock
-            // If it wasn't updated, it was already at targetStock or had an error
-            if (updatedOk.has(res.itemId)) {
-              it.lastStock = targetStock;
-            } else if (res.realStock === targetStock) {
-              it.lastStock = targetStock; // already correct
-            } else {
-              it.lastStock = res.realStock; // keep real value (update failed or not attempted)
-            }
+            if (updatedOk.has(res.itemId)) { it.lastStock = targetStock; }
+            else if (res.realStock === targetStock) { it.lastStock = targetStock; }
+            else { it.lastStock = res.realStock; }
           }
         }
       }
       g.lastSync = new Date().toISOString();
       await saveGroups();
       renderGroups();
-
       const failedUpdates = d.updates ? d.updates.filter(u => !u.ok) : [];
       if (d.updates && d.updates.length) {
         for (const u of d.updates) {
           log(u.ok ? 'ok' : 'err', '  ' + u.itemId + ': ' + u.from + ' -> ' + u.to + (u.ok ? '' : ' ERROR: ' + u.error));
         }
         if (failedUpdates.length) {
-          log('warn', '"' + g.name + '" — ' + failedUpdates.length + ' items fallaron. Usa ACTUALIZAR para ver stocks reales.');
+          log('warn', '"' + g.name + '" — ' + failedUpdates.length + ' items fallaron. Usa Actualizar para ver stocks reales.');
         } else {
           log('ok', '"' + g.name + '" sincronizado — stock: ' + targetStock);
         }
       } else if (readErrors.length) {
-        log('warn', '"' + g.name + '" — no se actualizo nada porque ' + readErrors.length + ' item(s) tuvieron error de lectura (ver arriba)');
+        log('warn', '"' + g.name + '" — no se actualizo nada porque ' + readErrors.length + ' item(s) tuvieron error de lectura');
       } else {
         log('ok', '"' + g.name + '" ya estaba sincronizado — stock: ' + targetStock);
       }
     } else {
       log('err', 'Error sincronizando "' + g.name + '": ' + (d.error || 'unknown'));
-      // Even on error, try to update local stocks from whatever data we got
       if (d.results) {
         for (const res of d.results) {
           const it = g.items.find(x => x.itemId === res.itemId);
@@ -684,15 +852,12 @@ async function syncGroup(gid, sourceItemId) {
   } catch(e) {
     log('err', 'Error sincronizando "' + g.name + '": ' + e.message);
   }
-
   if (el) el.classList.remove('syncing');
 }
 
 async function syncAll() {
   log('info', 'Sincronizando todos los grupos...');
-  for (const g of groups) {
-    await syncGroup(g.id);
-  }
+  for (const g of groups) await syncGroup(g.id);
   log('ok', 'Sincronizacion completa');
 }
 
@@ -707,7 +872,6 @@ async function refreshGroupStocks(gid) {
       const r = await fetch('/api-as/' + it.accountId + '/items/' + it.itemId);
       const d = await r.json();
       if (r.ok) {
-        // Si tiene variaciones, sumar stock de todas
         const vars = d.variations || [];
         if (vars.length) {
           it.lastStock = vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0);
@@ -762,9 +926,7 @@ async function removeGroupItem(gid, itemId) {
   const g = groups.find(x => x.id === gid);
   if (!g) return;
   g.items = g.items.filter(it => it.itemId !== itemId);
-  if (g.items.length < 1) {
-    groups = groups.filter(x => x.id !== gid);
-  }
+  if (g.items.length < 1) groups = groups.filter(x => x.id !== gid);
   await saveGroups();
   renderGroups();
 }
@@ -772,13 +934,11 @@ async function removeGroupItem(gid, itemId) {
 function addItemToGroup(gid) {
   const g = groups.find(x => x.id === gid);
   if (!g) return;
-  // Reuse the new group form but in "add item" mode
   const name = prompt('Ingresa el MLA ID del item a agregar (ej: MLA1234567890):');
   if (!name || !name.trim()) return;
   const acctId = prompt('ID de la cuenta donde esta este item (ej: nueva, vieja):');
   if (!acctId || !acctId.trim()) return;
 
-  // Fetch item info
   fetch('/api-as/' + acctId.trim() + '/items/' + name.trim().toUpperCase())
     .then(r => r.json())
     .then(async d => {
@@ -787,8 +947,7 @@ function addItemToGroup(gid) {
       g.items.push({
         accountId: acctId.trim(),
         acctLabel: acct ? (acct.label || acct.id) : acctId.trim(),
-        itemId: d.id,
-        title: d.title || '',
+        itemId: d.id, title: d.title || '',
         thumb: d.pictures && d.pictures[0] ? (d.pictures[0].secure_url || '') : '',
         lastStock: d.available_quantity || 0,
       });
@@ -808,14 +967,12 @@ async function startDetection() {
 
   const btn = document.getElementById('btn-detect');
   btn.disabled = true;
-  btn.textContent = 'ESCANEANDO...';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3 h-3 animate-spin" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Escaneando...';
   document.getElementById('detect-progress').style.display = '';
   document.getElementById('suggestions-wrap').style.display = 'none';
   const fillEl = document.getElementById('detect-fill');
   const statusEl = document.getElementById('detect-status');
 
-  // Collect all active-status items from every account
-  // Map: title (normalized) → [ {accountId, acctLabel, itemId, title, thumb, stock} ]
   const titleMap = {};
   const total = accounts.length;
   let done = 0;
@@ -826,16 +983,13 @@ async function startDetection() {
     fillEl.style.width = Math.round((done / total) * 100) + '%';
 
     try {
-      // Fetch all items (paginated, up to 1000)
-      let offset = 0;
-      let hasMore = true;
+      let offset = 0, hasMore = true;
       while (hasMore) {
         const url = '/api-as/' + acct.id + '/users/' + acct.user_id + '/items/search?status=active&offset=' + offset + '&limit=50';
         const r = await fetch(url);
         const d = await r.json();
         if (!r.ok || !d.results || !d.results.length) { hasMore = false; break; }
 
-        // Fetch item details in batches of 20
         for (let i = 0; i < d.results.length; i += 20) {
           const batch = d.results.slice(i, i + 20);
           const r2 = await fetch('/api-as/' + acct.id + '/items?ids=' + batch.join(','));
@@ -846,16 +1000,11 @@ async function startDetection() {
             const normTitle = (it.title || '').trim();
             if (!normTitle) continue;
             if (!titleMap[normTitle]) titleMap[normTitle] = [];
-            // Don't add duplicates (same item ID)
             if (titleMap[normTitle].some(x => x.itemId === it.id)) continue;
             titleMap[normTitle].push({
-              accountId: acct.id,
-              acctLabel: acct.label || acct.id,
-              itemId: it.id,
-              title: it.title,
-              thumb: it.pictures && it.pictures[0] ? (it.pictures[0].secure_url || it.pictures[0].url || '') : '',
-              stock: it.available_quantity || 0,
-              price: it.price || 0,
+              accountId: acct.id, acctLabel: acct.label || acct.id, itemId: it.id,
+              title: it.title, thumb: it.pictures && it.pictures[0] ? (it.pictures[0].secure_url || it.pictures[0].url || '') : '',
+              stock: it.available_quantity || 0, price: it.price || 0,
             });
           }
           statusEl.textContent = 'Escaneando ' + (acct.label || acct.id) + '... (' + (offset + i + batch.length) + ' items)';
@@ -875,38 +1024,27 @@ async function startDetection() {
   fillEl.style.width = '100%';
   statusEl.textContent = 'Analizando coincidencias...';
 
-  // Build existing linked item IDs set to skip already-linked items
   const linkedIds = new Set();
-  for (const g of groups) {
-    for (const it of g.items) linkedIds.add(it.itemId);
-  }
+  for (const g of groups) for (const it of g.items) linkedIds.add(it.itemId);
 
-  // Find titles that appear in 2+ different accounts
   suggestions = [];
   for (const [title, items] of Object.entries(titleMap)) {
-    // Must have items from at least 2 different accounts
     const uniqueAccounts = new Set(items.map(x => x.accountId));
     if (uniqueAccounts.size < 2) continue;
-    // Skip if all items are already linked in an existing group
     const unlinked = items.filter(x => !linkedIds.has(x.itemId));
     if (unlinked.length < 2) continue;
     const unlinkedAccounts = new Set(unlinked.map(x => x.accountId));
     if (unlinkedAccounts.size < 2) continue;
-
     suggestions.push({
       id: 'sg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      title: title,
-      items: unlinked,
-      status: 'pending', // pending | accepted | dismissed
+      title, items: unlinked, status: 'pending',
     });
   }
-
-  // Sort by number of items desc
   suggestions.sort((a, b) => b.items.length - a.items.length);
 
   detecting = false;
   btn.disabled = false;
-  btn.textContent = 'DETECTAR AUTOMATICAMENTE';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Detectar';
   document.getElementById('detect-progress').style.display = 'none';
 
   if (suggestions.length) {
@@ -920,10 +1058,7 @@ async function startDetection() {
 
 function renderSuggestions() {
   const pending = suggestions.filter(s => s.status === 'pending');
-  if (!pending.length) {
-    document.getElementById('suggestions-wrap').style.display = 'none';
-    return;
-  }
+  if (!pending.length) { document.getElementById('suggestions-wrap').style.display = 'none'; return; }
 
   document.getElementById('suggestions-wrap').style.display = '';
   document.getElementById('sg-count').textContent = pending.length;
@@ -931,14 +1066,14 @@ function renderSuggestions() {
   document.getElementById('suggestions-list').innerHTML = pending.map(sg =>
     '<div class="suggestion" id="sg-' + sg.id + '">' +
       '<div class="sg-header">' +
-        '<input type="checkbox" checked class="sg-chk" data-sgid="' + sg.id + '" style="accent-color:var(--ye);width:14px;height:14px;cursor:pointer">' +
+        '<input type="checkbox" checked class="sg-chk" data-sgid="' + sg.id + '" style="accent-color:var(--ye);width:13px;height:13px;cursor:pointer">' +
         '<div class="sg-title">' + esc(sg.title) + '</div>' +
         '<div class="sg-count">' + sg.items.length + ' items / ' + new Set(sg.items.map(x => x.accountId)).size + ' cuentas</div>' +
       '</div>' +
       '<div class="sg-items">' +
         sg.items.map(it =>
           '<div class="sg-item">' +
-            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:28px;height:28px;background:var(--s3)"></div>') +
+            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:26px;height:26px;background:var(--s3);border-radius:4px"></div>') +
             '<span class="sg-acct">' + esc(it.acctLabel) + '</span>' +
             '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--t2)">' + it.itemId + '</span>' +
             '<span class="sg-stk">x' + it.stock + '</span>' +
@@ -946,8 +1081,8 @@ function renderSuggestions() {
         ).join('') +
       '</div>' +
       '<div class="sg-actions">' +
-        '<button class="btn sm danger" onclick="dismissSuggestion(\'' + sg.id + '\')">DESCARTAR</button>' +
-        '<button class="btn sm" style="border-color:rgba(71,255,138,.4);color:var(--gr)" onclick="acceptSuggestion(\'' + sg.id + '\')">CONFIRMAR</button>' +
+        '<button class="btn sm danger" onclick="dismissSuggestion(\'' + sg.id + '\')">Descartar</button>' +
+        '<button class="btn sm" style="border-color:rgba(74,222,128,.35);color:var(--gr)" onclick="acceptSuggestion(\'' + sg.id + '\')">Confirmar</button>' +
       '</div>' +
     '</div>'
   ).join('');
@@ -957,26 +1092,17 @@ async function acceptSuggestion(sgId) {
   const sg = suggestions.find(s => s.id === sgId);
   if (!sg) return;
   sg.status = 'accepted';
-
-  // Create a real group from this suggestion
   const group = {
-    id: 'lg_' + Date.now(),
-    name: sg.title.substring(0, 80),
+    id: 'lg_' + Date.now(), name: sg.title.substring(0, 80),
     items: sg.items.map(it => ({
-      accountId: it.accountId,
-      acctLabel: it.acctLabel,
-      itemId: it.itemId,
-      title: it.title,
-      thumb: it.thumb,
-      lastStock: it.stock,
+      accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId,
+      title: it.title, thumb: it.thumb, lastStock: it.stock,
     })),
-    createdAt: new Date().toISOString(),
-    lastSync: null,
+    createdAt: new Date().toISOString(), lastSync: null,
   };
   groups.push(group);
   await saveGroups();
   log('ok', 'Grupo confirmado: "' + sg.title.substring(0, 50) + '" (' + sg.items.length + ' items)');
-
   renderSuggestions();
   renderGroups();
 }
@@ -996,15 +1122,10 @@ async function acceptAllSuggestions() {
       id: 'lg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
       name: sg.title.substring(0, 80),
       items: sg.items.map(it => ({
-        accountId: it.accountId,
-        acctLabel: it.acctLabel,
-        itemId: it.itemId,
-        title: it.title,
-        thumb: it.thumb,
-        lastStock: it.stock,
+        accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId,
+        title: it.title, thumb: it.thumb, lastStock: it.stock,
       })),
-      createdAt: new Date().toISOString(),
-      lastSync: null,
+      createdAt: new Date().toISOString(), lastSync: null,
     });
   }
   await saveGroups();
@@ -1024,25 +1145,24 @@ function toggleAutoSync(on) {
   if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
   const dot = document.getElementById('auto-dot');
   const label = document.getElementById('auto-sync-label');
-
   if (on) {
     dot.classList.add('active');
     label.textContent = 'ON';
+    label.style.color = '#FFE600';
     const ms = parseInt(document.getElementById('auto-interval').value) || 300000;
     autoSyncTimer = setInterval(autoCheck, ms);
     log('info', 'Auto-sync activado cada ' + (ms / 1000) + 's');
-    autoCheck(); // run immediately
+    autoCheck();
   } else {
     dot.classList.remove('active');
     label.textContent = 'OFF';
+    label.style.color = '';
     log('info', 'Auto-sync desactivado');
   }
 }
 
 function updateAutoInterval() {
-  if (document.getElementById('auto-sync-chk').checked) {
-    toggleAutoSync(true); // restart with new interval
-  }
+  if (document.getElementById('auto-sync-chk').checked) toggleAutoSync(true);
 }
 
 async function autoCheck() {
@@ -1050,26 +1170,24 @@ async function autoCheck() {
   status.textContent = 'Revisando...';
   try {
     const r = await fetch('/vinculaciones/check-orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
     const d = await r.json();
     const now = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     if (d.synced > 0) {
       status.textContent = now + ' — ' + d.synced + ' ajustados';
-      status.style.color = 'var(--ye)';
+      status.style.color = '#FFE600';
       log('ok', '[auto] ' + d.synced + ' stocks ajustados');
-      // Reload groups to reflect changes
       await loadGroups();
       await refreshAllStocks();
     } else {
       status.textContent = now + ' — todo OK';
-      status.style.color = 'var(--gr)';
+      status.style.color = '#4ade80';
     }
   } catch(e) {
-    status.textContent = 'Error: ' + e.message;
-    status.style.color = 'var(--re)';
+    status.textContent = 'Error';
+    status.style.color = '#f87171';
   }
 }
 
