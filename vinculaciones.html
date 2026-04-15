@@ -50,18 +50,15 @@
 
 <style>
   body { font-family: 'Inter', system-ui, sans-serif; }
-  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
-  /* CSS vars for JS-generated HTML */
+  /* CSS vars — solo para HTML generado por JS */
   :root {
-    --ye: #FFE600; --gr: #4ade80; --re: #f87171; --cy: #60a5fa;
-    --or: #fb923c; --pu: #c084fc;
+    --ye: #FFE600; --gr: #4ade80; --re: #f87171; --cy: #60a5fa; --or: #fb923c;
     --t2: #a1a1aa; --t3: #52525b;
     --b1: #262626; --b2: #3f3f46;
     --s2: #171717; --s3: #0f0f0f;
     --tx: #d4d4d8;
     --mono: 'JetBrains Mono', monospace;
-    --sans: 'Inter', sans-serif;
   }
 
   /* scrollbar */
@@ -70,7 +67,7 @@
   *::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
   *::-webkit-scrollbar-thumb:hover { background: #404040; }
 
-  /* subtle grid background */
+  /* subtle gradient background */
   body::before {
     content: '';
     position: fixed; inset: 0;
@@ -84,7 +81,7 @@
   .card-lift { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s; }
   .card-lift:hover { transform: translateY(-2px); border-color: #3f3f46; box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
 
-  /* sidebar item */
+  /* sidebar */
   .side-item {
     position: relative;
     display: flex; align-items: center; justify-content: center;
@@ -106,7 +103,7 @@
   }
   .side-item:hover .tip { opacity: 1; transform: translateY(-50%) translateX(4px); }
 
-  /* animated fade */
+  /* animations */
   .fade-in { animation: fadeUp .5s ease-out both; }
   .fade-in.d1 { animation-delay: .05s; }
   .fade-in.d2 { animation-delay: .1s; }
@@ -115,13 +112,10 @@
 
   /* pulse dot */
   .pulse-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
-  .pulse-dot::after {
-    content: ''; position: absolute; inset: -4px; border-radius: 50%;
-    background: #22c55e; opacity: .35; animation: ring 2s ease-out infinite;
-  }
+  .pulse-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: #22c55e; opacity: .35; animation: ring 2s ease-out infinite; }
   @keyframes ring { 0% { transform: scale(0.6); opacity: .6; } 100% { transform: scale(1.8); opacity: 0; } }
 
-  /* drp-panel pop */
+  /* panel pop */
   .drp-panel { transform-origin: top right; animation: pop .18s ease-out both; }
   @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
 
@@ -137,129 +131,113 @@
   .chip-neutral { background: #171717; color: #a1a1aa; border: 1px solid #262626; }
   .chip-brand   { background: rgba(255,230,0,.1);   color: #FFE600; border: 1px solid rgba(255,230,0,.25); }
   .chip-blue    { background: rgba(96,165,250,.1);  color: #60a5fa; border: 1px solid rgba(96,165,250,.25); }
+  .chip-purple  { background: rgba(192,132,252,.1); color: #c084fc; border: 1px solid rgba(192,132,252,.25); }
 
-  /* ── Buttons (used in JS-generated HTML) ── */
-  .btn {
-    height: 34px; padding: 0 14px; font-family: var(--mono); font-size: 10px;
-    letter-spacing: .08em; border: 1px solid #262626; background: #171717;
-    color: #a1a1aa; cursor: pointer; transition: all .2s; white-space: nowrap;
-    text-decoration: none; display: inline-flex; align-items: center;
-    justify-content: center; gap: 6px; border-radius: 10px;
+  /* table */
+  table.data { width: 100%; border-collapse: collapse; }
+  table.data th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #737373; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #262626; }
+  table.data td { padding: 11px 12px; font-size: 13px; color: #d4d4d8; border-bottom: 1px solid #1a1a1a; }
+  table.data tr:last-child td { border-bottom: none; }
+  table.data tbody tr { transition: background .15s; }
+  table.data tbody tr:hover { background: #0f0f0f; }
+
+  /* ─── ESTILOS SOLO PARA HTML GENERADO POR JS ─── */
+
+  /* Botones JS */
+  .jsbtn {
+    height: 28px; padding: 0 11px; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+    border: 1px solid #262626; background: #171717; color: #a1a1aa; cursor: pointer;
+    transition: all .2s; white-space: nowrap; display: inline-flex; align-items: center;
+    justify-content: center; gap: 5px; border-radius: 8px;
   }
-  .btn:hover { border-color: #3f3f46; color: #d4d4d8; background: #1a1a1a; }
-  .btn.sm { height: 28px; padding: 0 10px; font-size: 9px; border-radius: 8px; }
-  .btn.primary { background: #FFE600; color: #0a0a0a; border-color: #FFE600; font-weight: 700; }
-  .btn.primary:hover { background: #FFE82E; }
-  .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
-  .btn.danger { border-color: rgba(248,113,113,.3); color: #f87171; }
-  .btn.danger:hover { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.5); }
+  .jsbtn:hover { border-color: #3f3f46; color: #d4d4d8; background: #1c1c1c; }
+  .jsbtn.primary { background: #FFE600; color: #0a0a0a; border-color: #FFE600; font-weight: 700; }
+  .jsbtn.primary:hover { background: #FFE82E; }
+  .jsbtn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+  .jsbtn.danger { border-color: rgba(248,113,113,.3); color: #f87171; }
+  .jsbtn.danger:hover { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.5); }
 
-  /* ── Form fields (used in new-group-form) ── */
-  .field { margin-bottom: 12px; }
-  .field:last-child { margin-bottom: 0; }
-  .field label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: #52525b; text-transform: uppercase; margin-bottom: 5px; }
-  .field select, .field input[type=text] {
-    width: 100%; background: #171717; border: 1px solid #262626; color: #d4d4d8;
-    font-family: var(--mono); font-size: 12px; padding: 0 12px; height: 36px;
-    outline: none; transition: border-color .2s; border-radius: 8px;
-    -webkit-appearance: none; appearance: none;
-  }
-  .field select:focus, .field input[type=text]:focus { border-color: #3f3f46; }
-  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2352525b'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
-  .field select option { background: #171717; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-
-  /* ── Search results ── */
-  .search-results { max-height: 240px; overflow-y: auto; border: 1px solid #262626; background: #171717; border-radius: 10px; margin-top: 4px; }
-  .search-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid rgba(38,38,38,.6); cursor: pointer; transition: background .15s; font-size: 12px; }
-  .search-item:hover { background: rgba(255,230,0,.04); }
-  .search-item img { width: 34px; height: 34px; object-fit: cover; border: 1px solid #262626; border-radius: 6px; flex-shrink: 0; }
-  .search-item .si-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d4d4d8; }
-  .search-item .si-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
-  .search-item .si-stock { font-family: var(--mono); font-size: 10px; color: #60a5fa; }
-
-  /* ── Link groups (rendered in JS) ── */
-  .link-group { border: 1px solid #262626; background: #0f0f0f; margin-bottom: 10px; border-radius: 12px; overflow: hidden; transition: border-color .3s, box-shadow .3s; }
-  .link-group.syncing { border-color: rgba(255,230,0,.4); box-shadow: 0 0 20px rgba(255,230,0,.06); }
-  .lg-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #1a1a1a; background: rgba(255,255,255,.02); }
+  /* Link groups */
+  .link-group { border: 1px solid #1f1f1f; background: #0c0c0c; margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: border-color .3s, box-shadow .3s; }
+  .link-group.syncing { border-color: rgba(255,230,0,.35); box-shadow: 0 0 24px rgba(255,230,0,.05); }
+  .lg-header { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #171717; background: rgba(255,255,255,.015); }
   .lg-name { font-family: var(--mono); font-weight: 600; font-size: 12px; color: #d4d4d8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lg-stock { font-family: var(--mono); font-size: 22px; font-weight: 700; color: #FFE600; min-width: 52px; text-align: center; line-height: 1; }
-  .lg-stock-label { font-family: var(--mono); font-size: 8px; color: #52525b; text-transform: uppercase; letter-spacing: .1em; text-align: center; margin-top: 2px; }
-  .lg-items { padding: 4px 0; }
-  .lg-item { display: flex; align-items: center; gap: 10px; padding: 6px 16px; font-size: 12px; transition: background .1s; }
-  .lg-item:hover { background: rgba(255,255,255,.02); }
-  .lg-item img { width: 30px; height: 30px; object-fit: cover; border: 1px solid #262626; border-radius: 5px; flex-shrink: 0; }
-  .lg-item .li-acct { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 5px; min-width: 72px; text-align: center; white-space: nowrap; }
-  .lg-item .li-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #a1a1aa; }
-  .lg-item .li-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
-  .lg-item .li-stock { font-family: var(--mono); font-size: 11px; min-width: 44px; text-align: right; }
-  .lg-item .li-stock.ok   { color: #4ade80; }
-  .lg-item .li-stock.warn { color: #fb923c; }
-  .lg-item .li-stock.err  { color: #f87171; }
-  .lg-item .btn-rm { background: none; border: none; color: #52525b; cursor: pointer; font-size: 16px; padding: 2px 6px; transition: color .15s; line-height: 1; }
-  .lg-item .btn-rm:hover { color: #f87171; }
-  .lg-actions { padding: 8px 14px; border-top: 1px solid #1a1a1a; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  .lg-stock { font-family: var(--mono); font-size: 24px; font-weight: 700; color: #FFE600; min-width: 52px; text-align: center; line-height: 1; }
+  .lg-stock-label { font-family: var(--mono); font-size: 8px; color: #3f3f46; text-transform: uppercase; letter-spacing: .1em; text-align: center; margin-top: 3px; }
+  /* tabla interior de grupos — columnas alineadas por table.data */
+  .link-group table.data { background: transparent; }
+  .link-group table.data th { padding: 8px 12px; font-size: 9px; color: #52525b; border-bottom: 1px solid #171717; border-top: none; }
+  .link-group table.data td { padding: 9px 12px; border-bottom: 1px solid #0f0f0f; color: #a1a1aa; font-size: 12px; }
+  .link-group table.data tr:last-child td { border-bottom: none; }
+  .link-group table.data tbody tr:hover { background: rgba(255,255,255,.018); }
+  .link-group table.data tbody tr.row-max { background: rgba(74,222,128,.025); }
+  .link-group table.data tbody tr.row-min { background: rgba(251,146,60,.025); }
+  .li-acct { display: inline-block; font-family: var(--mono); font-size: 9px; padding: 2px 7px; border: 1px solid #262626; color: #737373; border-radius: 6px; background: #171717; white-space: nowrap; }
+  .li-id { font-family: var(--mono); font-size: 10px; color: #3f3f46; }
+  .li-stock { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .li-stock.ok   { color: #4ade80; }
+  .li-stock.warn { color: #fb923c; }
+  .li-stock.err  { color: #f87171; }
+  .btn-rm { background: none; border: none; color: #3f3f46; cursor: pointer; font-size: 16px; padding: 2px 4px; transition: color .15s; line-height: 1; }
+  .btn-rm:hover { color: #f87171; }
+  .lg-actions { padding: 9px 14px; border-top: 1px solid #171717; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 
-  /* ── Sync badges ── */
-  .sync-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
-  .sync-ok      { color: #4ade80; border-color: rgba(74,222,128,.3);  background: rgba(74,222,128,.08);  }
-  .sync-pending { color: #fb923c; border-color: rgba(251,146,60,.3);  background: rgba(251,146,60,.08);  }
-  .sync-err     { color: #f87171; border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.08); }
+  /* Sync badges */
+  .sync-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .sync-ok      { color: #4ade80; border-color: rgba(74,222,128,.25);  background: rgba(74,222,128,.07);  }
+  .sync-pending { color: #fb923c; border-color: rgba(251,146,60,.25);  background: rgba(251,146,60,.07);  }
+  .sync-err     { color: #f87171; border-color: rgba(248,113,113,.25); background: rgba(248,113,113,.07); }
 
-  /* ── Suggestions ── */
-  .suggestion { border: 1px solid #262626; background: #0f0f0f; margin-bottom: 10px; border-radius: 12px; overflow: hidden; transition: opacity .3s, border-color .3s; }
-  .suggestion.accepted { border-color: rgba(74,222,128,.3); opacity: .6; pointer-events: none; }
+  /* Suggestions */
+  .suggestion { border: 1px solid #1f1f1f; background: #0c0c0c; margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: opacity .3s; }
+  .suggestion.accepted { border-color: rgba(74,222,128,.25); opacity: .5; pointer-events: none; }
   .suggestion.dismissed { display: none; }
-  .sg-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,.02); border-bottom: 1px solid #1a1a1a; }
+  .sg-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,.015); border-bottom: 1px solid #171717; }
   .sg-title { font-family: var(--mono); font-size: 11px; color: #d4d4d8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sg-count { font-family: var(--mono); font-size: 9px; color: #52525b; padding: 2px 7px; border: 1px solid #262626; border-radius: 6px; white-space: nowrap; }
+  .sg-count { font-family: var(--mono); font-size: 9px; color: #52525b; padding: 2px 7px; border: 1px solid #1f1f1f; border-radius: 6px; white-space: nowrap; }
   .sg-items { padding: 4px 0; }
   .sg-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 11px; }
-  .sg-item img { width: 26px; height: 26px; object-fit: cover; border: 1px solid #262626; border-radius: 4px; flex-shrink: 0; }
-  .sg-item .sg-acct { font-family: var(--mono); font-size: 8px; padding: 1px 5px; border: 1px solid #3f3f46; color: #a1a1aa; border-radius: 4px; min-width: 56px; text-align: center; }
-  .sg-item .sg-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
-  .sg-item .sg-stk { font-family: var(--mono); font-size: 10px; color: #FFE600; min-width: 36px; text-align: right; }
-  .sg-actions { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid #1a1a1a; justify-content: flex-end; }
+  .sg-item img { width: 26px; height: 26px; object-fit: cover; border: 1px solid #1f1f1f; border-radius: 5px; flex-shrink: 0; }
+  .sg-item .sg-acct { font-family: var(--mono); font-size: 8px; padding: 1px 5px; border: 1px solid #2a2a2a; color: #737373; border-radius: 4px; min-width: 56px; text-align: center; }
+  .sg-item .sg-stk { font-family: var(--mono); font-size: 10px; color: #FFE600; min-width: 36px; text-align: right; font-weight: 600; }
+  .sg-actions { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid #171717; justify-content: flex-end; }
 
-  /* ── Auto-sync dot ── */
-  .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: #3f3f46; transition: background .3s; flex-shrink: 0; }
+  /* Search results */
+  .search-results { max-height: 240px; overflow-y: auto; border: 1px solid #1f1f1f; background: #0c0c0c; border-radius: 12px; margin-top: 4px; }
+  .search-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #171717; cursor: pointer; transition: background .15s; font-size: 12px; }
+  .search-item:last-child { border-bottom: none; }
+  .search-item:hover { background: rgba(255,230,0,.03); }
+  .search-item img { width: 32px; height: 32px; object-fit: cover; border: 1px solid #1f1f1f; border-radius: 6px; flex-shrink: 0; }
+  .search-item .si-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d4d4d8; }
+  .search-item .si-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
+  .search-item .si-stock { font-family: var(--mono); font-size: 10px; color: #60a5fa; font-weight: 600; }
+
+  /* Auto-sync dot */
+  .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: #2a2a2a; transition: background .3s; flex-shrink: 0; }
   .auto-dot.active { background: #4ade80; animation: ring 2s ease-out infinite; }
 
-  /* ── Log ── */
-  .log-wrap { max-height: 200px; overflow-y: auto; padding: 10px 14px; }
-  .log-e { font-family: var(--mono); font-size: 10px; line-height: 1.9; }
-  .log-e.info { color: #52525b; }
+  /* Log */
+  .log-wrap { max-height: 200px; overflow-y: auto; padding: 12px 16px; }
+  .log-e { font-family: var(--mono); font-size: 10px; line-height: 2; }
+  .log-e.info { color: #3f3f46; }
   .log-e.ok   { color: #4ade80; }
   .log-e.err  { color: #f87171; }
   .log-e.warn { color: #fb923c; }
 
-  /* ── Detect progress ── */
-  .detect-bar { width: 100%; height: 3px; background: #1a1a1a; margin-top: 8px; border-radius: 2px; overflow: hidden; }
-  .detect-fill { height: 100%; background: #60a5fa; transition: width .3s; border-radius: 2px; }
-
-  /* ── Empty state ── */
-  .empty-state { text-align: center; padding: 56px 20px; color: #52525b; }
-  .empty-state h3 { font-family: var(--mono); font-size: 12px; color: #71717a; margin-bottom: 8px; letter-spacing: .08em; }
-  .empty-state p { font-size: 12px; line-height: 1.7; max-width: 380px; margin: 0 auto; color: #3f3f46; }
-
-  /* hide number spinner */
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  /* Detection progress bar */
+  .detect-bar { width: 100%; height: 2px; background: #1a1a1a; margin-top: 10px; border-radius: 2px; overflow: hidden; }
+  .detect-fill { height: 100%; background: #60a5fa; transition: width .4s; border-radius: 2px; }
 </style>
 </head>
 <body class="bg-neutral-950 text-neutral-200 antialiased min-h-screen">
 
-<!-- ────────────────────────────────────────────────────── SIDEBAR ──── -->
+<!-- ────────────────────────────────────────────────── SIDEBAR ──── -->
 <aside class="fixed left-0 top-0 bottom-0 w-16 bg-neutral-900 border-r border-neutral-800 flex flex-col items-center py-4 z-40">
-  <!-- logo -->
   <div class="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mb-6 shadow-pop">
     <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
     </svg>
   </div>
-
-  <!-- nav -->
   <nav class="flex flex-col gap-1 flex-1">
     <a href="/" class="side-item" aria-label="Dashboard">
       <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
@@ -286,8 +264,6 @@
       <span class="tip">Cobros</span>
     </a>
   </nav>
-
-  <!-- bottom nav -->
   <div class="flex flex-col gap-1 mt-auto">
     <button class="side-item" aria-label="Configuración">
       <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -314,26 +290,25 @@
         </p>
       </div>
 
-      <div class="flex items-center gap-2 flex-wrap justify-end">
-
-        <!-- Auto-sync control -->
-        <div class="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2">
+      <div class="flex items-center gap-2">
+        <!-- Auto-sync -->
+        <div class="flex items-center gap-2.5 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2">
           <div class="auto-dot" id="auto-dot"></div>
-          <span class="text-[11px] font-mono text-neutral-500 uppercase tracking-wider">Auto-sync</span>
+          <span class="text-[11px] font-mono text-neutral-500 uppercase tracking-wider hidden sm:block">Auto-sync</span>
           <label class="flex items-center gap-1.5 cursor-pointer">
             <input type="checkbox" id="auto-sync-chk" onchange="toggleAutoSync(this.checked)" style="accent-color:#FFE600;width:13px;height:13px">
-            <span id="auto-sync-label" class="text-[11px] font-mono text-neutral-400">OFF</span>
+            <span id="auto-sync-label" class="text-[11px] font-mono text-neutral-500">OFF</span>
           </label>
-          <span class="text-neutral-700 text-[11px]">·</span>
+          <span class="text-neutral-700 text-xs">·</span>
           <select id="auto-interval" onchange="updateAutoInterval()"
-            class="bg-transparent border-0 text-neutral-400 font-mono text-[11px] outline-none cursor-pointer">
+            class="bg-transparent border-0 text-neutral-500 font-mono text-[11px] outline-none cursor-pointer">
             <option value="60000">1 min</option>
             <option value="120000">2 min</option>
             <option value="300000" selected>5 min</option>
             <option value="600000">10 min</option>
             <option value="1800000">30 min</option>
           </select>
-          <span id="auto-status" class="text-[11px] font-mono text-neutral-600 ml-1 hidden sm:inline">—</span>
+          <span id="auto-status" class="text-[11px] font-mono text-neutral-600 hidden md:block">—</span>
         </div>
 
         <!-- Account switcher -->
@@ -348,8 +323,7 @@
             class="absolute right-0 mt-2 w-64 bg-neutral-900 border border-neutral-800 rounded-xl shadow-pop drp-panel overflow-hidden z-50">
             <div id="acct-list" class="max-h-56 overflow-y-auto py-1"></div>
             <div class="p-2 border-t border-neutral-800">
-              <a href="/oauth/start"
-                class="block text-center text-xs text-neutral-400 hover:text-neutral-100 bg-neutral-800 hover:bg-neutral-700 rounded-lg py-1.5 transition">
+              <a href="/oauth/start" class="block text-center text-xs text-neutral-300 hover:text-neutral-100 bg-neutral-800 hover:bg-neutral-700 rounded-lg py-1.5 transition">
                 + Nueva cuenta
               </a>
             </div>
@@ -362,22 +336,23 @@
   <!-- MAIN CONTENT -->
   <main class="p-4 md:p-8 max-w-[1400px] mx-auto">
 
-    <!-- ──────────── CARD: VINCULAR PUBLICACIONES ──────────── -->
+    <!-- ── CARD: VINCULAR PUBLICACIONES ── -->
     <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d1 mb-4">
 
-      <!-- Card header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
         <div>
           <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">01</div>
           <h3 class="text-sm font-semibold text-neutral-100">Vincular Publicaciones</h3>
         </div>
-        <div class="flex items-center gap-2" id="header-btns">
-          <button class="btn sm" onclick="startDetection()" id="btn-detect">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <div class="flex items-center gap-2">
+          <button onclick="startDetection()" id="btn-detect"
+            class="text-xs text-neutral-400 hover:text-neutral-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             Detectar
           </button>
-          <button class="btn primary sm" onclick="showNewGroup()" id="btn-new">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button onclick="showNewGroup()" id="btn-new"
+            class="btn-primary bg-brand text-neutral-950 text-xs font-semibold rounded-xl px-3 py-1.5 hover:bg-brand-300 transition flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nuevo grupo
           </button>
         </div>
@@ -385,117 +360,146 @@
 
       <!-- Detection progress -->
       <div id="detect-progress" style="display:none" class="px-6 py-4 border-b border-neutral-800">
-        <div id="detect-status" class="text-xs font-mono text-neutral-400">Escaneando publicaciones...</div>
-        <div class="detect-bar mt-2"><div class="detect-fill" id="detect-fill" style="width:0%"></div></div>
+        <p id="detect-status" class="text-xs font-mono text-neutral-400">Escaneando publicaciones...</p>
+        <div class="detect-bar"><div class="detect-fill" id="detect-fill" style="width:0%"></div></div>
       </div>
 
-      <!-- Suggestions from auto-detect -->
-      <div id="suggestions-wrap" style="display:none" class="px-6 py-4 border-b border-neutral-800">
-        <div class="flex items-center justify-between mb-3">
+      <!-- Auto-detect suggestions -->
+      <div id="suggestions-wrap" style="display:none" class="px-6 py-5 border-b border-neutral-800">
+        <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2">
             <span class="chip chip-blue">
               <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
               Coincidencias detectadas
             </span>
-            <span id="sg-count" class="text-[11px] font-mono text-neutral-500">0</span>
-            <span class="text-[11px] text-neutral-600">grupos</span>
+            <span class="text-[11px] font-mono text-neutral-500"><span id="sg-count">0</span> grupos</span>
           </div>
           <div class="flex gap-2">
-            <button class="btn sm" onclick="acceptAllSuggestions()">Aceptar todos</button>
-            <button class="btn sm danger" onclick="dismissAllSuggestions()">Descartar todos</button>
+            <button onclick="acceptAllSuggestions()"
+              class="text-xs text-neutral-400 hover:text-neutral-100 px-3 py-1.5 rounded-lg hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
+              Aceptar todos
+            </button>
+            <button onclick="dismissAllSuggestions()"
+              class="text-xs text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/5 border border-red-500/20 transition">
+              Descartar todos
+            </button>
           </div>
         </div>
         <div id="suggestions-list"></div>
       </div>
 
-      <!-- Manual new group form -->
-      <div id="new-group-form" style="display:none" class="px-6 py-5 border-b border-neutral-800">
-        <div class="field">
-          <label>Nombre del grupo</label>
-          <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80">
+      <!-- New group form -->
+      <div id="new-group-form" style="display:none" class="px-6 py-5 border-b border-neutral-800 space-y-4">
+
+        <div>
+          <label class="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Nombre del grupo</label>
+          <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80"
+            class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-sm text-neutral-200 font-mono outline-none focus:border-neutral-600 transition placeholder:text-neutral-600">
         </div>
 
-        <div class="mt-4 bg-neutral-950/60 border border-neutral-800 rounded-xl p-4">
-          <div class="text-[10px] font-mono uppercase tracking-wider text-neutral-600 mb-3">Items vinculados</div>
+        <div class="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4 space-y-3">
+          <div class="text-[10px] uppercase tracking-wider text-neutral-600 font-medium font-mono">Items vinculados</div>
           <div id="ng-items"></div>
-          <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-            <div class="field" style="margin-bottom:0">
-              <label>Cuenta</label>
-              <select id="ng-acct"></select>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div>
+              <label class="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Cuenta</label>
+              <div class="relative">
+                <select id="ng-acct"
+                  class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-sm text-neutral-200 font-mono outline-none focus:border-neutral-600 transition appearance-none pr-8">
+                </select>
+                <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5 text-neutral-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
             </div>
-            <div class="field sm:col-span-2" style="margin-bottom:0">
-              <label>Buscar publicación (título o MLA ID)</label>
-              <input type="text" id="ng-search" placeholder="Ej: iPhone 15 o MLA123456789" oninput="debounceSearch(this.value)">
+            <div class="sm:col-span-2">
+              <label class="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Buscar publicación (título o MLA ID)</label>
+              <input type="text" id="ng-search" placeholder="Ej: iPhone 15 o MLA123456789" oninput="debounceSearch(this.value)"
+                class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-sm text-neutral-200 font-mono outline-none focus:border-neutral-600 transition placeholder:text-neutral-600">
             </div>
           </div>
           <div id="ng-results" class="search-results" style="display:none"></div>
         </div>
 
-        <div class="mt-4 flex gap-2 justify-end">
-          <button class="btn sm" onclick="cancelNewGroup()">Cancelar</button>
-          <button class="btn primary sm" onclick="saveNewGroup()" id="btn-save-group">Guardar grupo</button>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button onclick="cancelNewGroup()"
+            class="text-xs text-neutral-400 hover:text-neutral-100 px-4 py-2 rounded-xl hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
+            Cancelar
+          </button>
+          <button onclick="saveNewGroup()" id="btn-save-group"
+            class="btn-primary bg-brand text-neutral-950 text-xs font-semibold rounded-xl px-4 py-2 hover:bg-brand-300 transition flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Guardar grupo
+          </button>
         </div>
       </div>
 
-      <!-- Empty hint -->
-      <div id="empty-hint">
-        <div class="empty-state">
-          <div class="w-12 h-12 rounded-2xl bg-neutral-800 border border-neutral-700 flex items-center justify-center mx-auto mb-4">
-            <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-neutral-600" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-          </div>
-          <h3>Sin vinculaciones</h3>
-          <p>Vincula publicaciones iguales de distintas cuentas para mantener el stock sincronizado. Cuando se vende en una cuenta, se descuenta en las otras.</p>
+      <!-- Empty state -->
+      <div id="empty-hint" class="px-6 py-16 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-neutral-800 border border-neutral-700 flex items-center justify-center mx-auto mb-4">
+          <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-neutral-600" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
         </div>
+        <p class="text-sm font-medium text-neutral-500 mb-1">Sin vinculaciones</p>
+        <p class="text-xs text-neutral-600 max-w-sm mx-auto leading-relaxed">Vincula publicaciones iguales de distintas cuentas para mantener el stock sincronizado. Cuando se vende en una, se descuenta en todas.</p>
       </div>
     </div>
 
-    <!-- ──────────── CARD: GRUPOS VINCULADOS ──────────── -->
+    <!-- ── CARD: GRUPOS VINCULADOS ── -->
     <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d2 mb-4" id="groups-card" style="display:none">
       <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
         <div>
           <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">02</div>
           <h3 class="text-sm font-semibold text-neutral-100">Grupos Vinculados</h3>
         </div>
-        <div class="flex gap-2">
-          <button class="btn sm" onclick="refreshAllStocks()">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        <div class="flex items-center gap-2">
+          <button onclick="refreshAllStocks()"
+            class="text-xs text-neutral-400 hover:text-neutral-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
             Actualizar stocks
           </button>
-          <button class="btn primary sm" onclick="syncAll()">Sincronizar todo</button>
+          <button onclick="syncAll()"
+            class="btn-primary bg-brand text-neutral-950 text-xs font-semibold rounded-xl px-3 py-1.5 hover:bg-brand-300 transition flex items-center gap-1.5">
+            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+            Sincronizar todo
+          </button>
         </div>
       </div>
       <div class="p-4" id="groups-list"></div>
     </div>
 
-    <!-- ──────────── CARD: LOG ──────────── -->
+    <!-- ── CARD: LOG ── -->
     <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden fade-in d3 mb-8">
       <div class="flex items-center justify-between px-6 py-3 border-b border-neutral-800">
         <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full bg-neutral-700"></div>
-          <span class="text-[11px] font-mono uppercase tracking-wider text-neutral-500">Log de actividad</span>
+          <div class="w-1.5 h-1.5 rounded-full bg-neutral-700"></div>
+          <span class="text-[11px] font-mono uppercase tracking-wider text-neutral-500">Log</span>
         </div>
-        <button onclick="clearLog()" class="text-[11px] text-neutral-600 hover:text-neutral-400 font-mono transition">Limpiar</button>
+        <button onclick="clearLog()" class="text-[11px] text-neutral-600 hover:text-neutral-400 font-mono transition">
+          Limpiar
+        </button>
       </div>
       <div class="log-wrap" id="log">
         <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
       </div>
     </div>
 
+    <footer class="text-center text-[11px] text-neutral-700 pb-6 font-mono">
+      STOCKROOM · Vinculaciones · MercadoLibre Argentina
+    </footer>
   </main>
 </div>
 
 <script src="/theme.js"></script>
 <script>
-// ── State ────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────
 let accounts = [];
 let groups = [];
-let suggestions = []; // detected groups pending confirmation
-let newGroupItems = []; // temp items while creating a group
+let suggestions = [];
+let newGroupItems = [];
 let autoSyncTimer = null;
 let searchTimer = null;
 let detecting = false;
 
-// ── Init ─────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────
 async function init() {
   await loadAccounts();
   await loadGroups();
@@ -508,12 +512,10 @@ async function loadAccounts() {
     const r = await fetch('/accounts');
     const d = await r.json();
     accounts = d.accounts || [];
-    // Populate account selects
     const sel = document.getElementById('ng-acct');
     sel.innerHTML = accounts.map(a =>
       '<option value="' + a.id + '">' + esc(a.label || a.id) + '</option>'
     ).join('');
-    // Header
     const active = accounts.find(a => a.active) || accounts[0];
     if (active) document.getElementById('acct-label').textContent = active.label || active.id;
     renderAcctMenu();
@@ -536,7 +538,7 @@ async function saveGroups() {
   });
 }
 
-// ── Account menu ─────────────────────────────────────────────
+// ── Account menu ──────────────────────────────────────────────
 function toggleAcctMenu() {
   const m = document.getElementById('acct-menu');
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
@@ -548,15 +550,15 @@ document.addEventListener('click', e => {
 function renderAcctMenu() {
   const list = document.getElementById('acct-list');
   list.innerHTML = accounts.map(a =>
-    '<div style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;color:' +
-    (a.active ? 'var(--ye)' : 'var(--t2)') + ';transition:color .2s" ' +
-    'onmouseover="this.style.color=\'var(--ye)\'" onmouseout="this.style.color=\'' +
-    (a.active ? 'var(--ye)' : 'var(--t2)') + '\'"' +
-    '>' + esc(a.label || a.id) + (a.active ? ' *' : '') + '</div>'
+    '<div style="padding:8px 14px;cursor:pointer;font-family:var(--mono);font-size:10px;color:' +
+    (a.active ? '#FFE600' : '#71717a') + ';transition:color .2s" ' +
+    'onmouseover="this.style.color=\'#FFE600\'" onmouseout="this.style.color=\'' +
+    (a.active ? '#FFE600' : '#71717a') + '\'">' +
+    esc(a.label || a.id) + (a.active ? ' ·' : '') + '</div>'
   ).join('');
 }
 
-// ── New Group ────────────────────────────────────────────────
+// ── New Group ─────────────────────────────────────────────────
 function showNewGroup() {
   newGroupItems = [];
   document.getElementById('ng-name').value = '';
@@ -576,17 +578,17 @@ function cancelNewGroup() {
 function renderNewGroupItems() {
   const c = document.getElementById('ng-items');
   if (!newGroupItems.length) {
-    c.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:6px 0">No hay items agregados. Busca y selecciona publicaciones abajo.</div>';
+    c.innerHTML = '<p style="font-size:11px;color:#3f3f46;padding:4px 0">Sin items. Busca y selecciona publicaciones abajo.</p>';
     return;
   }
   c.innerHTML = newGroupItems.map((it, i) =>
-    '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--b1)">' +
-      (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:28px;height:28px;object-fit:cover;border:1px solid var(--b1);border-radius:5px">' : '') +
-      '<span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--b2);color:var(--cy);border-radius:5px">' + esc(it.acctLabel) + '</span>' +
-      '<span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)">' + esc(it.title) + '</span>' +
-      '<span style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + it.itemId + '</span>' +
-      '<span style="font-family:var(--mono);font-size:10px;color:var(--ye)">x' + it.stock + '</span>' +
-      '<button onclick="removeNewGroupItem(' + i + ')" style="background:none;border:none;color:var(--re);cursor:pointer;font-size:16px;padding:2px 4px;line-height:1" title="Quitar">&times;</button>' +
+    '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #171717">' +
+      (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:28px;height:28px;object-fit:cover;border:1px solid #1f1f1f;border-radius:6px">' : '') +
+      '<span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid #2a2a2a;color:#60a5fa;border-radius:5px">' + esc(it.acctLabel) + '</span>' +
+      '<span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d4d4d8">' + esc(it.title) + '</span>' +
+      '<span style="font-family:var(--mono);font-size:9px;color:#3f3f46">' + it.itemId + '</span>' +
+      '<span style="font-family:var(--mono);font-size:10px;color:#FFE600;font-weight:600">x' + it.stock + '</span>' +
+      '<button onclick="removeNewGroupItem(' + i + ')" style="background:none;border:none;color:#3f3f46;cursor:pointer;font-size:16px;padding:2px 4px;line-height:1;transition:color .15s" onmouseover="this.style.color=\'#f87171\'" onmouseout="this.style.color=\'#3f3f46\'">&times;</button>' +
     '</div>'
   ).join('');
 }
@@ -595,7 +597,7 @@ function removeNewGroupItem(i) {
   renderNewGroupItems();
 }
 
-// ── Search ───────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────
 function debounceSearch(q) {
   clearTimeout(searchTimer);
   if (q.length < 3) { document.getElementById('ng-results').style.display = 'none'; return; }
@@ -609,7 +611,7 @@ async function doSearch(q) {
 
   const results = document.getElementById('ng-results');
   results.style.display = 'block';
-  results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--t3)">Buscando...</div>';
+  results.innerHTML = '<div style="padding:12px;font-size:11px;color:#3f3f46">Buscando...</div>';
 
   try {
     if (/^MLA\d+$/i.test(q.trim())) {
@@ -617,21 +619,19 @@ async function doSearch(q) {
       const item = await r.json();
       if (r.ok && item.id) { renderSearchResults([item], acctId); return; }
     }
-
     const r = await fetch('/api-as/' + acctId + '/users/' + acct.user_id + '/items/search?q=' + encodeURIComponent(q) + '&limit=20');
     const d = await r.json();
     if (!d.results || !d.results.length) {
-      results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--t3)">Sin resultados</div>';
+      results.innerHTML = '<div style="padding:12px;font-size:11px;color:#3f3f46">Sin resultados</div>';
       return;
     }
-
     const ids = d.results.slice(0, 20);
     const r2 = await fetch('/api-as/' + acctId + '/items?ids=' + ids.join(','));
     const items = await r2.json();
     const realItems = Array.isArray(items) ? items.map(x => x.body || x).filter(x => x.id) : [];
     renderSearchResults(realItems, acctId);
   } catch(e) {
-    results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--re)">Error: ' + e.message + '</div>';
+    results.innerHTML = '<div style="padding:12px;font-size:11px;color:#f87171">Error: ' + e.message + '</div>';
   }
 }
 
@@ -639,17 +639,15 @@ function renderSearchResults(items, acctId) {
   const results = document.getElementById('ng-results');
   const acct = accounts.find(a => a.id === acctId);
   const acctLabel = acct ? (acct.label || acct.id) : acctId;
-
   results.innerHTML = items.map(it => {
     const thumb = it.pictures && it.pictures[0] ? (it.pictures[0].secure_url || it.pictures[0].url || '') : '';
     const alreadyAdded = newGroupItems.some(x => x.itemId === it.id);
     return '<div class="search-item' + (alreadyAdded ? '" style="opacity:.4;pointer-events:none' : '') + '" ' +
       'onclick=\'addSearchItem(' + JSON.stringify({
-        accountId: acctId, acctLabel: acctLabel, itemId: it.id,
-        title: it.title || '', thumb: thumb,
-        stock: it.available_quantity || 0, price: it.price || 0,
+        accountId: acctId, acctLabel, itemId: it.id, title: it.title || '',
+        thumb, stock: it.available_quantity || 0, price: it.price || 0,
       }).replace(/'/g, '&#39;') + ')\'>' +
-      (thumb ? '<img src="' + esc(thumb) + '">' : '<div style="width:34px;height:34px;background:var(--s3);border-radius:5px"></div>') +
+      (thumb ? '<img src="' + esc(thumb) + '">' : '<div style="width:32px;height:32px;background:#0c0c0c;border-radius:6px;flex-shrink:0"></div>') +
       '<div class="si-title">' + esc(it.title || '—') + '</div>' +
       '<div class="si-id">' + it.id + '</div>' +
       '<div class="si-stock">x' + (it.available_quantity || 0) + '</div>' +
@@ -671,16 +669,14 @@ async function saveNewGroup() {
   const name = document.getElementById('ng-name').value.trim();
   if (!name) { alert('Ingresa un nombre para el grupo'); return; }
   if (newGroupItems.length < 2) { alert('Agrega al menos 2 publicaciones de distintas cuentas'); return; }
-
   const group = {
-    id: 'lg_' + Date.now(), name: name,
+    id: 'lg_' + Date.now(), name,
     items: newGroupItems.map(it => ({
       accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId,
       title: it.title, thumb: it.thumb, lastStock: it.stock,
     })),
     createdAt: new Date().toISOString(), lastSync: null,
   };
-
   groups.push(group);
   await saveGroups();
   log('ok', 'Grupo "' + name + '" creado con ' + group.items.length + ' items');
@@ -689,35 +685,25 @@ async function saveNewGroup() {
   renderGroups();
 }
 
-// ── Render Groups ────────────────────────────────────────────
+// ── Render Groups ─────────────────────────────────────────────
 function renderGroups() {
   const card = document.getElementById('groups-card');
   const list = document.getElementById('groups-list');
   const empty = document.getElementById('empty-hint');
-
-  if (!groups.length) {
-    card.style.display = 'none';
-    empty.style.display = '';
-    return;
-  }
-
-  card.style.display = '';
-  empty.style.display = 'none';
+  if (!groups.length) { card.style.display = 'none'; empty.style.display = ''; return; }
+  card.style.display = ''; empty.style.display = 'none';
 
   const sortedGroups = groups.slice().sort((a, b) => {
     const sa = a.items.map(it => it.lastStock ?? '?');
     const sb = b.items.map(it => it.lastStock ?? '?');
     const aOk = sa.every(s => s === sa[0]) && sa[0] !== '?';
     const bOk = sb.every(s => s === sb[0]) && sb[0] !== '?';
-    if (aOk === bOk) return 0;
-    return aOk ? 1 : -1;
+    if (aOk === bOk) return 0; return aOk ? 1 : -1;
   });
 
   list.innerHTML = sortedGroups.map(g => {
     const stocks = g.items.map(it => it.lastStock ?? '?');
     const allSame = stocks.every(s => s === stocks[0]) && stocks[0] !== '?';
-    const syncClass = allSame ? 'sync-ok' : 'sync-pending';
-    const syncText = allSame ? 'SINCRONIZADO' : 'PENDIENTE';
     const numericStocks = g.items.filter(it => typeof it.lastStock === 'number').map(it => it.lastStock);
     const maxStock = numericStocks.length ? Math.max(...numericStocks) : null;
     const minStock = numericStocks.length ? Math.min(...numericStocks) : null;
@@ -725,53 +711,51 @@ function renderGroups() {
     return '<div class="link-group" id="lg-' + g.id + '">' +
       '<div class="lg-header">' +
         '<div class="lg-name">' + esc(g.name) + '</div>' +
-        '<span class="sync-badge ' + syncClass + '">' + syncText + '</span>' +
-        '<div style="text-align:center">' +
-          '<div class="lg-stock">' + (maxStock !== null ? maxStock : '?') + '</div>' +
-          '<div class="lg-stock-label">STOCK</div>' +
-        '</div>' +
+        '<span class="sync-badge ' + (allSame ? 'sync-ok' : 'sync-pending') + '">' + (allSame ? 'SINCRONIZADO' : 'PENDIENTE') + '</span>' +
+        '<div style="text-align:center"><div class="lg-stock">' + (maxStock !== null ? maxStock : '?') + '</div><div class="lg-stock-label">STOCK</div></div>' +
       '</div>' +
-      '<div style="padding:5px 14px;font-family:var(--mono);font-size:9px;color:var(--t3);border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:6px;letter-spacing:.06em">' +
-        '<span style="width:14px"></span>' +
-        '<span style="width:30px"></span>' +
-        '<span style="min-width:72px">CUENTA</span>' +
-        '<span style="flex:1">TITULO</span>' +
-        '<span style="min-width:100px">ID</span>' +
-        '<span style="min-width:44px;text-align:right">STOCK</span>' +
-        '<span style="width:28px"></span>' +
-      '</div>' +
-      '<div class="lg-items">' +
+      '<table class="data">' +
+        '<thead><tr>' +
+          '<th style="width:20px"></th>' +
+          '<th style="width:36px"></th>' +
+          '<th>Cuenta</th>' +
+          '<th>Título</th>' +
+          '<th>ID</th>' +
+          '<th style="text-align:right">Stock</th>' +
+          '<th style="width:32px"></th>' +
+        '</tr></thead>' +
+        '<tbody>' +
         g.items.map(it => {
           const stockNum = typeof it.lastStock === 'number' ? it.lastStock : null;
           const isMax = stockNum !== null && stockNum === maxStock && maxStock !== minStock;
           const isMin = stockNum !== null && stockNum === minStock && maxStock !== minStock;
           const stockClass = stockNum === null ? '' : (isMin ? 'warn' : 'ok');
-          const radioName = 'src_' + g.id;
-          return '<div class="lg-item" style="' + (isMax ? 'background:rgba(74,222,128,.03)' : (isMin ? 'background:rgba(251,146,60,.03)' : '')) + '">' +
-            '<input type="radio" name="' + radioName + '" value="' + it.itemId + '"' +
-              (isMax ? ' checked' : '') +
-              ' style="accent-color:var(--ye);width:14px;height:14px;cursor:pointer" title="Usar este stock como referencia">' +
-            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:30px;height:30px;background:var(--s3);border-radius:5px;flex-shrink:0"></div>') +
-            '<span class="li-acct">' + esc(it.acctLabel || it.accountId) + '</span>' +
-            '<span class="li-title">' + esc(it.title || '—') + '</span>' +
-            '<span class="li-id">' + it.itemId + '</span>' +
-            '<span class="li-stock ' + stockClass + '">x' + (stockNum ?? '?') + '</span>' +
-            '<button class="btn-rm" onclick="removeGroupItem(\'' + g.id + '\',\'' + it.itemId + '\')" title="Quitar">&times;</button>' +
-          '</div>';
+          const rowClass = isMax ? ' class="row-max"' : isMin ? ' class="row-min"' : '';
+          return '<tr' + rowClass + '>' +
+            '<td style="padding:9px 8px 9px 12px"><input type="radio" name="src_' + g.id + '" value="' + it.itemId + '"' + (isMax ? ' checked' : '') +
+              ' style="accent-color:#FFE600;width:14px;height:14px;cursor:pointer" title="Usar como fuente de stock"></td>' +
+            '<td style="padding:9px 4px">' + (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:30px;height:30px;object-fit:cover;border:1px solid #1f1f1f;border-radius:6px;display:block">' : '<div style="width:30px;height:30px;background:#0c0c0c;border-radius:6px"></div>') + '</td>' +
+            '<td><span class="li-acct">' + esc(it.acctLabel || it.accountId) + '</span></td>' +
+            '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.title || '—') + '</td>' +
+            '<td><span class="li-id">' + it.itemId + '</span></td>' +
+            '<td style="text-align:right"><span class="li-stock ' + stockClass + '">x' + (stockNum ?? '?') + '</span></td>' +
+            '<td style="padding:9px 12px 9px 4px"><button class="btn-rm" onclick="removeGroupItem(\'' + g.id + '\',\'' + it.itemId + '\')" title="Quitar">&times;</button></td>' +
+          '</tr>';
         }).join('') +
-      '</div>' +
+        '</tbody>' +
+      '</table>' +
       '<div class="lg-actions">' +
-        '<button class="btn sm" onclick="refreshGroupStocks(\'' + g.id + '\')" title="Leer stock real de ML">Actualizar</button>' +
-        '<button class="btn sm" onclick="addItemToGroup(\'' + g.id + '\')">+ Item</button>' +
-        '<button class="btn sm" onclick="syncGroup(\'' + g.id + '\')">Sync mínimo</button>' +
-        '<button class="btn primary sm" onclick="syncGroupFromSource(\'' + g.id + '\')">Sync desde seleccionada</button>' +
-        '<button class="btn sm danger" onclick="deleteGroup(\'' + g.id + '\')">Eliminar</button>' +
+        '<button class="jsbtn" onclick="refreshGroupStocks(\'' + g.id + '\')">Actualizar</button>' +
+        '<button class="jsbtn" onclick="addItemToGroup(\'' + g.id + '\')">+ Item</button>' +
+        '<button class="jsbtn" onclick="syncGroup(\'' + g.id + '\')">Sync mínimo</button>' +
+        '<button class="jsbtn primary" onclick="syncGroupFromSource(\'' + g.id + '\')">Sync desde seleccionada</button>' +
+        '<button class="jsbtn danger" onclick="deleteGroup(\'' + g.id + '\')">Eliminar</button>' +
       '</div>' +
     '</div>';
   }).join('');
 }
 
-// ── Group Actions ────────────────────────────────────────────
+// ── Group Actions ─────────────────────────────────────────────
 function syncGroupFromSource(gid) {
   const radio = document.querySelector('input[name="src_' + gid + '"]:checked');
   if (!radio) { log('err', 'Selecciona una publicacion como fuente de stock'); return; }
@@ -783,9 +767,7 @@ async function syncGroup(gid, sourceItemId) {
   if (!g) return;
   const el = document.getElementById('lg-' + gid);
   if (el) el.classList.add('syncing');
-  const mode = sourceItemId ? 'desde ' + sourceItemId : 'al minimo';
-  log('info', 'Sincronizando "' + g.name + '" (' + mode + ')...');
-
+  log('info', 'Sincronizando "' + g.name + '" (' + (sourceItemId ? 'desde ' + sourceItemId : 'al minimo') + ')...');
   try {
     const payload = { group: g };
     if (sourceItemId) payload.sourceItemId = sourceItemId;
@@ -794,17 +776,15 @@ async function syncGroup(gid, sourceItemId) {
       body: JSON.stringify(payload)
     });
     const d = await r.json();
-
     if (d.ok) {
       const targetStock = d.targetStock;
       const readErrors = (d.results || []).filter(r => r.error);
       if (readErrors.length) {
         for (const re of readErrors) {
           const label = re.acctLabel || re.accountId || '?';
-          const friendly = re.error === 'sin_token'
-            ? 'cuenta sin token — reconectala en Cuentas'
+          const friendly = re.error === 'sin_token' ? 'cuenta sin token — reconectala'
             : (/401|403|expired|invalid_token/i.test(re.error) ? 'token expirado — reconectar cuenta' : re.error);
-          log('err', '  No se pudo leer ' + re.itemId + ' (' + label + '): ' + friendly);
+          log('err', '  ' + re.itemId + ' (' + label + '): ' + friendly);
         }
       }
       const updatedOk = new Set();
@@ -812,46 +792,33 @@ async function syncGroup(gid, sourceItemId) {
       if (d.results) {
         for (const res of d.results) {
           const it = g.items.find(x => x.itemId === res.itemId);
-          if (!it) continue;
-          if (typeof res.realStock === 'number') {
-            if (updatedOk.has(res.itemId)) { it.lastStock = targetStock; }
-            else if (res.realStock === targetStock) { it.lastStock = targetStock; }
-            else { it.lastStock = res.realStock; }
-          }
+          if (!it || typeof res.realStock !== 'number') continue;
+          it.lastStock = updatedOk.has(res.itemId) || res.realStock === targetStock ? targetStock : res.realStock;
         }
       }
       g.lastSync = new Date().toISOString();
-      await saveGroups();
-      renderGroups();
+      await saveGroups(); renderGroups();
       const failedUpdates = d.updates ? d.updates.filter(u => !u.ok) : [];
       if (d.updates && d.updates.length) {
-        for (const u of d.updates) {
-          log(u.ok ? 'ok' : 'err', '  ' + u.itemId + ': ' + u.from + ' -> ' + u.to + (u.ok ? '' : ' ERROR: ' + u.error));
-        }
-        if (failedUpdates.length) {
-          log('warn', '"' + g.name + '" — ' + failedUpdates.length + ' items fallaron. Usa Actualizar para ver stocks reales.');
-        } else {
-          log('ok', '"' + g.name + '" sincronizado — stock: ' + targetStock);
-        }
+        for (const u of d.updates) log(u.ok ? 'ok' : 'err', '  ' + u.itemId + ': ' + u.from + ' → ' + u.to + (u.ok ? '' : ' ERROR: ' + u.error));
+        if (failedUpdates.length) log('warn', '"' + g.name + '" — ' + failedUpdates.length + ' items fallaron');
+        else log('ok', '"' + g.name + '" sincronizado — stock: ' + targetStock);
       } else if (readErrors.length) {
-        log('warn', '"' + g.name + '" — no se actualizo nada porque ' + readErrors.length + ' item(s) tuvieron error de lectura');
+        log('warn', '"' + g.name + '" — no se actualizo nada (' + readErrors.length + ' error(es) de lectura)');
       } else {
         log('ok', '"' + g.name + '" ya estaba sincronizado — stock: ' + targetStock);
       }
     } else {
-      log('err', 'Error sincronizando "' + g.name + '": ' + (d.error || 'unknown'));
+      log('err', 'Error: ' + (d.error || 'unknown'));
       if (d.results) {
         for (const res of d.results) {
           const it = g.items.find(x => x.itemId === res.itemId);
           if (it && typeof res.realStock === 'number') it.lastStock = res.realStock;
         }
-        await saveGroups();
-        renderGroups();
+        await saveGroups(); renderGroups();
       }
     }
-  } catch(e) {
-    log('err', 'Error sincronizando "' + g.name + '": ' + e.message);
-  }
+  } catch(e) { log('err', 'Error: ' + e.message); }
   if (el) el.classList.remove('syncing');
 }
 
@@ -873,28 +840,22 @@ async function refreshGroupStocks(gid) {
       const d = await r.json();
       if (r.ok) {
         const vars = d.variations || [];
-        if (vars.length) {
-          it.lastStock = vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0);
-          log('info', '  ' + it.itemId + ' (' + (it.acctLabel || it.accountId) + '): x' + it.lastStock + ' (' + vars.length + ' variaciones)');
-        } else {
-          it.lastStock = d.available_quantity != null ? d.available_quantity : 0;
-          log('info', '  ' + it.itemId + ' (' + (it.acctLabel || it.accountId) + '): x' + it.lastStock);
-        }
+        it.lastStock = vars.length
+          ? vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0)
+          : (d.available_quantity ?? 0);
+        log('info', '  ' + it.itemId + ': x' + it.lastStock + (vars.length ? ' (' + vars.length + ' variaciones)' : ''));
       } else {
-        log('warn', '  ' + it.itemId + ': error — ' + (d.message || d.error || 'HTTP ' + r.status));
+        log('warn', '  ' + it.itemId + ': ' + (d.message || 'HTTP ' + r.status));
       }
-    } catch(e) {
-      log('warn', '  ' + it.itemId + ': error — ' + e.message);
-    }
+    } catch(e) { log('warn', '  ' + it.itemId + ': ' + e.message); }
   }
-  await saveGroups();
-  renderGroups();
+  await saveGroups(); renderGroups();
   if (el) el.classList.remove('syncing');
-  log('ok', 'Stocks de "' + g.name + '" actualizados');
+  log('ok', '"' + g.name + '" actualizado');
 }
 
 async function refreshAllStocks() {
-  log('info', 'Actualizando stocks...');
+  log('info', 'Actualizando todos los stocks...');
   for (const g of groups) {
     for (const it of g.items) {
       try {
@@ -904,21 +865,19 @@ async function refreshAllStocks() {
           const vars = d.variations || [];
           it.lastStock = vars.length
             ? vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0)
-            : (d.available_quantity != null ? d.available_quantity : 0);
+            : (d.available_quantity ?? 0);
         }
       } catch(e) { /* skip */ }
     }
   }
-  await saveGroups();
-  renderGroups();
+  await saveGroups(); renderGroups();
   log('ok', 'Stocks actualizados');
 }
 
 async function deleteGroup(gid) {
-  if (!confirm('Eliminar este grupo de vinculacion?')) return;
+  if (!confirm('¿Eliminar este grupo de vinculacion?')) return;
   groups = groups.filter(g => g.id !== gid);
-  await saveGroups();
-  renderGroups();
+  await saveGroups(); renderGroups();
   log('info', 'Grupo eliminado');
 }
 
@@ -927,19 +886,17 @@ async function removeGroupItem(gid, itemId) {
   if (!g) return;
   g.items = g.items.filter(it => it.itemId !== itemId);
   if (g.items.length < 1) groups = groups.filter(x => x.id !== gid);
-  await saveGroups();
-  renderGroups();
+  await saveGroups(); renderGroups();
 }
 
 function addItemToGroup(gid) {
   const g = groups.find(x => x.id === gid);
   if (!g) return;
-  const name = prompt('Ingresa el MLA ID del item a agregar (ej: MLA1234567890):');
-  if (!name || !name.trim()) return;
-  const acctId = prompt('ID de la cuenta donde esta este item (ej: nueva, vieja):');
-  if (!acctId || !acctId.trim()) return;
-
-  fetch('/api-as/' + acctId.trim() + '/items/' + name.trim().toUpperCase())
+  const mlaId = prompt('MLA ID del item a agregar (ej: MLA1234567890):');
+  if (!mlaId?.trim()) return;
+  const acctId = prompt('ID de la cuenta (ej: nueva, vieja):');
+  if (!acctId?.trim()) return;
+  fetch('/api-as/' + acctId.trim() + '/items/' + mlaId.trim().toUpperCase())
     .then(r => r.json())
     .then(async d => {
       if (!d.id) { alert('No se encontro el item'); return; }
@@ -948,31 +905,27 @@ function addItemToGroup(gid) {
         accountId: acctId.trim(),
         acctLabel: acct ? (acct.label || acct.id) : acctId.trim(),
         itemId: d.id, title: d.title || '',
-        thumb: d.pictures && d.pictures[0] ? (d.pictures[0].secure_url || '') : '',
+        thumb: d.pictures?.[0]?.secure_url || '',
         lastStock: d.available_quantity || 0,
       });
-      await saveGroups();
-      renderGroups();
+      await saveGroups(); renderGroups();
       log('ok', 'Item ' + d.id + ' agregado a "' + g.name + '"');
     })
     .catch(e => alert('Error: ' + e.message));
 }
 
-// ── Auto Detection ───────────────────────────────────────────
+// ── Auto Detection ────────────────────────────────────────────
 async function startDetection() {
   if (detecting) return;
   if (accounts.length < 2) { log('err', 'Se necesitan al menos 2 cuentas para detectar coincidencias'); return; }
-  detecting = true;
-  suggestions = [];
-
+  detecting = true; suggestions = [];
   const btn = document.getElementById('btn-detect');
   btn.disabled = true;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3 h-3 animate-spin" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Escaneando...';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5 animate-spin" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Escaneando...';
   document.getElementById('detect-progress').style.display = '';
   document.getElementById('suggestions-wrap').style.display = 'none';
   const fillEl = document.getElementById('detect-fill');
   const statusEl = document.getElementById('detect-status');
-
   const titleMap = {};
   const total = accounts.length;
   let done = 0;
@@ -981,108 +934,84 @@ async function startDetection() {
     if (!acct.user_id || !acct.has_token) { done++; continue; }
     statusEl.textContent = 'Escaneando ' + (acct.label || acct.id) + '...';
     fillEl.style.width = Math.round((done / total) * 100) + '%';
-
     try {
       let offset = 0, hasMore = true;
       while (hasMore) {
-        const url = '/api-as/' + acct.id + '/users/' + acct.user_id + '/items/search?status=active&offset=' + offset + '&limit=50';
-        const r = await fetch(url);
+        const r = await fetch('/api-as/' + acct.id + '/users/' + acct.user_id + '/items/search?status=active&offset=' + offset + '&limit=50');
         const d = await r.json();
-        if (!r.ok || !d.results || !d.results.length) { hasMore = false; break; }
-
+        if (!r.ok || !d.results?.length) { hasMore = false; break; }
         for (let i = 0; i < d.results.length; i += 20) {
           const batch = d.results.slice(i, i + 20);
           const r2 = await fetch('/api-as/' + acct.id + '/items?ids=' + batch.join(','));
           const items = await r2.json();
           const realItems = Array.isArray(items) ? items.map(x => x.body || x).filter(x => x.id) : [];
-
           for (const it of realItems) {
-            const normTitle = (it.title || '').trim();
-            if (!normTitle) continue;
-            if (!titleMap[normTitle]) titleMap[normTitle] = [];
-            if (titleMap[normTitle].some(x => x.itemId === it.id)) continue;
-            titleMap[normTitle].push({
+            const t = (it.title || '').trim(); if (!t) continue;
+            if (!titleMap[t]) titleMap[t] = [];
+            if (titleMap[t].some(x => x.itemId === it.id)) continue;
+            titleMap[t].push({
               accountId: acct.id, acctLabel: acct.label || acct.id, itemId: it.id,
-              title: it.title, thumb: it.pictures && it.pictures[0] ? (it.pictures[0].secure_url || it.pictures[0].url || '') : '',
+              title: it.title, thumb: it.pictures?.[0]?.secure_url || it.pictures?.[0]?.url || '',
               stock: it.available_quantity || 0, price: it.price || 0,
             });
           }
-          statusEl.textContent = 'Escaneando ' + (acct.label || acct.id) + '... (' + (offset + i + batch.length) + ' items)';
+          statusEl.textContent = 'Escaneando ' + (acct.label || acct.id) + '... (' + (offset + i + batch.length) + ')';
         }
-
         offset += d.results.length;
-        const totalItems = d.paging ? d.paging.total : d.results.length;
-        if (offset >= totalItems || offset >= 1000) hasMore = false;
+        const tot = d.paging?.total || d.results.length;
+        if (offset >= tot || offset >= 1000) hasMore = false;
       }
-    } catch(e) {
-      log('warn', 'Error escaneando ' + (acct.label || acct.id) + ': ' + e.message);
-    }
+    } catch(e) { log('warn', 'Error escaneando ' + (acct.label || acct.id) + ': ' + e.message); }
     done++;
     fillEl.style.width = Math.round((done / total) * 100) + '%';
   }
 
   fillEl.style.width = '100%';
   statusEl.textContent = 'Analizando coincidencias...';
-
   const linkedIds = new Set();
   for (const g of groups) for (const it of g.items) linkedIds.add(it.itemId);
-
   suggestions = [];
   for (const [title, items] of Object.entries(titleMap)) {
-    const uniqueAccounts = new Set(items.map(x => x.accountId));
-    if (uniqueAccounts.size < 2) continue;
+    const uniqueAccts = new Set(items.map(x => x.accountId));
+    if (uniqueAccts.size < 2) continue;
     const unlinked = items.filter(x => !linkedIds.has(x.itemId));
-    if (unlinked.length < 2) continue;
-    const unlinkedAccounts = new Set(unlinked.map(x => x.accountId));
-    if (unlinkedAccounts.size < 2) continue;
-    suggestions.push({
-      id: 'sg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      title, items: unlinked, status: 'pending',
-    });
+    if (unlinked.length < 2 || new Set(unlinked.map(x => x.accountId)).size < 2) continue;
+    suggestions.push({ id: 'sg_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), title, items: unlinked, status: 'pending' });
   }
   suggestions.sort((a, b) => b.items.length - a.items.length);
-
   detecting = false;
   btn.disabled = false;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Detectar';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Detectar';
   document.getElementById('detect-progress').style.display = 'none';
-
-  if (suggestions.length) {
-    log('ok', suggestions.length + ' coincidencias detectadas por titulo exacto');
-    renderSuggestions();
-  } else {
-    log('info', 'No se encontraron publicaciones con titulo identico en distintas cuentas');
-    document.getElementById('suggestions-wrap').style.display = 'none';
-  }
+  if (suggestions.length) { log('ok', suggestions.length + ' coincidencias detectadas'); renderSuggestions(); }
+  else { log('info', 'Sin publicaciones con titulo identico en distintas cuentas'); document.getElementById('suggestions-wrap').style.display = 'none'; }
 }
 
 function renderSuggestions() {
   const pending = suggestions.filter(s => s.status === 'pending');
   if (!pending.length) { document.getElementById('suggestions-wrap').style.display = 'none'; return; }
-
   document.getElementById('suggestions-wrap').style.display = '';
   document.getElementById('sg-count').textContent = pending.length;
-
   document.getElementById('suggestions-list').innerHTML = pending.map(sg =>
     '<div class="suggestion" id="sg-' + sg.id + '">' +
       '<div class="sg-header">' +
-        '<input type="checkbox" checked class="sg-chk" data-sgid="' + sg.id + '" style="accent-color:var(--ye);width:13px;height:13px;cursor:pointer">' +
+        '<input type="checkbox" checked style="accent-color:#FFE600;width:13px;height:13px;cursor:pointer;flex-shrink:0">' +
         '<div class="sg-title">' + esc(sg.title) + '</div>' +
-        '<div class="sg-count">' + sg.items.length + ' items / ' + new Set(sg.items.map(x => x.accountId)).size + ' cuentas</div>' +
+        '<div class="sg-count">' + sg.items.length + ' items · ' + new Set(sg.items.map(x => x.accountId)).size + ' cuentas</div>' +
       '</div>' +
       '<div class="sg-items">' +
         sg.items.map(it =>
           '<div class="sg-item">' +
-            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:26px;height:26px;background:var(--s3);border-radius:4px"></div>') +
+            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:26px;height:26px;background:#0c0c0c;border-radius:5px"></div>') +
             '<span class="sg-acct">' + esc(it.acctLabel) + '</span>' +
-            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--t2)">' + it.itemId + '</span>' +
+            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#52525b;font-family:var(--mono);font-size:10px">' + it.itemId + '</span>' +
             '<span class="sg-stk">x' + it.stock + '</span>' +
           '</div>'
         ).join('') +
       '</div>' +
       '<div class="sg-actions">' +
-        '<button class="btn sm danger" onclick="dismissSuggestion(\'' + sg.id + '\')">Descartar</button>' +
-        '<button class="btn sm" style="border-color:rgba(74,222,128,.35);color:var(--gr)" onclick="acceptSuggestion(\'' + sg.id + '\')">Confirmar</button>' +
+        '<button class="jsbtn danger" onclick="dismissSuggestion(\'' + sg.id + '\')">Descartar</button>' +
+        '<button class="jsbtn" style="border-color:rgba(74,222,128,.3);color:#4ade80" onclick="acceptSuggestion(\'' + sg.id + '\')">Confirmar</button>' +
       '</div>' +
     '</div>'
   ).join('');
@@ -1092,19 +1021,14 @@ async function acceptSuggestion(sgId) {
   const sg = suggestions.find(s => s.id === sgId);
   if (!sg) return;
   sg.status = 'accepted';
-  const group = {
+  groups.push({
     id: 'lg_' + Date.now(), name: sg.title.substring(0, 80),
-    items: sg.items.map(it => ({
-      accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId,
-      title: it.title, thumb: it.thumb, lastStock: it.stock,
-    })),
+    items: sg.items.map(it => ({ accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId, title: it.title, thumb: it.thumb, lastStock: it.stock })),
     createdAt: new Date().toISOString(), lastSync: null,
-  };
-  groups.push(group);
+  });
   await saveGroups();
   log('ok', 'Grupo confirmado: "' + sg.title.substring(0, 50) + '" (' + sg.items.length + ' items)');
-  renderSuggestions();
-  renderGroups();
+  renderSuggestions(); renderGroups();
 }
 
 function dismissSuggestion(sgId) {
@@ -1119,19 +1043,15 @@ async function acceptAllSuggestions() {
   for (const sg of pending) {
     sg.status = 'accepted';
     groups.push({
-      id: 'lg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+      id: 'lg_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
       name: sg.title.substring(0, 80),
-      items: sg.items.map(it => ({
-        accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId,
-        title: it.title, thumb: it.thumb, lastStock: it.stock,
-      })),
+      items: sg.items.map(it => ({ accountId: it.accountId, acctLabel: it.acctLabel, itemId: it.itemId, title: it.title, thumb: it.thumb, lastStock: it.stock })),
       createdAt: new Date().toISOString(), lastSync: null,
     });
   }
   await saveGroups();
   log('ok', pending.length + ' grupos confirmados');
-  renderSuggestions();
-  renderGroups();
+  renderSuggestions(); renderGroups();
 }
 
 function dismissAllSuggestions() {
@@ -1140,23 +1060,21 @@ function dismissAllSuggestions() {
   log('info', 'Sugerencias descartadas');
 }
 
-// ── Auto Sync ────────────────────────────────────────────────
+// ── Auto Sync ─────────────────────────────────────────────────
 function toggleAutoSync(on) {
   if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
   const dot = document.getElementById('auto-dot');
   const label = document.getElementById('auto-sync-label');
   if (on) {
     dot.classList.add('active');
-    label.textContent = 'ON';
-    label.style.color = '#FFE600';
+    label.textContent = 'ON'; label.style.color = '#FFE600';
     const ms = parseInt(document.getElementById('auto-interval').value) || 300000;
     autoSyncTimer = setInterval(autoCheck, ms);
-    log('info', 'Auto-sync activado cada ' + (ms / 1000) + 's');
+    log('info', 'Auto-sync activado cada ' + (ms/1000) + 's');
     autoCheck();
   } else {
     dot.classList.remove('active');
-    label.textContent = 'OFF';
-    label.style.color = '';
+    label.textContent = 'OFF'; label.style.color = '';
     log('info', 'Auto-sync desactivado');
   }
 }
@@ -1170,33 +1088,26 @@ async function autoCheck() {
   status.textContent = 'Revisando...';
   try {
     const r = await fetch('/vinculaciones/check-orders', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
     });
     const d = await r.json();
     const now = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     if (d.synced > 0) {
-      status.textContent = now + ' — ' + d.synced + ' ajustados';
-      status.style.color = '#FFE600';
+      status.textContent = now + ' — ' + d.synced + ' ajustados'; status.style.color = '#FFE600';
       log('ok', '[auto] ' + d.synced + ' stocks ajustados');
-      await loadGroups();
-      await refreshAllStocks();
+      await loadGroups(); await refreshAllStocks();
     } else {
-      status.textContent = now + ' — todo OK';
-      status.style.color = '#4ade80';
+      status.textContent = now + ' — OK'; status.style.color = '#4ade80';
     }
-  } catch(e) {
-    status.textContent = 'Error';
-    status.style.color = '#f87171';
-  }
+  } catch(e) { status.textContent = 'Error'; status.style.color = '#f87171'; }
 }
 
-// ── Utils ────────────────────────────────────────────────────
+// ── Utils ─────────────────────────────────────────────────────
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function log(type, msg) {
   const wrap = document.getElementById('log');
-  const ts = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const ts = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
   wrap.innerHTML += '<div class="log-e ' + type + '">[' + ts + '] ' + esc(msg) + '</div>';
   wrap.scrollTop = wrap.scrollHeight;
 }
