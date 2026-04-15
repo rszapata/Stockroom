@@ -13,6 +13,8 @@
 <title>STOCKROOM — Migrar Publicaciones</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/shell.js" defer></script>
 <style>
 :root {
   --bg:#0c0c0e; --s1:#141416; --s2:#1c1c20; --s3:#242428;
@@ -96,10 +98,10 @@ main{padding:24px 28px;flex:1}
 </style>
 <link rel="stylesheet" href="/mobile.css">
 </head>
-<body>
+<body data-shell-page="migracion" data-shell-title="Migración" data-shell-subtitle="Copiar publicaciones entre cuentas">
 <div class="app">
 
-<header>
+<header class="legacy">
   <div class="logo"><div class="logo-dot"></div>STOCKROOM</div>
   <div class="hright">
     <div class="meli-badge">MLA</div>
@@ -405,16 +407,46 @@ function renderItemRow(it, isChild) {
   const thumb = it.thumbnail || it.pictures?.[0]?.url || '';
   const statusCls = 'status-' + (it.status || 'unknown');
   const catName = categories[it.category_id] || it.category_id || '—';
+  const origTitle = it.title || '';
+  const tooLong = origTitle.length > 60;
+  // Prepoblar customTitle con truncado si el original supera 60 y el usuario no lo edito
+  if (tooLong && it.customTitle == null) it.customTitle = origTitle.substring(0, 60);
+  let titleCell;
+  if (tooLong) {
+    const val = it.customTitle != null ? it.customTitle : origTitle.substring(0, 60);
+    const lenOk = val.length > 0 && val.length <= 60;
+    titleCell = '<td class="item-title" style="max-width:320px" title="ORIGINAL (' + origTitle.length + ' chars): ' + esc(origTitle) + '">' +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+      '<span style="color:var(--or);font-size:11px;cursor:help" title="Título original supera 60 caracteres — editá para migrar">⚠</span>' +
+      '<input type="text" class="item-title-input" data-id="' + esc(it.id) + '" value="' + esc(val) + '" maxlength="60" ' +
+        'oninput="updateItemTitle(\'' + esc(it.id) + '\',this.value)" ' +
+        'style="flex:1;min-width:180px;background:var(--s2);border:1px solid var(--b2);color:var(--ye);font-family:var(--mono);font-size:10px;padding:3px 6px;outline:none">' +
+      '<span class="it-len" id="ttl-len-' + esc(it.id) + '" style="font-size:9px;color:' + (lenOk ? 'var(--t3)' : 'var(--re)') + '">' + val.length + '/60</span>' +
+      '</div>' +
+    '</td>';
+  } else {
+    titleCell = '<td class="item-title" title="' + esc(origTitle) + '">' + esc(origTitle) + '</td>';
+  }
   return '<tr class="' + (isChild ? 'merge-child' : '') + '">' +
     '<td><input type="checkbox" class="item-chk" data-id="' + it.id + '" onchange="updateSelCount()"></td>' +
     '<td>' + (thumb ? '<img class="item-thumb" src="' + esc(thumb) + '">' : '—') + '</td>' +
-    '<td class="item-title" title="' + esc(it.title) + '">' + esc(it.title) + '</td>' +
+    titleCell +
     '<td style="font-family:var(--mono);font-size:8px;color:var(--t3)" title="' + (it.category_id || '') + '">' + esc(catName.length > 18 ? catName.substring(0,16) + '…' : catName) + '</td>' +
     '<td style="font-family:var(--mono);font-size:11px">' + (it.currency_id || '$') + ' ' + (it.price || 0).toLocaleString('es') + '</td>' +
     '<td style="font-family:var(--mono);font-size:11px;text-align:center">' + (it.available_quantity || 0) + '</td>' +
     '<td><span class="status-badge ' + statusCls + '">' + (it.status || '—').toUpperCase() + '</span></td>' +
     '<td style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + it.id + '</td>' +
   '</tr>';
+}
+
+function updateItemTitle(id, val) {
+  const it = allItems.find(x => x.id === id);
+  if (it) it.customTitle = val;
+  const lbl = document.getElementById('ttl-len-' + id);
+  if (lbl) {
+    lbl.textContent = val.length + '/60';
+    lbl.style.color = (val.length > 0 && val.length <= 60) ? 'var(--t3)' : 'var(--re)';
+  }
 }
 
 function renderItems() {
@@ -763,6 +795,15 @@ async function migrateOne(itemId, srcId, dstId, dstStatus) {
     const itemR = await fetch('/api-as/' + srcId + '/items/' + itemId);
     const item = await itemR.json();
     if (!itemR.ok) throw new Error('GET item: ' + (item.message || itemR.status));
+
+    // 1.b Aplicar titulo editado por el usuario (si existe) y hard-cap a 60
+    const stored = allItems.find(i => i.id === itemId);
+    if (stored && stored.customTitle) {
+      item.title = stored.customTitle.substring(0, 60);
+    } else if ((item.title || '').length > 60) {
+      // Salvaguarda: si por alguna razon no hay customTitle, truncar para evitar error 400 de ML
+      item.title = item.title.substring(0, 60);
+    }
 
     // 2. Detectar si es del modelo nuevo (tiene user_product_id o family_id)
     let familyId = item.family_id || item.familyId || null;

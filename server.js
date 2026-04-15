@@ -16,7 +16,7 @@ const { spawn } = require('child_process');
 const PORT    = parseInt(process.env.PORT) || 3000;
 // Bind to 127.0.0.1 by default — only the local machine (and cloudflared) can reach it.
 // To expose on LAN for dev: set BIND=0.0.0.0
-const BIND    = process.env.BIND || '127.0.0.1';
+const BIND    = process.env.BIND || '0.0.0.0';
 const ML_BASE = 'api.mercadolibre.com';
 
 // ── Config ────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ function securityHeaders(res, isHtml) {
     // CSP: only allow resources from same origin + MercadoLibre images + Google Fonts
     res.setHeader('Content-Security-Policy',
       "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline'; " +
+      "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; " +
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
       "font-src 'self' https://fonts.gstatic.com; " +
       "img-src 'self' data: blob: https://*.mlstatic.com http://*.mlstatic.com https://mlstatic.com; " +
@@ -213,8 +213,19 @@ function mlGet(mlPath, token) {
       let b = '';
       res.on('data', c => b += c);
       res.on('end', () => {
-        try { const d = JSON.parse(b); if (res.statusCode >= 400) reject(new Error(d.message || b)); else resolve(d); }
-        catch(e) { reject(new Error('JSON parse error')); }
+        try {
+          const d = JSON.parse(b);
+          if (res.statusCode >= 400) {
+            const err = new Error(d.message || b);
+            err.status = res.statusCode;
+            err.body = d;
+            reject(err);
+          } else resolve(d);
+        } catch(e) {
+          const err = new Error('JSON parse error');
+          err.status = res.statusCode;
+          reject(err);
+        }
       });
     });
     req.on('error', reject);
@@ -230,14 +241,98 @@ function mlPut(mlPath, body, token) {
       let b = '';
       res.on('data', c => b += c);
       res.on('end', () => {
-        try { const d = JSON.parse(b); if (res.statusCode >= 400) reject(new Error(d.message || b)); else resolve(d); }
-        catch(e) { reject(new Error('JSON parse error')); }
+        try {
+          const d = JSON.parse(b);
+          if (res.statusCode >= 400) {
+            const err = new Error(d.message || b);
+            err.status = res.statusCode;
+            err.body = d;
+            reject(err);
+          } else resolve(d);
+        } catch(e) {
+          const err = new Error('JSON parse error');
+          err.status = res.statusCode;
+          reject(err);
+        }
       });
     });
     req.on('error', reject);
     req.write(payload);
     req.end();
   });
+}
+
+// ── Refresh de token por cuenta ──────────────────────────────
+// Evita refrescos concurrentes para la misma cuenta
+const _refreshInFlight = new Map();
+async function refreshAccountToken(acct) {
+  if (!acct) return false;
+  if (_refreshInFlight.has(acct.id)) return _refreshInFlight.get(acct.id);
+  const client_id = acct.client_id || config.client_id;
+  const client_secret = acct.client_secret || config.client_secret;
+  const refresh_token = acct.refresh_token;
+  if (!client_id || !client_secret || !refresh_token) return false;
+  const p = new Promise(resolve => {
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id, client_secret, refresh_token,
+    }).toString();
+    const req = https.request({
+      hostname: 'api.mercadolibre.com',
+      path: '/oauth/token',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
+    }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const tok = JSON.parse(data);
+          if (tok.access_token) {
+            acct.access_token = tok.access_token;
+            if (tok.refresh_token) acct.refresh_token = tok.refresh_token;
+            // Persistir en fullConfig.accounts (si el acct viene de ahi, ya lo mutamos por referencia)
+            try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2)); } catch(e) {}
+            console.log(`  ✓ Token renovado para cuenta "${acct.label || acct.id}"`);
+            resolve(true);
+          } else {
+            console.log(`  ✗ No se pudo renovar token de "${acct.label || acct.id}":`, data);
+            resolve(false);
+          }
+        } catch(e) { resolve(false); }
+      });
+    });
+    req.on('error', () => resolve(false));
+    req.write(body);
+    req.end();
+  });
+  _refreshInFlight.set(acct.id, p);
+  try { return await p; }
+  finally { _refreshInFlight.delete(acct.id); }
+}
+
+// Wrappers que auto-refrescan y reintentan una vez ante 401
+async function mlGetAuth(acct, mlPath) {
+  try {
+    return await mlGet(mlPath, acct.access_token);
+  } catch(e) {
+    if (e.status === 401 || e.status === 403) {
+      const ok = await refreshAccountToken(acct);
+      if (ok) return await mlGet(mlPath, acct.access_token);
+    }
+    throw e;
+  }
+}
+async function mlPutAuth(acct, mlPath, body) {
+  try {
+    return await mlPut(mlPath, body, acct.access_token);
+  } catch(e) {
+    if (e.status === 401 || e.status === 403) {
+      const ok = await refreshAccountToken(acct);
+      if (ok) return await mlPut(mlPath, body, acct.access_token);
+    }
+    throw e;
+  }
 }
 
 function json(res, code, data) {
@@ -530,27 +625,35 @@ const server = http.createServer((req, res) => {
     if (!isProxyPathAllowed(mlPath)) { json(res, 403, { error: 'path_not_allowed', path: mlPath }); return; }
     const acct   = (fullConfig.accounts || []).find(a => a.id === acctId);
     if (!acct) { json(res, 404, { error: 'Cuenta no encontrada: ' + acctId }); return; }
-    const token = acct.access_token || '';
     const opts  = {
       hostname: ML_BASE, path: mlPath, method: req.method,
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': req.headers['content-type'] || 'application/json', 'User-Agent': 'Stockroom/1.0' }
+      headers: { 'Content-Type': req.headers['content-type'] || 'application/json', 'User-Agent': 'Stockroom/1.0' }
     };
     const chunks = [];
     req.on('data', c => chunks.push(c));
     req.on('end', () => {
       const bodyBuf = Buffer.concat(chunks);
-      if (bodyBuf.length > 0) opts.headers['Content-Length'] = bodyBuf.length;
-      const pReq = https.request(opts, pRes => {
-        let b = '';
-        pRes.on('data', c => b += c);
-        pRes.on('end', () => {
-          res.writeHead(pRes.statusCode, { 'Content-Type': pRes.headers['content-type'] || 'application/json' });
-          res.end(b);
+      const doProxy = (token, retrying) => {
+        opts.headers['Authorization'] = `Bearer ${token}`;
+        if (bodyBuf.length > 0) opts.headers['Content-Length'] = bodyBuf.length;
+        const pReq = https.request(opts, pRes => {
+          let b = '';
+          pRes.on('data', c => b += c);
+          pRes.on('end', async () => {
+            // Auto-refresh si 401/403 y no estamos reintentando
+            if ((pRes.statusCode === 401 || pRes.statusCode === 403) && !retrying) {
+              const ok = await refreshAccountToken(acct);
+              if (ok) { doProxy(acct.access_token || '', true); return; }
+            }
+            res.writeHead(pRes.statusCode, { 'Content-Type': pRes.headers['content-type'] || 'application/json' });
+            res.end(b);
+          });
         });
-      });
-      pReq.on('error', e => json(res, 502, { error: 'proxy_error', message: e.message }));
-      if (bodyBuf.length > 0) pReq.write(bodyBuf);
-      pReq.end();
+        pReq.on('error', e => json(res, 502, { error: 'proxy_error', message: e.message }));
+        if (bodyBuf.length > 0) pReq.write(bodyBuf);
+        pReq.end();
+      };
+      doProxy(acct.access_token || '', false);
     });
     return;
   }
@@ -1441,7 +1544,7 @@ const server = http.createServer((req, res) => {
           const acct = (fullConfig.accounts || []).find(a => a.id === it.accountId);
           if (!acct || !acct.access_token) { results.push({ ...it, error: 'sin_token' }); continue; }
           try {
-            const data = await mlGet('/items/' + it.itemId, acct.access_token);
+            const data = await mlGetAuth(acct, '/items/' + it.itemId);
             const variations = data.variations || [];
             const hasVariations = variations.length > 0;
             // Stock total = suma de variaciones si las tiene, sino available_quantity
@@ -1465,43 +1568,101 @@ const server = http.createServer((req, res) => {
         } else {
           targetStock = Math.min(...valid.map(r => r.realStock));
         }
+        // Helpers: claves canonicas de una variacion (matcheables entre cuentas).
+        // Devuelve multiples claves para tolerar diferencias entre cuentas (value_id vs value_name, mayusculas, etc).
+        function normalizeStr(s) { return String(s == null ? '' : s).toLowerCase().trim(); }
+        function varKeysAll(v) {
+          const combos = (v.attribute_combinations || []).slice()
+            .sort((a,b) => normalizeStr(a.id || a.name).localeCompare(normalizeStr(b.id || b.name)));
+          if (!combos.length) return [];
+          // Clave A: por value_name (mas consistente entre cuentas con variantes custom)
+          const keyByName = combos.map(c =>
+            normalizeStr(c.id || c.name) + '=' + normalizeStr(c.value_name || c.value_id)
+          ).join('|');
+          // Clave B: por value_id (mas consistente entre cuentas con catalogo ML)
+          const keyById = combos.map(c =>
+            normalizeStr(c.id || c.name) + '=' + normalizeStr(c.value_id || c.value_name)
+          ).join('|');
+          return keyByName === keyById ? [keyByName] : [keyByName, keyById];
+        }
+        // Item fuente (si se especifico sourceItemId) para matcheo por variante
+        const srcItem = sourceItemId ? valid.find(r => r.itemId === sourceItemId) : null;
+        const srcVarMap = {};
+        if (srcItem && srcItem.hasVariations && srcItem.variations && srcItem.variations.length) {
+          srcItem.variations.forEach(v => {
+            const qty = v.available_quantity || 0;
+            varKeysAll(v).forEach(k => { if (k) srcVarMap[k] = qty; });
+          });
+        }
         // 3) Actualizar items con stock distinto al objetivo
         const updates = [];
         for (const it of valid) {
-          if (it.realStock !== targetStock) {
-            const acct = (fullConfig.accounts || []).find(a => a.id === it.accountId);
-            try {
-              if (it.hasVariations && it.variations && it.variations.length) {
-                // Distribuir stock entre variaciones proporcionalmente
-                const oldTotal = it.realStock || 1; // avoid div by zero
-                const newVariations = it.variations.map(v => {
+          // Saltear el item fuente
+          if (sourceItemId && it.itemId === sourceItemId) continue;
+          const acct = (fullConfig.accounts || []).find(a => a.id === it.accountId);
+          try {
+            if (it.hasVariations && it.variations && it.variations.length) {
+              let newVariations;
+              let matchMethod = 'proportional';
+              const hasSrcMap = Object.keys(srcVarMap).length > 0;
+              let matchedCount = 0;
+              if (hasSrcMap) {
+                // Matchear variante-por-variante con el item fuente (por attribute_combinations)
+                newVariations = it.variations.map(v => {
+                  const keys = varKeysAll(v);
+                  let qty = null;
+                  for (const k of keys) {
+                    if (k && Object.prototype.hasOwnProperty.call(srcVarMap, k)) {
+                      qty = srcVarMap[k]; break;
+                    }
+                  }
+                  if (qty !== null) { matchedCount++; return { id: v.id, available_quantity: Math.max(qty, 0) }; }
+                  return { id: v.id, available_quantity: Math.max(v.available_quantity || 0, 0) };
+                });
+                matchMethod = matchedCount > 0 ? 'variants-by-attr' : 'no-match';
+                if (matchedCount === 0) {
+                  // La fuente tiene variantes pero ninguna matchea — no podemos mapear 1:1
+                  updates.push({
+                    itemId: it.itemId, from: it.realStock, to: it.realStock, ok: false,
+                    error: 'variantes no coinciden con la fuente (atributos distintos)'
+                  });
+                  continue;
+                }
+              } else {
+                // Sin fuente con variantes (sync al minimo): distribucion proporcional
+                const oldTotal = it.realStock || 1;
+                newVariations = it.variations.map(v => {
                   const oldQty = v.available_quantity || 0;
-                  // Proporcional: si habia 3 de 13, ahora son 3/13 * 45 ≈ 10
                   let newQty;
-                  if (oldTotal === 0) {
-                    // Distribuir equitativamente
+                  if (it.realStock === 0) {
                     newQty = Math.floor(targetStock / it.variations.length);
                   } else {
                     newQty = Math.round((oldQty / oldTotal) * targetStock);
                   }
                   return { id: v.id, available_quantity: Math.max(newQty, 0) };
                 });
-                // Ajustar redondeo: asegurar que la suma sea exactamente targetStock
                 const sum = newVariations.reduce((s, v) => s + v.available_quantity, 0);
                 if (sum !== targetStock && newVariations.length) {
                   newVariations[0].available_quantity += (targetStock - sum);
                   if (newVariations[0].available_quantity < 0) newVariations[0].available_quantity = 0;
                 }
-                await mlPut('/items/' + it.itemId, { variations: newVariations }, acct.access_token);
-                updates.push({ itemId: it.itemId, from: it.realStock, to: targetStock, ok: true, method: 'variations' });
-              } else {
-                // Item simple sin variaciones
-                await mlPut('/items/' + it.itemId, { available_quantity: targetStock }, acct.access_token);
-                updates.push({ itemId: it.itemId, from: it.realStock, to: targetStock, ok: true });
               }
-            } catch(e) {
-              updates.push({ itemId: it.itemId, from: it.realStock, to: targetStock, ok: false, error: e.message });
+              const newTotal = newVariations.reduce((s, v) => s + v.available_quantity, 0);
+              // Si ya coincide variante-por-variante con la fuente, no hay nada que actualizar
+              if (newTotal === it.realStock && it.variations.every(v => {
+                const nv = newVariations.find(x => x.id === v.id);
+                return nv && nv.available_quantity === (v.available_quantity || 0);
+              })) continue;
+              await mlPutAuth(acct, '/items/' + it.itemId, { variations: newVariations });
+              updates.push({ itemId: it.itemId, from: it.realStock, to: newTotal, ok: true, method: 'variations:' + matchMethod });
+            } else {
+              // Item simple sin variaciones
+              if (it.realStock === targetStock) continue;
+              await mlPutAuth(acct, '/items/' + it.itemId, { available_quantity: targetStock });
+              updates.push({ itemId: it.itemId, from: it.realStock, to: targetStock, ok: true });
             }
+          } catch(e) {
+            updates.push({ itemId: it.itemId, from: it.realStock, to: targetStock, ok: false, error: e.message });
           }
         }
         json(res, 200, { ok: true, targetStock, updates, results });
@@ -1537,7 +1698,7 @@ const server = http.createServer((req, res) => {
           if (!acct.access_token || !acct.user_id) continue;
           try {
             const mlPath = `/orders/search?seller=${acct.user_id}&order.status=paid&order.date_created.from=${encodeURIComponent(since)}&sort=date_desc&limit=50`;
-            const data = await mlGet(mlPath, acct.access_token);
+            const data = await mlGetAuth(acct, mlPath);
             const orders = data.results || [];
             for (const o of orders) {
               for (const oi of (o.order_items || [])) {
@@ -1561,7 +1722,7 @@ const server = http.createServer((req, res) => {
             const acct = allAccounts.find(a => a.id === it.accountId);
             if (!acct || !acct.access_token) continue;
             try {
-              const d = await mlGet('/items/' + it.itemId, acct.access_token);
+              const d = await mlGetAuth(acct, '/items/' + it.itemId);
               const vars = d.variations || [];
               const hasVars = vars.length > 0;
               const stock = hasVars
@@ -1590,9 +1751,9 @@ const server = http.createServer((req, res) => {
                     newVars[0].available_quantity += (minStock - sum);
                     if (newVars[0].available_quantity < 0) newVars[0].available_quantity = 0;
                   }
-                  await mlPut('/items/' + s.itemId, { variations: newVars }, acct.access_token);
+                  await mlPutAuth(acct, '/items/' + s.itemId, { variations: newVars });
                 } else {
-                  await mlPut('/items/' + s.itemId, { available_quantity: minStock }, acct.access_token);
+                  await mlPutAuth(acct, '/items/' + s.itemId, { available_quantity: minStock });
                 }
                 syncResults.push({ group: g.name, item: s.itemId, from: s.stock, to: minStock });
               } catch(e) { /* skip */ }

@@ -13,6 +13,8 @@
 <title>STOCKROOM — Vinculaciones</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/shell.js" defer></script>
 <style>
 :root {
   --bg:#0c0c0e; --s1:#141416; --s2:#1c1c20; --s3:#242428;
@@ -134,10 +136,10 @@ main{padding:24px 28px;flex:1}
 </style>
 <link rel="stylesheet" href="/mobile.css">
 </head>
-<body>
+<body data-shell-page="vinculaciones" data-shell-title="Vinculaciones" data-shell-subtitle="Sincronización de stock multi-cuenta">
 <div class="app">
 
-<header>
+<header class="legacy">
   <div class="logo"><div class="logo-dot"></div>STOCKROOM</div>
   <div class="hright">
     <div class="meli-badge">MLA</div>
@@ -250,6 +252,17 @@ main{padding:24px 28px;flex:1}
     </div>
   </div>
 
+  <!-- LOG -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">LOG</span>
+      <button class="btn sm" onclick="clearLog()">LIMPIAR</button>
+    </div>
+    <div class="log-wrap" id="log">
+      <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
+    </div>
+  </div>
+
   <!-- GRUPOS EXISTENTES -->
   <div class="card" id="groups-card" style="display:none">
     <div class="card-header">
@@ -260,17 +273,6 @@ main{padding:24px 28px;flex:1}
       </div>
     </div>
     <div class="card-body" id="groups-list"></div>
-  </div>
-
-  <!-- LOG -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">LOG</span>
-      <button class="btn sm" onclick="clearLog()">LIMPIAR</button>
-    </div>
-    <div class="log-wrap" id="log">
-      <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
-    </div>
   </div>
 </main>
 
@@ -517,7 +519,17 @@ function renderGroups() {
   card.style.display = '';
   empty.style.display = 'none';
 
-  list.innerHTML = groups.map(g => {
+  // Grupos no sincronizados (stocks distintos) primero, sincronizados al final
+  const sortedGroups = groups.slice().sort((a, b) => {
+    const sa = a.items.map(it => it.lastStock ?? '?');
+    const sb = b.items.map(it => it.lastStock ?? '?');
+    const aOk = sa.every(s => s === sa[0]) && sa[0] !== '?';
+    const bOk = sb.every(s => s === sb[0]) && sb[0] !== '?';
+    if (aOk === bOk) return 0;
+    return aOk ? 1 : -1;
+  });
+
+  list.innerHTML = sortedGroups.map(g => {
     const stocks = g.items.map(it => it.lastStock ?? '?');
     const allSame = stocks.every(s => s === stocks[0]) && stocks[0] !== '?';
     const syncClass = allSame ? 'sync-ok' : 'sync-pending';
@@ -559,10 +571,7 @@ function renderGroups() {
             '<span class="li-acct">' + esc(it.acctLabel || it.accountId) + '</span>' +
             '<span class="li-title">' + esc(it.title || '—') + '</span>' +
             '<span class="li-id">' + it.itemId + '</span>' +
-            '<span class="li-stock ' + stockClass + '">x' + (stockNum ?? '?') +
-              (isMin ? ' <span style="font-size:8px;color:var(--or)">(desactualizada)</span>' : '') +
-              (isMax ? ' <span style="font-size:8px;color:var(--gr)">(correcta)</span>' : '') +
-            '</span>' +
+            '<span class="li-stock ' + stockClass + '">x' + (stockNum ?? '?') + '</span>' +
             '<button class="btn-rm" onclick="removeGroupItem(\'' + g.id + '\',\'' + it.itemId + '\')" title="Quitar">&times;</button>' +
           '</div>';
         }).join('') +
@@ -609,6 +618,17 @@ async function syncGroup(gid, sourceItemId) {
 
     if (d.ok) {
       const targetStock = d.targetStock;
+      // Items que fallaron la lectura (token expirado, item inexistente, etc)
+      const readErrors = (d.results || []).filter(r => r.error);
+      if (readErrors.length) {
+        for (const re of readErrors) {
+          const label = re.acctLabel || re.accountId || '?';
+          const friendly = re.error === 'sin_token'
+            ? 'cuenta sin token — reconectala en Cuentas'
+            : (/401|403|expired|invalid_token/i.test(re.error) ? 'token expirado — reconectar cuenta' : re.error);
+          log('err', '  No se pudo leer ' + re.itemId + ' (' + label + '): ' + friendly);
+        }
+      }
       // Build set of successfully updated item IDs
       const updatedOk = new Set();
       if (d.updates) d.updates.forEach(u => { if (u.ok) updatedOk.add(u.itemId); });
@@ -644,6 +664,8 @@ async function syncGroup(gid, sourceItemId) {
         } else {
           log('ok', '"' + g.name + '" sincronizado — stock: ' + targetStock);
         }
+      } else if (readErrors.length) {
+        log('warn', '"' + g.name + '" — no se actualizo nada porque ' + readErrors.length + ' item(s) tuvieron error de lectura (ver arriba)');
       } else {
         log('ok', '"' + g.name + '" ya estaba sincronizado — stock: ' + targetStock);
       }
