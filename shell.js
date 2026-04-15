@@ -127,10 +127,12 @@
         position: sticky; top: 0; z-index: 30;
         background: rgba(10,10,10,0.85); backdrop-filter: blur(16px);
         border-bottom: 1px solid #262626;
+        padding-left: 64px;
       }
       .shell-head-inner {
         display: flex; align-items: center; justify-content: space-between; gap: 16px;
         padding: 14px 32px;
+        max-width: 1800px; margin: 0 auto;
       }
       .shell-head h1 {
         font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: #f5f5f5; margin: 0;
