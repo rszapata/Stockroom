@@ -1,0 +1,15 @@
+{
+  "active": "cuenta1",
+  "accounts": [
+    {
+      "id": "cuenta1",
+      "label": "Nombre visible",
+      "client_id": "TU_APP_ID_MERCADOLIBRE",
+      "client_secret": "TU_CLIENT_SECRET",
+      "redirect_uri": "http://localhost:3000/oauth/callback",
+      "user_id": "",
+      "access_token": "",
+      "refresh_token": ""
+    }
+  ]
+}

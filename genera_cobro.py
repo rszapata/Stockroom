@@ -46,6 +46,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 # -- Configuración ----------------------------------------------
 IVA              = 1.21
+COSTO_IMPUESTOS  = 307.0   # Costo fiscal fijo por venta (aprox. $307)
 PALABRAS_FUNDA   = ['funda']
 PALABRAS_EXCLUIR = ['malla', 'soporte', 'vidrio', 'templado', 'film protector',
                     'auricular', 'cargador', 'cable']
@@ -107,7 +108,7 @@ def tiene_precio(v):
 
 def calc_neto(ing, cargo, cf):
     try:
-        return float(ing) / IVA + float(cargo) + float(cf)
+        return float(ing) / IVA + float(cargo) + float(cf) - COSTO_IMPUESTOS
     except (TypeError, ValueError):
         return 0.0
 
@@ -274,7 +275,7 @@ def estimar_neto_funda_en_paquete(titulo_funda, ing_paquete, titulos_sub, indice
         ing_funda = ing_paquete / len(titulos_sub)
 
     cargo_funda = ing_funda * cargo_rate
-    neto_est = ing_funda / IVA + cargo_funda + cf_tipico
+    neto_est = ing_funda / IVA + cargo_funda + cf_tipico - COSTO_IMPUESTOS
     return round(neto_est, 2), round(ing_funda, 2)
 
 # -- Procesamiento principal ------------------------------------
@@ -437,7 +438,7 @@ def generar_excel(ventas, periodo, output_path, modo="fundas"):
 
     ws.merge_cells('A2:I2')
     ws['A2'].value     = (f'Generado: {datetime.now().strftime("%d/%m/%Y %H:%M")}  |  '
-                          f'neto = ingresos/1.21 + cargo + costo_fijo  |  '
+                          f'neto = ingresos/1.21 + cargo + costo_fijo − ${COSTO_IMPUESTOS:.0f} (impuestos)  |  '
                           f'Paquetes mixtos: neto calculado con precio estimado de la funda')
     ws['A2'].font      = fn('FF8888a0', sz=9)
     ws['A2'].fill      = fl(C['header_bg'])
@@ -580,6 +581,7 @@ def generar_excel(ventas, periodo, output_path, modo="fundas"):
     print(f"    → individuales/paquete2: {len(incluidas) - len(mixtos)}")
     print(f"    → paquetes mixtos:       {len(mixtos)}  (neto estimado automáticamente)")
     print(f"  Excluidas:                 {len(excluidas)}")
+    print(f"  Impuestos descontados:     ${COSTO_IMPUESTOS:.0f} × {len(incluidas)} ventas = ${COSTO_IMPUESTOS * len(incluidas):>10,.2f}")
     print(f"  TOTAL NETO:                ${neto_auto:>12,.2f}")
     print(f"{'-'*58}\n")
     if mixtos:

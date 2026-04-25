@@ -15,10 +15,15 @@ def main():
     p.add_argument('--tc',     type=float, default=1421,   help='Tipo de cambio ARS/USD')
     p.add_argument('--flete',  type=float, default=800000, help='Flete + impuestos ARS')
     p.add_argument('--units',  type=int,   default=415,    help='Unidades de referencia para prorrateo')
+    p.add_argument('--vendidos-min', type=int, default=5,  help='Umbral mínimo de vendidos para incluir (default 5)')
+    p.add_argument('--stock-max',    type=int, default=7,  help='Umbral máximo de stock para incluir (default 7)')
+    p.add_argument('--all-products', action='store_true', help='Incluir todas las publicaciones, no solo fundas')
     args = p.parse_args()
 
     TC         = args.tc
     FLETE_UNIT = round(args.flete / args.units)
+    VEND_MIN   = args.vendidos_min
+    STOCK_MAX  = args.stock_max
 
     # Costos USD conocidos por línea de producto (fundas)
     COSTOS_USD = {
@@ -29,9 +34,33 @@ def main():
         'magsafe':       0.85,
     }
 
+    # Si contiene estas palabras, NO es funda (productos accesorios o protectores que no son fundas)
+    PATRONES_NO_FUNDA = [
+        'vidrio templado', 'vidrio protector', 'film protector',
+        'protector pantalla', 'protector de pantalla', 'cubre pantalla', 'cubrepantalla',
+        'protector lente', 'protector de lente', 'protector camara', 'protector de cámara',
+        'protector watch', 'protector para watch', 'protector para samsung watch',
+        'protector para apple watch', 'protector reloj', 'protector para reloj',
+        'cargador', 'cable', 'auricular', 'auriculares',
+        'soporte', 'tripode', 'trípode', 'malla', 'pulsera', 'correa',
+        'lente', 'palo selfie', 'powerbank', 'power bank',
+        'watch', 'reloj',
+    ]
+    # Patrones que indican fuertemente que ES una funda
+    PATRONES_FUNDA = [
+        'funda', 'case', 'carcasa',
+        'magsafe', 'magnét', 'magnet',
+        'con costura', 'silicona', 'silicone',
+    ]
     def es_funda(titulo):
-        """Devuelve True solo si el producto es una funda de celular."""
-        return 'funda' in titulo.lower()
+        """True si el producto es una funda (por palabra explícita o patrón típico)."""
+        t = titulo.lower()
+        if any(p in t for p in PATRONES_NO_FUNDA): return False
+        if any(p in t for p in PATRONES_FUNDA): return True
+        # Patrón: línea típica del catálogo (S22/S23/S24, S25 Ultra/Premium)
+        if 's22' in t and 's23' in t: return True
+        if 's25' in t and ('ultra' in t or 'premi' in t): return True
+        return False
 
     def clasificar(titulo):
         """Devuelve clave de costo para la línea de funda."""
@@ -65,8 +94,20 @@ def main():
         r['Vendidos']= int(float(r['Vendidos']))
         r['Precio']  = round(float(r['Precio']))
 
-    fundas = [r for r in variantes if es_funda(r['Título'])]
-    lista  = [r for r in fundas if r['Vendidos'] >= 5 and r['Stock'] <= 7]
+    fundas = variantes if args.all_products else [r for r in variantes if es_funda(r['Título'])]
+    # Diagnóstico de filtros
+    pass_vend  = sum(1 for r in fundas if r['Vendidos'] >= VEND_MIN)
+    pass_stock = sum(1 for r in fundas if r['Stock'] <= STOCK_MAX)
+    lista = [r for r in fundas if r['Vendidos'] >= VEND_MIN and r['Stock'] <= STOCK_MAX]
+
+    # Fallback automático: si lista vacía y los umbrales son los default, relajar
+    relaxed_used = False
+    if not lista and VEND_MIN == 5 and STOCK_MAX == 7:
+        VEND_MIN_R, STOCK_MAX_R = 1, 15
+        lista = [r for r in fundas if r['Vendidos'] >= VEND_MIN_R and r['Stock'] <= STOCK_MAX_R]
+        if lista:
+            VEND_MIN, STOCK_MAX = VEND_MIN_R, STOCK_MAX_R
+            relaxed_used = True
 
     # Ordenar por publicación luego por vendidos desc
     orden = [
@@ -122,7 +163,8 @@ def main():
     ws.row_dimensions[1].height = 32
 
     ws.merge_cells('A2:L2')
-    ws['A2'] = f"Criterio: Vendidos ≥ 5  |  Stock ≤ 7  |  TC: ${TC:,.0f}  |  Flete/u: ${FLETE_UNIT:,}  |  Ordenado por publicación Alibaba"
+    extra = "  |  ⚠ umbrales relajados automáticamente (no había items con criterio estándar)" if relaxed_used else ""
+    ws['A2'] = f"Criterio: Vendidos ≥ {VEND_MIN}  |  Stock ≤ {STOCK_MAX}  |  TC: ${TC:,.0f}  |  Flete/u: ${FLETE_UNIT:,}{extra}"
     ws['A2'].font = Font(name='Arial',italic=True,size=8,color="444444")
     ws['A2'].fill = PatternFill('solid',start_color="DCE6F1")
     ws['A2'].alignment = Alignment(horizontal='center',vertical='center')
@@ -281,6 +323,21 @@ def main():
 
     wb.save(args.output)
 
+    # Si la lista quedó vacía, escribir un mensaje informativo en la hoja
+    if not lista:
+        info_row = 4
+        ws.merge_cells(f'A{info_row}:L{info_row}')
+        c = ws.cell(row=info_row, column=1,
+            value=f"⚠ Ningún item cumple los criterios (Vendidos≥{VEND_MIN}, Stock≤{STOCK_MAX}). "
+                  f"De {len(fundas)} {'productos' if args.all_products else 'fundas'} analizados, "
+                  f"{pass_vend} cumplen el umbral de vendidos y {pass_stock} el de stock. "
+                  f"Probá bajar los umbrales o activar 'todos los productos'.")
+        c.font = Font(name='Arial', italic=True, size=10, color='B85450')
+        c.fill = PatternFill('solid', start_color='FFF8E1')
+        c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        c.border = brd
+        ws.row_dimensions[info_row].height = 60
+
     resumen = {
         "items": len(lista),
         "total_sug": total_sug,
@@ -289,6 +346,15 @@ def main():
         "inversion_adj": total_costo_adj,
         "tc": TC,
         "flete_unit": FLETE_UNIT,
+        # Diagnóstico para el frontend
+        "variantes_total": len(variantes),
+        "fundas_total": len(fundas),
+        "pass_vendidos": pass_vend,
+        "pass_stock": pass_stock,
+        "vendidos_min": VEND_MIN,
+        "stock_max": STOCK_MAX,
+        "all_products": bool(args.all_products),
+        "relaxed_used": relaxed_used,
     }
     print(f"RESUMEN_JSON:{json.dumps(resumen)}")
 

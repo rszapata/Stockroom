@@ -1,27 +1,39 @@
 node_modules/
+
+# ── Credenciales y tokens (NUNCA subir) ───────────────────────
 config.json
 tokens.json
 accounts.json
 auth.json
 auth*.json
-*.log
-server_out.log
+*.key
 .env
 .env.*
+
+# ── Datos personales / operativos ─────────────────────────────
+# Contienen IDs de artículos, cuentas, CPs y direcciones reales
+flex_zones.json
+vinculaciones.json
+
+# ── Archivos temporales y de trabajo ──────────────────────────
+*.log
+server_out.log
 data/
 backup/
 memory/
 
-# Claude Code - archivos locales
+# ── Claude Code ───────────────────────────────────────────────
 todo.md
 .claude-cache/
 .mcp.config
 .claude/
 
-# IDEs
+# ── IDEs ──────────────────────────────────────────────────────
 .idea/
 .vscode/
 
-# Archivos de test/preview
+# ── Archivos de test/preview ──────────────────────────────────
 test_flex_preview.pdf
 test_*.pdf
+*.tmp.xlsx
+*.tmp.csv

@@ -65,10 +65,32 @@
       body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; background: #0a0a0a; color: #e4e4e7; }
       .font-mono, code, kbd, pre { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
+      /* kill all browser default blues (accent, selection, autofill, links, focus) */
+      html, body, input, select, textarea, button { accent-color: #FFE600; color-scheme: dark; }
+      ::selection { background: rgba(255,230,0,.35); color: #fff; }
+      ::-moz-selection { background: rgba(255,230,0,.35); color: #fff; }
+      a { color: inherit; }
+      *:focus-visible { outline: 1px solid #FFE600; outline-offset: 2px; }
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus,
+      textarea:-webkit-autofill,
+      select:-webkit-autofill {
+        -webkit-text-fill-color: #d4d4d8 !important;
+        -webkit-box-shadow: 0 0 0 1000px #171717 inset !important;
+        caret-color: #FFE600;
+      }
+
       /* oculta el header viejo pero lo deja en DOM (p/ scripts legacy) */
       body[data-shell-page] > .app > header:first-of-type,
       body[data-shell-page] > header.legacy,
       body[data-shell-page] > .app > header.legacy { display: none !important; }
+
+      /* oculta componentes de mobile.css — el shell ya provee navegación */
+      body[data-shell-page] > .m-bottom-nav,
+      body[data-shell-page] > .m-drawer,
+      body[data-shell-page] > .m-drawer-overlay,
+      body[data-shell-page] > .m-fab { display: none !important; }
 
       /* desactiva el body::before grid (lo reemplaza el radial del shell) */
       body[data-shell-page]::before { display: none !important; }
@@ -79,12 +101,12 @@
       *::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
       *::-webkit-scrollbar-thumb:hover { background: #404040; }
 
-      /* radial glow de fondo */
+      /* radial glow de fondo — brand yellow only, sin azul */
       body[data-shell-page]::after {
         content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
         background:
           radial-gradient(circle at 20% 10%, rgba(255,230,0,0.04) 0%, transparent 40%),
-          radial-gradient(circle at 80% 90%, rgba(120,180,255,0.03) 0%, transparent 40%);
+          radial-gradient(circle at 80% 90%, rgba(255,230,0,0.02) 0%, transparent 40%);
       }
 
       /* SIDEBAR */
@@ -122,17 +144,21 @@
       }
       .shell-side-item:hover .tip { opacity: 1; transform: translateY(-50%) translateX(4px); }
 
-      /* HEADER */
+      /* HEADER — replica del dashboard (index.html) */
+      .shell-wrap {
+        padding-left: 64px; min-height: 100vh; position: relative; z-index: 10;
+      }
       .shell-head {
         position: sticky; top: 0; z-index: 30;
-        background: rgba(10,10,10,0.85); backdrop-filter: blur(16px);
+        background: rgba(10,10,10,0.80); backdrop-filter: blur(16px);
         border-bottom: 1px solid #262626;
-        padding-left: 64px;
       }
       .shell-head-inner {
         display: flex; align-items: center; justify-content: space-between; gap: 16px;
-        padding: 14px 32px;
-        max-width: 1800px; margin: 0 auto;
+        padding: 16px 20px;
+      }
+      @media (min-width: 1024px) {
+        .shell-head-inner { padding: 16px 28px; }
       }
       .shell-head h1 {
         font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: #f5f5f5; margin: 0;
@@ -159,10 +185,9 @@
       }
       .shell-btn:hover { border-color: #404040; background: #1a1a1a; }
 
-      /* content wrap */
-      body[data-shell-page] > .app,
-      body[data-shell-page] > main,
-      body[data-shell-page] > div:not(.shell-side):not(.shell-popover) {
+      /* content wrap — solo si NO está envuelto en .shell-wrap */
+      body[data-shell-page] > .app:not(.shell-wrap),
+      body[data-shell-page] > main:not(.shell-wrap) {
         padding-left: 64px;
         position: relative; z-index: 10;
       }
@@ -344,14 +369,19 @@
     // Sidebar
     body.insertBefore(buildSidebar(activeId), body.firstChild);
 
-    // Header — lo insertamos al inicio de <main> si existe, o como primer hijo del wrapper .app
+    // Wrapper .shell-wrap (replica del dashboard: <div class="pl-16 min-h-screen relative z-10">)
+    // Envuelve el <main> (o .app) y mete el header adentro, ANTES del main.
     const header = buildHeader(title, subtitle);
-    const app = document.querySelector('body > .app');
+    const app    = document.querySelector('body > .app');
     const mainEl = document.querySelector('body > main, body > .app > main');
-    if (mainEl) {
-      mainEl.parentNode.insertBefore(header, mainEl);
-    } else if (app) {
-      app.insertBefore(header, app.firstChild);
+    const target = mainEl || app;
+
+    if (target) {
+      const wrap = document.createElement('div');
+      wrap.className = 'shell-wrap';
+      target.parentNode.insertBefore(wrap, target);
+      wrap.appendChild(header);
+      wrap.appendChild(target);
     } else {
       body.appendChild(header);
     }

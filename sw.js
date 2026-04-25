@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v2';
+const CACHE_NAME = 'stockroom-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -6,8 +6,8 @@ const STATIC_ASSETS = [
   '/cobros.html',
   '/publicaciones.html',
   '/migracion.html',
-  '/mobile.css',
-  '/mobile.js',
+  '/vinculaciones.html',
+  '/shell.js',
   '/chart.umd.min.js',
   '/icon.svg',
   '/icon-192.png',

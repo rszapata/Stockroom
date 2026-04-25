@@ -262,6 +262,25 @@
         <label>Unidades de referencia de ese pedido</label>
         <input type="number" id="orden-units" value="415" min="1"/>
       </div>
+
+      <div class="border-t border-neutral-800 pt-4 mt-2">
+        <div class="text-xs text-neutral-500 mb-2 font-medium">Criterios de inclusión</div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="fld">
+            <label>Vendidos ≥</label>
+            <input type="number" id="orden-vmin" value="5" min="0"/>
+          </div>
+          <div class="fld">
+            <label>Stock ≤</label>
+            <input type="number" id="orden-smax" value="7" min="0"/>
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-neutral-400 mt-3 cursor-pointer">
+          <input type="checkbox" id="orden-allprods" class="accent-brand"/>
+          <span>Incluir todas las publicaciones (no solo fundas)</span>
+        </label>
+      </div>
+
       <div id="orden-status" class="hidden text-xs font-mono px-3 py-2 rounded-lg"></div>
     </div>
     <div class="flex gap-2 px-6 pb-6">
@@ -316,28 +335,42 @@ async function loadFromAPI() {
     if (me.error || me.message) throw new Error(me.message || me.error);
 
     let allIds = [];
-    let offset = 0;
     const limit = 50;
     setLoading('Obteniendo publicaciones activas…');
 
-    while (true) {
-      const r = await API(`/users/${me.id}/items/search?status=active&limit=${limit}&offset=${offset}`);
-      if (r.error) throw new Error(r.message || r.error);
-      allIds = allIds.concat(r.results || []);
-      const total = r.paging?.total || 0;
-      setLoading(`Cargando ${allIds.length} de ${total} publicaciones…`);
-      if (allIds.length >= total || !r.results?.length) break;
-      offset += limit;
+    const first = await API(`/users/${me.id}/items/search?status=active&limit=${limit}&offset=0`);
+    if (first.error) throw new Error(first.message || first.error);
+    allIds = allIds.concat(first.results || []);
+    const total = first.paging?.total || 0;
+    setLoading(`Cargando ${allIds.length} de ${total} publicaciones…`);
+
+    if (allIds.length < total) {
+      const pages = [];
+      for (let off = limit; off < total; off += limit) pages.push(off);
+      const PARALLEL_SEARCH = 5;
+      for (let i = 0; i < pages.length; i += PARALLEL_SEARCH) {
+        const batch = pages.slice(i, i + PARALLEL_SEARCH);
+        const results = await Promise.all(batch.map(off => API(`/users/${me.id}/items/search?status=active&limit=${limit}&offset=${off}`)));
+        for (const r of results) allIds = allIds.concat(r.results || []);
+        setLoading(`Cargando ${allIds.length} de ${total} publicaciones…`);
+      }
     }
 
     if (!allIds.length) { setError('No se encontraron publicaciones activas en esta cuenta.'); return; }
 
     const rawItems = [];
-    for (let i = 0; i < allIds.length; i += 20) {
-      const chunk = allIds.slice(i, i + 20);
-      const data = await API(`/items?ids=${chunk.join(',')}`);
-      if (Array.isArray(data)) for (const e of data) if (e.code === 200) rawItems.push(e.body);
-      setLoading(`Procesando items: ${Math.min(i + 20, allIds.length)} / ${allIds.length}…`);
+    const chunks = [];
+    for (let i = 0; i < allIds.length; i += 20) chunks.push(allIds.slice(i, i + 20));
+    const PARALLEL = 5;
+    let done = 0;
+    for (let i = 0; i < chunks.length; i += PARALLEL) {
+      const batch = chunks.slice(i, i + PARALLEL);
+      const results = await Promise.all(batch.map(chunk => API(`/items?ids=${chunk.join(',')}`)));
+      for (const data of results) {
+        if (Array.isArray(data)) for (const e of data) if (e.code === 200) rawItems.push(e.body);
+      }
+      done += batch.length * 20;
+      setLoading(`Procesando items: ${Math.min(done, allIds.length)} / ${allIds.length}…`);
     }
 
     const catIds = [...new Set(rawItems.map(i => i.category_id))];
@@ -413,20 +446,7 @@ function updateKPIs() {
 /* ═════ alerts ═════ */
 function buildAlerts() {
   const strip = $('alerts-strip');
-  if (S.status !== 'velocity') { strip.innerHTML = ''; return; }
-  const all = flatAll();
-  const alerts = all.filter(i => i.status === 'velocity' || ((i.sold_quantity || 0) >= VEL_THRESHOLD && i.available_quantity < 20));
-  if (!alerts.length) { strip.innerHTML = ''; return; }
-
-  strip.innerHTML = alerts.slice(0, 5).map(a => `
-    <div class="flex items-center gap-3 bg-purple-500/5 border border-purple-500/20 rounded-xl px-4 py-2.5">
-      <span class="text-lg">⚡</span>
-      <div class="flex-1 min-w-0">
-        <div class="text-sm text-neutral-100 font-medium truncate">${esc(a.title)}${a.varLabel ? ' — <span class="text-neutral-400">' + esc(a.varLabel) + '</span>' : ''}</div>
-        <div class="text-xs text-neutral-500">${a.sold_quantity || 0} vendidos · ${a.available_quantity} en stock</div>
-      </div>
-    </div>`).join('')
-    + (alerts.length > 5 ? `<div class="text-xs text-neutral-500 text-center py-1">+ ${alerts.length - 5} productos más con alta rotación</div>` : '');
+  if (strip) strip.innerHTML = '';
 }
 
 /* ═════ filters ═════ */
@@ -634,10 +654,13 @@ function setOrdenStatus(msg, ok) {
 }
 
 async function ejecutarOrden() {
-  const tc    = parseInt($('orden-tc').value)    || 1421;
-  const flete = parseInt($('orden-flete').value) || 800000;
-  const units = parseInt($('orden-units').value) || 415;
-  const btn   = $('btn-orden-gen');
+  const tc       = parseInt($('orden-tc').value)    || 1421;
+  const flete    = parseInt($('orden-flete').value) || 800000;
+  const units    = parseInt($('orden-units').value) || 415;
+  const vmin     = parseInt($('orden-vmin').value);
+  const smax     = parseInt($('orden-smax').value);
+  const allProds = $('orden-allprods').checked;
+  const btn      = $('btn-orden-gen');
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner mr-2 align-middle"></span>Generando…';
@@ -660,6 +683,9 @@ async function ejecutarOrden() {
   fd.append('tc', String(tc));
   fd.append('flete', String(flete));
   fd.append('units', String(units));
+  if (Number.isFinite(vmin)) fd.append('vendidos_min', String(vmin));
+  if (Number.isFinite(smax)) fd.append('stock_max',    String(smax));
+  if (allProds)              fd.append('all_products', '1');
 
   try {
     const resp = await fetch('/orden-compra', { method: 'POST', body: fd });
@@ -677,8 +703,27 @@ async function ejecutarOrden() {
     a.click();
 
     const r = data.resumen || {};
-    setOrdenStatus(`✓ ${r.items || '?'} variantes · ${r.total_adj || '?'} u. ajustadas · Inversión: $${(r.inversion_adj || 0).toLocaleString('es-AR')}`, true);
-    btn.textContent = '✓ Descargado';
+    if (!r.items) {
+      // Excel generado pero sin items que cumplan criterios — mostrar diagnóstico
+      const grupo = r.all_products ? 'productos' : 'fundas';
+      setOrdenStatus(
+        `⚠ Excel sin items que cumplan los criterios.<br>` +
+        `<span class="text-neutral-400">De ${r.fundas_total ?? '?'} ${grupo}: ` +
+        `${r.pass_vendidos ?? '?'} con vendidos ≥ ${r.vendidos_min} · ` +
+        `${r.pass_stock ?? '?'} con stock ≤ ${r.stock_max}.</span><br>` +
+        `<span class="text-neutral-400">Probá bajar los umbrales o tildar "todas las publicaciones".</span>`,
+        false
+      );
+      btn.disabled = false;
+      btn.textContent = 'Reintentar';
+    } else {
+      const relaxedNote = r.relaxed_used ? ' · <span class="text-yellow-400">⚠ umbrales relajados auto</span>' : '';
+      setOrdenStatus(
+        `✓ ${r.items} variantes · ${r.total_adj || '?'} u. ajustadas · Inversión: $${(r.inversion_adj || 0).toLocaleString('es-AR')}${relaxedNote}`,
+        true
+      );
+      btn.textContent = '✓ Descargado';
+    }
   } catch (e) {
     setOrdenStatus(`❌ Error: ${esc(e.message || 'conexión')}`, false);
     btn.disabled = false; btn.textContent = 'Reintentar';

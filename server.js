@@ -162,6 +162,10 @@ function securityHeaders(res, isHtml) {
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // ANTICACHE  
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   if (isHtml) {
     // CSP: only allow resources from same origin + MercadoLibre images + Google Fonts
     res.setHeader('Content-Security-Policy',
@@ -171,6 +175,7 @@ function securityHeaders(res, isHtml) {
       "font-src 'self' https://fonts.gstatic.com; " +
       "img-src 'self' data: blob: https://*.mlstatic.com http://*.mlstatic.com https://mlstatic.com; " +
       "connect-src 'self' https://api.mercadolibre.com; " +
+      "frame-src https://www.google.com https://maps.google.com https://*.google.com; " +
       "frame-ancestors 'none'; " +
       "base-uri 'self'; " +
       "form-action 'self' https://auth.mercadolibre.com.ar https://auth.mercadolibre.com"
@@ -1028,6 +1033,9 @@ const server = http.createServer((req, res) => {
       const tc       = parseFloat(parts['tc']    || '1421');
       const flete    = parseFloat(parts['flete'] || '800000');
       const units    = parseInt(parts['units']   || '415');
+      const vendMin  = parseInt(parts['vendidos_min'] || '5');
+      const stockMax = parseInt(parts['stock_max']    || '7');
+      const allProds = String(parts['all_products'] || '') === '1' || String(parts['all_products'] || '') === 'true';
 
       if (!fileData?.data) { json(res, 400, { error: 'CSV no recibido' }); return; }
 
@@ -1044,7 +1052,9 @@ const server = http.createServer((req, res) => {
 
       const PYTHON      = process.platform === 'win32' ? 'py' : 'python3';
       const PYTHON_ARGS = process.platform === 'win32' ? ['-3.12'] : [];
-      const args = [scriptPath, tmpIn, '--output', tmpOut, '--tc', String(tc), '--flete', String(flete), '--units', String(units)];
+      const args = [scriptPath, tmpIn, '--output', tmpOut, '--tc', String(tc), '--flete', String(flete), '--units', String(units),
+        '--vendidos-min', String(vendMin), '--stock-max', String(stockMax)];
+      if (allProds) args.push('--all-products');
       const py   = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
       let stdout = '', stderr = '';
       py.stdout.on('data', d => stdout += d);
@@ -1360,9 +1370,54 @@ const server = http.createServer((req, res) => {
             return;
           }
 
-          // Collect unique item IDs to fetch pictures
+          // Substatuses que indican "ya despachado / en camino" — filtrarlos
+          const DISPATCHED_SUBSTATUS = new Set([
+            'picked_up', 'dropped_off', 'in_hub', 'in_packing_list',
+            'shipped', 'delivered', 'not_delivered', 'cancelled',
+            'returning_to_sender', 'returned', 'forwarded_to_third',
+          ]);
+          // Substatuses VÁLIDOS para "para despachar" (ready_to_print, printed, etc.)
+          const PENDING_SUBSTATUS = new Set([
+            'ready_to_print', 'printed', 'stale', 'regenerating', 'invoice_pending',
+          ]);
+
+          // Verificar en paralelo el estado real del shipment (la flag a nivel order
+          // a veces queda desactualizada — el shipment endpoint es la fuente de verdad)
+          const rawOrders = data.results || [];
+          const shipmentStatus = {};
+          await Promise.all(rawOrders.map(async (o) => {
+            const sid = o.shipping?.id;
+            if (!sid) return;
+            try {
+              const sh = await mlGet('/shipments/' + sid, config.access_token);
+              shipmentStatus[sid] = { status: sh.status, substatus: sh.substatus };
+            } catch(e) { /* si falla, caemos al status del order */ }
+          }));
+
+          // Filtrar a las que realmente están pendientes de despachar
+          const validOrders = rawOrders.filter(o => {
+            const sid = o.shipping?.id;
+            const sh = sid ? shipmentStatus[sid] : null;
+            const status = sh?.status ?? o.shipping?.status;
+            const substatus = sh?.substatus ?? o.shipping?.substatus;
+            if (status !== 'ready_to_ship') {
+              console.log(`[despachos-hoy] Filtrado ${o.id}: status=${status}, sub=${substatus}`);
+              return false;
+            }
+            if (substatus && DISPATCHED_SUBSTATUS.has(substatus)) {
+              console.log(`[despachos-hoy] Filtrado ${o.id} ya despachado: substatus=${substatus}`);
+              return false;
+            }
+            // Si el substatus es null/desconocido pero status=ready_to_ship → keep
+            if (substatus && !PENDING_SUBSTATUS.has(substatus)) {
+              console.log(`[despachos-hoy] Substatus desconocido ${o.id}: ${substatus} (lo dejo pasar)`);
+            }
+            return true;
+          });
+
+          // Collect unique item IDs to fetch pictures (sólo de las órdenes válidas)
           const itemIds = new Set();
-          for (const o of (data.results || [])) {
+          for (const o of validOrders) {
             for (const i of (o.order_items || [])) {
               if (i.item?.id) itemIds.add(i.item.id);
             }
@@ -1377,11 +1432,16 @@ const server = http.createServer((req, res) => {
             } catch(e) { console.log(`[despachos-hoy] Error fetch item ${itemId}: ${e.message}`); }
           }));
 
-          const orders = (data.results || []).map(o => ({
+          const orders = validOrders.map(o => {
+            const sid = o.shipping?.id;
+            const sh = sid ? shipmentStatus[sid] : null;
+            return ({
             id: o.id,
             date_created: o.date_created,
             buyer: o.buyer?.nickname || o.buyer?.id || '—',
             shipping_id: o.shipping?.id || null,
+            shipping_status: sh?.status ?? o.shipping?.status ?? null,
+            shipping_substatus: sh?.substatus ?? o.shipping?.substatus ?? null,
             items: (o.order_items || []).map(i => {
               const itemId = i.item?.id;
               const varId  = i.item?.variation_id;
@@ -1410,8 +1470,9 @@ const server = http.createServer((req, res) => {
                 picture,
               };
             }),
-          }));
-          json(res, 200, { ok: true, orders, count: orders.length });
+          });
+          });
+          json(res, 200, { ok: true, orders, count: orders.length, totalRaw: rawOrders.length, filtered: rawOrders.length - validOrders.length });
         } catch(e) {
           json(res, 500, { error: 'Error parseando respuesta ML', detail: e.message });
         }
@@ -1671,15 +1732,345 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── /flex-cost-debug GET — diagnóstico: dumpea todo lo relacionado al envío ──
+  // Uso: /flex-cost-debug?orderId=2000012653817757   (o ?shippingId=...)
+  if (pathname === '/flex-cost-debug' && req.method === 'GET') {
+    (async () => {
+      try {
+        const orderId = parsed.query.orderId;
+        const shippingIdQ = parsed.query.shippingId;
+        const acctIdQ = parsed.query.accountId;
+        const acct = acctIdQ
+          ? (fullConfig.accounts || []).find(a => a.id === acctIdQ)
+          : config;
+        if (!acct || !acct.access_token) { json(res, 400, { error: 'sin token para la cuenta' }); return; }
+
+        const out = { _meta: { account: acct.id || acct.user_id, orderId, shippingIdQ } };
+        let shippingId = shippingIdQ;
+
+        if (orderId) {
+          // 1) Probar como order_id directo
+          try {
+            const order = await mlGetAuth(acct, '/orders/' + orderId);
+            out.order = order;
+            shippingId = shippingId || order.shipping?.id;
+          } catch(e) { out.order_error = e.message; }
+
+          // 2) Si no anduvo, probar como pack_id (formato largo 2000...)
+          if (!shippingId) {
+            try {
+              const pack = await mlGetAuth(acct, '/packs/' + orderId);
+              out.pack = pack;
+              const ords = pack.orders || [];
+              if (ords.length) {
+                // El pack referencia las orders, traemos la primera
+                const firstOrderId = ords[0].id;
+                try {
+                  const order = await mlGetAuth(acct, '/orders/' + firstOrderId);
+                  out.order = order;
+                  shippingId = order.shipping?.id;
+                } catch(e2) { out.order_via_pack_error = e2.message; }
+              }
+            } catch(e) { out.pack_error = e.message; }
+          }
+
+          // 3) Si tampoco, buscar el pack/order via /orders/search?pack_id=
+          if (!shippingId && acct.user_id) {
+            try {
+              const search = await mlGetAuth(acct,
+                '/orders/search?seller=' + acct.user_id + '&pack_id=' + orderId);
+              out.search_by_pack = { results_count: (search.results || []).length };
+              if (search.results && search.results.length) {
+                out.order = search.results[0];
+                shippingId = search.results[0].shipping?.id;
+              }
+            } catch(e) { out.search_error = e.message; }
+          }
+        }
+
+        if (!shippingId) {
+          json(res, 200, { ...out, error: 'no se pudo obtener shipping_id — probá con otro accountId o pegá el shipping_id directo via ?shippingId=' });
+          return;
+        }
+
+        const tries = [
+          ['shipment',         '/shipments/' + shippingId],
+          ['lead_time',        '/shipments/' + shippingId + '/lead_time'],
+          ['costs',            '/shipments/' + shippingId + '/costs'],
+          ['cost_components',  '/shipments/' + shippingId + '/cost_components'],
+          ['items',            '/shipments/' + shippingId + '/items'],
+          ['carrier',          '/shipments/' + shippingId + '/carrier'],
+          ['sla',              '/shipments/' + shippingId + '/sla'],
+        ];
+        for (const [key, p] of tries) {
+          try { out[key] = await mlGetAuth(acct, p); }
+          catch(e) { out[key + '_error'] = e.message; }
+        }
+
+        json(res, 200, out);
+      } catch(e) {
+        json(res, 500, { error: e.message });
+      }
+    })();
+    return;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  FLEX COST — calcular costo de envíos Flex por período
+  //  Tarifas (provistas por el usuario):
+  //    CABA         = 4490
+  //    GBA cercano  = 6490
+  //    GBA lejano   = 8490
+  //  Mapeo CP → zona persistido en flex_zones.json: { "1629": "gba_lejos", ... }
+  // ══════════════════════════════════════════════════════════════════
+  const FLEX_TARIFFS = { caba: 4490, gba_cerca: 6490, gba_lejos: 8490 };
+  const FLEX_ZONES_PATH = path.join(__dirname, 'flex_zones.json');
+
+  function loadFlexZones() {
+    try {
+      if (fs.existsSync(FLEX_ZONES_PATH)) return JSON.parse(fs.readFileSync(FLEX_ZONES_PATH, 'utf8'));
+    } catch(e) {}
+    return {};
+  }
+  function saveFlexZones(map) {
+    fs.writeFileSync(FLEX_ZONES_PATH, JSON.stringify(map, null, 2));
+  }
+  // Auto-clasifica CABA por formato de CP. Devuelve null si no se puede inferir.
+  function autoZoneForCp(cp) {
+    if (!cp) return null;
+    const s = String(cp).trim().toUpperCase();
+    if (/^C\d{4}/.test(s)) return 'caba';
+    // CABA legacy numérico: 1000-1499
+    if (/^\d+$/.test(s)) {
+      const n = parseInt(s, 10);
+      if (n >= 1000 && n <= 1499) return 'caba';
+    }
+    return null;
+  }
+
+  // ── GET /flex-zones — devuelve el mapa CP → zona ──
+  if (pathname === '/flex-zones' && req.method === 'GET') {
+    json(res, 200, { zones: loadFlexZones(), tariffs: FLEX_TARIFFS });
+    return;
+  }
+
+  // ── POST /flex-zones — guarda asignaciones { cp: zone, ... } o una sola { cp, zone } ──
+  if (pathname === '/flex-zones' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const data = body ? JSON.parse(body) : {};
+        const map = loadFlexZones();
+        const validZones = new Set(['caba', 'gba_cerca', 'gba_lejos', 'sin_zona', '']);
+        if (data.cp && data.zone !== undefined) {
+          if (!validZones.has(data.zone)) { json(res, 400, { error: 'zone inválida' }); return; }
+          if (data.zone === '') delete map[String(data.cp)];
+          else map[String(data.cp)] = data.zone;
+        } else if (data.zones && typeof data.zones === 'object') {
+          for (const [cp, z] of Object.entries(data.zones)) {
+            if (!validZones.has(z)) continue;
+            if (z === '') delete map[String(cp)];
+            else map[String(cp)] = z;
+          }
+        } else { json(res, 400, { error: 'body inválido' }); return; }
+        saveFlexZones(map);
+        json(res, 200, { ok: true, count: Object.keys(map).length });
+      } catch(e) { json(res, 500, { error: e.message }); }
+    });
+    return;
+  }
+
+  // ── POST /flex-cost-excel — calcula costo Flex parseando el Excel ML ──
+  // Multipart: file (xlsx) + periodo (1|2|3|"")
+  if (pathname === '/flex-cost-excel' && req.method === 'POST') {
+    const ct = req.headers['content-type'] || '';
+    const bm = ct.match(/boundary=(.+)/);
+    if (!bm) { json(res, 400, { error: 'No boundary' }); return; }
+
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      const body = Buffer.concat(chunks);
+      const parts = parseMultipart(body, bm[1]);
+      const fileData = parts['file'];
+      const periodo = String(parts['periodo'] || '').trim();
+      if (!fileData?.data) { json(res, 400, { error: 'Archivo no recibido' }); return; }
+
+      const tmpIn = path.join(os.tmpdir(), `flex_in_${Date.now()}.xlsx`);
+      fs.writeFileSync(tmpIn, fileData.data);
+
+      const scriptPath = path.join(__dirname, 'flex_cost.py');
+      if (!fs.existsSync(scriptPath)) {
+        try { fs.unlinkSync(tmpIn); } catch(e) {}
+        json(res, 500, { error: 'No se encontró flex_cost.py' });
+        return;
+      }
+
+      const args = [scriptPath, tmpIn, '--zones', FLEX_ZONES_PATH];
+      if (['1','2','3'].includes(periodo)) { args.push('--periodo', periodo); }
+
+      const PYTHON = process.platform === 'win32' ? 'py' : 'python3';
+      const PYTHON_ARGS = process.platform === 'win32' ? ['-3.12'] : [];
+      const py = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
+      let stdout = '', stderr = '';
+      py.stdout.on('data', d => stdout += d);
+      py.stderr.on('data', d => stderr += d);
+      py.on('close', code => {
+        try { fs.unlinkSync(tmpIn); } catch(e) {}
+        if (code !== 0) {
+          json(res, 500, { error: 'Error ejecutando script', detail: stderr.slice(-800) });
+          return;
+        }
+        try {
+          const clean = stdout.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+          const idx = clean.indexOf('FLEX_JSON:');
+          if (idx === -1) {
+            json(res, 500, { error: 'Script no devolvió FLEX_JSON', detail: stdout.slice(-800) });
+            return;
+          }
+          const jsonStr = clean.slice(idx + 'FLEX_JSON:'.length).split('\n')[0].trim();
+          const result = JSON.parse(jsonStr);
+          json(res, 200, result);
+        } catch(e) {
+          json(res, 500, { error: 'Error parseando salida', detail: e.message });
+        }
+      });
+    });
+    return;
+  }
+
+  // ── GET /flex-cost?from=YYYY-MM-DD&to=YYYY-MM-DD&accountId=all|<id> ──
+  // Calcula gasto Flex sumando tarifas según CP de cada envío en el período.
+  if (pathname === '/flex-cost' && req.method === 'GET') {
+    (async () => {
+      try {
+        const fromQ = parsed.query.from;
+        const toQ = parsed.query.to;
+        const acctIdQ = parsed.query.accountId || 'all';
+        if (!fromQ || !toQ) { json(res, 400, { error: 'from/to requeridos (YYYY-MM-DD)' }); return; }
+
+        const fromISO = new Date(fromQ + 'T00:00:00.000-03:00').toISOString();
+        const toISO   = new Date(toQ   + 'T23:59:59.999-03:00').toISOString();
+
+        const allAccounts = fullConfig.accounts || (config.access_token ? [config] : []);
+        const targetAccts = acctIdQ === 'all'
+          ? allAccounts.filter(a => a.access_token && a.user_id)
+          : allAccounts.filter(a => a.id === acctIdQ && a.access_token && a.user_id);
+        if (!targetAccts.length) { json(res, 400, { error: 'sin cuentas válidas' }); return; }
+
+        const zonesMap = loadFlexZones();
+        const breakdown = {}; // cp → { count, sample_address, zone, accounts:Set }
+        const unmapped = {};  // cp → { count, sample_address, accounts:Set }
+        const perAccount = {};
+        let flexShipmentsTotal = 0;
+        let totalCost = 0;
+        const errors = [];
+
+        for (const acct of targetAccts) {
+          perAccount[acct.id] = { label: acct.label || acct.id, count: 0, cost: 0 };
+          // Paginar orders del período
+          const collectedShipIds = new Set();
+          let offset = 0;
+          const LIMIT = 50;
+          const MAX_ORDERS = 1000;
+          while (offset < MAX_ORDERS) {
+            const mlPath = `/orders/search?seller=${acct.user_id}` +
+              `&order.date_created.from=${encodeURIComponent(fromISO)}` +
+              `&order.date_created.to=${encodeURIComponent(toISO)}` +
+              `&sort=date_desc&limit=${LIMIT}&offset=${offset}`;
+            let data;
+            try { data = await mlGetAuth(acct, mlPath); }
+            catch(e) { errors.push({ account: acct.id, stage: 'orders_search', error: e.message }); break; }
+            const results = data.results || [];
+            for (const o of results) {
+              if (o.shipping && o.shipping.id) collectedShipIds.add(o.shipping.id);
+            }
+            if (results.length < LIMIT) break;
+            offset += LIMIT;
+          }
+
+          // Fetch shipments en paralelo (chunks de 8 para no estresar la API)
+          const shipIds = Array.from(collectedShipIds);
+          const CHUNK = 8;
+          for (let i = 0; i < shipIds.length; i += CHUNK) {
+            const chunk = shipIds.slice(i, i + CHUNK);
+            const results = await Promise.all(chunk.map(sid =>
+              mlGetAuth(acct, '/shipments/' + sid).catch(e => ({ _err: e.message, _sid: sid }))
+            ));
+            for (const sh of results) {
+              if (sh._err) { errors.push({ account: acct.id, stage: 'shipment', sid: sh._sid, error: sh._err }); continue; }
+              if (sh.logistic_type !== 'self_service') continue; // sólo Flex
+              // Excluir cancelados/devueltos
+              const status = sh.status;
+              const sub = sh.substatus;
+              if (status === 'cancelled' || sub === 'cancelled' || sub === 'returned' || sub === 'returning_to_sender') continue;
+
+              flexShipmentsTotal++;
+              perAccount[acct.id].count++;
+
+              const recv = sh.receiver_address || {};
+              const cp = String(recv.zip_code || '').trim();
+              const addrSample = [recv.address_line, recv.neighborhood?.name, recv.city?.name, recv.state?.name].filter(Boolean).join(' · ');
+
+              let zone = zonesMap[cp] || autoZoneForCp(cp);
+              if (zone && FLEX_TARIFFS[zone]) {
+                const cost = FLEX_TARIFFS[zone];
+                totalCost += cost;
+                perAccount[acct.id].cost += cost;
+                if (!breakdown[cp]) breakdown[cp] = { count: 0, sample_address: addrSample, zone, accounts: new Set() };
+                breakdown[cp].count++;
+                breakdown[cp].accounts.add(acct.id);
+              } else {
+                if (!unmapped[cp]) unmapped[cp] = { count: 0, sample_address: addrSample, accounts: new Set() };
+                unmapped[cp].count++;
+                unmapped[cp].accounts.add(acct.id);
+              }
+            }
+          }
+        }
+
+        // Serialize Sets
+        const breakdownArr = Object.entries(breakdown).map(([cp, v]) => ({
+          cp, count: v.count, zone: v.zone, tariff: FLEX_TARIFFS[v.zone],
+          subtotal: v.count * FLEX_TARIFFS[v.zone],
+          sample_address: v.sample_address, accounts: Array.from(v.accounts),
+        })).sort((a,b) => b.subtotal - a.subtotal);
+        const unmappedArr = Object.entries(unmapped).map(([cp, v]) => ({
+          cp, count: v.count, sample_address: v.sample_address, accounts: Array.from(v.accounts),
+          auto_suggest: autoZoneForCp(cp),
+        })).sort((a,b) => b.count - a.count);
+
+        json(res, 200, {
+          ok: true, from: fromQ, to: toQ, accountId: acctIdQ,
+          tariffs: FLEX_TARIFFS,
+          flex_shipments: flexShipmentsTotal,
+          mapped_count: breakdownArr.reduce((a,r) => a + r.count, 0),
+          unmapped_count: unmappedArr.reduce((a,r) => a + r.count, 0),
+          total_cost: totalCost,
+          breakdown: breakdownArr,
+          unmapped: unmappedArr,
+          per_account: perAccount,
+          errors: errors.slice(0, 20),
+        });
+      } catch(e) { json(res, 500, { error: e.message }); }
+    })();
+    return;
+  }
+
   // ── /vinculaciones/check-orders POST — revisar ventas recientes y ajustar ──
+  // Body: { dryRun?: boolean }  — si dryRun=true, sólo detecta y devuelve propuestas sin aplicar.
   if (pathname === '/vinculaciones/check-orders' && req.method === 'POST') {
     let body = '';
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
+        let bodyData = {};
+        try { bodyData = body ? JSON.parse(body) : {}; } catch(e) {}
+        const dryRun = !!bodyData.dryRun;
         const fp = path.join(__dirname, 'vinculaciones.json');
         const vinc = fs.existsSync(fp) ? JSON.parse(fs.readFileSync(fp, 'utf8')) : { groups: [] };
-        if (!vinc.groups || !vinc.groups.length) { json(res, 200, { ok: true, msg: 'No hay grupos', synced: 0 }); return; }
+        if (!vinc.groups || !vinc.groups.length) { json(res, 200, { ok: true, msg: 'No hay grupos', synced: 0, dryRun }); return; }
 
         // Build a map: itemId → group for fast lookup
         const itemToGroup = {};
@@ -1737,31 +2128,38 @@ const server = http.createServer((req, res) => {
             if (s.stock > minStock) {
               const acct = allAccounts.find(a => a.id === s.accountId);
               try {
-                if (s.hasVars && s.variations && s.variations.length) {
-                  const oldTotal = s.stock || 1;
-                  const newVars = s.variations.map(v => {
-                    const oldQty = v.available_quantity || 0;
-                    let newQty = oldTotal === 0
-                      ? Math.floor(minStock / s.variations.length)
-                      : Math.round((oldQty / oldTotal) * minStock);
-                    return { id: v.id, available_quantity: Math.max(newQty, 0) };
-                  });
-                  const sum = newVars.reduce((a, v) => a + v.available_quantity, 0);
-                  if (sum !== minStock && newVars.length) {
-                    newVars[0].available_quantity += (minStock - sum);
-                    if (newVars[0].available_quantity < 0) newVars[0].available_quantity = 0;
+                if (!dryRun) {
+                  if (s.hasVars && s.variations && s.variations.length) {
+                    const oldTotal = s.stock || 1;
+                    const newVars = s.variations.map(v => {
+                      const oldQty = v.available_quantity || 0;
+                      let newQty = oldTotal === 0
+                        ? Math.floor(minStock / s.variations.length)
+                        : Math.round((oldQty / oldTotal) * minStock);
+                      return { id: v.id, available_quantity: Math.max(newQty, 0) };
+                    });
+                    const sum = newVars.reduce((a, v) => a + v.available_quantity, 0);
+                    if (sum !== minStock && newVars.length) {
+                      newVars[0].available_quantity += (minStock - sum);
+                      if (newVars[0].available_quantity < 0) newVars[0].available_quantity = 0;
+                    }
+                    await mlPutAuth(acct, '/items/' + s.itemId, { variations: newVars });
+                  } else {
+                    await mlPutAuth(acct, '/items/' + s.itemId, { available_quantity: minStock });
                   }
-                  await mlPutAuth(acct, '/items/' + s.itemId, { variations: newVars });
-                } else {
-                  await mlPutAuth(acct, '/items/' + s.itemId, { available_quantity: minStock });
                 }
-                syncResults.push({ group: g.name, item: s.itemId, from: s.stock, to: minStock });
+                syncResults.push({
+                  group: g.name, groupId: g.id,
+                  accountId: s.accountId, acctLabel: s.acctLabel || s.accountId,
+                  item: s.itemId, title: s.title || '', thumb: s.thumb || '',
+                  from: s.stock, to: minStock, hasVars: !!s.hasVars,
+                });
               } catch(e) { /* skip */ }
             }
           }
         }
 
-        json(res, 200, { ok: true, groupsChecked: groupsToSync.size, synced: syncResults.length, details: syncResults });
+        json(res, 200, { ok: true, dryRun, groupsChecked: groupsToSync.size, synced: syncResults.length, details: syncResults });
       } catch(e) { json(res, 500, { error: e.message }); }
     });
     return;
@@ -1825,6 +2223,7 @@ setTimeout(() => {
 
 // Timer periódico
 setInterval(proactiveRefresh, TOKEN_REFRESH_INTERVAL);
+
 
 server.listen(PORT, BIND, () => {
   const acct = config.label || config.id || '—';
