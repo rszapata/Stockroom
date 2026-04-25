@@ -2,6 +2,30 @@
 
 Plataforma web self-hosted para gestionar inventario, ventas y cobros en múltiples cuentas de MercadoLibre Argentina desde una sola interfaz.
 
+## Capturas
+
+### Dashboard
+![Dashboard](assets/Dashboard.png)
+
+### Stock & Analytics
+![Stock & Analytics](assets/Stock___Analytics.jpeg)
+
+### Vinculaciones
+![Vinculaciones](assets/Vinculaciones.png)
+
+### Publicaciones
+![Publicaciones](assets/Publicaciones.png)
+
+### Migración
+![Migración](assets/Migracion.jpeg)
+
+### Cobros
+![Cobros - Generador](assets/Cobros-1.jpeg)
+![Cobros - Costo Flex](assets/Cobros-2.png)
+![Cobros - Resumen](assets/Cobros-3.png)
+
+---
+
 ## ¿Qué resuelve?
 
 MercadoLibre no ofrece panel multi-cuenta ni herramientas para sincronizar stock entre publicaciones idénticas en distintas cuentas. Este proyecto reemplaza el flujo manual (Excel + panel ML por separado) con una app local que centraliza todo.
@@ -21,7 +45,7 @@ MercadoLibre no ofrece panel multi-cuenta ni herramientas para sincronizar stock
 
 - **Backend**: Node.js puro (sin frameworks) — servidor HTTP proxy con whitelist anti-SSRF
 - **Frontend**: HTML5 + Tailwind CSS + Vanilla JS — diseño dark mode, PWA instalable
-- **Scripts**: Python 3.12 + openpyxl — procesamiento de Excel de ventas ML
+- **Scripts**: Python 3.12 + openpyxl + pandas — procesamiento de Excel de ventas ML
 - **Auth**: OAuth 2.0 multi-cuenta con refresh automático de tokens
 
 ## Instalación
@@ -98,4 +122,12 @@ genera_cobro.py        Script procesamiento Excel ML (cobros)
 genera_orden_compra.py Script generador de órdenes de compra
 flex_cost.py           Script cálculo costo Flex por Excel ML
 sw.js                  Service Worker (PWA)
+assets/                Capturas de pantalla
 ```
+
+---
+
+## Autor
+
+**Rodrigo Nicolás Zapata**  
+[LinkedIn](https://linkedin.com/in/rnzapata) · [GitHub](https://github.com/rnzapata)
