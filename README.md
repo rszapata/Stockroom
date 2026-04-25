@@ -8,7 +8,7 @@ Plataforma web self-hosted para gestionar inventario, ventas y cobros en múltip
 ![Dashboard](assets/Dashboard.png)
 
 ### Stock & Analytics
-![Stock & Analytics](assets/Stock___Analytics.jpeg)
+![Stock & Analytics](assets/Stock%20&%20Analytics.jpeg)
 
 ### Vinculaciones
 ![Vinculaciones](assets/Vinculaciones.png)
