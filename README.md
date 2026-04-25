@@ -130,4 +130,4 @@ assets/                Capturas de pantalla
 ## Autor
 
 **Rodrigo Nicolás Zapata**  
-[LinkedIn](https://linkedin.com/in/rnzapata) · [GitHub](https://github.com/rnzapata)
+[LinkedIn](https://linkedin.com/in/rnzapata) · [GitHub](https://github.com/rszapata)
