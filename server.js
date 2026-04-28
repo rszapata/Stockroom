@@ -2165,6 +2165,164 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ══════════════════════════════════════════════════════════════
+  //  MULTI-CUENTA: despachos + etiquetas de TODAS las cuentas
+  // ══════════════════════════════════════════════════════════════
+
+  // ── Helper: fetch etiquetas con token de cuenta específica ────
+  function fetchMLLabelsAuth(acct, shipmentIds, responseType) {
+    return new Promise((resolve, reject) => {
+      const ids = shipmentIds.join(',');
+      const labelsPath = `/shipment_labels?shipment_ids=${ids}&response_type=${responseType || 'pdf'}`;
+      const opts = {
+        hostname: ML_BASE, path: labelsPath, method: 'GET',
+        headers: { 'Authorization': `Bearer ${acct.access_token}`, 'User-Agent': 'Stockroom/1.0' }
+      };
+      const req = https.request(opts, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          const buf = Buffer.concat(chunks);
+          if (res.statusCode !== 200)
+            return reject(new Error(`ML labels HTTP ${res.statusCode}: ${buf.toString().slice(0, 400)}`));
+          resolve(buf);
+        });
+      });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  // ── Helper compartido: obtener despachos pendientes de una cuenta ──
+  async function getDespachosPendientes(acct) {
+    // Refrescar token si es necesario
+    try { await refreshAccountToken(acct); } catch(e) { /* continúa con token actual */ }
+
+    const DISPATCHED = new Set(['picked_up','dropped_off','in_hub','in_packing_list',
+      'shipped','delivered','not_delivered','cancelled','returning_to_sender','returned','forwarded_to_third']);
+
+    const mlPath = `/orders/search?seller=${acct.user_id}&shipping.status=ready_to_ship&order.status=paid&sort=date_desc&limit=50`;
+    const data = await mlGetAuth(acct, mlPath);
+    const rawOrders = data.results || [];
+
+    // Verificar estado real del shipment en paralelo
+    const shipmentStatus = {};
+    await Promise.all(rawOrders.map(async o => {
+      const sid = o.shipping?.id;
+      if (!sid) return;
+      try {
+        const sh = await mlGetAuth(acct, '/shipments/' + sid);
+        shipmentStatus[sid] = { status: sh.status, substatus: sh.substatus, logistic_type: sh.logistic_type };
+      } catch(e) {}
+    }));
+
+    const validOrders = rawOrders.filter(o => {
+      const sid = o.shipping?.id;
+      const sh = sid ? shipmentStatus[sid] : null;
+      const status = sh?.status ?? o.shipping?.status;
+      const substatus = sh?.substatus ?? o.shipping?.substatus;
+      if (status !== 'ready_to_ship') return false;
+      if (substatus && DISPATCHED.has(substatus)) return false;
+      return true;
+    });
+
+    // Fetch fotos de items
+    const itemIds = new Set();
+    for (const o of validOrders) for (const i of (o.order_items || [])) if (i.item?.id) itemIds.add(i.item.id);
+    const itemCache = {};
+    await Promise.all([...itemIds].map(async id => {
+      try { itemCache[id] = await mlGetAuth(acct, '/items/' + id); } catch(e) {}
+    }));
+
+    const orders = validOrders.map(o => {
+      const sid = o.shipping?.id;
+      const sh = sid ? shipmentStatus[sid] : null;
+      const isFlex = sh ? (sh.logistic_type === 'self_service') : false;
+      return {
+        id: o.id,
+        date_created: o.date_created,
+        buyer: o.buyer?.nickname || o.buyer?.id || '—',
+        shipping_id: sid || null,
+        shipping_status: sh?.status ?? o.shipping?.status ?? null,
+        shipping_substatus: sh?.substatus ?? o.shipping?.substatus ?? null,
+        is_flex: isFlex,
+        items: (o.order_items || []).map(i => {
+          const itemId = i.item?.id;
+          const varId  = i.item?.variation_id;
+          let picture  = null;
+          if (itemId && itemCache[itemId]) {
+            const full = itemCache[itemId];
+            const pics = full.pictures || [];
+            if (varId && full.variations) {
+              const variation = full.variations.find(v => v.id === varId);
+              if (variation?.picture_ids?.length) {
+                const pic = pics.find(p => p.id === variation.picture_ids[0]);
+                if (pic) picture = pic.secure_url || pic.url;
+              }
+            }
+            if (!picture && pics.length) picture = pics[0].secure_url || pics[0].url;
+            if (!picture) picture = full.thumbnail;
+          }
+          return { title: i.item?.title || '—', quantity: i.quantity,
+            variation_attributes: i.item?.variation_attributes || [], picture };
+        }),
+      };
+    });
+    return { orders, filtered: rawOrders.length - validOrders.length };
+  }
+
+  // ── GET /despachos-hoy-all → despachos de TODAS las cuentas ──
+  if (pathname === '/despachos-hoy-all' && req.method === 'GET') {
+    (async () => {
+      try {
+        const allAccounts = (fullConfig.accounts || []).filter(a => a.access_token && a.user_id);
+        if (!allAccounts.length) { json(res, 400, { error: 'Sin cuentas configuradas' }); return; }
+
+        const results = await Promise.all(allAccounts.map(async acct => {
+          try {
+            const { orders, filtered } = await getDespachosPendientes(acct);
+            return { accountId: acct.id, label: acct.label || acct.id, ok: true, orders, filtered };
+          } catch(e) {
+            return { accountId: acct.id, label: acct.label || acct.id, ok: false, error: e.message, orders: [], filtered: 0 };
+          }
+        }));
+
+        const totalOrders = results.reduce((s, r) => s + r.orders.length, 0);
+        const totalUnits  = results.reduce((s, r) => s + r.orders.reduce((a, o) => a + o.items.reduce((b, i) => b + (i.quantity||0), 0), 0), 0);
+        json(res, 200, { ok: true, accounts: results, totalOrders, totalUnits });
+      } catch(e) { json(res, 500, { error: e.message }); }
+    })();
+    return;
+  }
+
+  // ── GET /flex-pdf-all?responseType=pdf|zpl2 → etiquetas Flex de todas las cuentas ──
+  if (pathname === '/flex-pdf-all' && req.method === 'GET') {
+    (async () => {
+      try {
+        const responseType = parsed.query.responseType || 'pdf';
+        const allAccounts  = (fullConfig.accounts || []).filter(a => a.access_token && a.user_id);
+        if (!allAccounts.length) { json(res, 400, { error: 'Sin cuentas configuradas' }); return; }
+
+        const results = await Promise.all(allAccounts.map(async acct => {
+          try {
+            await refreshAccountToken(acct);
+            const { orders } = await getDespachosPendientes(acct);
+            const flexShipIds = orders.filter(o => o.is_flex && o.shipping_id).map(o => o.shipping_id);
+            if (!flexShipIds.length) return { accountId: acct.id, label: acct.label || acct.id, ok: true, count: 0, data_b64: null };
+            const buf = await fetchMLLabelsAuth(acct, flexShipIds, responseType);
+            return { accountId: acct.id, label: acct.label || acct.id, ok: true, count: flexShipIds.length, data_b64: buf.toString('base64') };
+          } catch(e) {
+            return { accountId: acct.id, label: acct.label || acct.id, ok: false, count: 0, error: e.message, data_b64: null };
+          }
+        }));
+
+        const total = results.reduce((s, r) => s + r.count, 0);
+        json(res, 200, { ok: true, responseType, total, accounts: results });
+      } catch(e) { json(res, 500, { error: e.message }); }
+    })();
+    return;
+  }
+
   // ── Archivos estáticos ──────────────────────────────────────
   let filePath = pathname === '/' ? '/index.html' : pathname;
 
