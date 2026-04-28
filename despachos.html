@@ -53,7 +53,7 @@ html,body,input,select,textarea,button{accent-color:#FFE600;color-scheme:dark}
 .btn:hover{border-color:var(--b2);color:var(--tx)}
 .btn:disabled{opacity:.45;cursor:default}
 .btn-primary{background:var(--ye);color:#0c0c0e;border-color:var(--ye);font-weight:700}
-.btn-primary:hover{background:#d4eb3a;border-color:#d4eb3a}
+.btn-primary:hover{background:#f5dc00;border-color:#f5dc00;color:#0c0c0e}
 .btn-ghost{background:transparent;border-color:var(--b1);color:var(--t2)}
 .btn-zpl{background:#6366f1;border-color:#6366f1;color:#fff;font-weight:700}
 .btn-zpl:hover{background:#4f46e5;border-color:#4f46e5}
@@ -157,7 +157,7 @@ html,body,input,select,textarea,button{accent-color:#FFE600;color-scheme:dark}
           ↓ PDF Flex · todas
         </button>
         <button onclick="generar('zpl2')" class="btn btn-zpl" id="btn-zpl" disabled>
-          🖨 ZPL · todas
+          🖨 Etiquetas · todas
         </button>
       </div>
     </div>
@@ -265,7 +265,7 @@ function renderData(d) {
               ↓ PDF Flex (${acctFlexCount})
             </button>
             <button class="btn btn-zpl" onclick="generarCuenta('${esc(acct.accountId)}','zpl2')" style="height:30px;padding:0 12px;font-size:9px">
-              🖨 ZPL (${acctFlexCount})
+              🖨 Etiquetas (${acctFlexCount})
             </button>
           ` : ''}
         </div>
@@ -340,7 +340,7 @@ async function generar(responseType) {
   const btnId = isPdf ? 'btn-pdf' : 'btn-zpl';
   $('btn-pdf').disabled = true;
   $('btn-zpl').disabled = true;
-  setStatus(`Generando ${isPdf ? 'PDF' : 'ZPL'} de todas las cuentas…`, true);
+  setStatus(`Generando ${isPdf ? 'PDF' : 'etiquetas'} de todas las cuentas…`, true);
   try {
     const r = await fetch(`/flex-pdf-all?responseType=${responseType}`);
     const d = await r.json();
@@ -350,8 +350,8 @@ async function generar(responseType) {
     let ok = 0, failed = 0;
     for (const acct of d.accounts) {
       if (!acct.data_b64) { if (acct.error) failed++; continue; }
-      descargarB64(acct.data_b64, isPdf ? 'application/pdf' : 'text/plain',
-        `flex_${isPdf ? 'etiquetas' : 'zpl'}_${acct.accountId}_${new Date().toISOString().slice(0,10)}.${isPdf ? 'pdf' : 'zpl'}`);
+      descargarB64(acct.data_b64, isPdf ? 'application/pdf' : 'application/zip',
+        `flex_etiquetas_${acct.accountId}_${new Date().toISOString().slice(0,10)}.${isPdf ? 'pdf' : 'zip'}`);
       ok++;
     }
     const errs = d.accounts.filter(a => a.error).map(a => `${a.label}: ${a.error}`).join(' · ');
@@ -369,16 +369,16 @@ async function generar(responseType) {
 
 async function generarCuenta(accountId, responseType) {
   const isPdf = responseType === 'pdf';
-  setStatus(`Generando ${isPdf ? 'PDF' : 'ZPL'} para ${accountId}…`, true);
+  setStatus(`Generando ${isPdf ? 'PDF' : 'etiquetas'} para ${accountId}…`, true);
   try {
     const r = await fetch(`/flex-pdf-all?responseType=${responseType}`);
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Error');
     const acct = d.accounts.find(a => a.accountId === accountId);
     if (!acct?.data_b64) { setStatus(acct?.error ? `❌ ${acct.error}` : 'Sin envíos Flex para esta cuenta.'); return; }
-    descargarB64(acct.data_b64, isPdf ? 'application/pdf' : 'text/plain',
-      `flex_${isPdf ? 'etiquetas' : 'zpl'}_${accountId}_${new Date().toISOString().slice(0,10)}.${isPdf ? 'pdf' : 'zpl'}`);
-    setStatus(`✓ ${isPdf ? 'PDF' : 'ZPL'} de ${accountId} descargado (${acct.count} Flex)`);
+    descargarB64(acct.data_b64, isPdf ? 'application/pdf' : 'application/zip',
+      `flex_etiquetas_${accountId}_${new Date().toISOString().slice(0,10)}.${isPdf ? 'pdf' : 'zip'}`);
+    setStatus(`✓ ${isPdf ? 'PDF' : 'Etiquetas'} de ${accountId} descargado (${acct.count} Flex)`);
   } catch(e) {
     setStatus('❌ Error: ' + e.message);
   }
