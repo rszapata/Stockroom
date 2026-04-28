@@ -221,7 +221,7 @@
     { id: 'vinculaciones', href: '/vinculaciones.html', label: 'Vinculaciones',  icon: '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>' },
     { id: 'migracion',     href: '/migracion.html',    label: 'Migración',      icon: '<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>' },
     { id: 'cobros',        href: '/cobros.html',       label: 'Cobros',         icon: '<path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/>' },
-    { id: 'despachos',     href: '/despachos.html',    label: 'Despachos',      icon: '<path d="M5 12H3l9-9 9 9h-2"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/><path d="M9 21v-6h6v6"/>' },
+    { id: 'despachos',     href: '/despachos.html',    label: 'Despachos',      icon: '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>' },
     { id: 'preguntas',     href: '/preguntas.html',    label: 'Preguntas',      icon: '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>' },
   ];
 
