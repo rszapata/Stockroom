@@ -31,6 +31,8 @@ const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emai
 const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset } = require('./lib/json-store');
 const { tgRequest } = require('./lib/telegram');
+const { stripeApiCall } = require('./lib/stripe');
+const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 
 // ── Log de auditoría admin ─────────────────────────────────────
@@ -440,75 +442,11 @@ function getMpToken() {
  * (opt-in: la validación se activa al configurar el secret en config.json,
  * se obtiene en MP Panel → Tu aplicación → Webhooks → Clave secreta).
  */
-function mpVerifyWebhookSignature(req, dataId) {
-  const secret = config.mp_webhook_secret || null;
-  if (!secret) return true; // sin secret → no validar (compatibilidad)
-
-  const sig = req.headers['x-signature'] || '';
-  const requestId = req.headers['x-request-id'] || '';
-  const parts = Object.fromEntries(
-    sig.split(',').map(p => p.trim().split('=').map(s => s.trim())).filter(p => p.length === 2)
-  );
-  const ts = parts.ts, v1 = parts.v1;
-  if (!ts || !v1) return false;
-
-  // Rechazar timestamps de más de 5 min (anti-replay)
-  const age = Math.abs(Date.now() - parseInt(ts, 10));
-  if (isNaN(age) || age > 5 * 60 * 1000) return false;
-
-  let manifest = '';
-  if (dataId)    manifest += `id:${String(dataId).toLowerCase()};`;
-  if (requestId) manifest += `request-id:${requestId};`;
-  manifest += `ts:${ts};`;
-
-  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(v1, 'hex'));
-  } catch { return false; }
-}
-
 // ── Stripe helpers ────────────────────────────────────────────
 function getStripeConfig() {
   return fullConfig.stripe || {};
 }
-function stripeApiCall(secretKey, method, path, params) {
-  return new Promise((resolve, reject) => {
-    const payload = params
-      ? Object.entries(params)
-          .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v)))
-          .join('&')
-      : '';
-    const reqOptions = {
-      hostname: 'api.stripe.com',
-      path: '/v1' + path,
-      method,
-      headers: {
-        'Authorization': 'Bearer ' + secretKey,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    };
-    if (payload) reqOptions.headers['Content-Length'] = Buffer.byteLength(payload);
-    const req = https.request(reqOptions, res2 => {
-      let b = '';
-      res2.on('data', c => b += c);
-      res2.on('end', () => {
-        try {
-          const json = JSON.parse(b);
-          if (json.error) {
-            const err = new Error(json.error.message || 'Stripe error');
-            err.stripeError = json.error;
-            err.status = res2.statusCode;
-            return reject(err);
-          }
-          resolve(json);
-        } catch(e) { reject(e); }
-      });
-    });
-    req.on('error', reject);
-    if (payload) req.write(payload);
-    req.end();
-  });
-}
+
 // ── Guardar cupón de fidelidad en DB para que sea válido ──────────
 async function guardarCuponFidelidad(ordenId) {
   const codigo = generarCuponFidelidad(ordenId);
@@ -3421,7 +3359,7 @@ const server = http.createServer((req, res) => {
           // Verificar firma x-signature (si hay secret configurado).
           // El manifest de MP usa el query param data.id (formato nuevo).
           const dataIdParam = url.searchParams.get('data.id') || paymentId;
-          if (!mpVerifyWebhookSignature(req, dataIdParam)) {
+          if (!mpVerifyWebhookSignature(req, dataIdParam, config.mp_webhook_secret || null)) {
             console.warn(`[webhook/mp] ✗ Firma inválida — notificación descartada (payment ${paymentId})`);
             return;
           }
