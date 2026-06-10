@@ -29,7 +29,7 @@ const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
 const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion } = require('./lib/email-templates');
 const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
-const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset } = require('./lib/json-store');
+const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping } = require('./lib/json-store');
 const { tgRequest } = require('./lib/telegram');
 const { stripeApiCall } = require('./lib/stripe');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
@@ -55,7 +55,6 @@ const CONFIG_PATH  = path.join(__dirname, 'config.json');
 const TIENDA_DIR   = path.resolve(__dirname, '..', 'tienda');
 const ORDENES_PATH          = path.join(__dirname, 'ordenes.json');
 const TIENDA_USERS_PATH     = path.join(__dirname, 'tienda-users.json');
-const ALIBABA_MAPPING_PATH  = path.join(__dirname, 'alibaba-mapping.json');
 
 // ── .env loader (sin dependencias externas) ───────────────────
 // Lee pares KEY=VALUE ignorando comentarios y líneas vacías.
@@ -157,15 +156,6 @@ async function refreshAccessToken() {
 function getOrdenesJSON() {
   try { return JSON.parse(fs.readFileSync(ORDENES_PATH, 'utf8')); }
   catch { return []; }
-}
-
-// ─── ALIBABA: helpers ────────────────────────────────────────────────────────
-function loadAlibabaMapping() {
-  try { return JSON.parse(fs.readFileSync(ALIBABA_MAPPING_PATH, 'utf8')); }
-  catch { return { mappings: [] }; }
-}
-function saveAlibabaMapping(data) {
-  fs.writeFileSync(ALIBABA_MAPPING_PATH, JSON.stringify(data, null, 2));
 }
 
 // Parsea el texto extraído de un PDF de Alibaba.
