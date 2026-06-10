@@ -29,6 +29,7 @@ const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
 const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion } = require('./lib/email-templates');
 const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
+const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset } = require('./lib/json-store');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 
 // ── Log de auditoría admin ─────────────────────────────────────
@@ -7418,35 +7419,6 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(resolved).pipe(res);
 });
 
-// ── Vinculaciones: ajustes pendientes (persistencia) ─────────
-const PENDING_PATH = path.join(__dirname, 'vinculaciones-pending.json');
-
-function loadPendingAdjustments() {
-  try {
-    if (fs.existsSync(PENDING_PATH)) return JSON.parse(fs.readFileSync(PENDING_PATH, 'utf8'));
-  } catch(e) {}
-  return [];
-}
-function savePendingAdjustments(list) {
-  try { fs.writeFileSync(PENDING_PATH, JSON.stringify(list, null, 2)); } catch(e) {}
-}
-
-// ── Vinculaciones: log de cambios (persistencia) ──────────────
-const VINC_LOG_PATH = path.join(__dirname, 'vinculaciones-log.json');
-
-function loadVincLog() {
-  try { if (fs.existsSync(VINC_LOG_PATH)) return JSON.parse(fs.readFileSync(VINC_LOG_PATH, 'utf8')); } catch(e) {}
-  return [];
-}
-function appendVincLog(entry) {
-  try {
-    const log = loadVincLog();
-    log.unshift({ id: 'log_' + Date.now(), ts: new Date().toISOString(), ...entry });
-    if (log.length > 300) log.splice(300);
-    fs.writeFileSync(VINC_LOG_PATH, JSON.stringify(log, null, 2));
-  } catch(e) { console.log('[vinc-log] Error al guardar:', e.message); }
-}
-
 let lastVincCheck = null;
 
 // ══════════════════════════════════════════════════════════════
@@ -7871,15 +7843,6 @@ async function sendVentaTiendaNotification(orden) {
 // Guard: previene que dos /check corran en paralelo (ahora que el polling dispatchea sin await)
 let _tgCheckInFlight = false;
 
-// ── Persistencia de preguntas ya notificadas ──────────────────
-const NOTIFIED_Q_PATH = path.join(__dirname, 'telegram-notified-questions.json');
-function loadNotifiedQuestions() {
-  try { if (fs.existsSync(NOTIFIED_Q_PATH)) return JSON.parse(fs.readFileSync(NOTIFIED_Q_PATH, 'utf8')); } catch(e) {}
-  return {};
-}
-function saveNotifiedQuestions(obj) {
-  try { fs.writeFileSync(NOTIFIED_Q_PATH, JSON.stringify(obj)); } catch(e) {}
-}
 
 // ── Check periódico de preguntas nuevas ───────────────────────
 async function checkNewQuestions() {
@@ -8026,16 +7989,6 @@ async function handleTgMessage(msg) {
 // si el proceso muere antes de confirmar el offset a Telegram (vía la próxima
 // llamada a getUpdates con offset > update_id), al rearrancar reprocesará el
 // mismo mensaje → ejecutaría /restart de nuevo → ciclo infinito.
-const TG_OFFSET_PATH = path.join(__dirname, '.tg-offset');
-function loadTgOffset() {
-  try {
-    const v = parseInt(fs.readFileSync(TG_OFFSET_PATH, 'utf8').trim(), 10);
-    return Number.isFinite(v) && v > 0 ? v : 0;
-  } catch { return 0; }
-}
-function saveTgOffset(offset) {
-  try { fs.writeFileSync(TG_OFFSET_PATH, String(offset)); } catch {}
-}
 
 let _tgOffset = loadTgOffset();
 let _tgPolling = false;
