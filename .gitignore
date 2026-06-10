@@ -11,9 +11,27 @@ auth*.json
 .env.*
 
 # ── Datos personales / operativos ─────────────────────────────
-# Contienen IDs de artículos, cuentas, CPs y direcciones reales
+# Contienen IDs de artículos, cuentas, CPs, direcciones, pedidos y clientes reales
 flex_zones.json
 vinculaciones.json
+vinculaciones-log.json
+vinculaciones-pending.json
+ordenes.json
+sessions.json
+rate_limits.json
+alibaba-mapping.json
+tienda-cupones.json
+tienda-users.json
+telegram-notified-questions.json
+config.json.bak
+audit.log
+
+# ── Estado generado / runtime (no es código) ──────────────────
+uploads/
+cache/
+backups/
+pdf-resumenes/
+.tg-offset
 
 # ── Archivos temporales y de trabajo ──────────────────────────
 *.log
