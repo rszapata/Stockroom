@@ -15,7 +15,7 @@ const zlib     = require('zlib');
 const { spawn } = require('child_process');
 const db       = require('./db/queries');
 const { migrateProductsFromCache } = require('./db/migrate-products-fn');
-const { writeJsonAtomic, detectImageExt, detectVideoExt, parseMultipart } = require('./lib/files');
+const { writeJsonAtomic, detectImageExt, detectVideoExt, parseMultipart, MIME } = require('./lib/files');
 const { cors, securityHeaders, getFileType, checkCSRF, ALLOWED_PROXY_PATTERNS, isProxyPathAllowed, json } = require('./lib/http');
 const { commonPrefix } = require('./lib/strings');
 const { parsePdfRows, parseReceiptRows, parseContractRows } = require('./lib/pdf-parsers');
@@ -245,27 +245,6 @@ async function refreshAccessToken() {
     req.end();
   });
 }
-
-// ── MIME types ────────────────────────────────────────────────
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js':   'application/javascript',
-  '.css':  'text/css',
-  '.json': 'application/json',
-  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  '.png':  'image/png',
-  '.jpg':  'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.gif':  'image/gif',
-  '.svg':  'image/svg+xml',
-  '.ico':  'image/x-icon',
-  '.webmanifest': 'application/manifest+json',
-  '.mp4':  'video/mp4',
-  '.webm': 'video/webm',
-  '.mov':  'video/quicktime',
-  '.m4v':  'video/x-m4v',
-};
 
 // ── Persistencia de órdenes — PostgreSQL (migración completa) ─
 // Las funciones JSON se mantienen solo como lectura de emergencia.
