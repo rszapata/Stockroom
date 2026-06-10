@@ -35,55 +35,12 @@ const { stripeApiCall } = require('./lib/stripe');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
 const { HTTP_TIMEOUT_MS, applyHttpTimeout, httpsRequestJson } = require('./lib/http-client');
 const { mlOauthToken, mlGet, mlPut, mlPost } = require('./lib/ml-api');
+const { auditLog } = require('./lib/audit-log');
+const { sendEmail: sendEmailWith } = require('./lib/email-sender');
 const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef } = require('./lib/mercadopago');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 
-// ── Log de auditoría admin ─────────────────────────────────────
-// Registra cambios críticos del panel (precio, stock, alta/baja de
-// productos, cupones) en un archivo append-only: quién (IP), qué y cuándo.
-const AUDIT_LOG_FILE = path.join(__dirname, 'audit.log');
-function auditLog(req, action, target, details) {
-  try {
-    const entry = { ts: new Date().toISOString(), ip: getClientIP(req) || 'unknown', action, target, details };
-    fs.appendFileSync(AUDIT_LOG_FILE, JSON.stringify(entry) + '\n');
-  } catch {}
-}
-
-// ── Caché DNS en proceso ──────────────────────────────────────
-// Node NO cachea DNS: cada request HTTP re-resuelve el hostname contra el
-// DNS del ISP. Bajo ráfagas (el check de vinculaciones hace ~34 lookups en
-// paralelo) el resolver del ISP tiene hipos y devuelve EAI_AGAIN → timeouts.
-// Esta caché resuelve una vez por hostname (TTL 5 min) y, si el DNS falla,
-// reutiliza la última IP buena conocida. Parchea dns.lookup global, así todas
-// las llamadas (ML, MP, Telegram, Correo) se benefician sin tocar cada sitio.
-const dns = require('dns');
-const _dnsOrigLookup = dns.lookup.bind(dns);
-const _dnsCache = new Map(); // key: `host|family|all` -> { result:[args], expiry }
-const DNS_TTL_MS = 5 * 60 * 1000;
-dns.lookup = function patchedLookup(hostname, options, callback) {
-  if (typeof options === 'function') { callback = options; options = {}; }
-  options = options || (typeof options === 'number' ? { family: options } : {});
-  const family = (typeof options === 'object' ? options.family : options) || 0;
-  const all = !!(options && options.all);
-  const key = `${hostname}|${family}|${all ? 1 : 0}`;
-  const hit = _dnsCache.get(key);
-  if (hit && Date.now() < hit.expiry) {
-    return process.nextTick(() => callback(null, ...hit.result));
-  }
-  return _dnsOrigLookup(hostname, options, (err, ...args) => {
-    if (!err && args[0]) {
-      _dnsCache.set(key, { result: args, expiry: Date.now() + DNS_TTL_MS });
-      return callback(null, ...args);
-    }
-    // Resolución falló (EAI_AGAIN, etc.): usar la última IP buena si existe,
-    // aunque haya expirado — mucho mejor que tirar la request.
-    if (err && hit) {
-      console.warn(`[dns] ${hostname} falló (${err.code || err.message}); usando IP cacheada`);
-      return callback(null, ...hit.result);
-    }
-    return callback(err, ...args);
-  });
-};
+require('./lib/dns-cache');
 
 const PORT    = parseInt(process.env.PORT) || 3000;
 // Bind to 127.0.0.1 by default — only the local machine (and cloudflared) can reach it.
@@ -282,84 +239,8 @@ setInterval(() => {
 // Resend: https://resend.com — free 3000 emails/mes, sin NPM
 // Brevo:  https://brevo.com  — free 300 emails/día
 //
-function sendEmail({ to, subject, html, replyTo }) {
-  return new Promise((resolve) => {
-    const emailCfg = fullConfig.email;
-
-    // ── Opción Gmail (Nodemailer) ─────────────────────────────
-    if (emailCfg?.provider === 'gmail' || (emailCfg?.gmail_user && emailCfg?.gmail_pass)) {
-      const nodemailer = require('nodemailer');
-      const transport  = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: emailCfg.gmail_user, pass: emailCfg.gmail_pass },
-      });
-      transport.sendMail({
-        from:    `"WZMALLAS" <${emailCfg.gmail_user}>`,
-        to:      Array.isArray(to) ? to.join(',') : to,
-        subject,
-        html,
-        ...(replyTo ? { replyTo } : {}),
-      }).then(() => resolve({ ok: true }))
-        .catch(e => { console.warn('[email] Gmail error:', e.message); resolve({ error: e.message }); });
-      return;
-    }
-
-    if (!emailCfg?.api_key || !emailCfg?.from) {
-      // Sin config de email → skip silencioso (no interrumpe el flujo)
-      return resolve({ skipped: true });
-    }
-
-    const provider = emailCfg.provider || 'resend';
-    let hostname, apiPath;
-
-    if (provider === 'brevo') {
-      hostname = 'api.brevo.com';
-      apiPath  = '/v3/smtp/email';
-    } else {
-      // resend (default)
-      hostname = 'api.resend.com';
-      apiPath  = '/emails';
-    }
-
-    const payload = JSON.stringify({
-      from:     emailCfg.from,
-      to:       Array.isArray(to) ? to : [to],
-      subject,
-      html,
-      ...(replyTo ? { reply_to: replyTo } : {}),
-    });
-
-    const options = {
-      hostname,
-      port: 443,
-      path: apiPath,
-      method: 'POST',
-      headers: {
-        'Content-Type':   'application/json',
-        'Content-Length': Buffer.byteLength(payload),
-        'Authorization':  `Bearer ${emailCfg.api_key}`,
-      },
-    };
-
-    const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', c => body += c);
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve({ ok: true });
-        } else {
-          console.warn(`[email] ${provider} error ${res.statusCode}:`, body.slice(0, 200));
-          resolve({ error: body });
-        }
-      });
-    });
-    req.on('error', e => {
-      console.warn('[email] request error:', e.message);
-      resolve({ error: e.message });
-    });
-    req.write(payload);
-    req.end();
-  });
+function sendEmail(opts) {
+  return sendEmailWith(fullConfig.email, opts);
 }
 
 
