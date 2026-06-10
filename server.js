@@ -1,4 +1,4 @@
-// ══════════════════════════════════════════════════════════════
+﻿// ══════════════════════════════════════════════════════════════
 //  STOCKROOM — Servidor proxy + Analytics
 //  
 //  Uso: node server.js
@@ -23,6 +23,8 @@ const { extractVariantName, mergeFamilyGroup, consolidateItems } = require('./li
 const { formatDeliveryEstimate, friendlyShippingName } = require('./lib/shipping');
 const { readBody, readBodyWithLimit } = require('./lib/http-body');
 const { isSecureConnection, cookieSecure, hashPassword, makeSid, timingSafeEqStr, parseCookies, getClientIP } = require('./lib/auth-utils');
+const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item');
+const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs } = require('./lib/productos-propios');
 
 // ── Log de auditoría admin ─────────────────────────────────────
 // Registra cambios críticos del panel (precio, stock, alta/baja de
@@ -1812,97 +1814,6 @@ function invalidateProductCache() {
 }
 
 // Helpers para leer campos nativos de ML (usados en varios endpoints de tienda)
-function mlStock(item) {
-  if (item.variations && item.variations.length)
-    return item.variations.reduce((s, v) => s + (v.available_quantity || 0), 0);
-  return item.available_quantity || 0;
-}
-function mlCat(item) {
-  // Productos propios (no-ML) llevan su propia categoría fija, elegida
-  // por el admin al cargarlos — no tiene sentido inferirla del título.
-  if (item.wz_categoria_fija) return item.wz_categoria_fija;
-  const t = (item.title || '').toLowerCase();
-  const has = (...words) => words.some(w => t.includes(w));
-
-  // ── Detectar dispositivo ─────────────────────────────────────
-  const isAppleWatch = has('apple watch', 'iwatch');
-
-  const isSamsungWatch = !isAppleWatch && (
-    has('samsung', 'galaxy watch', 'gear s', 'gear classic', 'gear sport') ||
-    has('watch 3', 'watch 4', 'watch 5', 'watch 6', 'watch 7', 'watch 8') ||
-    has('smr810', 'smr860', 'r810', 'r860') ||
-    (has('watch ultra') && !has('apple'))
-  );
-
-  const isOtrasWatch = has(
-    'xiaomi', 'amazfit', 'huawei', 'garmin',
-    'redmi watch', 'redmi 3', 'redmi 4', 'redmi 5 active',
-    'amazfit bip', 'amazfit gtr', 'vivoactive', 'fenix'
-  );
-
-  const isSamsungPhone = has('s25', 's26', 's24', 's23', 's22', 's21', 's20',
-    'a55', 'a54', 'a35', 'note 20', 'note 10') ||
-    (has('samsung s') && !isSamsungWatch) ||
-    (has('galaxy s') && !isSamsungWatch);
-
-  const isIphone = has('iphone', 'magsafe');
-
-  // ── Detectar tipo de producto ─────────────────────────────────
-  const isMalla     = has('malla', 'correa', 'milanese') && !has('funda', 'carcasa');
-  const isProtector = has('protector', 'cobertor', 'bumper', 'templado', 'bisel', 'vidrio');
-  const isFunda     = has('funda', 'carcasa', 'cover');
-  const isCable     = has('cable', 'cargador');
-  const isLuces     = has('kit tuning') || (has('tuning') && has('honda', 'civic'));
-
-  // ── Clasificar ────────────────────────────────────────────────
-  if (isCable)  return 'cables';
-  if (isLuces)  return 'luces-auto';
-
-  if (isMalla && isSamsungWatch) return 'mallas-samsung';
-  if (isMalla && isAppleWatch)   return 'mallas-apple';
-  if (isMalla && isOtrasWatch)   return 'mallas-otras';
-  if (isMalla)                   return 'mallas-otras'; // genéricas 20/22mm
-
-  if (isProtector && isSamsungWatch) return 'protectores-samsung';
-  if (isProtector && isAppleWatch)   return 'protectores-apple';
-  if (isProtector && isOtrasWatch)   return 'protectores-otras';
-  if (isProtector)                   return 'accesorios';
-
-  if (isFunda && isIphone)       return 'fundas-iphone';
-  if (isFunda && isSamsungPhone) return 'fundas-samsung';
-  if (isFunda && has('samsung')) return 'fundas-samsung';
-  if (isFunda)                   return 'accesorios';
-
-  return 'accesorios';
-}
-function mlImg(item) {
-  if (item.pictures && item.pictures.length)
-    return item.pictures[0].secure_url || item.pictures[0].url || item.thumbnail || '';
-  return item.thumbnail || '';
-}
-
-// ── Aplica la capa de personalización propia (overrides) sobre ─
-// un ítem consolidado de ML. Es ADITIVA y no destructiva: nunca
-// modifica el cache de ML, solo agrega/reemplaza campos en la
-// copia que se envía al cliente. Ver tabla tienda_producto_overrides
-// (db/queries.js) — sobrevive a los re-syncs porque vive aparte.
-function applyProductOverride(item, ov) {
-  if (!ov) return item;
-  const out = { ...item };
-  if (ov.titulo_custom)       out.title              = ov.titulo_custom;
-  if (ov.descripcion_custom)  out.wz_descripcion     = ov.descripcion_custom;
-  if (ov.imagen_portada_url)  out.wz_imagen_portada  = ov.imagen_portada_url;
-  if (ov.video_url) {
-    out.wz_video = {
-      url:       ov.video_url,
-      fuente:    ov.video_fuente   || null,
-      thumbnail: ov.video_thumb_url || null,
-    };
-  }
-  out.wz_destacado = !!ov.destacado;
-  return out;
-}
-
 // ═════════════════════════════════════════════════════════════════
 //  PRODUCTOS PROPIOS (no-ML) — alta manual / importación WhatsApp
 //  Permiten cargar productos que el proveedor ofrece pero que NO
@@ -1911,77 +1822,6 @@ function applyProductOverride(item, ov) {
 //  (mismo shape que un item de ML) para reusar listado/detalle/
 //  buscador/orden/paginación sin duplicar lógica.
 // ═════════════════════════════════════════════════════════════════
-
-const PRODUCTO_PROPIO_PREFIX = 'WZ-LOC-';
-
-function generarIdProductoPropio() {
-  return PRODUCTO_PROPIO_PREFIX + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
-function esIdProductoPropio(id) {
-  return typeof id === 'string' && id.startsWith(PRODUCTO_PROPIO_PREFIX);
-}
-
-const CATEGORIAS_PROPIAS = ['celulares', 'smartwatches', 'consolas', 'tablets', 'accesorios', 'otros'];
-
-/** Convierte un registro de tienda_productos_propios al "shape" de ítem ML, para mezclar en el catálogo. */
-function localProductoToItem(lp) {
-  const imagenes = Array.isArray(lp.imagenes) ? lp.imagenes.filter(Boolean) : [];
-  const urls = [lp.imagen_portada_url, ...imagenes].filter(Boolean);
-  const pictures = urls.map((url, i) => ({ id: `${lp.id}-img${i}`, secure_url: url, url }));
-  const variantes = Array.isArray(lp.variantes) ? lp.variantes.filter(Boolean) : [];
-
-  // Price + stock: use variants if defined, otherwise fall back to product-level fields
-  let price = Number(lp.precio_ars) || 0;
-  let available_quantity = lp.stock_estado === 'disponible' ? 1 : 0;
-  if (variantes.length > 0) {
-    const withStock = variantes.filter(v => v.stock !== 'agotado');
-    const priceSource = withStock.length > 0 ? withStock : variantes;
-    const prices = priceSource.map(v => Number(v.precio_ars) || 0).filter(p => p > 0);
-    if (prices.length) price = Math.min(...prices);
-    available_quantity = withStock.length > 0 ? 1 : 0;
-  }
-
-  const out = {
-    id: lp.id,
-    title: lp.titulo,
-    price,
-    available_quantity,
-    sold_quantity: 0,
-    status: lp.activo ? 'active' : 'paused',
-    thumbnail: urls[0] || '',
-    pictures,
-    variations: [],
-    attributes: [],
-    category_id: '',
-    permalink: '',
-    wz_categoria_fija: lp.categoria || 'otros',
-    wz_descripcion:    lp.descripcion || '',
-    wz_imagen_portada: lp.imagen_portada_url || '',
-    wz_destacado:      !!lp.destacado,
-    wz_local:          true,
-    wz_condicion:      lp.condicion || 'nuevo',
-    wz_marca:          lp.marca || '',
-    wz_envio_gratis:   !!lp.envio_gratis,
-    wz_costo_envio:    lp.costo_envio != null ? Number(lp.costo_envio) : null,
-    wz_dias_envio:     lp.dias_envio  || '',
-    wz_a_pedido:       !!lp.a_pedido,
-  };
-  if (variantes.length > 0) out.wz_variantes = variantes;
-  if (lp.video_url) {
-    out.wz_video = { url: lp.video_url, fuente: lp.video_fuente || null, thumbnail: lp.video_thumb_url || null };
-  }
-  return out;
-}
-
-/** Calcula precio final en ARS a partir de precio en USD + margen% + cotización. Redondea a entero. */
-function calcularPrecioArs(precioUsd, margenPct, cotizacion) {
-  const usd = Number(precioUsd) || 0;
-  const mg  = Number(margenPct)  || 0;
-  const cot = Number(cotizacion) || 0;
-  const final = usd * (1 + mg / 100) * cot;
-  return Math.round(final);
-}
 
 // ── Parser de listas de precios del proveedor pegadas desde WhatsApp ──
 // Formato típico (ver mensajes reales "EQUIPOS IMPORTADOS"):
