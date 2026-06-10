@@ -34,7 +34,7 @@ const { tgRequest } = require('./lib/telegram');
 const { stripeApiCall } = require('./lib/stripe');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
 const { HTTP_TIMEOUT_MS, applyHttpTimeout, httpsRequestJson } = require('./lib/http-client');
-const { mlGet, mlPut, mlPost } = require('./lib/ml-api');
+const { mlOauthToken, mlGet, mlPut, mlPost } = require('./lib/ml-api');
 const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef } = require('./lib/mercadopago');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 
@@ -156,38 +156,18 @@ async function getAppToken() {
   if (_appToken && Date.now() < _appTokenExpiry) return _appToken;
   const { client_id, client_secret } = config;
   if (!client_id || !client_secret) return null;
-  return new Promise(resolve => {
-    const body = new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id,
-      client_secret,
-    }).toString();
-    const req = https.request({
-      hostname: 'api.mercadolibre.com', path: '/oauth/token', method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
-    }, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try {
-          const j = JSON.parse(data);
-          if (j.access_token) {
-            _appToken = j.access_token;
-            _appTokenExpiry = Date.now() + ((j.expires_in || 21600) - 300) * 1000;
-            console.log('  ✓ App token obtenido');
-            resolve(_appToken);
-          } else {
-            console.log('  ✗ App token error:', data);
-            resolve(null);
-          }
-        } catch(e) { resolve(null); }
-      });
-    });
-    applyHttpTimeout(req, 'getAppToken');
-    req.on('error', () => resolve(null));
-    req.write(body);
-    req.end();
-  });
+  try {
+    const j = await mlOauthToken({ grant_type: 'client_credentials', client_id, client_secret });
+    if (j.access_token) {
+      _appToken = j.access_token;
+      _appTokenExpiry = Date.now() + ((j.expires_in || 21600) - 300) * 1000;
+      console.log('  ✓ App token obtenido');
+      return _appToken;
+    } else {
+      console.log('  ✗ App token error:', JSON.stringify(j));
+      return null;
+    }
+  } catch(e) { return null; }
 }
 
 // Invalidar app token al cambiar de cuenta
@@ -197,44 +177,21 @@ function resetAppToken() { _appToken = null; _appTokenExpiry = 0; }
 async function refreshAccessToken() {
   const { client_id, client_secret, refresh_token } = config;
   if (!client_id || !client_secret || !refresh_token) return false;
-  return new Promise(resolve => {
-    const body = new URLSearchParams({
-      grant_type:    'refresh_token',
-      client_id,
-      client_secret,
-      refresh_token,
-    }).toString();
-    const req = https.request({
-      hostname: 'api.mercadolibre.com',
-      path:     '/oauth/token',
-      method:   'POST',
-      headers:  { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
-    }, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (json.access_token) {
-            config.access_token  = json.access_token;
-            config.refresh_token = json.refresh_token || config.refresh_token;
-            // Persistir expiración para evitar renovaciones innecesarias al reiniciar
-            config.token_expiry  = Date.now() + ((json.expires_in || 21600) - 300) * 1000;
-            saveConfig();
-            console.log('  ✓ Token renovado automáticamente');
-            resolve(true);
-          } else {
-            console.log('  ✗ No se pudo renovar token:', data);
-            resolve(false);
-          }
-        } catch(e) { resolve(false); }
-      });
-    });
-    applyHttpTimeout(req, 'refreshAccessToken');
-    req.on('error', () => resolve(false));
-    req.write(body);
-    req.end();
-  });
+  try {
+    const json = await mlOauthToken({ grant_type: 'refresh_token', client_id, client_secret, refresh_token });
+    if (json.access_token) {
+      config.access_token  = json.access_token;
+      config.refresh_token = json.refresh_token || config.refresh_token;
+      // Persistir expiración para evitar renovaciones innecesarias al reiniciar
+      config.token_expiry  = Date.now() + ((json.expires_in || 21600) - 300) * 1000;
+      saveConfig();
+      console.log('  ✓ Token renovado automáticamente');
+      return true;
+    } else {
+      console.log('  ✗ No se pudo renovar token:', JSON.stringify(json));
+      return false;
+    }
+  } catch(e) { return false; }
 }
 
 // ── Persistencia de órdenes — PostgreSQL (migración completa) ─
@@ -592,45 +549,25 @@ async function refreshAccountToken(acct) {
   const client_secret = acct.client_secret || config.client_secret;
   const refresh_token = acct.refresh_token;
   if (!client_id || !client_secret || !refresh_token) return false;
-  const p = new Promise(resolve => {
-    const body = new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id, client_secret, refresh_token,
-    }).toString();
-    const req = https.request({
-      hostname: 'api.mercadolibre.com',
-      path: '/oauth/token',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
-    }, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try {
-          const tok = JSON.parse(data);
-          if (tok.access_token) {
-            acct.access_token = tok.access_token;
-            if (tok.refresh_token) acct.refresh_token = tok.refresh_token;
-            // Guardar expiración en memoria y en config para evitar renovaciones innecesarias
-            const expiry = Date.now() + ((tok.expires_in || 21600) - 300) * 1000;
-            _acctTokenExpiry.set(acct.id, expiry);
-            acct.token_expiry = expiry;
-            // Persistir en fullConfig.accounts (si el acct viene de ahi, ya lo mutamos por referencia)
-            try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2)); } catch(e) {}
-            console.log(`  ✓ Token renovado para cuenta "${acct.label || acct.id}"`);
-            resolve(true);
-          } else {
-            console.log(`  ✗ No se pudo renovar token de "${acct.label || acct.id}":`, data);
-            resolve(false);
-          }
-        } catch(e) { resolve(false); }
-      });
-    });
-    applyHttpTimeout(req, `refreshAccountToken ${acct.id}`);
-    req.on('error', () => resolve(false));
-    req.write(body);
-    req.end();
-  });
+  const p = mlOauthToken({ grant_type: 'refresh_token', client_id, client_secret, refresh_token })
+    .then(tok => {
+      if (tok.access_token) {
+        acct.access_token = tok.access_token;
+        if (tok.refresh_token) acct.refresh_token = tok.refresh_token;
+        // Guardar expiración en memoria y en config para evitar renovaciones innecesarias
+        const expiry = Date.now() + ((tok.expires_in || 21600) - 300) * 1000;
+        _acctTokenExpiry.set(acct.id, expiry);
+        acct.token_expiry = expiry;
+        // Persistir en fullConfig.accounts (si el acct viene de ahi, ya lo mutamos por referencia)
+        try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2)); } catch(e) {}
+        console.log(`  ✓ Token renovado para cuenta "${acct.label || acct.id}"`);
+        return true;
+      } else {
+        console.log(`  ✗ No se pudo renovar token de "${acct.label || acct.id}":`, JSON.stringify(tok));
+        return false;
+      }
+    })
+    .catch(() => false);
   _refreshInFlight.set(acct.id, p);
   try { return await p; }
   finally { _refreshInFlight.delete(acct.id); }
