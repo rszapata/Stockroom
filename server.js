@@ -29,7 +29,7 @@ const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
 const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion } = require('./lib/email-templates');
 const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
-const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping } = require('./lib/json-store');
+const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig } = require('./lib/json-store');
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
@@ -637,10 +637,7 @@ function exchangeCode(code, res, asJson = false) {
 // ── Auth (password + sesión) ──────────────────────────────────
 const crypto = require('crypto');
 const AUTH_PATH = path.join(__dirname, 'auth.json');
-let AUTH_CFG = null;
-try {
-  if (fs.existsSync(AUTH_PATH)) AUTH_CFG = JSON.parse(fs.readFileSync(AUTH_PATH, 'utf8'));
-} catch(e) { console.error('  ✗ auth.json inválido:', e.message); }
+const AUTH_CFG = loadAuthConfig(AUTH_PATH);
 
 // Auth se desactiva si:
 //   - auth.json no existe / está corrupto
