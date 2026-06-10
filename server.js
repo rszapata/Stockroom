@@ -30,6 +30,8 @@ const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = requi
 const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion } = require('./lib/email-templates');
 const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping } = require('./lib/json-store');
+const { loadSessions, saveSessions } = require('./lib/session-store');
+const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
 const { stripeApiCall } = require('./lib/stripe');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
@@ -666,27 +668,19 @@ const SESSIONS = new Map(); // sid -> { exp }
 // Sobrevive reinicios de PM2/Node. Solo guardamos sid→exp (sin datos sensibles extras).
 const SESSIONS_FILE = path.join(__dirname, 'sessions.json');
 (function _loadSessions() {
-  try {
-    if (!fs.existsSync(SESSIONS_FILE)) return;
-    const raw = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
-    const now = Date.now();
-    let loaded = 0;
-    for (const [k, v] of Object.entries(raw)) {
-      if (v.exp && v.exp > now) { SESSIONS.set(k, v); loaded++; }
-    }
-    if (loaded) console.log(`  ✓ Sesiones admin restauradas: ${loaded}`);
-  } catch(e) { console.warn('  ⚠ No se pudieron restaurar sesiones admin:', e.message); }
+  const restored = loadSessions(SESSIONS_FILE);
+  let loaded = 0;
+  for (const [k, v] of Object.entries(restored)) { SESSIONS.set(k, v); loaded++; }
+  if (loaded) console.log(`  ✓ Sesiones admin restauradas: ${loaded}`);
 })();
 let _sessionSaveTimer = null;
 function _saveSessions() {
   clearTimeout(_sessionSaveTimer);
   _sessionSaveTimer = setTimeout(() => {
-    try {
-      const now = Date.now();
-      const out = {};
-      for (const [k, v] of SESSIONS) if (v.exp > now) out[k] = v;
-      writeJsonAtomic(SESSIONS_FILE, out);
-    } catch(e) { console.warn('  ⚠ Error guardando sesiones:', e.message); }
+    const now = Date.now();
+    const out = {};
+    for (const [k, v] of SESSIONS) if (v.exp > now) out[k] = v;
+    saveSessions(SESSIONS_FILE, out);
   }, 500); // debounce 500ms para no escribir en cada request
 }
 
@@ -745,31 +739,13 @@ const RATE_LIMIT_FILE = path.join(__dirname, 'rate_limits.json');
 let _rlSaveTimer = null;
 
 function _loadRateLimits() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(RATE_LIMIT_FILE, 'utf8'));
-    const now = Date.now();
-    // _loginAttempts: { ip: { count, since } } — window 15 min
-    if (raw.login) {
-      for (const [ip, entry] of Object.entries(raw.login)) {
-        if (now - entry.since < 15 * 60 * 1000) _loginAttempts.set(ip, entry);
-      }
-    }
-    // _contactRateLimit: { ip: [timestamps...] } — window 1 h
-    if (raw.contact) {
-      for (const [ip, ts] of Object.entries(raw.contact)) {
-        const valid = ts.filter(t => now - t < 3600 * 1000);
-        if (valid.length) _contactRateLimit.set(ip, valid);
-      }
-    }
-    // _ordenRateLimit: { ip: [timestamps...] } — window 1 h
-    if (raw.orden) {
-      for (const [ip, ts] of Object.entries(raw.orden)) {
-        const valid = ts.filter(t => now - t < 3600 * 1000);
-        if (valid.length) _ordenRateLimit.set(ip, valid);
-      }
-    }
+  const { login, contact, orden } = loadRateLimits(RATE_LIMIT_FILE);
+  for (const [ip, entry] of Object.entries(login)) _loginAttempts.set(ip, entry);
+  for (const [ip, ts] of Object.entries(contact)) _contactRateLimit.set(ip, ts);
+  for (const [ip, ts] of Object.entries(orden)) _ordenRateLimit.set(ip, ts);
+  if (Object.keys(login).length || Object.keys(contact).length || Object.keys(orden).length) {
     console.log(`[rate-limit] Loaded from disk: login=${_loginAttempts.size} contact=${_contactRateLimit.size} orden=${_ordenRateLimit.size}`);
-  } catch { /* archivo no existe en primer arranque — OK */ }
+  }
 }
 
 function _saveRateLimits() {
@@ -777,15 +753,11 @@ function _saveRateLimits() {
   if (_rlSaveTimer) return;
   _rlSaveTimer = setTimeout(() => {
     _rlSaveTimer = null;
-    try {
-      const out = {
-        login:   Object.fromEntries(_loginAttempts),
-        contact: Object.fromEntries(_contactRateLimit),
-        orden:   Object.fromEntries(_ordenRateLimit),
-        saved_at: new Date().toISOString()
-      };
-      writeJsonAtomic(RATE_LIMIT_FILE, out);
-    } catch(e) { console.error('[rate-limit] Save error:', e.message); }
+    saveRateLimits(RATE_LIMIT_FILE, {
+      login:   Object.fromEntries(_loginAttempts),
+      contact: Object.fromEntries(_contactRateLimit),
+      orden:   Object.fromEntries(_ordenRateLimit),
+    });
   }, 200);
 }
 
