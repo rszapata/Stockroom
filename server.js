@@ -21,6 +21,7 @@ const { commonPrefix } = require('./lib/strings');
 const { parsePdfRows, parseReceiptRows, parseContractRows } = require('./lib/pdf-parsers');
 const { extractVariantName, mergeFamilyGroup, consolidateItems } = require('./lib/products');
 const { formatDeliveryEstimate, friendlyShippingName } = require('./lib/shipping');
+const { readBody, readBodyWithLimit } = require('./lib/http-body');
 
 // ── Log de auditoría admin ─────────────────────────────────────
 // Registra cambios críticos del panel (precio, stock, alta/baja de
@@ -263,49 +264,6 @@ const MIME = {
 function getOrdenesJSON() {
   try { return JSON.parse(fs.readFileSync(ORDENES_PATH, 'utf8')); }
   catch { return []; }
-}
-
-// ── Body reader con límite de tamaño ─────────────────────────
-// Previene ataques de request body gigante (memory exhaustion).
-// Devuelve una Promise que resuelve al string del body, o rechaza con 413.
-const BODY_LIMIT = 512 * 1024; // 512 KB — suficiente para cualquier orden normal
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    req.on('data', chunk => {
-      size += chunk.length;
-      if (size > BODY_LIMIT) {
-        req.destroy();
-        const err = new Error('Request body demasiado grande');
-        err.status = 413;
-        return reject(err);
-      }
-      chunks.push(chunk);
-    });
-    req.on('end',   () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
-  });
-}
-
-// Lee el body con un límite personalizado (para uploads base64 de PDFs)
-function readBodyWithLimit(req, maxBytes) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    req.on('data', chunk => {
-      size += chunk.length;
-      if (size > maxBytes) {
-        req.destroy();
-        const err = new Error(`Body demasiado grande (max ${Math.round(maxBytes / 1024 / 1024)}MB)`);
-        err.status = 413;
-        return reject(err);
-      }
-      chunks.push(chunk);
-    });
-    req.on('end',   () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
-  });
 }
 
 // ─── ALIBABA: helpers ────────────────────────────────────────────────────────
