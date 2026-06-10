@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Categorías — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Cat list ───────────────────────────────────────────────────── */
+.cat-list { display: flex; flex-direction: column; gap: 6px; }
+
+.cat-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  transition: box-shadow .15s, border-color .15s;
+  position: relative;
+}
+.cat-row:hover { box-shadow: var(--shadow-lg); }
+.cat-row.dragging { opacity: .35; box-shadow: var(--shadow-lg); }
+.cat-row.drag-over { border-color: var(--blue); border-top: 3px solid var(--blue); }
+.cat-row.inactive { opacity: .5; }
+
+.cat-handle {
+  color: var(--text-3); cursor: grab; font-size: 18px;
+  padding: 4px 2px; flex-shrink: 0; user-select: none; line-height: 1;
+}
+.cat-handle:active { cursor: grabbing; }
+
+
+.cat-info { flex: 1; min-width: 0; }
+.cat-label { font-weight: 600; font-size: 14px; color: var(--text); line-height: 1.3; }
+.cat-meta  {
+  font-size: 11px; color: var(--text-3);
+  font-family: var(--font-mono); margin-top: 2px;
+}
+
+.cat-badge {
+  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+  padding: 2px 9px; border-radius: 20px; flex-shrink: 0;
+  border: 1px solid var(--border); color: var(--text-3); background: var(--bg);
+}
+.cat-badge.has-products {
+  color: var(--blue); border-color: var(--blue); background: var(--blue-light);
+}
+
+.cat-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* ── New / Edit modal ───────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 440px; overflow: hidden;
+}
+.modal-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--text);
+}
+.modal-head-icon { font-size: 16px; }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 18px; border-top: 1px solid var(--border);
+}
+.modal-row { display: flex; gap: 10px; align-items: flex-start; }
+
+/* ── Delete confirm pill ───────────────────────────────────────── */
+.del-confirm-wrap {
+  display: none; align-items: center; gap: 6px;
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: var(--bg-card); border: 1px solid var(--red);
+  border-radius: var(--r); padding: 6px 10px; z-index: 10;
+  font-size: 12px; color: var(--red); white-space: nowrap;
+  box-shadow: var(--shadow-lg);
+}
+.del-confirm-wrap.show { display: flex; }
+
+/* ── Empty state ───────────────────────────────────────────────── */
+.cat-empty {
+  text-align: center; padding: 48px 20px;
+  color: var(--text-3); font-size: 14px;
+}
+.cat-empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+/* ── Hint ──────────────────────────────────────────────────────── */
+.page-hint {
+  font-size: 12px; color: var(--text-3);
+  display: flex; align-items: center; gap: 6px; margin-bottom: 14px;
+}
+
+/* ── Sección ML (read-only) ─────────────────────────────────────── */
+.ml-section-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-3);
+  margin: 22px 0 10px;
+}
+.ml-section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.cat-row.ml-readonly {
+  opacity: .75; cursor: default;
+}
+.cat-row.ml-readonly:hover { box-shadow: none; }
+.badge-ml {
+  font-size: 10px; font-weight: 700; font-family: var(--font-mono);
+  padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+  background: #FFF7ED; color: #C2570A; border: 1px solid #FDBA74;
+  letter-spacing: .03em;
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ════════════════════════ SIDEBAR ═════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+  <a href="/tienda-admin.html" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Admin Tienda</div>
+      <div class="adm-logo-tag">WZMALLAS</div>
+    </div>
+  </a>
+  <nav class="adm-nav">
+    <div class="adm-group">
+      <div class="adm-group-label">General</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/tienda-admin.html#section-cupones" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Cupones</span>
+      </a>
+      <a href="/tienda-productos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Productos ABM</span>
+      </a>
+      <a href="/tienda-productos-propios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+        <span>Productos propios</span>
+      </a>
+      <a href="/tienda-categorias.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span>Categorías</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/tienda-ordenes.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Órdenes</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Configuración</div>
+      <a href="/tienda-sync.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <span>Sincronizar ML</span>
+      </a>
+    </div>
+  </nav>
+  <div class="adm-sidebar-foot">
+    <a href="/tienda/catalogo.html" target="_blank" class="adm-item" style="color:var(--green)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Ver tienda</span>
+    </a>
+    <a href="/" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Volver a Stockroom</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ═══════════════════════ MAIN ══════════════════════════════ -->
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Categorías</div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot"></span>
+          <span id="page-sub">Cargando…</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="btn btn-primary" id="btn-nueva" style="font-size:13px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva categoría
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <div id="loading-state" class="page-loading">
+      <div class="img-spinner"></div>
+      <span>Cargando categorías…</span>
+    </div>
+
+    <div id="main-content" style="display:none;">
+      <div class="page-hint">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Arrastrá las filas para cambiar el orden. Los cambios se guardan automáticamente al soltar.
+      </div>
+      <div class="cat-list" id="cat-list"></div>
+    </div>
+
+  </main>
+</div><!-- /adm-main -->
+</div><!-- /adm-wrap -->
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+<div id="toast"></div>
+
+<!-- ═══════════════ MODAL CREAR / EDITAR ══════════════════════ -->
+<div class="modal-overlay" id="modal" style="display:none;" onclick="onOverlayClick(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+      <span id="modal-title">Nueva categoría</span>
+      <button class="btn btn-sm btn-ghost" onclick="closeModal()" style="margin-left:auto;padding:2px 8px;">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="adm-field">
+        <label class="adm-label">Nombre <span style="color:var(--red)">*</span></label>
+        <input type="text" class="adm-input" id="m-label" maxlength="120" placeholder="Ej: Celulares">
+      </div>
+      <div class="adm-field" id="slug-field">
+        <label class="adm-label">Slug <span style="font-weight:400;color:var(--text-3);">(identificador interno, sin espacios)</span></label>
+        <input type="text" class="adm-input" id="m-slug" maxlength="60" placeholder="celulares" style="font-family:var(--font-mono);font-size:12px;">
+        <div class="field-hint">Solo letras, números y guiones. Se genera automáticamente del nombre si lo dejás vacío.</div>
+      </div>
+      <div class="adm-field">
+        <label class="adm-label">Descripción <span style="font-weight:400;color:var(--text-3);">opcional</span></label>
+        <input type="text" class="adm-input" id="m-desc" maxlength="300" placeholder="Breve descripción para el equipo">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-modal">
+        <span class="btn-spin" id="modal-spin" style="display:none;"></span>
+        <span id="modal-save-lbl">Guardar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── Theme / Sidebar ─────────────────────────────────────── */
+document.getElementById('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch {}
+});
+const hamburger = document.getElementById('btn-hamburger');
+const sidebar   = document.getElementById('sidebar');
+const sidebarOv = document.getElementById('sidebar-overlay');
+hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); sidebarOv.classList.toggle('open'); });
+sidebarOv.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOv.classList.remove('open'); });
+
+/* ─── Toast ───────────────────────────────────────────────── */
+let _toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/* ─── Categorías de MercadoLibre (clasificación automática por título) ─ */
+const ML_CATS = [
+  { slug: 'mallas-samsung',      label: 'Mallas Samsung Watch' },
+  { slug: 'mallas-apple',        label: 'Mallas Apple Watch' },
+  { slug: 'mallas-otras',        label: 'Mallas otras marcas' },
+  { slug: 'protectores-samsung', label: 'Protectores Samsung' },
+  { slug: 'protectores-apple',   label: 'Protectores Apple' },
+  { slug: 'protectores-otras',   label: 'Protectores otras marcas' },
+  { slug: 'fundas-iphone',       label: 'Fundas iPhone' },
+  { slug: 'fundas-samsung',      label: 'Fundas Samsung' },
+  { slug: 'cables',              label: 'Cables y cargadores' },
+  { slug: 'luces-auto',          label: 'Luces para autos' },
+  { slug: 'accesorios',          label: 'Accesorios' },
+];
+
+/* ─── State ───────────────────────────────────────────────── */
+let allCats  = [];   // [{id, slug, label, emoji, descripcion, orden, activa, productos_total, productos_activos}]
+let editingId = null; // null = new, number = editing
+let dragSrcId = null;
+
+/* ══════════════ LOAD ══════════════════════════════════════ */
+async function loadCategorias() {
+  try {
+    const resp = await fetch('/api/tienda/admin/categorias');
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al cargar');
+    allCats = data.categorias || [];
+    renderList();
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('main-content').style.display  = '';
+    document.getElementById('page-sub').textContent =
+      allCats.length + ' propia' + (allCats.length !== 1 ? 's' : '') + ' · ' + ML_CATS.length + ' de ML';
+  } catch (e) {
+    document.getElementById('loading-state').innerHTML =
+      `<span style="color:var(--red)">Error: ${esc(e.message)}</span>`;
+  }
+}
+
+/* ══════════════ RENDER ════════════════════════════════════ */
+function renderList() {
+  const listEl = document.getElementById('cat-list');
+
+  // Slugs de admin para no duplicar en la sección ML
+  const adminSlugs = new Set(allCats.map(c => c.slug));
+  const mlVisible  = ML_CATS.filter(c => !adminSlugs.has(c.slug));
+
+  if (!allCats.length) {
+    listEl.innerHTML = `<div class="cat-empty">
+      <div>No hay categorías propias todavía.</div>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="openNew()">+ Nueva categoría</button>
+    </div>` + renderMlSection(mlVisible);
+    return;
+  }
+
+  listEl.innerHTML =
+    allCats.map(c => renderRow(c)).join('') +
+    renderMlSection(mlVisible);
+
+  attachDragEvents();
+}
+
+function renderMlSection(mlCats) {
+  if (!mlCats.length) return '';
+  return `
+    <div class="ml-section-title">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Categorías de MercadoLibre — solo lectura
+    </div>
+    ${mlCats.map(c => `
+    <div class="cat-row ml-readonly">
+      <div class="cat-info">
+        <div class="cat-label">${esc(c.label)}</div>
+        <div class="cat-meta">${esc(c.slug)} · clasificación automática por título de producto</div>
+      </div>
+      <span class="badge-ml">MercadoLibre</span>
+    </div>`).join('')}`;
+}
+
+function renderRow(c) {
+  const hasProds = c.productos_total > 0;
+  const countTxt = hasProds
+    ? `${c.productos_total} producto${c.productos_total !== 1 ? 's' : ''}`
+    : 'Sin productos';
+  return `
+  <div class="cat-row${c.activa ? '' : ' inactive'}" data-id="${c.id}" draggable="true">
+    <div class="cat-handle" title="Arrastrar para reordenar">⠿</div>
+    <div class="cat-info">
+      <div class="cat-label">${esc(c.label)}</div>
+      <div class="cat-meta">${esc(c.slug)}${c.descripcion ? ' · ' + esc(c.descripcion.slice(0,60)) : ''}</div>
+    </div>
+    <a class="cat-badge${hasProds ? ' has-products' : ''}" href="/tienda-productos-propios.html?cat=${c.slug}" title="Ver productos de esta categoría" style="text-decoration:none;cursor:pointer;">${countTxt}</a>
+    <label class="tswitch" title="${c.activa ? 'Activa — clic para desactivar' : 'Inactiva — clic para activar'}">
+      <input type="checkbox" ${c.activa ? 'checked' : ''}
+        onchange="toggleActiva(${c.id}, this.checked)">
+      <span class="slider"></span>
+    </label>
+    <div class="cat-actions">
+      <button class="btn btn-sm btn-ghost" onclick="openEdit(${c.id})">Editar</button>
+      <button class="btn btn-sm btn-ghost" style="color:var(--red);border-color:transparent;"
+        onclick="showDelConfirm(${c.id}, event)" title="Eliminar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+      </button>
+    </div>
+    <div class="del-confirm-wrap" id="del-${c.id}">
+      <span>¿Eliminar?</span>
+      <button class="btn btn-sm btn-ghost" onclick="hideDelConfirm(${c.id})">No</button>
+      <button class="btn btn-sm btn-danger" onclick="doDelete(${c.id})">Sí</button>
+    </div>
+  </div>`;
+}
+
+/* ══════════════ DRAG & DROP (reorder) ═════════════════════ */
+function attachDragEvents() {
+  document.querySelectorAll('.cat-row[draggable]').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      dragSrcId = parseInt(row.dataset.id);
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.cat-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.cat-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+      if (parseInt(row.dataset.id) !== dragSrcId) row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', async e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const targetId = parseInt(row.dataset.id);
+      if (!dragSrcId || dragSrcId === targetId) return;
+
+      // Reorder allCats array
+      const srcIdx = allCats.findIndex(c => c.id === dragSrcId);
+      const tgtIdx = allCats.findIndex(c => c.id === targetId);
+      if (srcIdx < 0 || tgtIdx < 0) return;
+      const [moved] = allCats.splice(srcIdx, 1);
+      allCats.splice(tgtIdx, 0, moved);
+      renderList();
+
+      // Persist order
+      try {
+        const resp = await fetch('/api/tienda/admin/categorias/reorder', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: allCats.map(c => c.id) }),
+        });
+        if (!resp.ok) throw new Error('No se pudo guardar el orden');
+        toast('Orden actualizado ✓', 'ok');
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    });
+  });
+}
+
+/* ══════════════ TOGGLE ACTIVA ══════════════════════════════ */
+async function toggleActiva(id, checked) {
+  try {
+    const resp = await fetch(`/api/tienda/admin/categorias/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activa: checked }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error');
+    const cat = allCats.find(c => c.id === id);
+    if (cat) cat.activa = checked;
+    renderList();
+    toast(checked ? 'Categoría activada' : 'Categoría desactivada', 'ok');
+  } catch (err) {
+    toast(err.message, 'err');
+    // revert toggle
+    const cat = allCats.find(c => c.id === id);
+    if (cat) { cat.activa = !checked; renderList(); }
+  }
+}
+
+/* ══════════════ DELETE ════════════════════════════════════ */
+function showDelConfirm(id, e) {
+  e.stopPropagation();
+  // hide any other open confirm
+  document.querySelectorAll('.del-confirm-wrap.show').forEach(el => el.classList.remove('show'));
+  document.getElementById('del-' + id)?.classList.add('show');
+}
+function hideDelConfirm(id) {
+  document.getElementById('del-' + id)?.classList.remove('show');
+}
+async function doDelete(id) {
+  const cat = allCats.find(c => c.id === id);
+  hideDelConfirm(id);
+  try {
+    const resp = await fetch(`/api/tienda/admin/categorias/${id}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'No se pudo eliminar');
+    allCats = allCats.filter(c => c.id !== id);
+    renderList();
+    toast(`"${cat?.label || ''}" eliminada`, 'ok');
+    document.getElementById('page-sub').textContent =
+      allCats.length + ' propia' + (allCats.length !== 1 ? 's' : '') + ' · ' + ML_CATS.length + ' de ML';
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+// Close del confirms on outside click
+document.addEventListener('click', () => {
+  document.querySelectorAll('.del-confirm-wrap.show').forEach(el => el.classList.remove('show'));
+});
+
+/* ══════════════ MODAL ═════════════════════════════════════ */
+function openNew() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Nueva categoría';
+  document.getElementById('modal-save-lbl').textContent = 'Crear';
+  document.getElementById('slug-field').style.display = '';
+  document.getElementById('m-label').value = '';
+  document.getElementById('m-slug').value  = '';
+  document.getElementById('m-desc').value  = '';
+  document.getElementById('modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-label').focus(), 80);
+}
+
+function openEdit(id) {
+  const cat = allCats.find(c => c.id === id);
+  if (!cat) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Editar categoría';
+  document.getElementById('modal-save-lbl').textContent = 'Guardar cambios';
+  document.getElementById('slug-field').style.display = 'none'; // slug is immutable after creation
+  document.getElementById('m-label').value = cat.label || '';
+  document.getElementById('m-slug').value  = cat.slug  || '';
+  document.getElementById('m-desc').value  = cat.descripcion || '';
+  document.getElementById('modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-label').focus(), 80);
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+function onOverlayClick(e) {
+  if (e.target === document.getElementById('modal')) closeModal();
+}
+
+// Auto-generate slug from label while typing (only in create mode)
+document.getElementById('m-label').addEventListener('input', function() {
+  if (editingId !== null) return;
+  const slugEl = document.getElementById('m-slug');
+  if (slugEl._userEdited) return;
+  const slug = this.value.trim()
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
+  slugEl.value = slug;
+});
+document.getElementById('m-slug').addEventListener('input', function() {
+  this._userEdited = !!this.value;
+});
+
+document.getElementById('btn-save-modal').addEventListener('click', saveModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('modal').style.display !== 'none') closeModal();
+});
+
+async function saveModal() {
+  const label = document.getElementById('m-label').value.trim();
+  const desc  = document.getElementById('m-desc').value.trim();
+  const slug  = document.getElementById('m-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+  if (!label) { document.getElementById('m-label').focus(); toast('El nombre es obligatorio', 'err'); return; }
+
+  const spin = document.getElementById('modal-spin');
+  const lbl  = document.getElementById('modal-save-lbl');
+  spin.style.display = 'inline-block'; lbl.textContent = 'Guardando…';
+  document.getElementById('btn-save-modal').disabled = true;
+
+  try {
+    let resp, data;
+    if (editingId === null) {
+      // CREATE
+      resp = await fetch('/api/tienda/admin/categorias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, emoji: '', descripcion: desc, slug }),
+      });
+      data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'No se pudo crear');
+      allCats.push({ ...data.categoria, productos_total: 0, productos_activos: 0 });
+      toast(`"${label}" creada ✓`, 'ok');
+    } else {
+      // EDIT
+      resp = await fetch(`/api/tienda/admin/categorias/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, emoji: '', descripcion: desc }),
+      });
+      data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'No se pudo guardar');
+      const idx = allCats.findIndex(c => c.id === editingId);
+      if (idx >= 0) allCats[idx] = { ...allCats[idx], ...data.categoria };
+      toast(`"${label}" actualizada ✓`, 'ok');
+    }
+    closeModal();
+    renderList();
+    document.getElementById('page-sub').textContent =
+      allCats.length + ' propia' + (allCats.length !== 1 ? 's' : '') + ' · ' + ML_CATS.length + ' de ML';
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    spin.style.display = 'none';
+    lbl.textContent    = editingId === null ? 'Crear' : 'Guardar cambios';
+    document.getElementById('btn-save-modal').disabled = false;
+  }
+}
+
+/* ─── Nueva categoría button ──────────────────────────────── */
+document.getElementById('btn-nueva').addEventListener('click', openNew);
+
+/* ─── Init ────────────────────────────────────────────────── */
+loadCategorias();
+</script>
+</body>
+</html>

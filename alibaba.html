@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Carga Alibaba — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Page scope ── */
+.pg { font-family:'Inter',system-ui,sans-serif; font-size:14px; display:block; color:var(--text); }
+.pg *, .pg *::before, .pg *::after { box-sizing:border-box; }
+
+/* ── Upload zone ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--bg);
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--blue);
+  background: var(--blue-light);
+}
+.upload-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.upload-icon {
+  width: 48px; height: 48px; margin: 0 auto 12px;
+  color: var(--text-3);
+  transition: color .2s;
+}
+.upload-zone:hover .upload-icon, .upload-zone.drag-over .upload-icon { color: var(--blue); }
+.upload-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.upload-sub   { font-size: 13px; color: var(--text-2); }
+.upload-hint  { margin-top: 10px; font-size: 12px; color: var(--text-3); }
+.upload-btn {
+  font-size: 12px; font-weight: 500; padding: 6px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-card); color: var(--text); cursor: pointer;
+  pointer-events: all; transition: border-color .15s, background .15s;
+}
+.upload-btn:hover { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+.upload-btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.upload-btn-primary:hover { opacity: .88; color: #fff; background: var(--blue); }
+
+/* ── Estado de procesamiento ── */
+.parse-state {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.parse-state-icon { flex-shrink: 0; }
+.parse-filename { font-weight: 600; }
+.parse-info { color: var(--text-2); font-size: 12px; margin-top: 2px; }
+.parse-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 100px;
+  font-size: 11px; font-weight: 600; letter-spacing: .3px;
+}
+.parse-badge.ok  { background: var(--green-light); color: #15803d; }
+.parse-badge.warn { background: #fef9c3; color: #854d0e; }
+.parse-badge.err { background: var(--red-light, #fee2e2); color: #b91c1c; }
+
+/* ── Raw text collapsible ── */
+.raw-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--blue); cursor: pointer;
+  border: none; background: none; padding: 0; font-family: inherit;
+}
+.raw-toggle:hover { text-decoration: underline; }
+.raw-box {
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px;
+  max-height: 200px; overflow-y: auto;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+/* ── Items table ── */
+.ali-table-wrap { overflow-x: auto; }
+.ali-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  min-width: 820px;
+}
+.ali-table th {
+  padding: 8px 10px; text-align: left;
+  font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.ali-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-light, var(--border));
+  vertical-align: middle;
+}
+.ali-table tbody tr:hover { background: var(--bg); }
+.ali-table tbody tr.unmapped { background: #fffbeb; }
+[data-theme="dark"] .ali-table tbody tr.unmapped { background: #2d2500; }
+.ali-table tbody tr.excluded { opacity: .5; }
+
+/* Inline editable inputs */
+.ali-input {
+  width: 100%; padding: 5px 8px; border: 1px solid var(--border);
+  border-radius: var(--radius); font: inherit; font-size: 13px;
+  background: var(--bg-card); color: var(--text);
+  transition: border-color .15s;
+}
+.ali-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-light); }
+.ali-input-qty { width: 72px; text-align: right; font-weight: 600; }
+
+/* ML item combobox */
+.combobox-wrap { position: relative; }
+.combobox-input {
+  width: 100%; padding: 5px 26px 5px 8px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font: inherit; font-size: 13px;
+  background: var(--bg-card); color: var(--text);
+  transition: border-color .15s;
+  cursor: pointer;
+}
+.combobox-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-light); }
+.combobox-arrow {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; color: var(--text-3);
+}
+.combobox-dropdown {
+  position: absolute; z-index: 200; left: 0; top: calc(100% + 2px);
+  min-width: 100%; width: max-content; max-width: 420px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  max-height: 280px; overflow-y: auto;
+  display: none;
+}
+.combobox-dropdown.open { display: block; }
+.combobox-item {
+  padding: 7px 10px; cursor: pointer; font-size: 12px;
+  display: flex; flex-direction: column; gap: 2px;
+  border-bottom: 1px solid var(--border-light, var(--border));
+}
+.combobox-item:last-child { border-bottom: none; }
+.combobox-item:hover, .combobox-item.focused { background: var(--blue-light); }
+.combobox-item-id { font-size: 10px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+.combobox-empty { padding: 10px; color: var(--text-2); font-size: 12px; text-align: center; }
+/* título completo del producto en el dropdown */
+.combobox-item-title { font-size:12px; line-height:1.35; white-space:normal; word-break:break-word; }
+
+/* Variant select con imagen */
+.var-cell-wrap { display:flex; align-items:center; gap:5px; }
+.var-thumb-sm {
+  width:32px; height:32px; flex-shrink:0;
+  border-radius:var(--radius); border:1px solid var(--border);
+  background:var(--bg); overflow:hidden;
+  display:flex; align-items:center; justify-content:center; color:var(--text-3);
+}
+.var-thumb-sm img { width:100%; height:100%; object-fit:cover; display:block; }
+.var-select {
+  flex:1; min-width:0; padding: 5px 8px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font: inherit; font-size: 12px;
+  background: var(--bg-card); color: var(--text);
+}
+.var-select:focus { outline: none; border-color: var(--blue); }
+.var-select.no-variants { color: var(--text-3); font-style: italic; font-size: 11px; }
+
+/* Stock preview cells */
+.stock-cell { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.stock-current { color: var(--text-2); }
+.stock-arrow { color: var(--text-3); margin: 0 4px; }
+.stock-new { font-weight: 700; color: var(--green, #16a34a); }
+
+/* ── PDF product thumbnail (manual) ── */
+.pdf-thumb {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-radius: var(--radius); border: 1.5px dashed var(--border);
+  background: var(--bg); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-3); cursor: pointer; transition: border-color .15s, color .15s;
+  position: relative;
+}
+.pdf-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pdf-thumb.has-img { border-style: solid; cursor: zoom-in; }
+.pdf-thumb.has-img:hover { border-color: var(--blue); }
+.pdf-thumb .pdf-thumb-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s;
+}
+.pdf-thumb.has-img:hover .pdf-thumb-overlay { opacity: 1; }
+
+/* ── Lightbox zoom ── */
+#img-lightbox {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,.85); align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+#img-lightbox.open { display: flex; }
+#img-lightbox img {
+  max-width: 90vw; max-height: 90vh; object-fit: contain;
+  border-radius: 6px; box-shadow: 0 8px 40px rgba(0,0,0,.6);
+  cursor: default;
+}
+
+/* ── Popover de imagen ── */
+#img-popover {
+  position: fixed; z-index: 999;
+  background: var(--bg-card); border: 1px solid var(--border-2);
+  border-radius: var(--radius-lg); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  padding: 10px; width: 270px;
+  display: none; flex-direction: column; gap: 6px;
+}
+#img-popover.open { display: flex; }
+#img-popover-url {
+  width: 100%; padding: 5px 8px; border: 1px solid var(--border);
+  border-radius: var(--radius); font: inherit; font-size: 12px;
+  background: var(--bg); color: var(--text);
+}
+#img-popover-url:focus { outline: none; border-color: var(--blue); }
+.img-popover-row { display: flex; gap: 6px; }
+.img-popover-btn {
+  flex: 1; padding: 5px 8px; font-size: 12px; font-weight: 500;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.img-popover-btn:hover { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+.img-popover-btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.img-popover-btn.primary:hover { opacity: .85; }
+.img-popover-status { font-size: 11px; color: var(--text-3); min-height: 14px; }
+
+/* ── Producto (PDF) — info con badges ── */
+.ali-item-info { display: flex; flex-direction: column; gap: 4px; }
+.ali-item-title {
+  font-size: 12px; line-height: 1.35; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ali-item-badges { display: flex; flex-wrap: wrap; gap: 3px; }
+.ali-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 500; padding: 2px 6px;
+  border-radius: 3px; white-space: nowrap; max-width: 180px;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.ali-badge-color {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text-2);
+}
+[data-theme="dark"] .ali-badge-color { background: #2a2a2a; }
+.ali-badge-model {
+  background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8;
+}
+[data-theme="dark"] .ali-badge-model { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+
+/* ── ML product thumbnail ── */
+.ml-thumb {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-3);
+}
+.ml-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ml-thumb-wrap { display: flex; align-items: center; gap: 6px; }
+.ml-thumb-wrap .combobox-wrap { flex: 1; min-width: 0; }
+.stock-na { color: var(--text-3); font-style: italic; }
+
+/* Row actions */
+.row-del-btn {
+  width: 28px; height: 28px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color .15s, background .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.row-del-btn:hover { color: var(--red, #dc2626); border-color: var(--red, #dc2626); background: var(--red-light, #fee2e2); }
+
+/* ── Summary bar ── */
+.ali-summary {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 13px;
+}
+.ali-summary-stat { display: flex; align-items: center; gap: 6px; }
+.ali-summary-num { font-weight: 700; font-size: 18px; }
+.ali-summary-label { color: var(--text-2); }
+
+/* ── Apply button ── */
+.ali-apply-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 0 24px; height: 40px;
+  background: var(--blue); color: #fff;
+  border: none; border-radius: var(--radius);
+  font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background .15s, transform .08s, box-shadow .15s;
+}
+.ali-apply-btn:hover { background: var(--blue-dark, #1d4ed8); box-shadow: 0 2px 8px rgba(37,99,235,.3); }
+.ali-apply-btn:active { transform: translateY(1px); }
+.ali-apply-btn:disabled { background: var(--text-3); cursor: not-allowed; box-shadow: none; }
+.ali-apply-btn.loading svg { animation: spin .8s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Resultados ── */
+.result-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-radius: var(--radius); margin-bottom: 6px; font-size: 13px;
+  border: 1px solid var(--border);
+}
+.result-row.ok-row  { border-color: #bbf7d0; background: #f0fdf4; }
+.result-row.err-row { border-color: #fecaca; background: #fef2f2; }
+.result-icon { flex-shrink: 0; }
+.result-title { font-weight: 600; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.result-detail { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+
+/* ── Saved mappings list ── */
+.mapping-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--border-light, var(--border));
+  font-size: 12px;
+}
+.mapping-row:last-child { border-bottom: none; }
+.mapping-ali  { color: var(--text-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mapping-arrow { color: var(--text-3); flex-shrink: 0; }
+.mapping-ml   { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mapping-del  {
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 4px;
+  border: none; background: none; color: var(--text-3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: color .12s;
+}
+.mapping-del:hover { color: var(--red, #dc2626); }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center; padding: 32px 16px;
+  color: var(--text-2); font-size: 13px;
+}
+.empty-state svg { color: var(--text-3); margin-bottom: 10px; }
+
+/* ── Próximamente banner ── */
+.prox-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: #fef9c3; border: 1px solid #fde047;
+  border-radius: var(--radius); font-size: 13px; color: #713f12;
+  margin-bottom: 4px;
+}
+.prox-banner svg { flex-shrink: 0; color: #ca8a04; }
+.prox-banner strong { font-weight: 600; }
+
+/* ── Backup button ── */
+.backup-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 0 16px; height: 34px;
+  background: var(--bg-card); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font: inherit; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.backup-btn:hover { background: var(--bg); border-color: var(--blue); color: var(--blue); }
+.backup-btn:active { transform: translateY(1px); }
+.backup-btn:disabled { opacity: .5; cursor: not-allowed; }
+.backup-btn.loading svg { animation: spin .8s linear infinite; }
+
+/* ── Activity Log ── */
+.actlog-entry {
+  border-bottom: 1px solid var(--border);
+  padding: 11px 0;
+}
+.actlog-entry:last-child { border-bottom: none; padding-bottom: 0; }
+.actlog-ts {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 11px; color: var(--text-3); margin-bottom: 6px;
+}
+.actlog-ts-label { display: flex; align-items: center; gap: 6px; }
+.actlog-del-btn {
+  background: none; border: none; cursor: pointer; padding: 2px 5px;
+  border-radius: 4px; font-size: 11px; color: var(--text-3); line-height: 1;
+  transition: color .15s, background .15s;
+}
+.actlog-del-btn:hover { color: var(--red, #dc2626); background: var(--red-light, #fee2e2); }
+.actlog-items { display: flex; flex-direction: column; gap: 3px; }
+.actlog-item {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; line-height: 1.4;
+}
+.actlog-item-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-weight: 500;
+}
+.actlog-item-var { color: var(--text-2); font-size: 12px; white-space: nowrap; }
+.actlog-item-stock {
+  color: var(--green, #16a34a); font-weight: 600;
+  font-size: 12px; white-space: nowrap; font-family: 'JetBrains Mono', monospace;
+}
+.actlog-item-delta { color: var(--text-3); font-size: 11px; white-space: nowrap; }
+.actlog-empty {
+  font-size: 13px; color: var(--text-3); text-align: center; padding: 18px 0;
+}
+.actlog-count-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--blue-light, #eff6ff); color: var(--blue, #2563eb);
+  border-radius: 100px; font-size: 11px; font-weight: 600; margin-left: 6px;
+}
+#card-actlog .adm-card-head { user-select: none; }
+</style>
+</head>
+<body>
+
+<!-- ─────────────────── SIDEBAR ─────────────────── -->
+<aside class="adm-sidebar" id="sidebar">
+  <a href="/" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
+      </svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Stockroom</div>
+      <div class="adm-logo-tag">Panel Admin</div>
+    </div>
+  </a>
+  <nav class="adm-nav">
+    <div class="adm-group">
+      <div class="adm-group-label">Ventas</div>
+      <a href="/" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span>Dashboard</span></a>
+      <a href="/analytics.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>Analytics</span></a>
+      <a href="/despachos.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg><span>Despachos</span></a>
+      <a href="/cobros.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg><span>Cobros</span></a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/publicaciones.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Publicaciones</span></a>
+      <a href="/vinculaciones.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>Vinculaciones</span></a>
+      <a href="/migracion.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg><span>Migración</span></a>
+      <a href="/alibaba.html" class="adm-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg><span>Carga Alibaba</span></a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/preguntas.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>Preguntas</span></a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Tienda</div>
+      <a href="/tienda-admin.html" class="adm-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><span>Admin Tienda</span></a>
+    </div>
+  </nav>
+  <div class="adm-sidebar-foot">
+    <a href="/logout" class="adm-item" style="color:var(--red)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Cerrar sesión</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ─────────────────── MAIN ─────────────────── -->
+<div class="adm-layout">
+
+<header class="adm-topbar">
+  <button class="adm-menu-btn" id="menu-btn" aria-label="Menú">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <span class="adm-topbar-title">Carga de Stock — Alibaba</span>
+</header>
+
+<main class="adm-main pg">
+  <div class="adm-page-header">
+    <div>
+      <h1 class="adm-page-title">Carga de Stock — Alibaba</h1>
+      <p class="adm-page-sub">Subí el PDF de Recibo de Alibaba (<strong>Receipt_*.pdf</strong>), vinculá cada producto con ML y aplicá el incremento de stock.</p>
+    </div>
+  </div>
+
+  <!-- ── Banner Próximamente (se muestra si hay cuentas WZ) ── -->
+  <div class="prox-banner" id="prox-banner" style="display:none">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span id="prox-banner-text"></span>
+  </div>
+
+  <!-- ── Backup previo ─────────────────────────────────── -->
+  <div class="adm-card" id="card-backup">
+    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span class="adm-card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;color:var(--blue)"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Backup de publicaciones
+      </span>
+      <button class="adm-btn adm-btn-sm adm-btn-ghost" id="btn-toggle-backup-hist" onclick="toggleBackupHistory()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+        Historial
+      </button>
+    </div>
+    <div class="adm-card-body">
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:14px">
+        Descargá un backup completo de todas las publicaciones y variantes antes de modificar el stock.
+        Se guarda también una copia en el servidor.
+      </p>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <select id="backup-acct-sel" class="var-select" style="width:auto;min-width:160px">
+          <option value="">Cargando cuentas…</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer">
+          <input type="checkbox" id="backup-incl-paused" checked style="accent-color:var(--blue)">
+          Incluir pausadas
+        </label>
+        <button class="backup-btn" id="btn-backup" onclick="startBackup()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Generar backup
+        </button>
+        <span id="backup-status" style="font-size:12px;color:var(--text-2)"></span>
+      </div>
+
+      <!-- Historial de backups guardados -->
+      <div id="backup-history" style="display:none;margin-top:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Backups guardados en el servidor</div>
+        <div id="backup-history-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Historial de actualizaciones ────────────────── -->
+  <div class="adm-card" id="card-actlog">
+    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleActlog(event)">
+      <span class="adm-card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;color:var(--blue)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Historial de actualizaciones
+        <span id="actlog-count-badge" class="actlog-count-badge" style="display:none"></span>
+      </span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="actlog-del-btn" id="btn-actlog-clear" onclick="event.stopPropagation();clearActivityLog()" title="Borrar historial" style="font-size:12px;padding:3px 8px;display:none">Limpiar</button>
+        <span id="actlog-chevron" style="color:var(--text-3);display:flex;align-items:center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </div>
+    </div>
+    <div class="adm-card-body" id="actlog-body" style="display:none;padding-top:4px">
+      <div id="actlog-list"><div class="actlog-empty">Sin actualizaciones registradas aún.</div></div>
+    </div>
+  </div>
+
+  <!-- ── Paso 1: Upload ──────────────────────────────── -->
+  <div class="adm-card" id="card-upload">
+    <div class="adm-card-head">
+      <span class="adm-card-title">
+        <span class="step-badge">1</span> Subir PDF
+      </span>
+    </div>
+    <div class="adm-card-body">
+
+      <div class="upload-zone" id="upload-zone">
+        <!-- Input para archivo único (PDF o HTML solo) — se activa al hacer click -->
+        <input type="file" id="file-input" accept=".pdf,application/pdf,.html,text/html" style="display:none">
+        <!-- Input para seleccionar carpeta completa (HTML + imágenes) -->
+        <input type="file" id="folder-input" webkitdirectory style="display:none" onchange="processFolderInput(this)">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <polyline points="9 15 12 12 15 15"/>
+        </svg>
+        <div class="upload-title">Arrastrá el recibo acá</div>
+        <div class="upload-sub" style="margin-bottom:10px">PDF, HTML, o la carpeta completa del pedido</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button type="button" class="upload-btn" onclick="event.stopPropagation();$('file-input').click()">
+            📄 Seleccionar archivo
+          </button>
+          <button type="button" class="upload-btn upload-btn-primary" onclick="event.stopPropagation();$('folder-input').click()">
+            📁 Seleccionar carpeta del pedido
+          </button>
+        </div>
+        <div class="upload-hint" style="margin-top:10px">
+          Para incluir todas las imágenes: en el navegador abrí el pedido → <strong>Ctrl+S</strong> → guardá como
+          <em>Página web, completa</em> → seleccioná la carpeta creada
+        </div>
+      </div>
+
+      <div id="parse-state-wrap" style="display:none; margin-top:14px"></div>
+
+    </div>
+  </div>
+
+  <!-- ── Paso 2: Tabla de items ──────────────────────── -->
+  <div class="adm-card" id="card-items" style="display:none">
+    <div class="adm-card-head" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px">
+      <span class="adm-card-title">
+        <span class="step-badge">2</span> Revisar items y vincular con ML
+      </span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div id="acct-selector-wrap" style="display:none;align-items:center"></div>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" id="btn-toggle-all" onclick="clickToggleAll()" title="Seleccionar / deseleccionar todos">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span id="btn-toggle-all-label">Deseleccionar todo</span>
+        </button>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" id="btn-add-row" title="Agregar fila manualmente">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Agregar fila
+        </button>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" id="btn-save-mappings" title="Guardar vínculos para la próxima vez">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar vínculos
+        </button>
+      </div>
+    </div>
+    <div class="adm-card-body" style="padding-top:0">
+
+      <div style="padding:10px 0 12px; color:var(--text-2); font-size:12px">
+        Verificá el nombre y la cantidad. Seleccioná el producto de ML correspondiente para cada fila.
+        <br>Las filas sin vincular (<span style="color:#854d0e;font-weight:600">fondo amarillo</span>) no se aplicarán.
+      </div>
+
+      <div class="ali-table-wrap">
+        <table class="ali-table">
+          <thead>
+            <tr>
+              <th style="width:32px;text-align:center">
+                <input type="checkbox" id="check-all" checked title="Seleccionar / deseleccionar todos"
+                       style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue)"
+                       onchange="toggleAllRows(this.checked)">
+              </th>
+              <th>Producto (del recibo)</th>
+              <th style="width:80px">Cant.</th>
+              <th style="width:300px">Producto ML</th>
+              <th style="width:160px">Variante</th>
+              <th style="width:130px; text-align:right">Stock actual → nuevo</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Summary + Apply -->
+      <div style="margin-top:16px">
+        <div class="ali-summary" id="ali-summary">
+          <div style="display:flex;gap:20px;flex-wrap:wrap">
+            <div class="ali-summary-stat">
+              <span class="ali-summary-num" id="sum-total">0</span>
+              <span class="ali-summary-label">items del PDF</span>
+            </div>
+            <div class="ali-summary-stat">
+              <span class="ali-summary-num" id="sum-linked" style="color:var(--blue)">0</span>
+              <span class="ali-summary-label">vinculados</span>
+            </div>
+            <div class="ali-summary-stat">
+              <span class="ali-summary-num" id="sum-unlinked" style="color:#854d0e">0</span>
+              <span class="ali-summary-label">sin vincular</span>
+            </div>
+          </div>
+          <button class="ali-apply-btn" id="btn-apply" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Aplicar stock en ML
+          </button>
+        </div>
+        <p style="margin-top:8px; font-size:11px; color:var(--text-3)">
+          Solo se aplicarán las filas con producto ML seleccionado. El stock se <strong>suma</strong> al actual (no reemplaza).
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Paso 3: Resultados ──────────────────────────── -->
+  <div class="adm-card" id="card-results" style="display:none">
+    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between">
+      <span class="adm-card-title">
+        <span class="step-badge">3</span> Resultados
+      </span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="adm-btn adm-btn-sm" id="btn-retry-failed"
+                style="display:none;background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)"
+                onclick="retryFailed()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          <span id="btn-retry-label">Reintentar fallidos</span>
+        </button>
+        <button class="adm-btn adm-btn-sm adm-btn-ghost" id="btn-new-upload">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          Nueva carga
+        </button>
+      </div>
+    </div>
+    <div class="adm-card-body" id="results-body"></div>
+  </div>
+
+  <!-- ── Vínculos guardados ─────────────────────────── -->
+  <div class="adm-card" id="card-mappings">
+    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between">
+      <span class="adm-card-title">Vínculos guardados</span>
+      <span class="adm-badge" id="mappings-count" style="display:none">0</span>
+    </div>
+    <div class="adm-card-body" id="mappings-body">
+      <div class="empty-state">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <p>Aún no hay vínculos guardados.</p>
+        <p style="font-size:11px">Al guardar, la próxima vez que subas un PDF con los mismos nombres, los ítems se vincularán automáticamente.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ── Step badge style ── -->
+<!-- ── Lightbox zoom ── -->
+<div id="img-lightbox" onclick="closeLightbox()">
+  <img id="img-lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- ── Popover para asignar imagen al producto del recibo ── -->
+<div id="img-popover">
+  <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px">Imagen del producto</div>
+  <input type="text" id="img-popover-url" placeholder="URL de imagen o página de Alibaba…" autocomplete="off">
+  <div class="img-popover-row">
+    <button class="img-popover-btn" onclick="imgPopoverFile()">📁 Archivo</button>
+    <button class="img-popover-btn primary" id="img-popover-fetch-btn" onclick="imgPopoverFetch()">🔗 Usar URL</button>
+  </div>
+  <div class="img-popover-status" id="img-popover-status"></div>
+  <div style="font-size:10px;color:var(--text-3);line-height:1.4;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
+    💡 En Alibaba: clic derecho sobre la foto del producto → <strong>Copiar enlace de imagen</strong>
+  </div>
+</div>
+<input type="file" accept="image/*" id="img-popover-file-input" style="display:none" onchange="imgPopoverApplyFile(this)">
+
+<style>
+.step-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-size: 11px; font-weight: 700;
+  margin-right: 6px; flex-shrink: 0;
+}
+</style>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  alibaba.html — Carga de Stock desde PDFs de Alibaba
+// ══════════════════════════════════════════════════════════
+
+// ── Estado global ──────────────────────────────────────────
+let parsedRows  = [];   // [{name,qty,raw}] extraídos del PDF
+let mlItems     = [];   // todos los productos de ML (del cache)
+let mappings    = [];   // [{alibaba_name, ml_item_id, variation_id, account_id, ...}]
+let accounts    = [];   // [{id, label}] cuentas ML configuradas
+let rowId       = 0;    // counter para IDs únicos de fila
+let rawText     = '';   // texto bruto del PDF
+
+// ── $ helper ──────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// Cuentas habilitadas para Alibaba (por ahora solo RZ-ZETTAI)
+// Debe declararse ANTES del IIFE para evitar temporal dead zone
+const ALIBABA_ENABLED_IDS = ['nueva'];   // ID de RZ-ZETTAI en config
+
+// ── Init ──────────────────────────────────────────────────
+(async function init() {
+  setupUpload();
+  renderActivityLog();
+  // Si hay entradas guardadas, abrir el panel al cargar
+  if (loadActivityLog().length) toggleActlog();
+  await Promise.all([loadMlItems(), loadMappings(), loadAccounts()]);
+})();
+
+async function loadAccounts() {
+  try {
+    const res  = await fetch('/accounts');
+    const data = await res.json();
+    const all  = (data.accounts || []).filter(a => a.has_token);
+
+    // Separar cuentas habilitadas vs pendientes
+    accounts = all.filter(a => ALIBABA_ENABLED_IDS.includes(a.id));
+    const pendingAccounts = all.filter(a => !ALIBABA_ENABLED_IDS.includes(a.id));
+
+    // Mostrar banner si hay cuentas pendientes
+    if (pendingAccounts.length) {
+      const names = pendingAccounts.map(a => escHtml(a.label || a.id)).join(', ');
+      const banner = $('prox-banner');
+      const bannerText = $('prox-banner-text');
+      if (banner && bannerText) {
+        bannerText.innerHTML = `<strong>Próximamente:</strong> ${names} — esta funcionalidad estará disponible para esa cuenta una vez probada en RZ-ZETTAI.`;
+        banner.style.display = 'flex';
+      }
+    }
+
+    renderAccountSelector();
+    populateBackupAccountSelector();
+  } catch(e) { console.warn('[alibaba] Error cargando cuentas:', e.message); }
+}
+
+function renderAccountSelector() {
+  const wrap = $('acct-selector-wrap');
+  if (!wrap) return;
+  if (accounts.length <= 1) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const opts = accounts.map(a =>
+    `<option value="${escAttr(a.id)}">${escHtml(a.label || a.id)}</option>`
+  ).join('');
+  wrap.innerHTML = `
+    <label style="font-size:12px;color:var(--text-2);margin-right:6px">Cuenta ML por defecto:</label>
+    <select id="default-acct-sel" class="var-select" style="width:auto;min-width:120px" onchange="updateAllRowAccounts()">
+      ${opts}
+    </select>`;
+}
+
+function getDefaultAccountId() {
+  const sel = $('default-acct-sel');
+  if (sel) return sel.value;
+  return accounts[0]?.id || 'default';
+}
+
+function updateAllRowAccounts() {
+  // Actualiza las filas sin mapping guardado al nuevo default
+  document.querySelectorAll('#items-tbody tr[id^="row-"]').forEach(tr => {
+    const rid = parseInt(tr.dataset.rowid);
+    const acctInput = $(`cb-acct-${rid}`);
+    if (acctInput && !acctInput.dataset.userSet) {
+      acctInput.value = getDefaultAccountId();
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  UPLOAD & PARSE
+// ══════════════════════════════════════════════════════════
+function setupUpload() {
+  const zone  = $('upload-zone');
+  const input = $('file-input');
+
+  input.addEventListener('change', () => { if (input.files[0]) processFile(input.files[0]); });
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', async e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+
+    // ¿Se soltó una carpeta?
+    const items = Array.from(e.dataTransfer.items || []);
+    const dirEntry = items.map(i => i.webkitGetAsEntry?.()).find(en => en?.isDirectory);
+    if (dirEntry) {
+      await processFolderEntry(dirEntry);
+      return;
+    }
+
+    const file = e.dataTransfer.files[0];
+    if (file && isAcceptedFile(file)) processFile(file);
+    else showParseState('error', 'Arrastrá un PDF, un HTML o la carpeta del pedido.');
+  });
+}
+
+// ── Leer carpeta desde drag-drop (FileSystemEntry API) ────
+async function processFolderEntry(dirEntry) {
+  showParseState('loading', `Leyendo carpeta "${dirEntry.name}"…`);
+  try {
+    const allFiles = await readDirRecursive(dirEntry);
+    await processFileList(allFiles, dirEntry.name);
+  } catch(e) {
+    showParseState('error', e.message);
+  }
+}
+
+// ── Leer carpeta desde <input webkitdirectory> ────────────
+async function processFolderInput(input) {
+  if (!input.files.length) return;
+  showParseState('loading', 'Leyendo carpeta…');
+  try {
+    const allFiles = Array.from(input.files);
+    await processFileList(allFiles, '');
+  } catch(e) {
+    showParseState('error', e.message);
+  }
+}
+
+// ── Procesar lista de archivos: detecta HTML + imágenes ───
+async function processFileList(allFiles, folderName) {
+  const htmlFile = allFiles.find(f => f.name.toLowerCase().endsWith('.html') || f.name.toLowerCase().endsWith('.htm'));
+  if (!htmlFile) {
+    showParseState('error', `No se encontró ningún archivo HTML en "${folderName || 'la carpeta'}".`);
+    return;
+  }
+  // Construir mapa filename → ObjectURL para las imágenes
+  const imgMap = {};
+  for (const f of allFiles) {
+    if (/\.(jpe?g|png|webp|gif|avif|bmp|svg)$/i.test(f.name)) {
+      imgMap[f.name] = URL.createObjectURL(f);
+    }
+  }
+  await processHtmlFile(htmlFile, imgMap);
+}
+
+// ── Leer un FileSystemDirectoryEntry recursivamente ───────
+function readDirRecursive(dirEntry) {
+  return new Promise((resolve, reject) => {
+    const files = [];
+    const reader = dirEntry.createReader();
+    function nextBatch() {
+      reader.readEntries(async entries => {
+        if (!entries.length) { resolve(files); return; }
+        for (const entry of entries) {
+          if (entry.isFile) {
+            const f = await new Promise((res, rej) => entry.file(res, rej));
+            files.push(f);
+          } else if (entry.isDirectory) {
+            const sub = await readDirRecursive(entry);
+            files.push(...sub);
+          }
+        }
+        nextBatch();
+      }, reject);
+    }
+    nextBatch();
+  });
+}
+
+function isAcceptedFile(file) {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      || file.type === 'text/html'        || file.name.toLowerCase().endsWith('.html');
+}
+
+async function processFile(file) {
+  if (file.name.toLowerCase().endsWith('.html') || file.type === 'text/html') {
+    await processHtmlFile(file);
+    return;
+  }
+  // ── PDF ──────────────────────────────────────────────────
+  showParseState('loading', `Procesando "${file.name}"…`);
+  try {
+    const base64 = await fileToBase64(file);
+    const dataB64 = base64.split(',')[1]; // quitar prefijo "data:...;base64,"
+    const res  = await fetch('/api/stockroom/alibaba/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: dataB64 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+
+    rawText    = data.rawText || '';
+    parsedRows = data.rows || [];
+
+    showParseState('ok', file.name, data.totalPages, parsedRows.length, data.usedOcr);
+    renderItemsTable();
+    $('card-items').style.display = '';
+    $('card-items').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    showParseState('error', e.message);
+  }
+}
+
+// ── HTML (Order details de Alibaba) ──────────────────────
+async function processHtmlFile(file, imgMap = {}) {
+  showParseState('loading', `Procesando "${file.name}"…`);
+  try {
+    const html = await fileToText(file);
+    const rows = parseAlibabaOrderHtml(html, imgMap);
+    rawText    = `[HTML] ${rows.length} items extraídos`;
+    parsedRows = rows;
+    showParseState('ok', file.name, null, rows.length, false);
+    renderItemsTable();
+    $('card-items').style.display = '';
+    $('card-items').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    showParseState('error', e.message);
+  }
+}
+
+function parseAlibabaOrderHtml(html, imgMap = {}) {
+  const parser = new DOMParser();
+  const doc    = parser.parseFromString(html, 'text/html');
+  const rows   = [];
+  let currentName = '';
+  let currentImg  = '';
+
+  for (const tr of doc.querySelectorAll('tr')) {
+    // textContent fusiona TDs sin separador — joinear cada celda con espacio
+    const cells = tr.querySelectorAll('td, th');
+    const text  = cells.length
+      ? Array.from(cells).map(c => c.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' ')
+      : tr.textContent.replace(/\s+/g, ' ').trim();
+    if (!text || /^Product name\s+Spec/i.test(text)) continue;
+
+    // Tiene que tener "USD X /Pieces QTY USD TOTAL" para ser fila de producto
+    const priceMatch = text.match(/USD\s*([\d.]+)\s*\/Pieces\s+([\d.]+)\s+USD/);
+    if (!priceMatch) continue;
+
+    const unitPrice = parseFloat(priceMatch[1]);
+    const qty       = Math.round(parseFloat(priceMatch[2]));
+
+    // Imagen del producto — detectar por nombre de archivo patrón Alibaba (H{alphanum}.jpg)
+    const allImgs = Array.from(tr.querySelectorAll('img'));
+    const imgEl = allImgs.find(img => {
+      const s = img.getAttribute('src') || '';
+      // Nombre de producto Alibaba: H seguido de 20+ caracteres alfanuméricos
+      return /\/H[0-9a-zA-Z]{20,}\.(jpe?g|png|webp)/i.test(s);
+    });
+    let imgUrl = '';
+    if (imgEl) {
+      const rawSrc = imgEl.getAttribute('src') || '';
+      if (rawSrc.startsWith('http')) {
+        // URL CDN absoluta — usar directo
+        imgUrl = rawSrc;
+      } else {
+        // Ruta local (relativa o file:///) → extraer filename
+        const fname = decodeURIComponent(rawSrc.split('/').pop());
+        // 1. Buscar en imgMap (archivos de la carpeta subida)
+        imgUrl = imgMap[fname] || '';
+        // 2. Fallback: construir URL CDN de Alibaba desde el filename
+        if (!imgUrl && /^H[0-9a-zA-Z]{20,}\.(jpe?g|png|webp)$/i.test(fname)) {
+          imgUrl = `https://sc04.alicdn.com/kf/${fname}`;
+        }
+      }
+    }
+    if (imgUrl) currentImg = imgUrl;
+
+    // Color
+    const colorM = text.match(/color:\s*([^,\n]+)/i);
+    const color  = colorM ? colorM[1].trim() : '';
+
+    // Compatible model (termina antes de "USD" o fin de línea)
+    const modelM = text.match(/compatible model:\s*([^,]+?)(?:\s+USD|\s*$)/i);
+    const model  = modelM ? modelM[1].trim() : '';
+
+    // Nombre del producto: texto que aparece ANTES de "color:" (en la primera fila de cada grupo)
+    const colorIdx = text.search(/color\s*:/i);
+    if (colorIdx > 5) {
+      // Remover precio que pueda estar antes del color:
+      let namePart = text.slice(0, colorIdx).replace(/USD\s*[\d.]+\s*\/Pieces.*$/i, '').trim();
+      if (namePart.length > 10) currentName = namePart;
+    }
+
+    if (!currentName && !model) continue;
+
+    // Construir nombre compuesto igual que el PDF parser
+    const baseName = currentName || model;
+    const displayName = (currentName && model) ? `${currentName} — ${model}` : baseName;
+
+    rows.push({
+      name:      displayName,
+      title:     currentName,
+      color,
+      model,
+      qty,
+      unitPrice,
+      thumbnail: imgUrl || currentImg,
+      raw:       text,
+    });
+  }
+  return rows;
+}
+
+function fileToText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function showParseState(type, ...args) {
+  const wrap = $('parse-state-wrap');
+  wrap.style.display = '';
+
+  if (type === 'loading') {
+    wrap.innerHTML = `<div class="parse-state">
+      <div class="parse-state-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin .8s linear infinite;color:var(--blue)"><path d="M21 12a9 9 0 11-6.22-8.56"/></svg>
+      </div>
+      <div>
+        <div class="parse-filename">${escHtml(args[0])}</div>
+        <div class="parse-info">Procesando… los Contratos PDF (TA_CONTRACT) pueden demorar ~30-60 s (OCR). Los archivos HTML son instantáneos.</div>
+      </div>
+    </div>`;
+  } else if (type === 'ok') {
+    const [fname, pages, found, usedOcr] = args;
+    const badge = found > 0
+      ? `<span class="parse-badge ok">✓ ${found} item${found !== 1 ? 's' : ''} detectado${found !== 1 ? 's' : ''}</span>`
+      : `<span class="parse-badge warn">⚠ Sin items detectados automáticamente</span>`;
+    const ocrBadge = usedOcr
+      ? `<span class="parse-badge warn" title="El PDF no tenía texto embebido — se usó OCR">OCR</span>`
+      : '';
+    wrap.innerHTML = `<div class="parse-state">
+      <div class="parse-state-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="parse-filename">${escHtml(fname)}</span>
+          ${badge}
+          ${ocrBadge}
+          ${pages != null ? `<span style="font-size:11px;color:var(--text-3)">${pages} página${pages !== 1 ? 's' : ''}</span>` : `<span style="font-size:11px;color:var(--text-3)">HTML</span>`}
+        </div>
+        <div style="margin-top:6px">
+          <button class="raw-toggle" id="btn-raw-toggle" onclick="toggleRaw()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            Ver texto extraído del PDF
+          </button>
+        </div>
+        <div id="raw-box" class="raw-box" style="display:none">${escHtml(rawText)}</div>
+      </div>
+    </div>`;
+  } else {
+    wrap.innerHTML = `<div class="parse-state">
+      <div class="parse-state-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      </div>
+      <div>
+        <div class="parse-filename" style="color:#dc2626">Error al procesar el archivo</div>
+        <div class="parse-info">${escHtml(args[0])}</div>
+      </div>
+    </div>`;
+  }
+}
+
+function toggleRaw() {
+  const box = $('raw-box');
+  const btn = $('btn-raw-toggle');
+  if (!box || !btn) return;
+  const show = box.style.display === 'none';
+  box.style.display = show ? '' : 'none';
+  btn.textContent = show ? 'Ocultar texto extraído' : 'Ver texto extraído del PDF';
+}
+
+// ══════════════════════════════════════════════════════════
+//  ML ITEMS
+// ══════════════════════════════════════════════════════════
+async function loadMlItems() {
+  try {
+    // Cargar items de cada cuenta habilitada para Alibaba (cache por cuenta)
+    const allFetches = ALIBABA_ENABLED_IDS.map(acctId =>
+      fetch(`/api/stockroom/alibaba/ml-items?account_id=${encodeURIComponent(acctId)}`)
+        .then(r => r.json())
+        .then(data => Array.isArray(data) ? data : [])
+        .catch(() => [])
+    );
+    const results = await Promise.all(allFetches);
+    mlItems = results.flat();
+    console.log(`[alibaba] Productos ML: ${mlItems.length} item(s) de cuenta(s) Alibaba`);
+  } catch(e) {
+    console.warn('[alibaba] Error cargando items ML:', e.message);
+  }
+}
+
+async function loadMappings() {
+  try {
+    const res  = await fetch('/api/stockroom/alibaba/mappings');
+    const data = await res.json();
+    mappings = data.mappings || [];
+    renderMappingsList();
+  } catch(e) { console.warn('[alibaba] Error cargando mappings:', e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  TABLA DE ITEMS
+// ══════════════════════════════════════════════════════════
+function renderItemsTable() {
+  rowId = 0;
+  const tbody = $('items-tbody');
+  if (!parsedRows.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="padding:24px;text-align:center;color:var(--text-2)">
+      No se detectaron items automáticamente. Usá el botón "Agregar fila" para ingresar los datos manualmente,
+      o revisá el texto extraído arriba para entender el formato del PDF.
+    </td></tr>`;
+    updateSummary();
+    return;
+  }
+  tbody.innerHTML = '';
+  for (const row of parsedRows) {
+    const savedMapping = findMapping(row.name);
+    addTableRow(row.name, row.qty, savedMapping, row.color || '', row.model || '', row.title || '');
+    // HTML imports traen thumbnail CDN — aplicarlo de inmediato
+    if (row.thumbnail) applyThumbUrl(rowId, row.thumbnail);
+  }
+  updateSummary();
+}
+
+function findMapping(name) {
+  if (!name) return null;
+  const nl = name.toLowerCase().trim();
+  // Exact match
+  let m = mappings.find(m => m.alibaba_name.toLowerCase() === nl);
+  if (m) return m;
+  // Partial match (≥80% word overlap)
+  const nameWords = new Set(nl.split(/\s+/));
+  let best = null, bestScore = 0;
+  for (const m of mappings) {
+    const mWords = m.alibaba_name.toLowerCase().split(/\s+/);
+    const overlap = mWords.filter(w => nameWords.has(w)).length;
+    const score = overlap / Math.max(mWords.length, nameWords.size);
+    if (score > bestScore && score >= 0.75) { best = m; bestScore = score; }
+  }
+  return best;
+}
+
+function addTableRow(name = '', qty = 1, savedMapping = null, color = '', model = '', title = '') {
+  const id = ++rowId;
+  const tbody = $('items-tbody');
+
+  // Buscar item ML si hay mapping
+  const mlItem  = savedMapping ? mlItems.find(p => p.id === savedMapping.ml_item_id) : null;
+
+  // Determinar cuenta
+  const defaultAcct = getDefaultAccountId();
+  const mappedAcct  = savedMapping?.account_id || defaultAcct;
+
+  // Thumbnail del producto ML (si hay mapping)
+  const thumbSrc = mlItem?.thumbnail || (savedMapping?.ml_item_id ? '' : '');
+  const thumbHtml = thumbSrc
+    ? `<img src="${escAttr(thumbSrc)}" onerror="this.style.display='none'">`
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+
+  // Nombre display: si hay color/model → mostrar badges; si no → texto plano
+  const displayTitle = title || name;
+  const nameCellHtml = (color || model)
+    ? `<div class="ali-item-info">
+         <div class="ali-item-title">${escHtml(displayTitle)}</div>
+         <div class="ali-item-badges">
+           ${color ? `<span class="ali-badge ali-badge-color">🎨 ${escHtml(color)}</span>` : ''}
+           ${model ? `<span class="ali-badge ali-badge-model">📱 ${escHtml(model)}</span>` : ''}
+         </div>
+       </div>`
+    : `<div class="ali-item-title" style="padding:2px 0">${escHtml(displayTitle || name)}</div>`;
+
+  const tr = document.createElement('tr');
+  tr.id    = `row-${id}`;
+  tr.dataset.rowid = id;
+  if (!savedMapping) tr.classList.add('unmapped');
+
+  tr.innerHTML = `
+    <td style="text-align:center; padding:4px 8px">
+      <input type="checkbox" class="row-check" data-rowid="${id}" checked
+             style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue)">
+    </td>
+    <td style="min-width:200px">
+      <input type="hidden" data-rowid="${id}" data-field="name" value="${escAttr(name)}">
+      <input type="file" accept="image/*" id="pdf-img-input-${id}" style="display:none" onchange="setPdfThumb(${id}, this)">
+      <div style="display:flex;align-items:flex-start;gap:6px">
+        <div class="pdf-thumb" id="pdf-thumb-${id}" onclick="zoomThumb(this)" title="Ver imagen">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        ${nameCellHtml}
+      </div>
+    </td>
+    <td>
+      <input type="number" class="ali-input ali-input-qty" data-rowid="${id}" data-field="qty"
+             value="${qty}" min="1" max="99999">
+    </td>
+    <td style="min-width:220px">
+      <div class="ml-thumb-wrap">
+        <div class="ml-thumb" id="ml-thumb-${id}">${thumbHtml}</div>
+        <div class="combobox-wrap" id="cb-wrap-${id}">
+          <input type="text" class="combobox-input" id="cb-input-${id}"
+                 placeholder="Buscar producto ML…"
+                 autocomplete="off"
+                 value="${escAttr(mlItem ? mlItem.title : (savedMapping ? savedMapping.ml_title || savedMapping.ml_item_id : ''))}">
+          <svg class="combobox-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="combobox-dropdown" id="cb-dd-${id}"></div>
+          <input type="hidden" id="cb-val-${id}"
+                 value="${escAttr(savedMapping?.ml_item_id || '')}">
+          <input type="hidden" id="cb-acct-${id}"
+                 value="${escAttr(mappedAcct)}">
+        </div>
+      </div>
+    </td>
+    <td style="min-width:130px" id="var-cell-${id}">
+      <select class="var-select no-variants" id="var-sel-${id}" disabled>
+        <option value="">— sin variantes —</option>
+      </select>
+    </td>
+    <td class="stock-cell" id="stock-cell-${id}">
+      <span class="stock-na">—</span>
+    </td>
+    <td style="padding:4px 8px">
+      <button class="row-del-btn" onclick="deleteRow(${id})" title="Eliminar fila">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </td>`;
+
+  tbody.appendChild(tr);
+
+  // Setup combobox for this row
+  setupCombobox(id);
+
+  // If we have a mapping, pre-fill variant
+  if (savedMapping?.ml_item_id) {
+    selectMlItem(id, savedMapping.ml_item_id, savedMapping.ml_title || '', savedMapping.account_id || defaultAcct);
+    if (savedMapping.variation_id) {
+      setTimeout(() => setVariant(id, savedMapping.variation_id, savedMapping.ml_variant_label || ''), 50);
+    }
+  }
+
+  // Input listeners for live update
+  tr.querySelector(`[data-field="name"]`).addEventListener('input', () => updateSummary());
+  tr.querySelector(`[data-field="qty"]`).addEventListener('input', () => {
+    updateStockPreview(id);
+    updateSummary();
+  });
+  tr.querySelector('.row-check').addEventListener('change', () => { syncCheckAll(); updateSummary(); });
+}
+
+// ══════════════════════════════════════════════════════════
+//  COMBOBOX ML ITEM
+// ══════════════════════════════════════════════════════════
+function setupCombobox(id) {
+  const input = $(`cb-input-${id}`);
+  const dd    = $(`cb-dd-${id}`);
+  const wrap  = $(`cb-wrap-${id}`);
+  if (!input || !dd) return;
+
+  let focusedIdx = -1;
+
+  input.addEventListener('focus', () => openDropdown(id));
+  input.addEventListener('input', () => { focusedIdx = -1; openDropdown(id); });
+  input.addEventListener('keydown', e => {
+    const items = dd.querySelectorAll('.combobox-item:not([style*="display:none"])');
+    if (e.key === 'ArrowDown') { e.preventDefault(); focusedIdx = Math.min(focusedIdx + 1, items.length - 1); highlightItem(items, focusedIdx); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); focusedIdx = Math.max(focusedIdx - 1, 0); highlightItem(items, focusedIdx); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (focusedIdx >= 0 && items[focusedIdx]) items[focusedIdx].click(); }
+    else if (e.key === 'Escape') { closeDropdown(id); input.blur(); }
+  });
+
+  document.addEventListener('click', e => {
+    if (!wrap.contains(e.target)) closeDropdown(id);
+  }, true);
+}
+
+function highlightItem(items, idx) {
+  items.forEach((el, i) => el.classList.toggle('focused', i === idx));
+  if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+}
+
+function openDropdown(id) {
+  const input = $(`cb-input-${id}`);
+  const dd    = $(`cb-dd-${id}`);
+  if (!input || !dd) return;
+
+  const q   = input.value.toLowerCase().trim();
+  const all = getAccounts();
+
+  // Filtrar items por query
+  let filtered = mlItems;
+  if (q.length >= 1) {
+    filtered = mlItems.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      p.id.toLowerCase().includes(q)
+    );
+  }
+  filtered = filtered.slice(0, 40); // max 40 resultados
+
+  if (!filtered.length) {
+    dd.innerHTML = `<div class="combobox-empty">Sin resultados para "${escHtml(input.value)}"</div>`;
+  } else {
+    dd.innerHTML = filtered.map(p => {
+      const acct  = detectItemAccount(p.id);
+      const thumb = p.thumbnail
+        ? `<img src="${escAttr(p.thumbnail)}" style="width:36px;height:36px;object-fit:cover;border-radius:3px;flex-shrink:0;border:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">`
+        : `<div style="width:36px;height:36px;flex-shrink:0;border-radius:3px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-3)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+      return `<div class="combobox-item" data-id="${escAttr(p.id)}" data-title="${escAttr(p.title)}" data-acct="${escAttr(acct)}" onclick="selectMlItem(${id}, '${escAttr(p.id)}', '${escAttr(p.title.replace(/'/g,"\\\'"))}', '${escAttr(acct)}')">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${thumb}
+          <div style="min-width:0">
+            <div class="combobox-item-title">${escHtml(p.title)}</div>
+            <div class="combobox-item-id">${p.id}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  dd.classList.add('open');
+}
+
+// ── Popover de imagen para productos del recibo ──────────────
+let _imgPopoverRowId = null;
+
+function openImgPopover(id, thumbEl) {
+  _imgPopoverRowId = id;
+  const pop = $('img-popover');
+  const rect = thumbEl.getBoundingClientRect();
+  pop.classList.add('open');
+  // Posicionar a la derecha del thumb
+  let left = rect.right + 6;
+  let top  = rect.top;
+  // Evitar que se salga de la pantalla
+  if (left + 240 > window.innerWidth)  left = rect.left - 246;
+  if (top  + 130 > window.innerHeight) top  = window.innerHeight - 136;
+  pop.style.left = `${Math.max(4, left)}px`;
+  pop.style.top  = `${Math.max(4, top)}px`;
+  $('img-popover-url').value = '';
+  $('img-popover-status').textContent = '';
+  setTimeout(() => $('img-popover-url').focus(), 50);
+}
+
+function closeImgPopover() {
+  $('img-popover').classList.remove('open');
+  _imgPopoverRowId = null;
+}
+
+function applyThumbUrl(id, url) {
+  const thumb = $(`pdf-thumb-${id}`);
+  if (!thumb) return;
+  thumb.classList.add('has-img');
+  thumb.innerHTML = `
+    <img src="${escAttr(url)}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none';this.parentElement.classList.remove('has-img')">
+    <div class="pdf-thumb-overlay">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>`;
+}
+
+function imgPopoverFile() {
+  $('img-popover-file-input').click();
+}
+
+function imgPopoverApplyFile(input) {
+  const file = input.files?.[0];
+  if (!file || _imgPopoverRowId === null) return;
+  const url = URL.createObjectURL(file);
+  applyThumbUrl(_imgPopoverRowId, url);
+  closeImgPopover();
+  input.value = '';
+}
+
+async function imgPopoverFetch() {
+  if (_imgPopoverRowId === null) return;
+  const rawUrl = $('img-popover-url').value.trim();
+  if (!rawUrl) { $('img-popover-status').textContent = 'Pegá una URL primero'; return; }
+
+  // URLs de imagen directa: extensión conocida o CDN de Alibaba (s.alicdn.com)
+  const isDirectImage = /\.(jpe?g|png|webp|gif|avif|bmp)(\?.*)?$/i.test(rawUrl)
+    || /s\.alicdn\.com\//i.test(rawUrl)
+    || /aliexpress-media\.com\//i.test(rawUrl);
+
+  if (isDirectImage) {
+    applyThumbUrl(_imgPopoverRowId, rawUrl);
+    closeImgPopover();
+    return;
+  }
+
+  // Si es una URL de página, fetchear el og:image desde el servidor
+  const status = $('img-popover-status');
+  const btn    = $('img-popover-fetch-btn');
+  status.textContent = 'Buscando imagen…';
+  btn.disabled = true;
+  try {
+    const res  = await fetch(`/api/stockroom/alibaba/fetch-image?url=${encodeURIComponent(rawUrl)}`);
+    const data = await res.json();
+    if (data.imageUrl) {
+      applyThumbUrl(_imgPopoverRowId, data.imageUrl);
+      closeImgPopover();
+    } else {
+      // Alibaba bloquea scraping — orientar al usuario
+      const isAlibaba = /alibaba\.com|aliexpress\.com/i.test(rawUrl);
+      status.textContent = isAlibaba
+        ? 'Alibaba bloquea la descarga automática. Usá clic derecho → copiar enlace de imagen en la página.'
+        : (data.error || 'No se encontró imagen en la página');
+    }
+  } catch (e) {
+    status.textContent = 'Error de red';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Lightbox ─────────────────────────────────────────────
+function zoomThumb(thumbEl) {
+  const img = thumbEl.querySelector('img');
+  if (!img || !img.src || img.style.display === 'none') return;
+  $('img-lightbox-img').src = img.src;
+  $('img-lightbox').classList.add('open');
+}
+function closeLightbox() {
+  $('img-lightbox').classList.remove('open');
+  $('img-lightbox-img').src = '';
+}
+
+// Enter en el input dispara el fetch
+document.addEventListener('DOMContentLoaded', () => {
+  $('img-popover-url')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') imgPopoverFetch();
+    if (e.key === 'Escape') closeImgPopover();
+  });
+  // Escape cierra el lightbox
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+  // Click fuera cierra el popover
+  document.addEventListener('click', e => {
+    const pop = $('img-popover');
+    if (pop?.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('.pdf-thumb')) {
+      closeImgPopover();
+    }
+  }, true);
+});
+
+function closeDropdown(id) {
+  const dd = $(`cb-dd-${id}`);
+  if (dd) dd.classList.remove('open');
+}
+
+function detectItemAccount(itemId) {
+  if (!accounts.length) return getDefaultAccountId();
+  if (accounts.length === 1) return accounts[0].id;
+  return getDefaultAccountId();
+}
+
+function selectMlItem(rowId, mlId, mlTitle, accountId) {
+  const input    = $(`cb-input-${rowId}`);
+  const valInput = $(`cb-val-${rowId}`);
+  const acctInput= $(`cb-acct-${rowId}`);
+  if (!input || !valInput) return;
+
+  input.value    = mlTitle;
+  valInput.value = mlId;
+  if (acctInput) acctInput.value = accountId;
+  closeDropdown(rowId);
+
+  // Limpiar clase unmapped
+  const tr = $(`row-${rowId}`);
+  if (tr && mlId) tr.classList.remove('unmapped');
+
+  // Actualizar thumbnail del producto ML en la fila
+  const product  = mlItems.find(p => p.id === mlId);
+  const thumbDiv = $(`ml-thumb-${rowId}`);
+  if (thumbDiv) {
+    thumbDiv.innerHTML = (product?.thumbnail)
+      ? `<img src="${escAttr(product.thumbnail)}" onerror="this.style.display='none'">`
+      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+  }
+
+  // Poblar variantes
+  buildVariantSelect(rowId, product);
+  updateStockPreview(rowId);
+  updateSummary();
+}
+
+// ══════════════════════════════════════════════════════════
+//  VARIANTES
+// ══════════════════════════════════════════════════════════
+function variantImageUrl(v) {
+  const pid = v.picture_ids?.[0];
+  if (!pid) return '';
+  return `https://http2.mlstatic.com/D_${pid}-I.webp`;
+}
+
+function variantLabel(v) {
+  if (v.attribute_combinations && v.attribute_combinations.length) {
+    return v.attribute_combinations.map(a => a.value_name || a.value_id).join(' / ');
+  }
+  return v.id ? String(v.id) : '?';
+}
+
+function updateVariantThumb(rowId, product) {
+  const sel   = $(`var-sel-${rowId}`);
+  const thumb = $(`var-thumb-${rowId}`);
+  if (!sel || !thumb || !product?.variations) return;
+  const varId = sel.value;
+  const v     = product.variations.find(v => String(v.id) === varId);
+  const url   = v ? variantImageUrl(v) : '';
+  if (url) {
+    thumb.innerHTML = `<img src="${escAttr(url)}" onerror="this.style.display='none'" loading="lazy">`;
+  } else {
+    thumb.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+  }
+}
+
+function buildVariantSelect(rowId, product) {
+  const cell = $(`var-cell-${rowId}`);
+  if (!cell) return;
+
+  if (!product || !product.variations || !product.variations.length) {
+    cell.innerHTML = `<div class="var-cell-wrap">
+      <select class="var-select no-variants" id="var-sel-${rowId}" disabled>
+        <option value="">— sin variantes —</option>
+      </select>
+    </div>`;
+    return;
+  }
+
+  const opts = product.variations.map(v => {
+    const label = variantLabel(v);
+    return `<option value="${escAttr(String(v.id))}" data-label="${escAttr(label)}">${escHtml(label)}</option>`;
+  }).join('');
+
+  const placeholderSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+
+  cell.innerHTML = `<div class="var-cell-wrap">
+    <div class="var-thumb-sm" id="var-thumb-${rowId}">${placeholderSvg}</div>
+    <select class="var-select" id="var-sel-${rowId}" onchange="onVariantChange(${rowId})">
+      <option value="">— elegir variante —</option>
+      ${opts}
+    </select>
+  </div>`;
+}
+
+function setVariant(rowId, variationId, variantLabel) {
+  const sel = $(`var-sel-${rowId}`);
+  if (!sel) return;
+  sel.value = String(variationId);
+  const mlId   = $(`cb-val-${rowId}`)?.value;
+  const product = mlId ? mlItems.find(p => p.id === mlId) : null;
+  updateVariantThumb(rowId, product);
+  updateStockPreview(rowId);
+}
+
+function onVariantChange(rowId) {
+  const mlId   = $(`cb-val-${rowId}`)?.value;
+  const product = mlId ? mlItems.find(p => p.id === mlId) : null;
+  updateVariantThumb(rowId, product);
+  updateStockPreview(rowId);
+  updateSummary();
+}
+
+// ══════════════════════════════════════════════════════════
+//  STOCK PREVIEW
+// ══════════════════════════════════════════════════════════
+function updateStockPreview(rowId) {
+  const cell   = $(`stock-cell-${rowId}`);
+  const mlId   = $(`cb-val-${rowId}`)?.value;
+  const varSel = $(`var-sel-${rowId}`);
+  const qtyInp = document.querySelector(`[data-rowid="${rowId}"][data-field="qty"]`);
+  if (!cell) return;
+
+  if (!mlId) { cell.innerHTML = `<span class="stock-na">—</span>`; return; }
+
+  const product = mlItems.find(p => p.id === mlId);
+  if (!product) { cell.innerHTML = `<span class="stock-na" style="color:var(--red,#dc2626)">No encontrado</span>`; return; }
+
+  let currentStock;
+  const varId = varSel && varSel.value ? varSel.value : null;
+  if (varId) {
+    const v = (product.variations || []).find(v => String(v.id) === varId);
+    currentStock = v ? (v.available_quantity || 0) : null;
+  } else if (!product.variations || !product.variations.length) {
+    currentStock = product.available_quantity || 0;
+  } else {
+    // Item tiene variantes pero no se seleccionó → mostrar total
+    currentStock = (product.variations || []).reduce((s, v) => s + (v.available_quantity || 0), 0);
+  }
+
+  const qty    = parseInt(qtyInp?.value || 0, 10) || 0;
+  const newQty = (currentStock || 0) + qty;
+
+  if (currentStock === null) {
+    cell.innerHTML = `<span class="stock-na">Elegí variante</span>`;
+  } else {
+    cell.innerHTML = `<span class="stock-current">${currentStock}</span><span class="stock-arrow">+${qty}=</span><span class="stock-new">${newQty}</span>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SELECT ALL / SUMMARY
+// ══════════════════════════════════════════════════════════
+function toggleAllRows(checked) {
+  document.querySelectorAll('.row-check').forEach(cb => { cb.checked = checked; });
+  updateSummary();
+}
+
+function clickToggleAll() {
+  const all = document.querySelectorAll('.row-check');
+  const anyChecked = Array.from(all).some(cb => cb.checked);
+  toggleAllRows(!anyChecked);
+}
+
+function syncCheckAll() {
+  const all  = document.querySelectorAll('.row-check');
+  const chk  = $('check-all');
+  if (!all.length) return;
+  const checkedCount = Array.from(all).filter(cb => cb.checked).length;
+  const allChecked  = checkedCount === all.length;
+  const noneChecked = checkedCount === 0;
+
+  // header checkbox
+  if (chk) {
+    chk.checked       = allChecked;
+    chk.indeterminate = !allChecked && !noneChecked;
+  }
+
+  // botón de la toolbar
+  const lbl = $('btn-toggle-all-label');
+  if (lbl) lbl.textContent = noneChecked ? 'Seleccionar todo' : 'Deseleccionar todo';
+}
+
+function updateSummary() {
+  const rows = getTableRows();
+  const linked   = rows.filter(r => r.mlId && r.checked).length;
+  const unlinked = rows.filter(r => !r.mlId && r.checked).length;
+  const total    = rows.length;
+
+  $('sum-total').textContent    = total;
+  $('sum-linked').textContent   = linked;
+  $('sum-unlinked').textContent = unlinked;
+
+  const applyBtn = $('btn-apply');
+  if (applyBtn) applyBtn.disabled = linked === 0;
+
+  syncCheckAll();
+}
+
+function getTableRows() {
+  const rows = [];
+  document.querySelectorAll('#items-tbody tr[id^="row-"]').forEach(tr => {
+    const rid = parseInt(tr.dataset.rowid);
+    rows.push({
+      rowId:   rid,
+      name:    document.querySelector(`[data-rowid="${rid}"][data-field="name"]`)?.value || '',
+      qty:     parseInt(document.querySelector(`[data-rowid="${rid}"][data-field="qty"]`)?.value || 0, 10) || 0,
+      mlId:    $(`cb-val-${rid}`)?.value || '',
+      varId:   $(`var-sel-${rid}`)?.value || '',
+      acctId:  $(`cb-acct-${rid}`)?.value || '',
+      mlTitle: $(`cb-input-${rid}`)?.value || '',
+      varLabel:$(`var-sel-${rid}`)?.selectedOptions?.[0]?.dataset?.label || '',
+      checked: document.querySelector(`.row-check[data-rowid="${rid}"]`)?.checked ?? true,
+    });
+  });
+  return rows;
+}
+
+// ══════════════════════════════════════════════════════════
+//  ADD / DELETE ROWS
+// ══════════════════════════════════════════════════════════
+$('btn-add-row').addEventListener('click', () => {
+  addTableRow('', 1, null);
+  updateSummary();
+  // Scroll to last row
+  const tbody = $('items-tbody');
+  tbody.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+function deleteRow(id) {
+  const tr = $(`row-${id}`);
+  if (tr) tr.remove();
+  updateSummary();
+}
+
+// ══════════════════════════════════════════════════════════
+//  SAVE MAPPINGS
+// ══════════════════════════════════════════════════════════
+$('btn-save-mappings').addEventListener('click', async () => {
+  const rows = getTableRows().filter(r => r.mlId && r.name);
+  if (!rows.length) { alert('No hay filas vinculadas para guardar.'); return; }
+
+  const btn = $('btn-save-mappings');
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+
+  let saved = 0, errors = 0;
+  for (const row of rows) {
+    try {
+      const res = await fetch('/api/stockroom/alibaba/mappings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alibaba_name:     row.name,
+          ml_item_id:       row.mlId,
+          variation_id:     row.varId || null,
+          account_id:       row.acctId,
+          ml_title:         row.mlTitle,
+          ml_variant_label: row.varLabel,
+        }),
+      });
+      if (res.ok) saved++;
+      else errors++;
+    } catch { errors++; }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar vínculos`;
+  showToast(errors ? `${saved} guardados, ${errors} errores` : `${saved} vínculo${saved !== 1 ? 's' : ''} guardado${saved !== 1 ? 's' : ''} ✓`, !errors);
+
+  await loadMappings();
+});
+
+// ══════════════════════════════════════════════════════════
+//  APPLY STOCK
+// ══════════════════════════════════════════════════════════
+$('btn-apply').addEventListener('click', async () => {
+  const rows = getTableRows().filter(r => r.mlId && r.qty > 0 && r.checked);
+  if (!rows.length) return;
+
+  const btn = $('btn-apply');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.22-8.56"/></svg> Aplicando…`;
+
+  try {
+    const items = rows.map(r => ({
+      ml_item_id:       r.mlId,
+      variation_id:     r.varId || null,
+      account_id:       r.acctId,
+      qty:              r.qty,
+      ml_variant_label: r.varLabel,
+    }));
+
+    const res  = await fetch('/api/stockroom/alibaba/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+
+    showResults(data.results, data.succeeded, data.failed, items);
+    $('card-results').style.display = '';
+    $('card-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    showToast('Error: ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Aplicar stock en ML`;
+    updateSummary();
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+//  RESULTS
+// ══════════════════════════════════════════════════════════
+let _failedRetryItems = [];
+
+function showResults(results, succeeded, failed, sentItems) {
+  addActivityEntry(results, sentItems || []);
+  const body = $('results-body');
+
+  // Guardar items fallidos para reintento (matchear por ml_item_id + variation_id)
+  _failedRetryItems = results
+    .filter(r => !r.ok)
+    .map(r => (sentItems || []).find(
+      si => si.ml_item_id === r.ml_item_id &&
+            String(si.variation_id || '') === String(r.variation_id || '')
+    ))
+    .filter(Boolean);
+
+  // Mostrar/ocultar botón reintentar
+  const retryBtn = $('btn-retry-failed');
+  const retryLbl = $('btn-retry-label');
+  if (retryBtn) {
+    retryBtn.style.display = _failedRetryItems.length ? '' : 'none';
+    if (retryLbl) retryLbl.textContent = `Reintentar ${_failedRetryItems.length} fallido${_failedRetryItems.length !== 1 ? 's' : ''}`;
+    retryBtn.disabled = false;
+  }
+
+  const summary = `<div class="ali-summary" style="margin-bottom:16px">
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div class="ali-summary-stat">
+        <span class="ali-summary-num" style="color:var(--green,#16a34a)">${succeeded}</span>
+        <span class="ali-summary-label">actualizados correctamente</span>
+      </div>
+      ${failed > 0 ? `<div class="ali-summary-stat">
+        <span class="ali-summary-num" style="color:var(--red,#dc2626)">${failed}</span>
+        <span class="ali-summary-label">errores</span>
+      </div>` : ''}
+    </div>
+  </div>`;
+
+  // Construir mapa varId → { label, thumb } desde los items enviados
+  const varInfoMap = {};
+  for (const si of (sentItems || [])) {
+    varInfoMap[`${si.ml_item_id}:${si.variation_id || ''}`] = si.ml_variant_label || '';
+  }
+
+  const rows = results.map(r => {
+    if (r.ok) {
+      const varLabel = varInfoMap[`${r.ml_item_id}:${r.variation_id || ''}`];
+      const varInfo  = varLabel ? ` · ${varLabel}` : '';
+      const thumbHtml = r.variation_thumb
+        ? `<img src="${escAttr(r.variation_thumb)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display='none'">`
+        : '';
+      return `<div class="result-row ok-row" style="gap:10px">
+        <div class="result-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        ${thumbHtml}
+        <div class="result-title" title="${escAttr(r.ml_title)}">${escHtml(r.ml_title)}${escHtml(varInfo)}</div>
+        <div class="result-detail">${r.prevStock} + ${r.deltaQty} = <strong>${r.newStock}</strong></div>
+      </div>`;
+    } else {
+      return `<div class="result-row err-row">
+        <div class="result-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+        <div class="result-title">${escHtml(r.ml_item_id)}</div>
+        <div class="result-detail" style="color:#b91c1c">${escHtml(r.error)}</div>
+      </div>`;
+    }
+  }).join('');
+
+  body.innerHTML = summary + rows;
+}
+
+async function retryFailed() {
+  if (!_failedRetryItems.length) return;
+  const btn = $('btn-retry-failed');
+  const lbl = $('btn-retry-label');
+  btn.disabled = true;
+  if (lbl) lbl.textContent = 'Reintentando…';
+
+  try {
+    const res  = await fetch('/api/stockroom/alibaba/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: _failedRetryItems }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+    showResults(data.results, data.succeeded, data.failed, _failedRetryItems);
+  } catch(e) {
+    showToast('Error: ' + e.message, false);
+    btn.disabled = false;
+    if (lbl) lbl.textContent = `Reintentar ${_failedRetryItems.length} fallido${_failedRetryItems.length !== 1 ? 's' : ''}`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  ACTIVITY LOG
+// ══════════════════════════════════════════════════════════
+const ACTLOG_KEY = 'alibaba_activity_log';
+const ACTLOG_MAX = 100;
+
+function loadActivityLog() {
+  try { return JSON.parse(localStorage.getItem(ACTLOG_KEY) || '[]'); } catch { return []; }
+}
+function saveActivityLog(entries) {
+  try { localStorage.setItem(ACTLOG_KEY, JSON.stringify(entries.slice(0, ACTLOG_MAX))); } catch {}
+}
+
+function addActivityEntry(results, sentItems) {
+  const varLabelMap = {};
+  for (const item of (sentItems || [])) {
+    varLabelMap[`${item.ml_item_id}:${item.variation_id || ''}`] = item.ml_variant_label || '';
+  }
+  const okItems = results
+    .filter(r => r.ok)
+    .map(r => ({
+      ml_item_id:       r.ml_item_id,
+      ml_title:         r.ml_title,
+      variation_id:     r.variation_id || null,
+      ml_variant_label: varLabelMap[`${r.ml_item_id}:${r.variation_id || ''}`] || '',
+      variation_thumb:  r.variation_thumb || null,
+      deltaQty:         r.deltaQty,
+      prevStock:        r.prevStock,
+      newStock:         r.newStock,
+    }));
+  if (!okItems.length) return;
+  const entries = loadActivityLog();
+  entries.unshift({ ts: Date.now(), items: okItems });
+  saveActivityLog(entries);
+  renderActivityLog();
+  // Abrir el panel automáticamente para que el usuario vea el nuevo registro
+  if (!_actlogOpen) toggleActlog();
+}
+
+function deleteActivityEntry(idx) {
+  const entries = loadActivityLog();
+  entries.splice(idx, 1);
+  saveActivityLog(entries);
+  renderActivityLog();
+}
+
+function clearActivityLog() {
+  if (!confirm('¿Borrar todo el historial de actualizaciones?')) return;
+  localStorage.removeItem(ACTLOG_KEY);
+  renderActivityLog();
+}
+
+function formatActlogTs(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  const days   = ['dom','lun','mar','mié','jue','vie','sáb'];
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} — ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderActivityLog() {
+  const entries  = loadActivityLog();
+  const list     = $('actlog-list');
+  const badge    = $('actlog-count-badge');
+  const clearBtn = $('btn-actlog-clear');
+
+  const totalItems = entries.reduce((s, e) => s + e.items.length, 0);
+
+  if (badge) {
+    badge.textContent = totalItems || '';
+    badge.style.display = totalItems ? '' : 'none';
+  }
+  if (clearBtn) clearBtn.style.display = entries.length ? '' : 'none';
+
+  if (!entries.length) {
+    list.innerHTML = `<div class="actlog-empty">Sin actualizaciones registradas aún.</div>`;
+    return;
+  }
+
+  list.innerHTML = entries.map((entry, idx) => {
+    const itemsHtml = entry.items.map(item => {
+      const varPart = item.ml_variant_label
+        ? `<span class="actlog-item-var"> · ${escHtml(item.ml_variant_label)}</span>` : '';
+      const thumbHtml = item.variation_thumb
+        ? `<img src="${escAttr(item.variation_thumb)}" style="width:28px;height:28px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0" loading="lazy" onerror="this.style.display='none'">`
+        : `<div style="width:28px;height:28px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);flex-shrink:0"></div>`;
+      return `<div class="actlog-item">
+        ${thumbHtml}
+        <span class="actlog-item-name" title="${escAttr(item.ml_title)}">${escHtml(item.ml_title)}${varPart}</span>
+        <span class="actlog-item-stock">${item.prevStock} → ${item.newStock}</span>
+        <span class="actlog-item-delta">(+${item.deltaQty})</span>
+      </div>`;
+    }).join('');
+    return `<div class="actlog-entry">
+      <div class="actlog-ts">
+        <span class="actlog-ts-label">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${escHtml(formatActlogTs(entry.ts))}
+          <span style="color:var(--text-3);font-size:10px">&nbsp;·&nbsp;${entry.items.length} producto${entry.items.length !== 1 ? 's' : ''}</span>
+        </span>
+        <button class="actlog-del-btn" onclick="deleteActivityEntry(${idx})" title="Eliminar esta entrada">✕</button>
+      </div>
+      <div class="actlog-items">${itemsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+let _actlogOpen = false;
+function toggleActlog(e) {
+  if (e && e.target.closest('button')) return; // clicks en botones no togglean
+  _actlogOpen = !_actlogOpen;
+  $('actlog-body').style.display = _actlogOpen ? '' : 'none';
+  const chev = $('actlog-chevron');
+  if (chev) chev.innerHTML = _actlogOpen
+    ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`
+    : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+}
+
+$('btn-new-upload').addEventListener('click', () => {
+  $('card-results').style.display = 'none';
+  $('card-items').style.display   = 'none';
+  $('parse-state-wrap').style.display = 'none';
+  $('file-input').value = '';
+  parsedRows = [];
+  rawText    = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ══════════════════════════════════════════════════════════
+//  SAVED MAPPINGS LIST
+// ══════════════════════════════════════════════════════════
+function renderMappingsList() {
+  const body  = $('mappings-body');
+  const count = $('mappings-count');
+  if (!mappings.length) {
+    body.innerHTML = `<div class="empty-state">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+      <p>Aún no hay vínculos guardados.</p>
+      <p style="font-size:11px">Al guardar, la próxima vez que subas un PDF con los mismos nombres, los ítems se vincularán automáticamente.</p>
+    </div>`;
+    if (count) count.style.display = 'none';
+    return;
+  }
+
+  if (count) { count.style.display = ''; count.textContent = mappings.length; }
+
+  body.innerHTML = mappings.map(m => `
+    <div class="mapping-row">
+      <span class="mapping-ali" title="${escAttr(m.alibaba_name)}">${escHtml(m.alibaba_name)}</span>
+      <svg class="mapping-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <span class="mapping-ml" title="${escAttr(m.ml_title || m.ml_item_id)}">
+        ${escHtml(m.ml_title || m.ml_item_id)}
+        ${m.ml_variant_label ? `<span style="color:var(--text-3);font-size:11px"> / ${escHtml(m.ml_variant_label)}</span>` : ''}
+        <span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace"> ${escHtml(m.ml_item_id)}</span>
+      </span>
+      <button class="mapping-del" onclick="deleteMapping('${escAttr(m.alibaba_name)}')" title="Eliminar vínculo">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+async function deleteMapping(name) {
+  if (!confirm(`¿Eliminar el vínculo para "${name}"?`)) return;
+  await fetch('/api/stockroom/alibaba/mappings/' + encodeURIComponent(name), { method: 'DELETE' });
+  await loadMappings();
+}
+
+// ══════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════
+function getAccounts() {
+  return accounts;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s || '').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Toast simple
+function showToast(msg, success = true) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;
+    background:${success ? '#16a34a' : '#dc2626'};color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.2)`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ══════════════════════════════════════════════════════════
+//  BACKUP
+// ══════════════════════════════════════════════════════════
+
+// Poblar el selector de cuentas en el backup card (usa la misma carga de accounts)
+function populateBackupAccountSelector() {
+  const sel = $('backup-acct-sel');
+  if (!sel) return;
+  if (!accounts.length) {
+    sel.innerHTML = '<option value="">Sin cuentas configuradas</option>';
+    return;
+  }
+  sel.innerHTML = accounts.map(a =>
+    `<option value="${escAttr(a.id)}">${escHtml(a.label || a.id)}</option>`
+  ).join('');
+}
+
+async function startBackup() {
+  const sel      = $('backup-acct-sel');
+  const pausedCb = $('backup-incl-paused');
+  const btn      = $('btn-backup');
+  const status   = $('backup-status');
+
+  const accountId     = sel?.value;
+  const includePaused = pausedCb?.checked ?? true;
+
+  if (!accountId) { showToast('Seleccioná una cuenta primero', false); return; }
+
+  btn.disabled   = true;
+  btn.innerHTML  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin .8s linear infinite"><path d="M21 12a9 9 0 11-6.22-8.56"/></svg> Generando…`;
+  status.textContent = 'Obteniendo publicaciones desde MercadoLibre… (puede demorar ~30s)';
+
+  try {
+    const res  = await fetch('/api/stockroom/backup/items', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ account_id: accountId, include_paused: includePaused }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+
+    // Trigger download via Blob
+    const jsonStr  = JSON.stringify(data.backup, null, 2);
+    const blob     = new Blob([jsonStr], { type: 'application/json' });
+    const url      = URL.createObjectURL(blob);
+    const link     = document.createElement('a');
+    link.href      = url;
+    link.download  = data.filename;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    const total = data.backup?._meta?.total_items || 0;
+    status.innerHTML = `<span style="color:var(--green,#16a34a)">✓ ${total} publicaciones · guardado como <strong>${escHtml(data.filename)}</strong></span>`;
+    showToast(`Backup completado: ${total} publicaciones ✓`, true);
+
+    // Actualizar historial si está abierto
+    if ($('backup-history').style.display !== 'none') loadBackupHistory();
+
+  } catch(e) {
+    status.innerHTML = `<span style="color:var(--red,#dc2626)">✗ ${escHtml(e.message)}</span>`;
+    showToast('Error en backup: ' + e.message, false);
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Generar backup`;
+  }
+}
+
+async function toggleBackupHistory() {
+  const hist = $('backup-history');
+  if (!hist) return;
+  if (hist.style.display === 'none') {
+    hist.style.display = '';
+    await loadBackupHistory();
+  } else {
+    hist.style.display = 'none';
+  }
+}
+
+async function loadBackupHistory() {
+  const list = $('backup-history-list');
+  if (!list) return;
+  list.innerHTML = '<div style="font-size:12px;color:var(--text-2)">Cargando…</div>';
+  try {
+    const res  = await fetch('/api/stockroom/backup/list');
+    const data = await res.json();
+    if (!data.backups?.length) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:6px 0">Sin backups guardados aún.</div>';
+      return;
+    }
+    list.innerHTML = data.backups.map(b => {
+      const date  = b.created_at ? new Date(b.created_at).toLocaleString('es-AR') : b.filename;
+      const sizeKB = Math.round(b.size / 1024);
+      const label = b.account_label || b.account_id || '?';
+      return `<div class="mapping-row" style="align-items:center">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600">${escHtml(label)} · ${escHtml(date)}</div>
+          <div style="font-size:11px;color:var(--text-3)">${b.total_items || '?'} publicaciones · ${sizeKB} KB · <span style="font-family:'JetBrains Mono',monospace">${escHtml(b.filename)}</span></div>
+        </div>
+        <a href="/api/stockroom/backup/download/${encodeURIComponent(b.filename)}"
+           download="${escAttr(b.filename)}"
+           style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--blue);text-decoration:none"
+           title="Descargar este backup">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar
+        </a>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--red,#dc2626)">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// ── Sidebar mobile ────────────────────────────────────────
+const sidebar  = $('sidebar');
+const overlay  = $('sidebar-overlay');
+$('menu-btn').addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+});
+overlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  overlay.classList.remove('open');
+});
+</script>
+</body>
+</html>

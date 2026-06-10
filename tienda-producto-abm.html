@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Personalización — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── 2-column edit layout ──────────────────────────────────── */
+.prod-edit-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .prod-edit-layout { grid-template-columns: 1fr; }
+  .prod-edit-left   { position: static !important; top: auto !important; }
+}
+.prod-edit-left  { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 16px; }
+.prod-edit-right { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Edit card ─────────────────────────────────────────────── */
+.edit-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.edit-card-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 16px; border-bottom: 1px solid var(--border); background: var(--bg);
+}
+.edit-card-icon  { font-size: 14px; line-height: 1; flex-shrink: 0; }
+.edit-card-title { font-size: 11px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: .05em; flex: 1; }
+.edit-card-body  { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+details.edit-card > summary { cursor: pointer; list-style: none; user-select: none; }
+details.edit-card > summary::-webkit-details-marker { display: none; }
+details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
+.collapse-arrow { margin-left: auto; transition: transform .2s; flex-shrink: 0; color: var(--text-3); }
+
+/* ── ML Product card (read-only) ───────────────────────────── */
+.ml-product-card {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: var(--bg); border-radius: var(--r-lg);
+  padding: 14px;
+}
+.ml-product-card img {
+  width: 80px; height: 80px; border-radius: var(--r);
+  object-fit: contain; background: var(--bg-card); border: 1px solid var(--border); flex-shrink: 0;
+}
+.ml-product-info { min-width: 0; flex: 1; }
+.ml-product-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; margin-bottom: 5px; }
+.ml-product-meta  { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); display: flex; flex-direction: column; gap: 2px; }
+.ml-product-price { font-size: 16px; font-weight: 700; color: var(--green); margin-top: 6px; }
+
+/* ── Image preview ──────────────────────────────────────────── */
+.img-preview-wrap { position: relative; }
+.img-preview-thumb {
+  width: 100%; aspect-ratio: 4/3; border-radius: var(--r-lg); overflow: hidden;
+  background: var(--bg); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+}
+.img-preview-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.img-preview-thumb .placeholder { font-size: 40px; opacity: .3; }
+.img-upload-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.img-upload-row input { flex: 1; }
+.img-upload-row .btn { flex-shrink: 0; }
+
+/* ── Toggle row ─────────────────────────────────────────────── */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 13px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg);
+}
+.toggle-row .l { font-size: 13px; font-weight: 500; color: var(--text); }
+.toggle-row .d { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.tswitch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+.tswitch input { opacity: 0; width: 0; height: 0; }
+.tswitch .slider { position: absolute; cursor: pointer; inset: 0; background: var(--border-2); border-radius: 100px; transition: .15s; }
+.tswitch .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .15s; }
+.tswitch input:checked + .slider { background: var(--blue); }
+.tswitch input:checked + .slider::before { transform: translateX(16px); }
+
+/* ── adm-textarea ───────────────────────────────────────────── */
+.adm-textarea {
+  display: block; width: 100%; min-height: 80px; resize: vertical;
+  border: 1px solid var(--border-2); border-radius: var(--r);
+  padding: 8px 12px; font-size: 13px; color: var(--text);
+  background: var(--bg-card); font-family: var(--font-sans);
+  transition: border-color .12s, box-shadow .12s; box-sizing: border-box;
+}
+.adm-textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(52,131,250,.10); }
+
+/* ── Video ──────────────────────────────────────────────────── */
+.video-card { display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 10px; }
+.video-card-thumb { width: 72px; height: 48px; border-radius: var(--r); overflow: hidden; flex-shrink: 0; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+.video-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.video-card-ico  { font-size: 18px; }
+.video-card-info { flex: 1; min-width: 0; }
+.video-source-pill { display: inline-block; padding: 1px 7px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 3px; }
+.pill-yt  { background: #fee2e2; color: #991b1b; }
+.pill-al  { background: #fef3c7; color: #92400e; }
+.pill-vi  { background: #ede9fe; color: #5b21b6; }
+.pill-up  { background: #dcfce7; color: #166534; }
+.pill-ot  { background: var(--bg); color: var(--text-3); border: 1px solid var(--border-2); }
+.video-card-url { font-size: 11px; color: var(--blue); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.video-card-url:hover { text-decoration: underline; }
+.video-platform-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.video-platform-hint.detected { color: var(--green); }
+
+/* ── Delete zone ────────────────────────────────────────────── */
+.delete-zone { display: flex; flex-direction: column; gap: 8px; }
+.delete-confirm {
+  display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--r-lg);
+  padding: 10px 14px; font-size: 12px; color: #991b1b;
+}
+.delete-confirm.show { display: flex; }
+
+/* ── Unsaved ────────────────────────────────────────────────── */
+.unsaved-dot { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; display: none; flex-shrink: 0; }
+.unsaved-dot.show { display: block; }
+
+/* ── Loading ────────────────────────────────────────────────── */
+.page-loading { display: flex; align-items: center; justify-content: center; min-height: 240px; color: var(--text-3); gap: 10px; flex-direction: column; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.img-spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--border-2); border-top-color: var(--blue); animation: spin .7s linear infinite; }
+
+/* ── Toast ──────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 1002;
+  background: var(--text); color: #fff; border-radius: var(--r-lg);
+  padding: 11px 18px; font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow-lg); max-width: 340px;
+  transform: translateY(10px); opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok   { background: var(--green); }
+#toast.err  { background: #ef4444; }
+.btn-spin {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+  border-radius: 50%; animation: spin .6s linear infinite;
+  vertical-align: -2px; margin-right: 6px;
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ════════════════════════ SIDEBAR ═════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+  <a href="/tienda-admin.html" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Admin Tienda</div>
+      <div class="adm-logo-tag">WZMALLAS</div>
+    </div>
+  </a>
+  <nav class="adm-nav">
+    <div class="adm-group">
+      <div class="adm-group-label">General</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/tienda-admin.html#section-cupones" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Cupones</span>
+      </a>
+      <a href="/tienda-productos.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Productos ABM</span>
+      </a>
+      <a href="/tienda-productos-propios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+        <span>Productos propios</span>
+      </a>
+      <a href="/tienda-categorias.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span>Categorías</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/tienda-ordenes.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Órdenes</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Configuración</div>
+      <a href="/tienda-sync.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <span>Sincronizar ML</span>
+      </a>
+    </div>
+  </nav>
+  <div class="adm-sidebar-foot">
+    <a href="/tienda/catalogo.html" target="_blank" class="adm-item" style="color:var(--green)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Ver tienda</span>
+    </a>
+    <a href="/" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Volver a Stockroom</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ═══════════════════════ MAIN ══════════════════════════════ -->
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title" style="display:flex;align-items:center;gap:6px;">
+          <a href="/tienda-productos.html" style="color:var(--text-3);text-decoration:none;font-weight:400;">Productos ABM</a>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--text-3);flex-shrink:0;" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <span id="page-breadcrumb">Cargando…</span>
+          <span class="unsaved-dot" id="unsaved-dot" title="Cambios sin guardar"></span>
+        </div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot"></span>
+          <span id="page-status-text">Personalizá este producto de ML</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <a href="/tienda-productos.html" class="btn btn-ghost" style="font-size:13px;text-decoration:none;">Cancelar</a>
+      <button class="btn btn-primary" id="btn-guardar" style="font-size:13px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Guardar cambios
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <div class="page-loading" id="loading-state">
+      <div class="img-spinner"></div>
+      <span>Cargando producto…</span>
+    </div>
+    <div id="error-state" style="display:none;color:var(--red);padding:32px;text-align:center;font-size:13px;"></div>
+
+    <div class="prod-edit-layout" id="edit-layout" style="display:none;">
+
+      <!-- ══════════ LEFT COLUMN ══════════ -->
+      <div class="prod-edit-left">
+
+        <!-- ML PRODUCT INFO (read-only) -->
+        <div class="edit-card">
+          <div class="edit-card-head">
+            <span class="edit-card-icon">🛒</span>
+            <span class="edit-card-title">Producto MercadoLibre</span>
+            <span class="badge badge-gray" style="font-size:10px;">Solo lectura</span>
+          </div>
+          <div class="edit-card-body">
+            <div class="ml-product-card">
+              <img id="ml-thumb" src="" alt="" onerror="this.style.visibility='hidden'">
+              <div class="ml-product-info">
+                <div class="ml-product-title" id="ml-title">—</div>
+                <div class="ml-product-meta">
+                  <span id="ml-id-text">—</span>
+                  <span id="ml-cat-text"></span>
+                  <span id="ml-stock-text"></span>
+                </div>
+                <div class="ml-product-price" id="ml-price">—</div>
+              </div>
+            </div>
+            <a id="ml-link" href="#" target="_blank" rel="noopener"
+              class="btn btn-sm btn-ghost" style="font-size:12px;text-align:center;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Ver en ML
+            </a>
+          </div>
+        </div>
+
+        <!-- IMAGEN DE PORTADA PROPIA -->
+        <div class="edit-card">
+          <div class="edit-card-head">
+            <span class="edit-card-icon">🖼</span>
+            <span class="edit-card-title">Imagen propia</span>
+            <span style="font-size:11px;color:var(--text-3);">reemplaza la de ML</span>
+          </div>
+          <div class="edit-card-body">
+            <div class="img-preview-wrap">
+              <div class="img-preview-thumb" id="img-preview-thumb">
+                <span class="placeholder">🖼</span>
+              </div>
+            </div>
+            <div class="adm-field">
+              <label class="adm-label">URL de la imagen</label>
+              <div class="img-upload-row">
+                <input type="text" class="adm-input" id="inp-imagen" placeholder="https://…">
+                <button class="btn btn-sm btn-ghost" id="btn-subir-imagen" type="button">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir
+                </button>
+              </div>
+              <input type="file" id="inp-file-imagen" accept="image/jpeg,image/png,image/webp" style="display:none;">
+              <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Dejalo vacío para usar la imagen original de ML</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISIBILIDAD -->
+        <div class="edit-card">
+          <div class="edit-card-head">
+            <span class="edit-card-icon">⚙️</span>
+            <span class="edit-card-title">Visibilidad</span>
+          </div>
+          <div class="edit-card-body" style="gap:8px;">
+            <div class="toggle-row">
+              <div>
+                <div class="l">⭐ Destacado</div>
+                <div class="d">Aparece en la sección destacada del catálogo</div>
+              </div>
+              <label class="tswitch"><input type="checkbox" id="chk-destacado"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="l">🚫 Ocultar en tienda</div>
+                <div class="d">No se muestra al público aunque esté activo en ML</div>
+              </div>
+              <label class="tswitch"><input type="checkbox" id="chk-oculto"><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- / prod-edit-left -->
+
+      <!-- ══════════ RIGHT COLUMN ══════════ -->
+      <div class="prod-edit-right">
+
+        <!-- TÍTULO PERSONALIZADO -->
+        <div class="edit-card">
+          <div class="edit-card-head">
+            <span class="edit-card-icon">📝</span>
+            <span class="edit-card-title">Título personalizado</span>
+          </div>
+          <div class="edit-card-body">
+            <div class="adm-field">
+              <label class="adm-label">Título propio <span style="font-weight:400;color:var(--text-3);">(reemplaza el título de ML)</span></label>
+              <input type="text" class="adm-input" id="inp-titulo" maxlength="200"
+                placeholder="Dejalo vacío para usar el título original de ML">
+            </div>
+            <!-- ML title reference -->
+            <div style="font-size:11px;color:var(--text-3);background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;">
+              <span style="font-weight:600;color:var(--text-2);">Título ML:</span>
+              <span id="ml-title-ref">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DESCRIPCIÓN PERSONALIZADA -->
+        <div class="edit-card">
+          <div class="edit-card-head">
+            <span class="edit-card-icon">📄</span>
+            <span class="edit-card-title">Descripción personalizada</span>
+          </div>
+          <div class="edit-card-body">
+            <textarea class="adm-textarea" id="inp-descripcion" maxlength="5000" style="min-height:140px;"
+              placeholder="Dejalo vacío para usar la descripción original de ML. Podés agregar detalles propios como garantía, formas de envío, etc."></textarea>
+          </div>
+        </div>
+
+        <!-- VIDEO -->
+        <div class="edit-card">
+          <div class="edit-card-head">
+            <span class="edit-card-icon">🎬</span>
+            <span class="edit-card-title">Video del producto</span>
+            <span class="badge badge-gray" style="font-size:10px;margin-left:auto;">opcional</span>
+          </div>
+          <div class="edit-card-body">
+            <!-- Video preview card (when set) -->
+            <div id="video-preview-card" style="display:none;">
+              <div class="video-card">
+                <div class="video-card-thumb" id="video-thumb-wrap">
+                  <span class="video-card-ico">🎬</span>
+                </div>
+                <div class="video-card-info">
+                  <span class="video-source-pill" id="video-source-pill">—</span>
+                  <a class="video-card-url" id="video-card-url" href="#" target="_blank" rel="noopener">—</a>
+                </div>
+                <button class="btn btn-sm btn-ghost" id="btn-quitar-video" style="color:var(--red);flex-shrink:0;" type="button">Quitar</button>
+              </div>
+            </div>
+            <!-- Input section (when no video) -->
+            <div id="video-input-section">
+              <div class="adm-field">
+                <label class="adm-label">Link (YouTube, Alibaba, AliExpress, Vimeo)</label>
+                <input type="text" class="adm-input" id="inp-video-url" placeholder="https://www.youtube.com/watch?v=…">
+                <div id="video-platform-hint" class="video-platform-hint"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+                <span style="font-size:11px;color:var(--text-3);">— o —</span>
+                <button class="btn btn-sm btn-ghost" id="btn-subir-video" type="button">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir archivo
+                </button>
+              </div>
+            </div>
+            <input type="file" id="inp-file-video" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" style="display:none;">
+          </div>
+        </div>
+
+        <!-- NOTAS INTERNAS (colapsable) -->
+        <details class="edit-card" id="notas-details">
+          <summary class="edit-card-head" style="cursor:pointer;list-style:none;">
+            <span class="edit-card-icon">🔒</span>
+            <span class="edit-card-title">Notas internas</span>
+            <span style="font-size:11px;color:var(--text-3);margin-right:6px;">solo para el equipo</span>
+            <svg class="collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <div class="edit-card-body">
+            <textarea class="adm-textarea" id="inp-notas" maxlength="2000" style="min-height:80px;"
+              placeholder="Ej: foto pendiente, video subido el 08/06, verificar precio en temporada alta…"></textarea>
+          </div>
+        </details>
+
+        <!-- QUITAR PERSONALIZACIÓN -->
+        <div class="delete-zone" id="delete-zone">
+          <div class="delete-confirm" id="delete-confirm">
+            <span>⚠️ ¿Quitar toda la personalización? El producto volverá a mostrarse tal cual viene de ML.</span>
+            <button class="btn btn-sm btn-ghost" id="btn-cancelar-quitar" type="button">Cancelar</button>
+            <button class="btn btn-sm btn-danger" id="btn-confirmar-quitar" type="button">Sí, quitar todo</button>
+          </div>
+          <div>
+            <button class="btn btn-ghost" id="btn-quitar-personalizacion" type="button"
+              style="color:var(--red);border-color:var(--red);opacity:.7;font-size:13px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>Quitar toda la personalización
+            </button>
+          </div>
+        </div>
+
+      </div><!-- / prod-edit-right -->
+    </div><!-- / prod-edit-layout -->
+  </main>
+</div><!-- / adm-main -->
+</div><!-- / adm-wrap -->
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+<div id="toast"></div>
+
+<script>
+/* ─── Theme ──────────────────────────────────────────────────── */
+document.getElementById('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch {}
+});
+
+/* ─── Sidebar móvil ──────────────────────────────────────────── */
+const hamburger = document.getElementById('btn-hamburger');
+const sidebar   = document.getElementById('sidebar');
+const sidebarOv = document.getElementById('sidebar-overlay');
+hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); sidebarOv.classList.toggle('open'); });
+sidebarOv.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOv.classList.remove('open'); });
+
+/* ─── Toast ──────────────────────────────────────────────────── */
+let _toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3400);
+}
+
+/* ─── Helpers ────────────────────────────────────────────────── */
+function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-AR'); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ─── Unsaved changes ────────────────────────────────────────── */
+let isDirty = false;
+let initialLoadDone = false;
+function markDirty() {
+  if (!initialLoadDone) return;
+  isDirty = true;
+  document.getElementById('unsaved-dot').classList.add('show');
+}
+window.addEventListener('beforeunload', (e) => {
+  if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ─── State ──────────────────────────────────────────────────── */
+const PRODUCT_ID = new URLSearchParams(location.search).get('id');
+let videoState = { url: '', fuente: '', thumb: '' };
+let currentMLProduct = null;
+
+/* ══════════════ INIT ══════════════════════════════════════════ */
+async function init() {
+  if (!PRODUCT_ID) {
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('error-state').style.display = '';
+    document.getElementById('error-state').textContent = 'Error: no se especificó un ID de producto. Volvé a la lista.';
+    return;
+  }
+  try {
+    const resp = await fetch('/api/tienda/admin/productos/' + encodeURIComponent(PRODUCT_ID));
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'No se pudo cargar el producto');
+    currentMLProduct = data.producto;
+    const ov = data.override || {};
+    renderMLInfo(currentMLProduct);
+    cargarFormulario(ov);
+    const titulo = ov.titulo_custom || currentMLProduct.title || PRODUCT_ID;
+    document.getElementById('page-breadcrumb').textContent = titulo.slice(0, 50);
+    document.getElementById('page-status-text').textContent = `ID: ${PRODUCT_ID}`;
+    document.title = `${titulo.slice(0, 40)} — Admin`;
+  } catch (e) {
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('error-state').style.display = '';
+    document.getElementById('error-state').textContent = `Error: ${e.message}`;
+    return;
+  }
+  document.getElementById('loading-state').style.display = 'none';
+  document.getElementById('edit-layout').style.display   = '';
+  setTimeout(() => {
+    initialLoadDone = true;
+    document.querySelectorAll('#edit-layout input, #edit-layout select, #edit-layout textarea').forEach(el => {
+      el.addEventListener(el.type === 'checkbox' || el.type === 'radio' ? 'change' : 'input', markDirty);
+    });
+  }, 200);
+}
+
+function renderMLInfo(p) {
+  const thumb = (p.pictures?.[0]?.secure_url || p.pictures?.[0]?.url || p.thumbnail || '');
+  document.getElementById('ml-thumb').src = thumb;
+  document.getElementById('ml-title').textContent = p.title || '—';
+  document.getElementById('ml-title-ref').textContent = p.title || '—';
+  document.getElementById('ml-id-text').textContent = p.id || PRODUCT_ID;
+  document.getElementById('ml-cat-text').textContent = p.categoria || p.category_id || '';
+  document.getElementById('ml-stock-text').textContent = p.available_quantity != null ? `Stock: ${p.available_quantity}` : '';
+  document.getElementById('ml-price').textContent = p.price ? fmt(p.price) : '—';
+  if (p.permalink) {
+    document.getElementById('ml-link').href = p.permalink;
+    document.getElementById('ml-link').style.display = '';
+  } else {
+    document.getElementById('ml-link').style.display = 'none';
+  }
+}
+
+/* ══════════════ IMAGE PREVIEW ════════════════════════════════ */
+function actualizarPreviewImagen() {
+  const url   = document.getElementById('inp-imagen').value.trim();
+  const wrap  = document.getElementById('img-preview-thumb');
+  if (!url) {
+    // Show ML product image as fallback
+    const mlSrc = currentMLProduct?.pictures?.[0]?.secure_url || currentMLProduct?.thumbnail || '';
+    wrap.innerHTML = mlSrc
+      ? `<img src="${esc(mlSrc)}" alt="Imagen ML" onerror="this.style.display='none'">`
+      : `<span class="placeholder">🖼</span>`;
+  } else {
+    wrap.innerHTML = `<img src="${esc(url)}" alt="Preview" onerror="this.innerHTML='<span class=placeholder style=font-size:28px>⚠️</span>'">`;
+  }
+}
+
+document.getElementById('inp-imagen').addEventListener('input', actualizarPreviewImagen);
+document.getElementById('inp-imagen').addEventListener('blur', actualizarPreviewImagen);
+
+document.getElementById('btn-subir-imagen').addEventListener('click', () => document.getElementById('inp-file-imagen').click());
+document.getElementById('inp-file-imagen').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const btn = document.getElementById('btn-subir-imagen');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spin"></span>';
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const resp = await fetch('/api/tienda/admin/productos-propios/imagen', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al subir imagen');
+    document.getElementById('inp-imagen').value = data.url;
+    actualizarPreviewImagen(); markDirty();
+    toast('Imagen subida ✓', 'ok');
+  } catch (err) { toast(err.message, 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir';
+  }
+  e.target.value = '';
+});
+
+/* ══════════════ VIDEO ════════════════════════════════════════ */
+const VIDEO_PLATFORMS = {
+  youtube:    { re: /youtube\.com|youtu\.be/i,   label: 'YouTube',    pillClass: 'pill-yt' },
+  alibaba:    { re: /alibaba\.com/i,              label: 'Alibaba',    pillClass: 'pill-al' },
+  aliexpress: { re: /aliexpress\.com/i,           label: 'AliExpress', pillClass: 'pill-al' },
+  vimeo:      { re: /vimeo\.com/i,                label: 'Vimeo',      pillClass: 'pill-vi' },
+};
+function detectarVideoFuente(url) {
+  if (!url) return null;
+  for (const [key, cfg] of Object.entries(VIDEO_PLATFORMS)) { if (cfg.re.test(url)) return key; }
+  return 'otro';
+}
+function getYtThumbnail(url) {
+  const m = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
+}
+function actualizarVideoHint() {
+  const url = document.getElementById('inp-video-url').value.trim();
+  const hint = document.getElementById('video-platform-hint');
+  if (!url) { hint.innerHTML = ''; hint.className = 'video-platform-hint'; return; }
+  const fuente = detectarVideoFuente(url);
+  const cfg = VIDEO_PLATFORMS[fuente];
+  if (cfg) { hint.innerHTML = `✓ ${cfg.label} detectado`; hint.className = 'video-platform-hint detected'; }
+  else { hint.innerHTML = 'Plataforma desconocida — se guardará igual'; hint.className = 'video-platform-hint'; }
+}
+function actualizarVideoUI() {
+  const previewCard  = document.getElementById('video-preview-card');
+  const inputSection = document.getElementById('video-input-section');
+  if (!videoState.url) {
+    previewCard.style.display  = 'none'; inputSection.style.display = '';
+    document.getElementById('inp-video-url').value = '';
+    document.getElementById('video-platform-hint').innerHTML = '';
+    return;
+  }
+  previewCard.style.display  = ''; inputSection.style.display = 'none';
+  const fuente = videoState.fuente || detectarVideoFuente(videoState.url) || 'otro';
+  const cfg    = VIDEO_PLATFORMS[fuente];
+  const pill   = document.getElementById('video-source-pill');
+  pill.textContent = cfg ? cfg.label : (fuente === 'upload' ? 'Archivo subido' : 'Video');
+  pill.className   = 'video-source-pill ' + (cfg ? cfg.pillClass : fuente === 'upload' ? 'pill-up' : 'pill-ot');
+  const cardUrl = document.getElementById('video-card-url');
+  cardUrl.href = videoState.url;
+  cardUrl.textContent = videoState.url.length > 52 ? videoState.url.slice(0, 52) + '…' : videoState.url;
+  const thumbWrap = document.getElementById('video-thumb-wrap');
+  const ytThumb   = fuente === 'youtube' ? getYtThumbnail(videoState.url) : null;
+  thumbWrap.innerHTML = ytThumb
+    ? `<img src="${esc(ytThumb)}" alt="thumbnail" onerror="this.style.display='none'">`
+    : `<span class="video-card-ico">🎬</span>`;
+}
+function aplicarVideoUrl() {
+  const url = document.getElementById('inp-video-url').value.trim();
+  if (!url) return;
+  const fuente = detectarVideoFuente(url) || 'otro';
+  videoState = { url, fuente, thumb: fuente === 'youtube' ? (getYtThumbnail(url) || '') : '' };
+  actualizarVideoUI(); markDirty();
+}
+document.getElementById('inp-video-url').addEventListener('input', actualizarVideoHint);
+document.getElementById('inp-video-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); aplicarVideoUrl(); } });
+document.getElementById('inp-video-url').addEventListener('blur', aplicarVideoUrl);
+document.getElementById('btn-quitar-video').addEventListener('click', () => {
+  videoState = { url: '', fuente: '', thumb: '' }; actualizarVideoUI(); markDirty();
+});
+document.getElementById('btn-subir-video').addEventListener('click', () => document.getElementById('inp-file-video').click());
+document.getElementById('inp-file-video').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const btn = document.getElementById('btn-subir-video');
+  btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Subiendo…';
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(PRODUCT_ID)}/video`,
+      { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al subir el video');
+    videoState = { url: data.url || data.video_url, fuente: 'upload', thumb: '' };
+    actualizarVideoUI(); markDirty(); toast('Video subido ✓', 'ok');
+  } catch (err) { toast(err.message, 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir archivo';
+  }
+  e.target.value = '';
+});
+
+/* ══════════════ CARGAR FORMULARIO ════════════════════════════ */
+function cargarFormulario(ov) {
+  document.getElementById('inp-titulo').value      = ov.titulo_custom      || '';
+  document.getElementById('inp-descripcion').value = ov.descripcion_custom || '';
+  document.getElementById('inp-imagen').value      = ov.imagen_portada_url || '';
+  document.getElementById('chk-destacado').checked = !!ov.destacado;
+  document.getElementById('chk-oculto').checked    = !!ov.oculto;
+  document.getElementById('inp-notas').value       = ov.notas_admin        || '';
+  document.getElementById('notas-details').open    = !!(ov.notas_admin);
+  videoState = { url: ov.video_url || '', fuente: ov.video_fuente || '', thumb: ov.video_thumb_url || '' };
+  actualizarVideoUI();
+  actualizarPreviewImagen();
+}
+
+/* ══════════════ GUARDAR ══════════════════════════════════════ */
+document.getElementById('btn-guardar').addEventListener('click', async () => {
+  const body = {
+    titulo_custom:       document.getElementById('inp-titulo').value.trim() || null,
+    descripcion_custom:  document.getElementById('inp-descripcion').value.trim() || null,
+    imagen_portada_url:  document.getElementById('inp-imagen').value.trim() || null,
+    destacado:           document.getElementById('chk-destacado').checked,
+    oculto:              document.getElementById('chk-oculto').checked,
+    notas_admin:         document.getElementById('inp-notas').value.trim() || null,
+    video_url:           videoState.url    || null,
+    video_fuente:        videoState.fuente || null,
+    video_thumb_url:     videoState.thumb  || null,
+  };
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spin"></span>Guardando…';
+  try {
+    const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(PRODUCT_ID)}`,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'No se pudo guardar');
+    isDirty = false;
+    window.location.href = '/tienda-productos.html?ok=1&msg=' + encodeURIComponent('Personalización guardada');
+  } catch (e) {
+    toast(e.message, 'err');
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Guardar cambios';
+  }
+});
+
+/* ══════════════ QUITAR PERSONALIZACIÓN ═══════════════════════ */
+document.getElementById('btn-quitar-personalizacion').addEventListener('click', () => {
+  document.getElementById('delete-confirm').classList.add('show');
+  document.getElementById('btn-quitar-personalizacion').style.display = 'none';
+});
+document.getElementById('btn-cancelar-quitar').addEventListener('click', () => {
+  document.getElementById('delete-confirm').classList.remove('show');
+  document.getElementById('btn-quitar-personalizacion').style.display = '';
+});
+document.getElementById('btn-confirmar-quitar').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-confirmar-quitar');
+  btn.disabled = true; btn.textContent = 'Quitando…';
+  try {
+    const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(PRODUCT_ID)}/override`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error');
+    isDirty = false;
+    window.location.href = '/tienda-productos.html?ok=1&msg=' + encodeURIComponent('Personalización eliminada');
+  } catch (e) {
+    toast(e.message, 'err');
+    btn.disabled = false; btn.textContent = 'Sí, quitar todo';
+  }
+});
+
+/* ─── Init ────────────────────────────────────────────────── */
+init();
+</script>
+</body>
+</html>

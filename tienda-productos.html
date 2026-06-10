@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Productos ABM — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC: tema guardado antes del primer paint -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Toolbar (búsqueda + filtros) ───────────────────────── */
+.prod-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prod-toolbar .adm-search { width: 280px; max-width: 100%; }
+
+/* ── Badges extra ───────────────────────────────────────── */
+.stock-ok    { color: var(--green); font-weight: 700; }
+.stock-low   { color: #d97706;      font-weight: 700; }
+.stock-empty { color: var(--red);   font-weight: 700; }
+
+/* ── Fila con personalización ───────────────────────────── */
+.prod-thumb {
+  width: 40px; height: 40px; border-radius: var(--r);
+  object-fit: contain; background: var(--bg); border: 1px solid var(--border);
+}
+.prod-title-custom { color: var(--blue); }
+.prod-flags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+
+/* ── Drawer lateral de edición ──────────────────────────── */
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  z-index: 998; opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 999;
+  width: 480px; max-width: 100vw;
+  background: var(--bg-card); border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .25s ease;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.drawer-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.drawer-sub   { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.drawer-close {
+  width: 30px; height: 30px; border-radius: var(--r); border: 1px solid var(--border-2);
+  background: var(--bg-card); color: var(--text-2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.drawer-close:hover { background: var(--bg); color: var(--text); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.drawer-foot {
+  padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+
+.drawer-product {
+  display: flex; gap: 12px; align-items: center;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 12px;
+}
+.drawer-product img {
+  width: 56px; height: 56px; border-radius: var(--r); object-fit: contain;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.drawer-product .info { min-width: 0; }
+.drawer-product .info .t {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.drawer-product .info .m { font-size: 11px; color: var(--text-3); margin-top: 3px; font-family: var(--font-mono); }
+
+.adm-textarea {
+  display: block; width: 100%; min-height: 80px; resize: vertical;
+  border: 1px solid var(--border-2); border-radius: var(--r);
+  padding: 8px 12px; font-size: 13px; color: var(--text);
+  background: var(--bg-card); font-family: var(--font-sans);
+  transition: border-color .12s, box-shadow .12s;
+}
+.adm-textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(52,131,250,.10); }
+
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--bg);
+}
+.toggle-row .l { font-size: 13px; font-weight: 500; color: var(--text); }
+.toggle-row .d { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+.tswitch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+.tswitch input { opacity: 0; width: 0; height: 0; }
+.tswitch .slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--border-2); border-radius: 100px; transition: .15s;
+}
+.tswitch .slider::before {
+  content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: .15s;
+}
+.tswitch input:checked + .slider { background: var(--blue); }
+.tswitch input:checked + .slider::before { transform: translateX(16px); }
+
+.section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-3);
+}
+
+/* ── Selector de fuente de video (tabs) ─────────────────── */
+.src-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.src-tab {
+  flex: 1; min-width: 100px; text-align: center;
+  padding: 8px 10px; border-radius: var(--r); font-size: 12px; font-weight: 600;
+  border: 1px solid var(--border-2); color: var(--text-2); background: var(--bg-card);
+  cursor: pointer; transition: all .15s;
+}
+.src-tab:hover  { border-color: var(--blue); color: var(--blue); }
+.src-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+.video-current {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 10px 12px; font-size: 12px; color: var(--text-2);
+}
+.video-current .ic {
+  width: 32px; height: 32px; border-radius: var(--r); flex-shrink: 0;
+  background: var(--blue-light); color: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+}
+.video-current .lk { color: var(--blue); text-decoration: none; word-break: break-all; }
+.video-current .lk:hover { text-decoration: underline; }
+
+.dropzone {
+  border: 1.5px dashed var(--border-2); border-radius: var(--r-lg);
+  padding: 22px 14px; text-align: center; cursor: pointer;
+  color: var(--text-3); font-size: 12px; transition: all .15s;
+}
+.dropzone:hover, .dropzone.drag { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.dropzone svg { display: block; margin: 0 auto 8px; }
+
+#image-preview, #video-thumb-preview {
+  width: 100%; max-height: 140px; object-fit: contain; border-radius: var(--r);
+  background: var(--bg); border: 1px solid var(--border); display: none;
+}
+
+/* ── Toast ──────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 1001;
+  background: var(--text); color: #fff;
+  border-radius: var(--r-lg); padding: 10px 16px;
+  font-size: 13px; box-shadow: var(--shadow-lg);
+  transform: translateY(8px); opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok   { background: var(--green); }
+#toast.err  { background: var(--red); }
+
+/* ── Spinner (botones) ──────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-spin {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+  border-radius: 50%; animation: spin .6s linear infinite;
+  vertical-align: -2px; margin-right: 6px;
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+
+  <a href="/tienda-admin.html" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Admin Tienda</div>
+      <div class="adm-logo-tag">WZMALLAS</div>
+    </div>
+  </a>
+
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">General</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/tienda-admin.html#section-cupones" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Cupones</span>
+      </a>
+      <a href="/tienda-productos.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Productos ABM</span>
+      </a>
+      <a href="/tienda-productos-propios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+        <span>Productos propios</span>
+      </a>
+      <a href="/tienda-categorias.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span>Categorías</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/tienda-ordenes.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Órdenes</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Clientes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Configuración</div>
+      <a href="/tienda-sync.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <span>Sincronizar ML</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2"/></svg>
+        <span>Ajustes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <div class="adm-sidebar-foot">
+    <a href="/tienda/catalogo.html" target="_blank" class="adm-item" style="color:var(--green)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Ver tienda</span>
+    </a>
+    <a href="/" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Volver a Stockroom</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
+
+  <!-- HEADER -->
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Productos — Personalización (ABM)</div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot"></span>
+          <span id="page-status-text">Cargando…</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <span class="badge badge-blue" id="status-badge">—</span>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin:0 0 16px;max-width:760px;">
+      Acá podés <strong>personalizar cómo se ven tus publicaciones en la tienda web</strong> sin tocar nada en
+      MercadoLibre: cambiar el título o la descripción que se muestra, poner una foto de portada propia,
+      asignarle un video, marcarlo como <strong>destacado</strong> o directamente <strong>ocultarlo</strong> del catálogo.
+      Estos cambios se guardan aparte y <strong>sobreviven a las sincronizaciones con ML</strong>.
+    </p>
+
+    <!-- TOOLBAR -->
+    <div class="adm-card" style="margin-bottom:16px;">
+      <div class="prod-toolbar">
+        <div class="adm-search" style="flex:1;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="inp-search" placeholder="Buscar por título o ID de ML…">
+        </div>
+        <select class="adm-select" id="sel-filtro">
+          <option value="">Todos los productos</option>
+          <option value="personalizados">Personalizados</option>
+          <option value="destacados">Destacados</option>
+          <option value="ocultos">Ocultos</option>
+          <option value="con_video">Con video</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="adm-card" id="table-card" style="padding:0;overflow:hidden;">
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead>
+            <tr>
+              <th style="width:50px;"></th>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Estado</th>
+              <th style="width:90px;"></th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody">
+            <tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:30px;">Cargando productos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:10px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text-3);display:flex;align-items:center;justify-content:space-between;">
+        <span id="table-footer">—</span>
+        <div class="btn-group" id="pager"></div>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /adm-main -->
+</div><!-- /adm-wrap -->
+
+<!-- Overlay sidebar móvil -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ═══════════════════ DRAWER DE EDICIÓN ═══════════════════ -->
+<div class="drawer-overlay" id="drawer-overlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-title">Personalizar producto</div>
+      <div class="drawer-sub" id="drawer-sub">—</div>
+    </div>
+    <button class="drawer-close" id="btn-drawer-close" aria-label="Cerrar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="drawer-body">
+
+    <!-- Producto (solo lectura, datos de ML) -->
+    <div class="drawer-product">
+      <img id="dp-thumb" src="" alt="">
+      <div class="info">
+        <div class="t" id="dp-title">—</div>
+        <div class="m" id="dp-meta">—</div>
+      </div>
+    </div>
+
+    <!-- Destacado / Oculto -->
+    <div class="toggle-row">
+      <div>
+        <div class="l">⭐ Destacado</div>
+        <div class="d">Se puede usar para resaltarlo en la tienda</div>
+      </div>
+      <label class="tswitch"><input type="checkbox" id="chk-destacado"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div class="l">🚫 Oculto</div>
+        <div class="d">No aparece en el catálogo público de la tienda</div>
+      </div>
+      <label class="tswitch"><input type="checkbox" id="chk-oculto"><span class="slider"></span></label>
+    </div>
+
+    <!-- Título / descripción custom -->
+    <div class="adm-field">
+      <label class="adm-label">Título personalizado <span style="font-weight:400;color:var(--text-3);">(opcional — reemplaza el de ML)</span></label>
+      <input type="text" class="adm-input" id="inp-titulo" maxlength="200" placeholder="Dejalo vacío para usar el título original de ML">
+    </div>
+    <div class="adm-field">
+      <label class="adm-label">Descripción personalizada <span style="font-weight:400;color:var(--text-3);">(opcional)</span></label>
+      <textarea class="adm-textarea" id="inp-descripcion" maxlength="5000" placeholder="Dejalo vacío para usar la descripción original de ML"></textarea>
+    </div>
+    <div class="adm-field">
+      <label class="adm-label">Imagen de portada propia <span style="font-weight:400;color:var(--text-3);">(URL — opcional)</span></label>
+      <input type="text" class="adm-input" id="inp-imagen" placeholder="https://…  (dejalo vacío para usar la foto de ML)">
+      <img id="image-preview" alt="Vista previa">
+    </div>
+
+    <!-- Video -->
+    <div>
+      <div class="section-label" style="margin-bottom:8px;">Video del producto</div>
+
+      <div id="video-current-box" style="display:none;margin-bottom:10px;">
+        <div class="video-current">
+          <div class="ic">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div id="video-current-fuente" style="font-weight:600;color:var(--text);"></div>
+            <a id="video-current-link" class="lk" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <button class="btn btn-sm btn-danger" id="btn-quitar-video" type="button">Quitar</button>
+        </div>
+      </div>
+
+      <div class="src-tabs" id="src-tabs">
+        <div class="src-tab" data-src="youtube">▶ YouTube</div>
+        <div class="src-tab" data-src="alibaba">🔗 Alibaba/AliExpress</div>
+        <div class="src-tab" data-src="upload">⬆ Subir archivo</div>
+      </div>
+
+      <!-- Link (youtube / alibaba / aliexpress) -->
+      <div id="video-link-panel" style="display:none;margin-top:10px;">
+        <div class="adm-field">
+          <label class="adm-label" id="video-link-label">Link del video</label>
+          <input type="text" class="adm-input" id="inp-video-url" placeholder="https://www.youtube.com/watch?v=…">
+        </div>
+        <div class="adm-field" style="margin-top:8px;" id="video-aliexpress-fuente-wrap">
+          <label class="adm-label">¿De qué sitio es?</label>
+          <select class="adm-select" id="sel-video-fuente-link" style="width:100%;">
+            <option value="alibaba">Alibaba</option>
+            <option value="aliexpress">AliExpress</option>
+          </select>
+        </div>
+        <button class="btn btn-sm btn-secondary" id="btn-asignar-video-link" type="button" style="margin-top:10px;">Asignar este video</button>
+      </div>
+
+      <!-- Upload -->
+      <div id="video-upload-panel" style="display:none;margin-top:10px;">
+        <div class="dropzone" id="dropzone">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span id="dropzone-label">Hacé click para elegir un video (.mp4, .webm, .mov) — máx. 80MB</span>
+          <input type="file" id="inp-video-file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" style="display:none;">
+        </div>
+        <button class="btn btn-sm btn-secondary" id="btn-subir-video" type="button" style="margin-top:10px;display:none;">Subir y asignar</button>
+      </div>
+    </div>
+
+    <!-- Notas internas -->
+    <div class="adm-field">
+      <label class="adm-label">Notas internas <span style="font-weight:400;color:var(--text-3);">(solo para el equipo — no se muestran en la tienda)</span></label>
+      <textarea class="adm-textarea" id="inp-notas" maxlength="2000" style="min-height:60px;" placeholder="Ej: pendiente de actualizar fotos, video subido el 08/06…"></textarea>
+    </div>
+
+  </div>
+
+  <div class="drawer-foot">
+    <button class="btn btn-ghost" id="btn-quitar-personalizacion" type="button">Quitar toda la personalización</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" id="btn-cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar">Guardar cambios</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  /* ─── Theme toggle ─────────────────────────────────────── */
+  document.getElementById('btn-theme').addEventListener('click', function(e) {
+    e.stopPropagation();
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('adminTheme', next); } catch(e) {}
+  });
+
+  /* ─── Sidebar móvil ────────────────────────────────────── */
+  const hamburger = document.getElementById('btn-hamburger');
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebar-overlay');
+  hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+  overlay.addEventListener('click',   () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+
+  /* ─── Toast ────────────────────────────────────────────── */
+  let _toastTimer;
+  function toast(msg, type = 'ok') {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.className = 'show ' + type;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+  }
+
+  function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-AR'); }
+  function setBadge(text, type) {
+    const b = document.getElementById('status-badge');
+    b.textContent = text;
+    b.className = `badge badge-${type}`;
+  }
+  function setStatus(text) { document.getElementById('page-status-text').textContent = text; }
+
+  /* ─── Estado ───────────────────────────────────────────── */
+  let page = 1;
+  const LIMIT = 30;
+  let currentProduct  = null; // { id, title, price, available_quantity, thumbnail, categoria, ... }
+  let currentOverride = null; // override actual del producto abierto en el drawer
+  let videoSrcMode    = null; // 'youtube' | 'alibaba' | 'upload'
+  let pendingVideoFile = null;
+  let _searchTimer;
+
+  /* ─── Carga de la tabla ────────────────────────────────── */
+  async function loadProductos() {
+    const q      = document.getElementById('inp-search').value.trim();
+    const filtro = document.getElementById('sel-filtro').value;
+    const params = new URLSearchParams({ page, limit: LIMIT });
+    if (q)      params.set('q', q);
+    if (filtro) params.set('filtro', filtro);
+
+    const tbody = document.getElementById('items-tbody');
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:30px;">Cargando…</td></tr>`;
+
+    try {
+      const resp = await fetch('/api/tienda/admin/productos?' + params.toString());
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Error al cargar');
+      renderTable(data.productos || [], data.total || 0);
+      setBadge(`${data.total} productos`, 'blue');
+      setStatus(`${data.total} productos en catálogo`);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:30px;">${e.message}</td></tr>`;
+      setBadge('Error', 'red');
+    }
+  }
+
+  function renderTable(items, total) {
+    const tbody = document.getElementById('items-tbody');
+    if (!items.length) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:30px;">No se encontraron productos</td></tr>`;
+    } else {
+      tbody.innerHTML = items.map(p => {
+        const stock = p.available_quantity || 0;
+        const stockClass = stock === 0 ? 'stock-empty' : stock <= 5 ? 'stock-low' : 'stock-ok';
+        const ov = p.override;
+        const flags = [];
+        if (ov?.destacado)   flags.push('<span class="badge badge-yellow">⭐ Destacado</span>');
+        if (ov?.oculto)      flags.push('<span class="badge badge-red">🚫 Oculto</span>');
+        if (ov?.video_url)   flags.push('<span class="badge badge-blue">▶ Video</span>');
+        if (ov && (ov.titulo_custom || ov.descripcion_custom || ov.imagen_portada_url))
+          flags.push('<span class="badge badge-gray">✎ Personalizado</span>');
+
+        const titleShown = (ov?.titulo_custom) || p.title || '—';
+        const titleClass = ov?.titulo_custom ? 'prod-title-custom' : '';
+
+        return `
+          <tr>
+            <td><img class="prod-thumb" src="${(ov?.imagen_portada_url || p.thumbnail || '').replace(/"/g,'&quot;')}" alt="" onerror="this.style.visibility='hidden'"></td>
+            <td>
+              <div class="${titleClass}" style="font-size:13px;font-weight:500;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                   title="${(titleShown || '').replace(/"/g, '&quot;')}">${titleShown}</div>
+              <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px;">${p.id}</div>
+              ${flags.length ? `<div class="prod-flags">${flags.join('')}</div>` : ''}
+            </td>
+            <td><span class="badge badge-gray">${p.categoria || '—'}</span></td>
+            <td style="color:var(--text);font-weight:600;white-space:nowrap;">${fmt(p.price)}</td>
+            <td class="${stockClass}">${stock}</td>
+            <td><span class="badge ${p.status === 'active' ? 'badge-green' : 'badge-gray'}">${p.status || '—'}</span></td>
+            <td><a class="btn btn-sm btn-secondary" href="/tienda-producto-abm.html?id=${p.id}">Personalizar</a></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('table-footer').textContent =
+      `Mostrando ${items.length ? ((page - 1) * LIMIT + 1) : 0}–${(page - 1) * LIMIT + items.length} de ${total}`;
+    renderPager(total);
+  }
+
+  function renderPager(total) {
+    const pages = Math.max(1, Math.ceil(total / LIMIT));
+    const pager = document.getElementById('pager');
+    if (pages <= 1) { pager.innerHTML = ''; return; }
+    pager.innerHTML = `
+      <button class="btn btn-sm btn-ghost" ${page <= 1 ? 'disabled' : ''} onclick="cambiarPagina(${page - 1})">← Anterior</button>
+      <span style="font-size:12px;color:var(--text-2);padding:0 8px;display:inline-flex;align-items:center;">Página ${page} de ${pages}</span>
+      <button class="btn btn-sm btn-ghost" ${page >= pages ? 'disabled' : ''} onclick="cambiarPagina(${page + 1})">Siguiente →</button>
+    `;
+  }
+  function cambiarPagina(p) { page = p; loadProductos(); }
+
+  document.getElementById('inp-search').addEventListener('input', () => {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => { page = 1; loadProductos(); }, 350);
+  });
+  document.getElementById('sel-filtro').addEventListener('change', () => { page = 1; loadProductos(); });
+
+  /* ─── Drawer: abrir / cerrar ───────────────────────────── */
+  const drawer        = document.getElementById('drawer');
+  const drawerOverlay = document.getElementById('drawer-overlay');
+
+  function cerrarDrawer() {
+    drawer.classList.remove('open');
+    drawerOverlay.classList.remove('open');
+    currentProduct = null; currentOverride = null;
+    pendingVideoFile = null;
+    setVideoSrcMode(null);
+  }
+  document.getElementById('btn-drawer-close').addEventListener('click', cerrarDrawer);
+  document.getElementById('btn-cancelar').addEventListener('click', cerrarDrawer);
+  drawerOverlay.addEventListener('click', cerrarDrawer);
+
+  async function abrirDrawer(id) {
+    try {
+      const resp = await fetch('/api/tienda/admin/productos/' + encodeURIComponent(id));
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'No se pudo cargar el producto');
+
+      currentProduct  = data.producto;
+      currentOverride = data.override;
+      pendingVideoFile = null;
+
+      const p = currentProduct, ov = currentOverride || {};
+
+      document.getElementById('drawer-sub').textContent = `ID ML: ${p.id}`;
+      document.getElementById('dp-thumb').src = p.thumbnail || (p.pictures && p.pictures[0] && (p.pictures[0].secure_url || p.pictures[0].url)) || '';
+      document.getElementById('dp-title').textContent = p.title || '—';
+      document.getElementById('dp-meta').textContent  = `${fmt(p.price)} · Stock ${p.available_quantity ?? '—'} · ${p.status || ''}`;
+
+      document.getElementById('chk-destacado').checked = !!ov.destacado;
+      document.getElementById('chk-oculto').checked    = !!ov.oculto;
+      document.getElementById('inp-titulo').value      = ov.titulo_custom || '';
+      document.getElementById('inp-descripcion').value = ov.descripcion_custom || '';
+      document.getElementById('inp-imagen').value      = ov.imagen_portada_url || '';
+      document.getElementById('inp-notas').value       = ov.notas_admin || '';
+      actualizarPreviewImagen();
+
+      renderVideoActual(ov);
+      setVideoSrcMode(null);
+
+      drawer.classList.add('open');
+      drawerOverlay.classList.add('open');
+    } catch (e) {
+      toast(e.message, 'err');
+    }
+  }
+  window.abrirDrawer   = abrirDrawer;
+  window.cambiarPagina = cambiarPagina;
+
+  /* ─── Preview de imagen de portada ─────────────────────── */
+  const inpImagen = document.getElementById('inp-imagen');
+  const imgPreview = document.getElementById('image-preview');
+  function actualizarPreviewImagen() {
+    const url = inpImagen.value.trim();
+    if (url) { imgPreview.src = url; imgPreview.style.display = 'block'; }
+    else     { imgPreview.style.display = 'none'; imgPreview.src = ''; }
+  }
+  imgPreview.addEventListener('error', () => { imgPreview.style.display = 'none'; });
+  inpImagen.addEventListener('input', actualizarPreviewImagen);
+
+  /* ─── Sección de video ─────────────────────────────────── */
+  function renderVideoActual(ov) {
+    const box = document.getElementById('video-current-box');
+    if (ov && ov.video_url) {
+      box.style.display = 'block';
+      const fuenteLabels = { youtube: '▶ YouTube', alibaba: '🔗 Alibaba', aliexpress: '🔗 AliExpress', upload: '⬆ Archivo subido' };
+      document.getElementById('video-current-fuente').textContent = fuenteLabels[ov.video_fuente] || 'Video asignado';
+      const link = document.getElementById('video-current-link');
+      link.textContent = ov.video_url;
+      link.href = ov.video_url;
+    } else {
+      box.style.display = 'none';
+    }
+  }
+
+  function setVideoSrcMode(mode) {
+    videoSrcMode = mode;
+    document.querySelectorAll('.src-tab').forEach(t => t.classList.toggle('active', t.dataset.src === mode));
+    document.getElementById('video-link-panel').style.display   = (mode === 'youtube' || mode === 'alibaba') ? 'block' : 'none';
+    document.getElementById('video-upload-panel').style.display = (mode === 'upload') ? 'block' : 'none';
+    document.getElementById('video-aliexpress-fuente-wrap').style.display = (mode === 'alibaba') ? 'block' : 'none';
+    document.getElementById('video-link-label').textContent = mode === 'youtube' ? 'Link de YouTube' : 'Link de Alibaba o AliExpress';
+    document.getElementById('inp-video-url').value = '';
+    document.getElementById('inp-video-file').value = '';
+    document.getElementById('dropzone-label').textContent = 'Hacé click para elegir un video (.mp4, .webm, .mov) — máx. 80MB';
+    document.getElementById('btn-subir-video').style.display = 'none';
+    pendingVideoFile = null;
+  }
+
+  document.querySelectorAll('.src-tab').forEach(tab => {
+    tab.addEventListener('click', () => setVideoSrcMode(tab.dataset.src === videoSrcMode ? null : tab.dataset.src));
+  });
+
+  // Quitar video asignado
+  document.getElementById('btn-quitar-video').addEventListener('click', async () => {
+    if (!currentProduct) return;
+    if (!confirm('¿Quitar el video asignado a este producto?')) return;
+    try {
+      const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(currentProduct.id)}/video`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Error al quitar el video');
+      currentOverride = data.override;
+      renderVideoActual(currentOverride);
+      toast('Video quitado');
+      loadProductos();
+    } catch (e) { toast(e.message, 'err'); }
+  });
+
+  // Asignar video por link (YouTube / Alibaba / AliExpress)
+  document.getElementById('btn-asignar-video-link').addEventListener('click', async () => {
+    if (!currentProduct) return;
+    const url = document.getElementById('inp-video-url').value.trim();
+    if (!url) { toast('Pegá un link primero', 'err'); return; }
+    const fuente = videoSrcMode === 'youtube' ? 'youtube' : document.getElementById('sel-video-fuente-link').value;
+
+    const btn = document.getElementById('btn-asignar-video-link');
+    const original = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Asignando…';
+    try {
+      const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(currentProduct.id)}/video`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, fuente }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Error al asignar el video');
+      currentOverride = data.override;
+      renderVideoActual(currentOverride);
+      setVideoSrcMode(null);
+      toast('Video asignado ✓');
+      loadProductos();
+    } catch (e) { toast(e.message, 'err'); }
+    finally { btn.disabled = false; btn.textContent = original; }
+  });
+
+  // Subida de archivo propio
+  const dropzone   = document.getElementById('dropzone');
+  const inpVideoFile = document.getElementById('inp-video-file');
+  dropzone.addEventListener('click', () => inpVideoFile.click());
+  ['dragover', 'dragenter'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+  dropzone.addEventListener('drop', e => {
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) { pendingVideoFile = f; mostrarArchivoElegido(f); }
+  });
+  inpVideoFile.addEventListener('change', () => {
+    const f = inpVideoFile.files && inpVideoFile.files[0];
+    if (f) { pendingVideoFile = f; mostrarArchivoElegido(f); }
+  });
+  function mostrarArchivoElegido(f) {
+    const mb = (f.size / (1024 * 1024)).toFixed(1);
+    document.getElementById('dropzone-label').textContent = `${f.name} (${mb} MB) — click para cambiar`;
+    document.getElementById('btn-subir-video').style.display = 'inline-flex';
+  }
+
+  document.getElementById('btn-subir-video').addEventListener('click', async () => {
+    if (!currentProduct || !pendingVideoFile) return;
+    if (pendingVideoFile.size > 80 * 1024 * 1024) { toast('El archivo supera los 80MB', 'err'); return; }
+
+    const btn = document.getElementById('btn-subir-video');
+    const original = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Subiendo…';
+    try {
+      const fd = new FormData();
+      fd.append('file', pendingVideoFile, pendingVideoFile.name);
+      const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(currentProduct.id)}/video`, {
+        method: 'POST',
+        body: fd,
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Error al subir el video');
+      currentOverride = data.override;
+      renderVideoActual(currentOverride);
+      setVideoSrcMode(null);
+      toast('Video subido y asignado ✓');
+      loadProductos();
+    } catch (e) { toast(e.message, 'err'); }
+    finally { btn.disabled = false; btn.textContent = original; }
+  });
+
+  /* ─── Guardar overrides (título, descripción, flags, etc) ─ */
+  document.getElementById('btn-guardar').addEventListener('click', async () => {
+    if (!currentProduct) return;
+    const btn = document.getElementById('btn-guardar');
+    const original = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Guardando…';
+    try {
+      const body = {
+        destacado:          document.getElementById('chk-destacado').checked,
+        oculto:             document.getElementById('chk-oculto').checked,
+        titulo_custom:      document.getElementById('inp-titulo').value,
+        descripcion_custom: document.getElementById('inp-descripcion').value,
+        imagen_portada_url: document.getElementById('inp-imagen').value,
+        notas_admin:        document.getElementById('inp-notas').value,
+      };
+      const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(currentProduct.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Error al guardar');
+      toast('Cambios guardados ✓');
+      cerrarDrawer();
+      loadProductos();
+    } catch (e) { toast(e.message, 'err'); }
+    finally { btn.disabled = false; btn.textContent = original; }
+  });
+
+  /* ─── Quitar toda la personalización ───────────────────── */
+  document.getElementById('btn-quitar-personalizacion').addEventListener('click', async () => {
+    if (!currentProduct) return;
+    if (!confirm('¿Quitar TODA la personalización de este producto? El producto volverá a verse 100% como en MercadoLibre (incluyendo el video, si tenía uno).')) return;
+    try {
+      const resp = await fetch(`/api/tienda/admin/productos/${encodeURIComponent(currentProduct.id)}/override`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Error al quitar la personalización');
+      toast('Personalización eliminada');
+      cerrarDrawer();
+      loadProductos();
+    } catch (e) { toast(e.message, 'err'); }
+  });
+
+  /* ─── Init ─────────────────────────────────────────────── */
+  // Mostrar toast si volvemos desde el editor de personalización
+  (function() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('ok')) {
+      const msg = params.get('msg') ? decodeURIComponent(params.get('msg')) : 'Cambios guardados';
+      setTimeout(() => toast('✓ ' + msg, 'ok'), 300);
+      history.replaceState({}, '', '/tienda-productos.html');
+    }
+  })();
+  loadProductos();
+</script>
+</body>
+</html>

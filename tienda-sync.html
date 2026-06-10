@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Sincronizar ML — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC: tema guardado antes del primer paint -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Soon tag ───────────────────────────────────────────── */
+.soon-tag {
+  display: inline-block; font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: 100px;
+  background: var(--yellow-light); color: #8a5c00;
+  letter-spacing: .04em; text-transform: uppercase;
+  vertical-align: middle; margin-left: 4px;
+}
+
+/* ── Log panel (terminal style) ─────────────────────────── */
+.log-panel {
+  background: #0f1117;
+  border: 1px solid #1e2130;
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #6b7280;
+  min-height: 180px;
+  max-height: 360px;
+  overflow-y: auto;
+  line-height: 1.75;
+}
+.log-panel::-webkit-scrollbar { width: 6px; }
+.log-panel::-webkit-scrollbar-track { background: transparent; }
+.log-panel::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 3px; }
+.log-entry { display: block; }
+.log-info  { color: #6b7280; }
+.log-ok    { color: #34d399; }
+.log-warn  { color: #fbbf24; }
+.log-err   { color: #f87171; }
+.log-dim   { color: #374151; }
+
+/* ── Sync button ────────────────────────────────────────── */
+.btn-sync {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--blue); color: #fff; border: none;
+  border-radius: var(--r-lg); padding: 10px 22px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s, transform .1s;
+  font-family: var(--font-sans);
+}
+.btn-sync:hover   { background: var(--blue-dark); }
+.btn-sync:active  { transform: scale(0.98); }
+.btn-sync:disabled {
+  background: var(--bg); color: var(--text-3); cursor: not-allowed;
+  transform: none; border: 1px solid var(--border-2);
+}
+.btn-sync.secondary {
+  background: var(--bg-card); color: var(--text); border: 1px solid var(--border-2);
+}
+.btn-sync.secondary:hover   { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.btn-sync.secondary:disabled {
+  background: var(--bg); color: var(--text-3); border: 1px solid var(--border-2);
+}
+.btn-sync.secondary .spinner {
+  border: 2px solid rgba(0,0,0,.12);
+  border-top-color: var(--text-2);
+}
+.sync-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── Spinner ────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.25);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+.syncing .spinner   { display: block; }
+.syncing .sync-icon { display: none; }
+
+/* ── Category tabs ──────────────────────────────────────── */
+.cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.cat-tab {
+  padding: 4px 12px; border-radius: var(--r);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border-2); color: var(--text-2);
+  background: var(--bg-card); transition: all .15s;
+}
+.cat-tab:hover  { border-color: var(--blue); color: var(--blue); }
+.cat-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* ── Stock colors ───────────────────────────────────────── */
+.stock-ok    { color: var(--green); font-weight: 700; }
+.stock-low   { color: #d97706;      font-weight: 700; }
+.stock-empty { color: var(--red);   font-weight: 700; }
+
+/* ── Status badge inside header ─────────────────────────── */
+#status-badge { font-size: 11px; font-weight: 700; }
+
+/* ── Toast ──────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 999;
+  background: var(--text); color: #fff;
+  border-radius: var(--r-lg); padding: 10px 16px;
+  font-size: 13px; box-shadow: var(--shadow-lg);
+  transform: translateY(8px); opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok   { background: var(--green); }
+#toast.err  { background: var(--red); }
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+
+  <a href="/tienda-admin.html" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Admin Tienda</div>
+      <div class="adm-logo-tag">WZMALLAS</div>
+    </div>
+  </a>
+
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">General</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/tienda-admin.html#section-cupones" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Cupones</span>
+      </a>
+      <a href="/tienda-productos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Productos ABM</span>
+      </a>
+      <a href="/tienda-productos-propios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+        <span>Productos propios</span>
+      </a>
+      <a href="/tienda-categorias.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span>Categorías</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/tienda-ordenes.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Órdenes</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Clientes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Configuración</div>
+      <a href="/tienda-sync.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <span>Sincronizar ML</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2"/></svg>
+        <span>Ajustes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <div class="adm-sidebar-foot">
+    <a href="/tienda/catalogo.html" target="_blank" class="adm-item" style="color:var(--green)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Ver tienda</span>
+    </a>
+    <a href="/" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Volver a Stockroom</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
+
+  <!-- HEADER -->
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Sincronización con MercadoLibre</div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot" id="sync-dot"></span>
+          <span id="sync-status-text">Listo</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <span class="badge" id="status-badge">Listo</span>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <!-- KPI de última sync (oculto hasta que haya datos) -->
+    <div class="adm-kpi-grid" id="stats-grid" style="margin-bottom:24px;display:none;">
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Total productos</div>
+        <div class="adm-kpi-value" id="stat-total">—</div>
+        <div class="adm-kpi-delta">en cache</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Con stock</div>
+        <div class="adm-kpi-value green" id="stat-con-stock">—</div>
+        <div class="adm-kpi-delta">disponibles</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Stock bajo</div>
+        <div class="adm-kpi-value yellow" id="stat-bajo">—</div>
+        <div class="adm-kpi-delta">menos de 5 u.</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Agotados</div>
+        <div class="adm-kpi-value red" id="stat-agotado">—</div>
+        <div class="adm-kpi-delta">sin stock</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Última sync</div>
+        <div class="adm-kpi-value" id="stat-fecha" style="font-size:18px;">—</div>
+        <div class="adm-kpi-delta" id="stat-hora">—</div>
+      </div>
+    </div>
+
+    <!-- PANEL SYNC -->
+    <div class="adm-card" style="margin-bottom:16px;">
+      <div class="adm-card-head" style="margin-bottom:20px;">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">Sincronizar con MercadoLibre</div>
+          <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin:0;">
+            Trae todos los items activos de las cuentas ML configuradas, los normaliza
+            y los guarda en <code style="color:var(--blue);font-family:var(--font-mono);font-size:12px;">Stockroom/cache/items.json</code>.
+            La tienda web usa ese archivo automáticamente.
+          </p>
+          <p style="font-size:12px;color:var(--text-3);line-height:1.6;margin:6px 0 0;">
+            ¿Solo necesitás refrescar <strong>stock y precio</strong> sin traer fotos ni descripciones de nuevo?
+            Usá <strong>"Actualizar stock"</strong> — es mucho más rápido porque reaprovecha lo que ya está en cache.
+          </p>
+        </div>
+        <div class="sync-actions">
+          <button class="btn-sync secondary" id="btn-stock-sync" onclick="startStockSync()" title="Refresca solo stock, precio y estado — no vuelve a descargar fotos ni descripciones">
+            <svg class="sync-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M20 12V8H6a2 2 0 01-2-2c0-1.1.9-2 2-2h12v4"/>
+              <path d="M4 12v4h14a2 2 0 012 2c0 1.1-.9 2-2 2H6v-4"/>
+            </svg>
+            <div class="spinner"></div>
+            <span id="btn-stock-label">Actualizar stock</span>
+          </button>
+          <button class="btn-sync" id="btn-sync" onclick="startSync()">
+            <svg class="sync-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            <div class="spinner"></div>
+            <span id="btn-label">Sincronizar todo</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Log en vivo -->
+      <div class="log-panel" id="log">
+        <span class="log-dim">Esperando acción…  Presioná "Sincronizar ahora" para traer el stock desde ML.</span>
+      </div>
+    </div>
+
+    <!-- TABLA PRODUCTOS EN CACHE -->
+    <div class="adm-card" id="table-card" style="display:none;padding:0;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
+        <div style="font-size:14px;font-weight:600;color:var(--text);">Productos en cache</div>
+        <div class="cat-tabs" id="cat-tabs"></div>
+      </div>
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead>
+            <tr>
+              <th style="width:44px;"></th>
+              <th>Título</th>
+              <th>Categoría</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Vendidos</th>
+              <th>ID ML</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
+      </div>
+      <div style="padding:10px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text-3);" id="table-footer"></div>
+    </div>
+
+  </main>
+</div><!-- /adm-main -->
+</div><!-- /adm-wrap -->
+
+<!-- Overlay sidebar móvil -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ─── Theme toggle ─────────────────────────────────────────
+  document.getElementById('btn-theme').addEventListener('click', function(e) {
+    e.stopPropagation();
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('adminTheme', next); } catch(e) {}
+  });
+
+  // ─── Sidebar móvil ────────────────────────────────────────
+  const hamburger = document.getElementById('btn-hamburger');
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebar-overlay');
+  hamburger.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+  });
+  overlay.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+  });
+
+  let allCachedItems = [];
+  let activeCat = 'todos';
+
+  /* ── Helpers ───────────────────────────────────────────── */
+  function log(msg, type = 'info') {
+    const panel = document.getElementById('log');
+    const entry = document.createElement('span');
+    entry.className = `log-entry log-${type}`;
+    const ts = new Date().toLocaleTimeString('es-AR', { hour12: false });
+    entry.textContent = `[${ts}] ${msg}`;
+    panel.appendChild(entry);
+    panel.appendChild(document.createTextNode('\n'));
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById('log').textContent = '';
+  }
+
+  function fmt(n)  { return '$' + Number(n).toLocaleString('es-AR'); }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleTimeString('es-AR', { hour12: false });
+  }
+
+  function setBadge(text, type) {
+    const b = document.getElementById('status-badge');
+    b.textContent = text;
+    b.className = `badge badge-${type}`;
+  }
+
+  function setStatusText(text) {
+    document.getElementById('sync-status-text').textContent = text;
+  }
+
+  /* ── Sync completo ──────────────────────────────────────── */
+  async function startSync() {
+    const btn      = document.getElementById('btn-sync');
+    const label    = document.getElementById('btn-label');
+    const otherBtn = document.getElementById('btn-stock-sync');
+
+    btn.disabled = true;
+    otherBtn.disabled = true;
+    btn.classList.add('syncing');
+    label.textContent = 'Sincronizando…';
+    setBadge('Sincronizando', 'blue');
+    setStatusText('Sincronizando con MercadoLibre…');
+    clearLog();
+
+    log('Iniciando sincronización completa con MercadoLibre…');
+    log('Conectando con las cuentas configuradas…');
+    log('Trayendo fotos, descripciones, atributos y stock — puede tardar varios minutos…');
+
+    const start = Date.now();
+    try {
+      const resp = await fetch('/api/tienda/sync', { method: 'POST' });
+      const data = await resp.json();
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+
+      if (resp.ok && data.ok) {
+        log(`✓ Sincronización completada en ${elapsed}s`, 'ok');
+        log(`✓ ${data.total} productos guardados en cache`, 'ok');
+        if (data.errors && data.errors.length) {
+          data.errors.forEach(e => log(`⚠ ${e}`, 'warn'));
+        }
+        setBadge('Completado', 'green');
+        setStatusText(`Completado — ${data.total} productos`);
+        await loadCache();
+      } else {
+        log(`✗ Error: ${data.error || resp.status}`, 'err');
+        setBadge('Error', 'red');
+        setStatusText('Error en la sincronización');
+      }
+    } catch (e) {
+      log(`✗ Error de red: ${e.message}`, 'err');
+      setBadge('Error', 'red');
+      setStatusText('Error de red');
+    } finally {
+      btn.disabled = false;
+      otherBtn.disabled = false;
+      btn.classList.remove('syncing');
+      label.textContent = 'Sincronizar todo';
+    }
+  }
+
+  /* ── Actualización liviana de stock/precio ─────────────── */
+  async function startStockSync() {
+    const btn      = document.getElementById('btn-stock-sync');
+    const label    = document.getElementById('btn-stock-label');
+    const otherBtn = document.getElementById('btn-sync');
+
+    btn.disabled = true;
+    otherBtn.disabled = true;
+    btn.classList.add('syncing');
+    label.textContent = 'Actualizando…';
+    setBadge('Actualizando stock', 'blue');
+    setStatusText('Actualizando stock y precios…');
+    clearLog();
+
+    log('Actualizando solo stock, precio y estado (sin re-descargar fotos ni descripciones)…');
+    log('Esto reaprovecha el cache existente — debería ser mucho más rápido…');
+
+    const start = Date.now();
+    try {
+      const resp = await fetch('/api/tienda/sync/stock', { method: 'POST' });
+      const data = await resp.json();
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+
+      if (resp.ok && data.ok) {
+        log(`✓ Stock actualizado en ${elapsed}s`, 'ok');
+        log(`✓ ${data.updated} de ${data.checked} publicaciones revisadas tenían cambios`, 'ok');
+        log(`✓ ${data.total} productos en cache (sin tocar fotos/descripciones)`, 'ok');
+        if (data.errors && data.errors.length) {
+          data.errors.forEach(e => log(`⚠ ${e}`, 'warn'));
+        }
+        setBadge('Completado', 'green');
+        setStatusText(`Stock actualizado — ${data.updated} cambios`);
+        await loadCache();
+      } else {
+        log(`✗ Error: ${data.error || resp.status}`, 'err');
+        if (data.errors) data.errors.forEach(e => log(`⚠ ${e}`, 'warn'));
+        setBadge('Error', 'red');
+        setStatusText('Error al actualizar stock');
+      }
+    } catch (e) {
+      log(`✗ Error de red: ${e.message}`, 'err');
+      setBadge('Error', 'red');
+      setStatusText('Error de red');
+    } finally {
+      btn.disabled = false;
+      otherBtn.disabled = false;
+      btn.classList.remove('syncing');
+      label.textContent = 'Actualizar stock';
+    }
+  }
+
+  /* ── Cargar y mostrar cache ─────────────────────────────── */
+  async function loadCache() {
+    try {
+      const resp = await fetch('/api/tienda/productos?limit=9999');
+      if (!resp.ok) return;
+      const data = await resp.json();
+      allCachedItems = data.productos || [];
+      if (!allCachedItems.length) return;
+
+      renderStats();
+      renderCatTabs();
+      renderTable('todos');
+
+      document.getElementById('table-card').style.display = 'block';
+      document.getElementById('stats-grid').style.display = 'grid';
+    } catch(e) {
+      log(`No se pudo cargar el cache: ${e.message}`, 'warn');
+    }
+  }
+
+  function renderStats() {
+    const items     = allCachedItems;
+    const total     = items.length;
+    const conStock  = items.filter(p => (p.stock || p.available_quantity || 0) > 5).length;
+    const stockBajo = items.filter(p => { const s = p.stock || p.available_quantity || 0; return s > 0 && s <= 5; }).length;
+    const agotado   = items.filter(p => (p.stock || p.available_quantity || 0) === 0).length;
+    const lastUpdate = items[0]?.updated_at;
+
+    document.getElementById('stat-total').textContent      = total;
+    document.getElementById('stat-con-stock').textContent  = conStock;
+    document.getElementById('stat-bajo').textContent       = stockBajo;
+    document.getElementById('stat-agotado').textContent    = agotado;
+    document.getElementById('stat-fecha').textContent      = fmtDate(lastUpdate);
+    document.getElementById('stat-hora').textContent       = lastUpdate ? fmtTime(lastUpdate) : '—';
+  }
+
+  function renderCatTabs() {
+    const cats = ['todos', ...new Set(allCachedItems.map(p => p.cat || p.category || 'otras'))].filter(Boolean);
+    const labels = {
+      todos: 'Todos',
+      'apple-watch':   'Apple Watch',
+      'samsung-watch': 'Samsung Watch',
+      fundas: 'Fundas',
+      otras:  'Otras',
+    };
+    const container = document.getElementById('cat-tabs');
+    container.innerHTML = cats.map(cat => `
+      <button class="cat-tab${cat === activeCat ? ' active' : ''}" onclick="renderTable('${cat}')">
+        ${labels[cat] || cat} (${cat === 'todos' ? allCachedItems.length : allCachedItems.filter(p => (p.cat || p.category || 'otras') === cat).length})
+      </button>
+    `).join('');
+  }
+
+  function renderTable(cat) {
+    activeCat = cat;
+
+    document.querySelectorAll('.cat-tab').forEach(t => {
+      t.classList.toggle('active', t.textContent.trim().startsWith(
+        cat === 'todos' ? 'Todos' : (
+          { 'apple-watch': 'Apple Watch', 'samsung-watch': 'Samsung Watch', fundas: 'Fundas', otras: 'Otras' }[cat] || cat
+        )
+      ));
+    });
+
+    const items = cat === 'todos'
+      ? allCachedItems
+      : allCachedItems.filter(p => (p.cat || p.category || 'otras') === cat);
+
+    const tbody = document.getElementById('items-tbody');
+    tbody.innerHTML = items.slice(0, 200).map(p => {
+      const stock = p.stock || p.available_quantity || 0;
+      const stockClass = stock === 0 ? 'stock-empty' : stock <= 5 ? 'stock-low' : 'stock-ok';
+      const catLabel = {
+        'apple-watch':   'Apple Watch',
+        'samsung-watch': 'Samsung Watch',
+        fundas: 'Fundas',
+        otras:  'Otras',
+      }[p.cat || p.category] || (p.cat || p.category || '—');
+
+      return `
+        <tr>
+          <td>
+            <img style="width:36px;height:36px;border-radius:var(--r);object-fit:contain;background:var(--bg);border:1px solid var(--border);"
+                 src="${p.img || p.thumbnail || ''}" alt="" onerror="this.style.display='none'">
+          </td>
+          <td>
+            <div style="font-size:13px;color:var(--text);font-weight:500;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                 title="${(p.title || '').replace(/"/g, '&quot;')}">${p.title || '—'}</div>
+            ${p.variants && p.variants.length
+              ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;">${p.variants.slice(0,3).join(' · ')}${p.variants.length > 3 ? ' …' : ''}</div>`
+              : ''}
+          </td>
+          <td><span class="badge badge-gray" style="white-space:nowrap;">${catLabel}</span></td>
+          <td style="color:var(--text);font-weight:600;white-space:nowrap;">${fmt(p.price)}</td>
+          <td class="${stockClass}">${stock}</td>
+          <td style="color:var(--text-2);">${p.sold || 0}</td>
+          <td style="font-family:var(--font-mono);font-size:11px;">
+            <a href="https://www.mercadolibre.com.ar/p/${p.id}" target="_blank"
+               style="color:var(--blue);text-decoration:none;"
+               onmouseover="this.style.textDecoration='underline'"
+               onmouseout="this.style.textDecoration='none'">${p.id}</a>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    document.getElementById('table-footer').textContent =
+      `Mostrando ${Math.min(items.length, 200)} de ${items.length} productos`;
+  }
+
+  /* ── Init ──────────────────────────────────────────────── */
+  loadCache().then(() => {
+    if (allCachedItems.length) {
+      log(`Cache existente: ${allCachedItems.length} productos`, 'ok');
+      log(`Última actualización: ${fmtDate(allCachedItems[0]?.updated_at)} ${fmtTime(allCachedItems[0]?.updated_at)}`, 'info');
+      log('Podés hacer una nueva sync o revisar los datos en la tabla.', 'dim');
+      setBadge('Cache OK', 'green');
+      setStatusText(`${allCachedItems.length} productos en cache`);
+    }
+  });
+</script>
+</body>
+</html>

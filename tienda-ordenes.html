@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Órdenes — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC: tema guardado antes del primer paint -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Status badges ─────────────────────────────────────── */
+.badge-pendiente      { background: var(--bg); color: var(--text-2); border: 1px solid var(--border-2); }
+.badge-pendiente_pago { background: var(--yellow-light); color: #8a5c00; border: 1px solid #f5d9a8; }
+.badge-pagado         { background: var(--green-light);  color: var(--green); border: 1px solid #b3e8cf; }
+.badge-despachado     { background: var(--blue-light);   color: var(--blue);  border: 1px solid #b3d0fd; }
+.badge-entregado      { background: #e6f9f0; color: #007a3d; border: 1px solid #9adfc2; }
+.badge-rechazado      { background: var(--red-light);    color: var(--red);   border: 1px solid #f9b3b9; }
+.badge-cancelado      { background: var(--bg); color: var(--text-3); border: 1px solid var(--border); }
+.badge-reembolsado    { background: #f5f0ff; color: #7c3aed; border: 1px solid #d4b8ff; }
+
+/* ── Filter bar ────────────────────────────────────────── */
+.filter-bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.filter-btn {
+  padding: 5px 12px; border-radius: var(--r); font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border-2); background: var(--bg-card); color: var(--text-2);
+  cursor: pointer; transition: all .15s;
+}
+.filter-btn:hover  { border-color: var(--blue); color: var(--blue); }
+.filter-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* ── Orden ID mono ─────────────────────────────────────── */
+.ord-id {
+  font-family: var(--font-mono); font-size: 11px; color: var(--blue); font-weight: 600;
+}
+
+/* ── MP badge ──────────────────────────────────────────── */
+.mp-badge { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); margin-top: 2px; }
+
+/* ── Tracking link ─────────────────────────────────────── */
+.tracking-link { font-size: 12px; color: var(--blue); text-decoration: none; font-family: var(--font-mono); }
+.tracking-link:hover { text-decoration: underline; }
+
+/* ── Pagination ────────────────────────────────────────── */
+.pagination    { display: flex; gap: 6px; justify-content: center; margin-top: 20px; align-items: center; }
+.page-btn      { padding: 5px 12px; border-radius: var(--r); font-size: 13px; border: 1px solid var(--border-2); background: var(--bg-card); color: var(--text-2); cursor: pointer; transition: all .15s; }
+.page-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+.page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.page-btn:disabled { opacity: .35; cursor: not-allowed; }
+.page-info     { font-size: 13px; color: var(--text-3); padding: 0 8px; }
+
+/* ── Modal ─────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); width: 100%; max-width: 640px;
+  max-height: 90vh; overflow-y: auto; padding: 24px;
+  box-shadow: var(--shadow-lg);
+}
+.modal-close {
+  background: none; border: none; color: var(--text-3); cursor: pointer;
+  font-size: 18px; line-height: 1; transition: color .15s;
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r);
+}
+.modal-close:hover { color: var(--text); background: var(--bg); }
+
+/* ── Modal detail rows ─────────────────────────────────── */
+.detail-row   { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.detail-field { flex: 1; min-width: 140px; }
+.detail-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 4px;
+}
+.detail-value { font-size: 13px; color: var(--text); }
+
+/* ── Items list in modal ───────────────────────────────── */
+.items-list { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin: 10px 0; }
+.item-row   { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.item-row:last-child { border-bottom: none; }
+.item-img   { width: 40px; height: 40px; border-radius: var(--r); object-fit: contain; background: var(--bg-card); border: 1px solid var(--border); }
+.item-name  { flex: 1; font-size: 13px; color: var(--text); }
+.item-qty   { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.item-price { font-size: 13px; color: var(--text); font-weight: 600; white-space: nowrap; }
+
+/* ── Action bar in modal ───────────────────────────────── */
+.action-bar { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; margin-top: 16px; }
+.action-bar h4 {
+  font-size: 10px; font-weight: 700; color: var(--text-3);
+  letter-spacing: .07em; text-transform: uppercase; margin-bottom: 12px;
+}
+
+/* ── Toast ─────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 999;
+  background: var(--text); color: #fff;
+  border-radius: var(--r-lg); padding: 10px 16px;
+  font-size: 13px; box-shadow: var(--shadow-lg);
+  transform: translateY(8px); opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok   { background: var(--green); }
+#toast.err  { background: var(--red); }
+
+/* ── Status header in modal ────────────────────────────── */
+.modal-status-bar {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 12px 16px; margin-bottom: 16px;
+}
+
+/* ── Soon tag (sidebar) ────────────────────────────────── */
+.soon-tag {
+  display: inline-block; font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: 100px;
+  background: var(--yellow-light); color: #8a5c00;
+  letter-spacing: .04em; text-transform: uppercase;
+  vertical-align: middle; margin-left: 4px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@media print {
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+  #print-area { position: fixed; inset: 0; }
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+
+  <a href="/tienda-admin.html" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Admin Tienda</div>
+      <div class="adm-logo-tag">WZMALLAS</div>
+    </div>
+  </a>
+
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">General</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/tienda-admin.html#section-cupones" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Cupones</span>
+      </a>
+      <a href="/tienda-productos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Productos ABM</span>
+      </a>
+      <a href="/tienda-productos-propios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+        <span>Productos propios</span>
+      </a>
+      <a href="/tienda-categorias.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span>Categorías</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/tienda-ordenes.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Órdenes</span>
+        <span class="adm-item-badge info" id="nav-ord-badge" style="display:none">0</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Clientes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Configuración</div>
+      <a href="/tienda-sync.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <span>Sincronizar ML</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2"/></svg>
+        <span>Ajustes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <div class="adm-sidebar-foot">
+    <a href="/tienda/catalogo.html" target="_blank" class="adm-item" style="color:var(--green)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Ver tienda</span>
+    </a>
+    <a href="/" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Volver a Stockroom</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
+
+  <!-- HEADER -->
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Gestión de Órdenes</div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot"></span>
+          <span>Actualización automática cada 60 s</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="loadOrdenes()" id="btn-refresh">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Actualizar
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <!-- KPI GRID -->
+    <div class="adm-kpi-grid" style="margin-bottom:24px;">
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Órdenes totales</div>
+        <div class="adm-kpi-value" id="s-total">—</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Ingresos cobrados</div>
+        <div class="adm-kpi-value green" id="s-ingresos">—</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Pend. de pago</div>
+        <div class="adm-kpi-value yellow" id="s-pendientes">—</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Pagas (despachar)</div>
+        <div class="adm-kpi-value blue" id="s-pagadas">—</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">En camino</div>
+        <div class="adm-kpi-value" id="s-despachadas">—</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Órdenes hoy</div>
+        <div class="adm-kpi-value" id="s-hoy">—</div>
+      </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="adm-card" style="margin-bottom:16px;">
+      <div class="filter-bar">
+        <span style="font-size:10px;font-weight:700;color:var(--text-3);letter-spacing:.07em;text-transform:uppercase;margin-right:4px;flex-shrink:0;">Filtrar:</span>
+        <button class="filter-btn active" data-status="all">Todas</button>
+        <button class="filter-btn" data-status="pendiente">Pendientes</button>
+        <button class="filter-btn" data-status="pendiente_pago">Esp. pago</button>
+        <button class="filter-btn" data-status="pagado">Pagadas</button>
+        <button class="filter-btn" data-status="despachado">Despachadas</button>
+        <button class="filter-btn" data-status="entregado">Entregadas</button>
+        <button class="filter-btn" data-status="rechazado">Rechazadas</button>
+        <div style="flex:1;min-width:8px;"></div>
+        <div class="adm-search" style="max-width:260px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="search-input" class="adm-input" placeholder="Buscar por nombre, email, orden…" style="border:none;padding:0;background:transparent;min-width:180px;">
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="adm-card" style="padding:0;overflow:hidden;">
+
+      <!-- Loading -->
+      <div id="loading" style="text-align:center;padding:48px;color:var(--text-3);display:none;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;display:block;animation:spin 1s linear infinite;color:var(--blue);">
+          <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity=".2"/><path d="M21 12a9 9 0 01-9 9"/>
+        </svg>
+        <span style="font-size:13px;">Cargando órdenes…</span>
+      </div>
+
+      <!-- Empty -->
+      <div id="empty-state" class="adm-empty" style="display:none;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        <p>No hay órdenes con este filtro</p>
+      </div>
+
+      <!-- Table -->
+      <div class="adm-table-wrap" id="table-wrap" style="display:none;">
+        <table class="adm-table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Pago</th>
+              <th>Estado</th>
+              <th>Tracking</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="ordenes-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Paginación -->
+    <div class="pagination" id="pagination"></div>
+
+  </main>
+</div><!-- /adm-main -->
+</div><!-- /adm-wrap -->
+
+<!-- Overlay sidebar móvil -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- Modal detalle -->
+<div id="modal-overlay" class="modal-overlay" style="display:none;" onclick="closeModal(event)">
+  <div class="modal" id="modal-content" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h2 style="font-size:15px;font-weight:700;color:var(--text);margin:0;" id="modal-title">Detalle de orden</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ─── Theme toggle ─────────────────────────────────────────
+  document.getElementById('btn-theme').addEventListener('click', function(e) {
+    e.stopPropagation();
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('adminTheme', next); } catch(e) {}
+  });
+
+  // ─── Sidebar móvil ────────────────────────────────────────
+  const hamburger = document.getElementById('btn-hamburger');
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebar-overlay');
+  hamburger.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+  });
+  overlay.addEventListener('click', closeSidebar);
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+
+  // ─── Estado ──────────────────────────────────────────────
+  let allOrdenes      = [];
+  let filteredOrdenes = [];
+  let currentFilter   = 'all';
+  let currentSearch   = '';
+  let currentPage     = 1;
+  const PAGE_SIZE     = 20;
+  let selectedOrden   = null;
+
+  // ─── Helpers ─────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const fmt = n => '$' + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 0 });
+  /** Escapa HTML — SIEMPRE usar para datos de usuarios en innerHTML */
+  const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  const fmtDate = iso => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+      + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  };
+  const statusLabels = {
+    pendiente: 'Pendiente',
+    pendiente_pago: 'Esperando pago',
+    pagado: 'Pagado ✓',
+    despachado: 'Despachado',
+    entregado: 'Entregado',
+    rechazado: 'Rechazado',
+    cancelado: 'Cancelado',
+    reembolsado: 'Reembolsado',
+  };
+  const methodLabel = m => ({
+    mercadopago: '🟦 MercadoPago',
+    stripe: '🔷 Stripe',
+    transferencia: '🏦 Transferencia',
+  })[m] || (m || '—');
+
+  function toast(msg, type = 'ok') {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  function badgeHtml(status) {
+    return `<span class="badge badge-${status || 'pendiente'}">${statusLabels[status] || status || 'Pendiente'}</span>`;
+  }
+
+  // ─── Cargar órdenes ──────────────────────────────────────
+  async function loadOrdenes() {
+    $('loading').style.display = 'block';
+    $('table-wrap').style.display = 'none';
+    $('empty-state').style.display = 'none';
+    try {
+      const r = await fetch('/api/tienda/admin/ordenes?limit=9999', { credentials: 'include' });
+      if (r.status === 401) { window.location.href = '/login.html'; return; }
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      allOrdenes = (data.ordenes || []).slice().reverse();
+      updateStats(data.stats || {});
+      applyFilters();
+    } catch(e) {
+      toast('Error al cargar órdenes: ' + e.message, 'err');
+    } finally {
+      $('loading').style.display = 'none';
+    }
+  }
+
+  function updateStats(s) {
+    $('s-total').textContent       = s.total ?? allOrdenes.length;
+    $('s-ingresos').textContent    = fmt(s.ingresos ?? 0);
+    $('s-pendientes').textContent  = s.pendiente_pago ?? 0;
+    $('s-pagadas').textContent     = s.pagado ?? 0;
+    $('s-despachadas').textContent = s.despachado ?? 0;
+    $('s-hoy').textContent         = s.hoy ?? 0;
+    // Badge en sidebar
+    const pendBadge = $('nav-ord-badge');
+    const pend = s.pagado ?? 0;
+    if (pend > 0) { pendBadge.textContent = pend; pendBadge.style.display = ''; }
+    else pendBadge.style.display = 'none';
+  }
+
+  // ─── Filtros y búsqueda ───────────────────────────────────
+  function applyFilters() {
+    const q = currentSearch.toLowerCase();
+    filteredOrdenes = allOrdenes.filter(o => {
+      const matchStatus = currentFilter === 'all' || o.status === currentFilter;
+      if (!matchStatus) return false;
+      if (!q) return true;
+      const hay = [o.id, o.cliente?.nombre, o.cliente?.email, o.status].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    currentPage = 1;
+    renderTable();
+    renderPagination();
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.status;
+      applyFilters();
+    });
+  });
+
+  let searchTimeout;
+  $('search-input').addEventListener('input', e => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      currentSearch = e.target.value.trim();
+      applyFilters();
+    }, 250);
+  });
+
+  // ─── Renderizar tabla ─────────────────────────────────────
+  function renderTable() {
+    const tbody = $('ordenes-body');
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const page  = filteredOrdenes.slice(start, start + PAGE_SIZE);
+
+    if (!page.length) {
+      $('table-wrap').style.display = 'none';
+      $('empty-state').style.display = 'block';
+      return;
+    }
+    $('table-wrap').style.display = '';
+    $('empty-state').style.display = 'none';
+
+    tbody.innerHTML = page.map(o => {
+      const items = o.items || [];
+      const total = o.total || items.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0);
+      const itemSummary = items.slice(0, 2).map(i =>
+        `<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;font-size:12px;" title="${esc(i.title)}">${esc(i.title) || 'Producto'}</span>`
+      ).join('') + (items.length > 2 ? `<span style="font-size:11px;color:var(--text-3);">+${items.length-2} más</span>` : '');
+
+      return `<tr>
+        <td><span class="ord-id">${esc(o.id)}</span></td>
+        <td style="white-space:nowrap;color:var(--text-2);font-size:12px;">${fmtDate(o.fecha)}</td>
+        <td>
+          <div style="font-weight:600;color:var(--text);font-size:13px;">${esc(o.cliente?.nombre) || '—'}</div>
+          <div style="font-size:11px;color:var(--text-3);">${esc(o.cliente?.email)}</div>
+        </td>
+        <td style="max-width:220px;">${itemSummary}</td>
+        <td style="font-weight:700;color:var(--text);white-space:nowrap;">${fmt(total)}</td>
+        <td>
+          <div style="font-size:12px;color:var(--text-2);">${methodLabel(o.pago?.metodo)}</div>
+          ${o.mp_payment_id ? `<div class="mp-badge">ID: ${esc(o.mp_payment_id)}</div>` : ''}
+        </td>
+        <td>${badgeHtml(o.status)}</td>
+        <td>
+          ${o.tracking_number
+            ? `<a class="tracking-link" href="https://correoargentino.com.ar/MiCorreo/public/index#seguimiento?piezas=${o.tracking_number}" target="_blank" title="Ver tracking">${o.tracking_number}</a>`
+            : '<span style="color:var(--border-2);font-size:12px;">—</span>'}
+        </td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openOrden('${o.id}')">Ver</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderPagination() {
+    const total = filteredOrdenes.length;
+    const pages = Math.ceil(total / PAGE_SIZE);
+    const cont  = $('pagination');
+    if (pages <= 1) { cont.innerHTML = ''; return; }
+    const from = (currentPage - 1) * PAGE_SIZE + 1;
+    const to   = Math.min(currentPage * PAGE_SIZE, total);
+    cont.innerHTML = `
+      <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>
+      <span class="page-info">${from}–${to} de ${total}</span>
+      <button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage>=pages?'disabled':''}>›</button>
+    `;
+  }
+
+  function goPage(p) {
+    const pages = Math.ceil(filteredOrdenes.length / PAGE_SIZE);
+    if (p < 1 || p > pages) return;
+    currentPage = p;
+    renderTable();
+    renderPagination();
+  }
+
+  // ─── Modal detalle ────────────────────────────────────────
+  function openOrden(id) {
+    const o = allOrdenes.find(x => x.id === id);
+    if (!o) return;
+    selectedOrden = o;
+
+    const items   = o.items || [];
+    const total   = o.total || items.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0);
+    const envio   = o.envio || {};
+    const cliente = o.cliente || {};
+    const pago    = o.pago || {};
+
+    const itemsHtml = items.map(it => `
+      <div class="item-row">
+        <img class="item-img" src="${it.img || it.thumbnail || ''}" onerror="this.style.display='none'">
+        <div class="item-name">
+          <div>${it.title || it.name || 'Producto'}</div>
+          ${it.variant ? `<div style="font-size:11px;color:var(--text-3);">${it.variant}</div>` : ''}
+        </div>
+        <div class="item-qty">× ${it.qty || 1}</div>
+        <div class="item-price">${fmt((it.price||0)*(it.qty||1))}</div>
+      </div>
+    `).join('');
+
+    $('modal-title').textContent = `Orden #${o.id}`;
+    $('modal-body').innerHTML = `
+      <!-- Estado -->
+      <div class="modal-status-bar">
+        ${badgeHtml(o.status)}
+        <span style="font-size:12px;color:var(--text-3);">Creada ${fmtDate(o.fecha)}</span>
+        ${o.paid_at ? `<span style="font-size:12px;color:var(--green);">• Pagada ${fmtDate(o.paid_at)}</span>` : ''}
+        ${o.shipped_at ? `<span style="font-size:12px;color:var(--blue);">• Enviada ${fmtDate(o.shipped_at)}</span>` : ''}
+      </div>
+
+      <!-- Cliente -->
+      <div style="font-size:10px;font-weight:700;color:var(--text-3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Cliente</div>
+      <div class="detail-row">
+        <div class="detail-field"><div class="detail-label">Nombre</div><div class="detail-value">${esc(cliente.nombre)||'—'}</div></div>
+        <div class="detail-field"><div class="detail-label">Email</div><div class="detail-value"><a href="mailto:${esc(cliente.email||'')}" style="color:var(--blue);">${esc(cliente.email)||'—'}</a></div></div>
+        <div class="detail-field"><div class="detail-label">Teléfono</div><div class="detail-value">${esc(cliente.telefono)||'—'}</div></div>
+      </div>
+      <div style="font-size:13px;color:var(--text-2);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px;margin-bottom:16px;">
+        ${[cliente.direccion, cliente.piso, cliente.ciudad, cliente.provincia, cliente.cp].filter(Boolean).map(esc).join(', ') || '— Sin dirección —'}
+      </div>
+
+      <!-- Items -->
+      <div style="font-size:10px;font-weight:700;color:var(--text-3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Productos (${items.length})</div>
+      <div class="items-list">${itemsHtml}</div>
+
+      <!-- Totales -->
+      <div style="display:flex;flex-direction:column;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:16px;">
+        ${envio.precio > 0
+          ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text-2);"><span>Envío (${envio.metodo||'—'})</span><span>${fmt(envio.precio)}</span></div>`
+          : `<div style="font-size:12px;color:var(--text-3);">Envío: ${envio.metodo === 'retiro' ? 'Retiro en sucursal (gratis)' : fmt(envio.precio||0)}</div>`}
+        <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:var(--text);border-top:1px solid var(--border);padding-top:8px;margin-top:4px;"><span>Total</span><span>${fmt(total)}</span></div>
+      </div>
+
+      <!-- Pago -->
+      <div class="detail-row" style="margin-bottom:16px;">
+        <div class="detail-field"><div class="detail-label">Método de pago</div><div class="detail-value">${methodLabel(pago.metodo)}</div></div>
+        ${o.mp_payment_id ? `<div class="detail-field"><div class="detail-label">MP Payment ID</div><div class="detail-value" style="font-size:11px;font-family:var(--font-mono);">${esc(o.mp_payment_id)}</div></div>` : ''}
+        ${o.mp_payment_method ? `<div class="detail-field"><div class="detail-label">Medio</div><div class="detail-value">${esc(o.mp_payment_method)}</div></div>` : ''}
+      </div>
+
+      <!-- Acciones admin -->
+      <div class="action-bar">
+        <h4>Actualizar orden</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Estado</label>
+            <select id="new-status" class="adm-select" style="width:100%;">
+              <option value="pendiente"        ${o.status==='pendiente'?'selected':''}>Pendiente</option>
+              <option value="pendiente_pago"   ${o.status==='pendiente_pago'?'selected':''}>Esperando pago</option>
+              <option value="pagado"           ${o.status==='pagado'?'selected':''}>Pagado ✓</option>
+              <option value="despachado"       ${o.status==='despachado'?'selected':''}>Despachado</option>
+              <option value="entregado"        ${o.status==='entregado'?'selected':''}>Entregado</option>
+              <option value="rechazado"        ${o.status==='rechazado'?'selected':''}>Rechazado</option>
+              <option value="cancelado"        ${o.status==='cancelado'?'selected':''}>Cancelado</option>
+              <option value="reembolsado"      ${o.status==='reembolsado'?'selected':''}>Reembolsado</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Tracking (Correo / Flex)</label>
+            <input id="new-tracking" type="text" class="adm-input" placeholder="RA123456789AR" value="${o.tracking_number||''}" style="width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Notas internas</label>
+          <textarea id="new-notes" class="adm-input" rows="3" placeholder="Visible solo para vos…" style="width:100%;box-sizing:border-box;resize:vertical;min-height:70px;">${o.notas_admin||''}</textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button id="btn-save-status" class="btn btn-primary" onclick="saveStatus()">Guardar cambios</button>
+          ${['despachado','entregado','cancelado','reembolsado'].includes(o.status) ? '' :
+            `<button class="btn btn-danger" onclick="confirmCancel('${o.id}')">Cancelar orden</button>`}
+        </div>
+      </div>
+
+      ${o.tracking_number ? `
+      <div style="margin-top:12px;text-align:right;">
+        <a href="https://correoargentino.com.ar/MiCorreo/public/index#seguimiento?piezas=${o.tracking_number}" target="_blank" style="font-size:13px;color:var(--blue);text-decoration:none;">
+          🔍 Ver tracking en Correo Argentino →
+        </a>
+      </div>` : ''}
+    `;
+
+    $('modal-overlay').style.display = 'flex';
+  }
+
+  function closeModal(e) {
+    if (!e || e.target === $('modal-overlay')) {
+      $('modal-overlay').style.display = 'none';
+      selectedOrden = null;
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal({ target: $('modal-overlay') });
+  });
+
+  // ─── Guardar cambios de estado ────────────────────────────
+  async function saveStatus() {
+    if (!selectedOrden) return;
+    const btn       = $('btn-save-status');
+    const newStatus = $('new-status').value;
+    const tracking  = $('new-tracking').value.trim();
+    const notas     = $('new-notes').value.trim();
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    try {
+      const r = await fetch(`/api/tienda/admin/ordenes/${selectedOrden.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus, tracking_number: tracking, notas_admin: notas }),
+      });
+      if (r.status === 401) { window.location.href = '/login.html'; return; }
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+      const idx = allOrdenes.findIndex(o => o.id === selectedOrden.id);
+      if (idx >= 0) {
+        allOrdenes[idx] = { ...allOrdenes[idx], status: newStatus, tracking_number: tracking, notas_admin: notas };
+        selectedOrden = allOrdenes[idx];
+      }
+      toast('✓ Orden actualizada');
+      applyFilters();
+      setTimeout(() => openOrden(selectedOrden.id), 300);
+    } catch(e) {
+      toast('Error al guardar: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Guardar cambios';
+    }
+  }
+
+  function confirmCancel(id) {
+    if (!confirm('¿Cancelar esta orden? Esta acción no se puede deshacer.')) return;
+    const btn = $('btn-save-status');
+    if (btn) btn.disabled = true;
+    fetch(`/api/tienda/admin/ordenes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status: 'cancelado' }),
+    }).then(r => {
+      if (!r.ok) throw new Error();
+      const idx = allOrdenes.findIndex(o => o.id === id);
+      if (idx >= 0) allOrdenes[idx].status = 'cancelado';
+      toast('✓ Orden cancelada');
+      applyFilters();
+      closeModal({ target: $('modal-overlay') });
+    }).catch(() => toast('Error al cancelar', 'err'))
+      .finally(() => { if (btn) btn.disabled = false; });
+  }
+
+  // ─── Init ─────────────────────────────────────────────────
+  loadOrdenes();
+  setInterval(loadOrdenes, 60000);
+</script>
+</body>
+</html>

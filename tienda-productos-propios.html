@@ -1,0 +1,1989 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Productos propios — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Toolbar ────────────────────────────────────────────── */
+.prod-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prod-toolbar .adm-search { width: 260px; max-width: 100%; }
+
+/* ── Tabla ──────────────────────────────────────────────── */
+.prod-thumb {
+  width: 44px; height: 44px; border-radius: var(--r);
+  object-fit: cover; background: var(--bg); border: 1px solid var(--border);
+}
+.prod-flags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.txt-muted { color: var(--text-3); }
+
+/* ── Inline toggle pequeno ──────────────────────────────── */
+.tswitch-sm { width: 32px; height: 18px; }
+.tswitch-sm .slider::before { width: 12px; height: 12px; left: 3px; bottom: 3px; }
+.tswitch-sm input:checked + .slider::before { transform: translateX(14px); }
+.row-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+/* ── Bulk selection ─────────────────────────────────────── */
+.row-chk-cell { width: 36px; text-align: center; }
+.row-chk { width: 15px; height: 15px; cursor: pointer; accent-color: var(--blue); }
+tr.bulk-selected td { background: var(--blue-light) !important; }
+
+/* ── Bulk toolbar (floating) ─────────────────────────────── */
+.bulk-toolbar {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text); color: #fff;
+  border-radius: var(--r-lg); padding: 11px 20px;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.28); z-index: 600;
+  font-size: 13px; white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+.bulk-toolbar.show {
+  opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0);
+}
+.bulk-count {
+  font-weight: 700; background: var(--blue); color: #fff;
+  border-radius: 100px; padding: 1px 8px; font-size: 12px; flex-shrink: 0;
+}
+.bulk-sep { width: 1px; height: 18px; background: rgba(255,255,255,.2); flex-shrink: 0; }
+.bulk-btn {
+  background: none; border: none; color: rgba(255,255,255,.85);
+  cursor: pointer; font-size: 13px; padding: 4px 8px; border-radius: var(--r);
+  transition: background .12s, color .12s; font-family: var(--font-sans);
+}
+.bulk-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+.bulk-btn.danger:hover { background: #ef4444; color: #fff; }
+.bulk-btn-close { color: rgba(255,255,255,.5); font-size: 16px; padding: 2px 4px; }
+.bulk-btn-close:hover { color: #fff; background: rgba(255,255,255,.12); }
+
+/* ── Drawer ─────────────────────────────────────────────── */
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.40);
+  z-index: 998; opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 999;
+  width: 580px; max-width: 100vw;
+  background: var(--bg-card); border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+.drawer.open { transform: translateX(0); }
+
+.drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  background: var(--bg-card);
+}
+.drawer-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.drawer-sub   { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.drawer-close {
+  width: 32px; height: 32px; border-radius: var(--r); border: 1px solid var(--border-2);
+  background: var(--bg-card); color: var(--text-2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background .1s, color .1s;
+}
+.drawer-close:hover { background: var(--bg); color: var(--text); }
+
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 0; }
+.drawer-foot {
+  padding: 14px 22px; border-top: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--bg-card);
+}
+
+/* ── Form sections ──────────────────────────────────────── */
+.form-section {
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  overflow: hidden; margin-bottom: 12px;
+}
+.form-section-hd {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+.form-section summary.form-section-hd { cursor: pointer; list-style: none; user-select: none; }
+.form-section summary.form-section-hd::-webkit-details-marker { display: none; }
+.form-section-ico { font-size: 14px; line-height: 1; }
+.form-section-lbl { font-size: 12px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: .04em; }
+.form-section-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.form-section[open] .collapse-arrow { transform: rotate(180deg); }
+.collapse-arrow { margin-left: auto; transition: transform .2s; flex-shrink: 0; color: var(--text-3); }
+
+/* ── Media gallery ──────────────────────────────────────── */
+.media-zone {
+  padding: 12px 14px;
+  transition: background .15s;
+  min-height: 110px;
+}
+.media-zone.drag-active {
+  background: var(--blue-light);
+}
+.media-grid {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 10px; min-height: 30px;
+}
+.media-thumb {
+  position: relative; width: 82px; height: 82px;
+  border-radius: var(--r); overflow: hidden; cursor: grab;
+  border: 2px solid var(--border); background: var(--bg);
+  transition: transform .1s, box-shadow .1s, border-color .15s;
+  flex-shrink: 0;
+}
+.media-thumb.is-portada { border-color: var(--blue); border-width: 2.5px; }
+.media-thumb.dragging   { opacity: .35; cursor: grabbing; }
+.media-thumb.drop-target { border-color: var(--blue); border-style: dashed; transform: scale(1.04); }
+.media-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+
+.media-thumb-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  opacity: 0; transition: opacity .14s;
+}
+.media-thumb:hover .media-thumb-overlay { opacity: 1; }
+.mth-btn {
+  width: 26px; height: 26px; border-radius: var(--r); border: none;
+  background: rgba(255,255,255,.9); color: #222; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; transition: background .1s;
+}
+.mth-btn:hover { background: #fff; }
+.mth-btn.del:hover { background: #ef4444; color: #fff; }
+
+.portada-badge {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--blue); color: #fff;
+  font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  text-align: center; padding: 2.5px 0;
+  pointer-events: none;
+}
+
+/* Pending upload thumbnail */
+.media-thumb.pending {
+  display: flex; align-items: center; justify-content: center;
+  cursor: default; border-style: dashed;
+}
+.media-thumb.pending img { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.img-spinner {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 3px solid var(--border-2); border-top-color: var(--blue);
+  animation: spin .7s linear infinite;
+}
+
+/* Add button (+ tile) */
+.media-add-tile {
+  width: 82px; height: 82px; border-radius: var(--r);
+  border: 1.5px dashed var(--border-2); background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer; color: var(--text-3); font-size: 10px;
+  transition: all .15s; flex-shrink: 0;
+}
+.media-add-tile:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.media-add-tile svg { opacity: .6; }
+
+/* Drop hint (shown when grid is empty) */
+.media-drop-hint {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 22px 12px; gap: 6px; color: var(--text-3);
+  font-size: 12px; text-align: center; border: 1.5px dashed var(--border-2);
+  border-radius: var(--r-lg); margin-bottom: 10px; transition: all .15s;
+}
+.media-drop-hint svg { color: var(--text-3); opacity: .6; margin-bottom: 4px; }
+.media-drop-hint.active { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.media-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 0 14px 12px; }
+.link-btn { background: none; border: none; color: var(--blue); cursor: pointer; font-size: 12px; text-decoration: underline; padding: 0; }
+
+/* URL-foto quick row */
+.media-url-row {
+  display: flex; gap: 8px; align-items: center;
+  padding: 0 14px 12px;
+}
+.media-url-row input { flex: 1; }
+
+/* ── Form helpers ───────────────────────────────────────── */
+.adm-textarea {
+  display: block; width: 100%; min-height: 80px; resize: vertical;
+  border: 1px solid var(--border-2); border-radius: var(--r);
+  padding: 8px 12px; font-size: 13px; color: var(--text);
+  background: var(--bg-card); font-family: var(--font-sans);
+  transition: border-color .12s, box-shadow .12s;
+}
+.adm-textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(52,131,250,.10); }
+
+.field-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.field-row > .adm-field { flex: 1; min-width: 120px; }
+.field-hint { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 3px; }
+.char-ok  { color: var(--green); }
+.char-warn{ color: #d97706; }
+.char-over{ color: var(--red); }
+
+/* Condition pills */
+.cond-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.cond-pill  { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.cond-pill input[type=radio] { display: none; }
+.cond-pill .pill-lbl {
+  padding: 5px 13px; border-radius: 100px; font-size: 12px; font-weight: 600;
+  border: 1.5px solid var(--border-2); color: var(--text-2); background: var(--bg-card);
+  transition: all .14s; cursor: pointer;
+}
+.cond-pill input:checked + .pill-lbl { background: var(--blue); border-color: var(--blue); color: #fff; }
+.cond-pill .pill-lbl:hover { border-color: var(--blue); color: var(--blue); }
+
+/* Toggle row */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--bg);
+}
+.toggle-row .l { font-size: 13px; font-weight: 500; color: var(--text); }
+.toggle-row .d { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.tswitch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+.tswitch input { opacity: 0; width: 0; height: 0; }
+.tswitch .slider { position: absolute; cursor: pointer; inset: 0; background: var(--border-2); border-radius: 100px; transition: .15s; }
+.tswitch .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .15s; }
+.tswitch input:checked + .slider { background: var(--blue); }
+.tswitch input:checked + .slider::before { transform: translateX(16px); }
+
+/* Precio box */
+.precio-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.precio-final { display: flex; align-items: center; justify-content: space-between; background: var(--blue-light); border-radius: var(--r); padding: 10px 14px; }
+.precio-final .lbl { font-size: 12px; color: var(--blue); font-weight: 600; }
+.precio-final .val { font-size: 18px; color: var(--blue); font-weight: 700; font-family: var(--font-mono); }
+
+/* Video section */
+.video-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 10px 12px; transition: border-color .15s;
+}
+.video-card-thumb {
+  width: 72px; height: 48px; border-radius: var(--r); overflow: hidden; flex-shrink: 0;
+  background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+}
+.video-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.video-card-ico { font-size: 20px; }
+.video-card-info { flex: 1; min-width: 0; }
+.video-source-pill {
+  display: inline-block; padding: 1px 7px; border-radius: 100px;
+  font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.pill-yt  { background: #fee2e2; color: #991b1b; }
+.pill-al  { background: #fef3c7; color: #92400e; }
+.pill-vi  { background: #ede9fe; color: #5b21b6; }
+.pill-up  { background: #dcfce7; color: #166534; }
+.pill-ot  { background: var(--bg); color: var(--text-3); border: 1px solid var(--border-2); }
+.video-card-url { font-size: 11px; color: var(--blue); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.video-card-url:hover { text-decoration: underline; }
+.video-platform-hint { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+.video-platform-hint.detected { color: var(--green); }
+
+/* ── Modal Cotización ───────────────────────────────────── */
+.modal-cot-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.modal-cot-overlay.open { opacity: 1; pointer-events: auto; }
+.modal-cot {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); width: 100%; max-width: 420px;
+  padding: 22px; box-shadow: var(--shadow-lg);
+}
+.modal-cot-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.modal-cot-sub   { font-size: 12px; color: var(--text-3); margin-bottom: 16px; line-height: 1.5; }
+.cot-preview-box {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--text-2);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.cot-preview-row { display: flex; justify-content: space-between; }
+.cot-preview-highlight { color: var(--blue); font-weight: 700; font-family: var(--font-mono); }
+
+/* ── Modal WhatsApp ─────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+.modal-wa {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); width: 100%; max-width: 780px;
+  max-height: 92vh; overflow-y: auto; padding: 22px;
+  box-shadow: var(--shadow-lg);
+}
+.modal-close {
+  background: none; border: none; color: var(--text-3); cursor: pointer;
+  font-size: 18px; line-height: 1; transition: color .15s;
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r);
+}
+.modal-close:hover { color: var(--text); background: var(--bg); }
+.draft-card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 12px; display: flex; gap: 10px; align-items: flex-start;
+}
+.draft-card .chk { margin-top: 6px; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+.draft-card .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.draft-card .row  { display: flex; gap: 8px; flex-wrap: wrap; }
+.draft-card .row > * { flex: 1; min-width: 110px; }
+.draft-card .precio-preview { font-size: 12px; color: var(--green); font-weight: 600; font-family: var(--font-mono); white-space: nowrap; }
+.draft-card .orig { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+
+/* ── Toast ──────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 1002;
+  background: var(--text); color: #fff; border-radius: var(--r-lg);
+  padding: 11px 18px; font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow-lg); max-width: 340px;
+  transform: translateY(10px); opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok   { background: var(--green); }
+#toast.err  { background: #ef4444; }
+
+.btn-spin {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+  border-radius: 50%; animation: spin .6s linear infinite;
+  vertical-align: -2px; margin-right: 6px;
+}
+
+/* Delete confirm inline */
+.delete-confirm {
+  display: none; align-items: center; gap: 8px;
+  background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--r-lg);
+  padding: 8px 12px; font-size: 12px; color: #991b1b;
+}
+.delete-confirm.show { display: flex; }
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+  <a href="/tienda-admin.html" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Admin Tienda</div>
+      <div class="adm-logo-tag">WZMALLAS</div>
+    </div>
+  </a>
+  <nav class="adm-nav">
+    <div class="adm-group">
+      <div class="adm-group-label">General</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/tienda-admin.html#section-cupones" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Cupones</span>
+      </a>
+      <a href="/tienda-productos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Productos ABM</span>
+      </a>
+      <a href="/tienda-productos-propios.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+        <span>Productos propios</span>
+      </a>
+      <a href="/tienda-categorias.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span>Categorías</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/tienda-ordenes.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Órdenes</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Configuración</div>
+      <a href="/tienda-sync.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <span>Sincronizar ML</span>
+      </a>
+    </div>
+  </nav>
+  <div class="adm-sidebar-foot">
+    <a href="/tienda/catalogo.html" target="_blank" class="adm-item" style="color:var(--green)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Ver tienda</span>
+    </a>
+    <a href="/" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Volver a Stockroom</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Productos propios — Alta manual / proveedor</div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot"></span>
+          <span id="page-status-text">Cargando…</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <span class="badge badge-blue" id="status-badge">—</span>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin:0 0 16px;max-width:820px;">
+      Cargá productos que no están en MercadoLibre: celulares, consolas, accesorios o cualquier cosa que ofrezca tu proveedor.
+      Podés crearlos <strong>a mano</strong> o importarlos desde <strong>un mensaje de WhatsApp</strong>.
+      Subí hasta <strong>10 fotos</strong> por producto y asociá un <strong>video</strong> de YouTube o archivo propio.
+    </p>
+
+    <!-- TOOLBAR -->
+    <div class="adm-card" style="margin-bottom:16px;">
+      <div class="prod-toolbar">
+        <div class="adm-search" style="flex:1;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="inp-search" placeholder="Buscar por título, marca o ID…">
+        </div>
+        <select class="adm-select" id="sel-filtro">
+          <option value="">Todos</option>
+          <option value="activos">Publicados</option>
+          <option value="pausados">Pausados</option>
+          <option value="destacados">Destacados</option>
+          <option value="agotados">Agotados</option>
+        </select>
+        <select class="adm-select" id="sel-categoria">
+          <option value="">Todas las categorías</option>
+          <option value="celulares">Celulares</option>
+          <option value="smartwatches">Smartwatches</option>
+          <option value="consolas">Consolas</option>
+          <option value="tablets">Tablets</option>
+          <option value="accesorios">Accesorios</option>
+          <option value="otros">Otros</option>
+        </select>
+        <button class="btn btn-ghost" id="btn-recalcular" type="button" title="Actualizar cotización USD y recalcular precios">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Cotización USD
+        </button>
+        <button class="btn btn-secondary" id="btn-importar-wa" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px;"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+          Importar de WhatsApp
+        </button>
+        <button class="btn btn-primary" id="btn-nuevo" type="button">+ Nuevo producto</button>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="adm-card" id="table-card" style="padding:0;overflow:hidden;">
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead>
+            <tr>
+              <th class="row-chk-cell"><input type="checkbox" class="row-chk" id="chk-all" title="Seleccionar todos"></th>
+              <th style="width:56px;"></th>
+              <th>Producto</th>
+              <th>Cat.</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th style="width:110px;">Estado</th>
+              <th style="width:100px;"></th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody">
+            <tr><td colspan="8" style="text-align:center;color:var(--text-3);padding:30px;">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="pager" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3);"></div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- ══════════════ DRAWER: crear / editar producto ══════════════ -->
+<div class="drawer-overlay" id="drawer-overlay"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-title" id="drawer-title">Nuevo producto propio</div>
+      <div class="drawer-sub" id="drawer-sub">Completá los datos y publicalo en la tienda</div>
+    </div>
+    <button class="drawer-close" id="btn-cerrar-drawer" aria-label="Cerrar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="drawer-body">
+
+    <!-- ═══ SECCIÓN: FOTOS ═══════════════════════════════════ -->
+    <div class="form-section">
+      <div class="form-section-hd">
+        <span class="form-section-ico">🖼</span>
+        <span class="form-section-lbl">Fotos del producto</span>
+        <span id="media-count-badge" style="margin-left:auto;font-size:11px;color:var(--text-3);font-weight:600;font-family:var(--font-mono);">0 / 10</span>
+      </div>
+
+      <!-- Drop zone (shown when empty) -->
+      <div id="media-drop-hint" class="media-drop-hint" style="margin:12px 14px 0;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Arrastrá fotos acá o <button class="link-btn" id="btn-browse-fotos-hint">elegí archivos</button></span>
+        <span style="font-size:11px;color:var(--text-3);">JPG, PNG, WEBP, GIF · máx. 15MB por foto · hasta 10 fotos</span>
+      </div>
+
+      <!-- Grid de thumbnails (visible cuando hay imágenes) -->
+      <div id="media-grid-wrap" style="display:none;">
+        <div class="media-zone" id="media-zone">
+          <div class="media-grid" id="media-grid"></div>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="media-actions">
+        <button class="btn btn-sm btn-ghost" id="btn-subir-fotos">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Subir fotos
+        </button>
+        <button class="btn btn-sm btn-ghost" id="btn-toggle-url-foto">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          URL externa
+        </button>
+      </div>
+
+      <!-- URL input row -->
+      <div class="media-url-row" id="media-url-row" style="display:none;">
+        <input type="text" class="adm-input" id="inp-url-foto" placeholder="https://… pegá la URL de la imagen">
+        <button class="btn btn-sm btn-primary" id="btn-add-url-foto">Agregar</button>
+        <button class="btn btn-sm btn-ghost" id="btn-cancel-url-foto">✕</button>
+      </div>
+
+      <input type="file" id="inp-files-fotos" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none;">
+    </div>
+
+    <!-- ═══ SECCIÓN: INFORMACIÓN ══════════════════════════════ -->
+    <div class="form-section">
+      <div class="form-section-hd">
+        <span class="form-section-ico">📝</span>
+        <span class="form-section-lbl">Información del producto</span>
+      </div>
+      <div class="form-section-body">
+        <div class="adm-field">
+          <label class="adm-label">Título *</label>
+          <input type="text" class="adm-input" id="inp-titulo" maxlength="200"
+            placeholder="Ej: iPhone 17 Pro Max 256GB Negro Titanio — E-Sim">
+          <div class="field-hint"><span id="titulo-chars">0</span>/200</div>
+        </div>
+        <div class="field-row">
+          <div class="adm-field">
+            <label class="adm-label">Marca</label>
+            <input type="text" class="adm-input" id="inp-marca" maxlength="60" placeholder="Apple, Samsung…">
+          </div>
+          <div class="adm-field">
+            <label class="adm-label">Categoría</label>
+            <select class="adm-select" id="sel-form-categoria" style="width:100%;">
+              <option value="celulares">Celulares</option>
+              <option value="smartwatches">Smartwatches</option>
+              <option value="consolas">Consolas</option>
+              <option value="tablets">Tablets</option>
+              <option value="accesorios">Accesorios</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label">Condición</label>
+          <div class="cond-pills">
+            <label class="cond-pill"><input type="radio" name="condicion" value="nuevo" checked><span class="pill-lbl">Nuevo</span></label>
+            <label class="cond-pill"><input type="radio" name="condicion" value="reacondicionado"><span class="pill-lbl">Reacondicionado</span></label>
+            <label class="cond-pill"><input type="radio" name="condicion" value="usado"><span class="pill-lbl">Usado</span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SECCIÓN: PRECIO ═══════════════════════════════════ -->
+    <div class="form-section">
+      <div class="form-section-hd">
+        <span class="form-section-ico">💰</span>
+        <span class="form-section-lbl">Precio</span>
+      </div>
+      <div class="form-section-body">
+        <div class="precio-box">
+          <div class="field-row">
+            <div class="adm-field">
+              <label class="adm-label">Costo proveedor (USD)</label>
+              <input type="number" class="adm-input" id="inp-precio-usd" min="0" step="0.01" placeholder="320">
+            </div>
+            <div class="adm-field">
+              <label class="adm-label">Margen (%)</label>
+              <input type="number" class="adm-input" id="inp-margen" min="0" step="0.1" placeholder="30">
+            </div>
+            <div class="adm-field">
+              <label class="adm-label">Cotización USD</label>
+              <input type="number" class="adm-input" id="inp-cotizacion" min="0" step="1" placeholder="1200">
+            </div>
+          </div>
+          <div class="precio-final">
+            <span class="lbl">Precio final al público</span>
+            <span class="val" id="precio-final-preview">$0</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);">
+            Fórmula: USD × (1 + margen/100) × cotización. Si no usás USD, cargá el precio ARS directamente abajo.
+          </div>
+          <div class="adm-field" style="margin:0;">
+            <label class="adm-label">Precio final en ARS <span style="font-weight:400;color:var(--text-3);">(override manual — solo si no usás USD)</span></label>
+            <input type="number" class="adm-input" id="inp-precio-ars-manual" min="0" step="1" placeholder="Se calcula automáticamente si completás USD + cotización">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SECCIÓN: DESCRIPCIÓN ══════════════════════════════ -->
+    <div class="form-section">
+      <div class="form-section-hd">
+        <span class="form-section-ico">📄</span>
+        <span class="form-section-lbl">Descripción</span>
+      </div>
+      <div class="form-section-body">
+        <textarea class="adm-textarea" id="inp-descripcion" maxlength="5000" style="min-height:90px;"
+          placeholder="Detalles del producto: capacidad, color, qué incluye la caja, garantía, observaciones…"></textarea>
+        <div class="field-hint"><span id="desc-chars">0</span>/5000</div>
+      </div>
+    </div>
+
+    <!-- ═══ SECCIÓN: ESTADO ═══════════════════════════════════ -->
+    <div class="form-section">
+      <div class="form-section-hd">
+        <span class="form-section-ico">⚙️</span>
+        <span class="form-section-lbl">Estado y visibilidad</span>
+      </div>
+      <div class="form-section-body" style="gap:8px;">
+        <div class="toggle-row">
+          <div>
+            <div class="l">📦 Stock disponible</div>
+            <div class="d">Apagá si está agotado — se muestra como "Sin stock" en la tienda</div>
+          </div>
+          <label class="tswitch"><input type="checkbox" id="chk-stock" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="l">⭐ Destacado</div>
+            <div class="d">Aparece en la sección de destacados del catálogo</div>
+          </div>
+          <label class="tswitch"><input type="checkbox" id="chk-destacado"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="l">🌐 Publicado</div>
+            <div class="d">Apagado = borrador, no visible al público</div>
+          </div>
+          <label class="tswitch"><input type="checkbox" id="chk-activo" checked><span class="slider"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SECCIÓN: VIDEO (colapsable) ══════════════════════ -->
+    <details class="form-section" id="video-details">
+      <summary class="form-section-hd">
+        <span class="form-section-ico">🎬</span>
+        <span class="form-section-lbl">Video del producto</span>
+        <span class="badge badge-gray" style="margin-left:auto;margin-right:6px;font-size:10px;">opcional</span>
+        <svg class="collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="form-section-body">
+        <!-- Preview card (visible when video is set) -->
+        <div id="video-preview-card" style="display:none;">
+          <div class="video-card">
+            <div class="video-card-thumb" id="video-thumb-wrap">
+              <span class="video-card-ico">🎬</span>
+            </div>
+            <div class="video-card-info">
+              <span class="video-source-pill" id="video-source-pill">—</span>
+              <a class="video-card-url" id="video-card-url" href="#" target="_blank" rel="noopener">—</a>
+            </div>
+            <button class="btn btn-sm btn-ghost" id="btn-quitar-video" style="color:var(--red);flex-shrink:0;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;vertical-align:-1px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              Quitar
+            </button>
+          </div>
+        </div>
+
+        <!-- Input (visible when no video) -->
+        <div id="video-input-section">
+          <div class="adm-field">
+            <label class="adm-label">URL del video</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" class="adm-input" id="inp-video-url"
+                placeholder="https://youtube.com/watch?v=… o alibaba.com/…" style="flex:1;"
+                autocomplete="off">
+              <button class="btn btn-sm btn-ghost" id="btn-subir-video" title="Subir un archivo de video (MP4, MOV, WebM)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Subir archivo
+              </button>
+              <input type="file" id="inp-file-video" accept="video/mp4,video/webm,video/quicktime,video/x-m4v" style="display:none;">
+            </div>
+            <div id="video-platform-hint" style="margin-top:5px;"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- ═══ SECCIÓN: NOTAS (colapsable) ══════════════════════ -->
+    <details class="form-section" id="notas-details">
+      <summary class="form-section-hd">
+        <span class="form-section-ico">🔒</span>
+        <span class="form-section-lbl">Notas internas</span>
+        <span class="badge badge-gray" style="margin-left:auto;margin-right:6px;font-size:10px;">no visible al público</span>
+        <svg class="collapse-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="form-section-body">
+        <textarea class="adm-textarea" id="inp-notas" maxlength="2000" style="min-height:60px;"
+          placeholder="Ej: stock limitado, llega el 15, proveedor X, precio negociado…"></textarea>
+      </div>
+    </details>
+
+  </div><!-- /drawer-body -->
+
+  <!-- Footer con borrar confirmación y botones principales -->
+  <div class="drawer-foot">
+    <div id="delete-confirm" class="delete-confirm">
+      <span>¿Eliminar definitivamente?</span>
+      <button class="btn btn-sm" id="btn-confirmar-eliminar" style="background:#ef4444;color:#fff;">Sí, eliminar</button>
+      <button class="btn btn-sm btn-ghost" id="btn-cancelar-eliminar">Cancelar</button>
+    </div>
+    <button class="btn btn-ghost" id="btn-eliminar" type="button" style="display:none;color:var(--red);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+      Eliminar
+    </button>
+    <div style="display:flex;gap:8px;margin-left:auto;">
+      <button class="btn btn-ghost" id="btn-cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════ MODAL: importar desde WhatsApp ═══════════════ -->
+<!-- ══════ MODAL: Recalcular cotización USD ══════════════════ -->
+<div class="modal-cot-overlay" id="cot-overlay" onclick="cerrarModalCot()">
+  <div class="modal-cot" onclick="event.stopPropagation()">
+    <div class="modal-cot-title">💱 Actualizar cotización USD</div>
+    <div class="modal-cot-sub">
+      Ingresá la cotización actual del dólar para recalcular el precio en ARS de todos los productos que tienen costo en USD.
+    </div>
+    <div class="cot-preview-box" id="cot-preview-box" style="display:none;">
+      <div class="cot-preview-row">
+        <span>Productos a actualizar:</span>
+        <span id="cot-preview-count" class="cot-preview-highlight">—</span>
+      </div>
+      <div class="cot-preview-row">
+        <span>Cotización anterior:</span>
+        <span id="cot-preview-anterior" style="font-family:var(--font-mono);">—</span>
+      </div>
+      <div class="cot-preview-row">
+        <span>Nueva cotización:</span>
+        <span id="cot-preview-nueva" class="cot-preview-highlight">—</span>
+      </div>
+    </div>
+    <div class="adm-field" style="margin-bottom:14px;">
+      <label class="adm-label">Nueva cotización USD → ARS</label>
+      <input type="number" class="adm-input" id="inp-cot-nueva" min="1" step="1"
+        placeholder="Ej: 1250" style="font-size:16px;font-weight:600;font-family:var(--font-mono);">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;">
+      <button class="btn btn-ghost" type="button" onclick="cerrarModalCot()">Cancelar</button>
+      <button class="btn btn-primary" type="button" id="btn-cot-aplicar">Recalcular precios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="wa-overlay">
+  <div class="modal-wa" id="wa-modal" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">Importar desde WhatsApp</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:2px;">Pegá el mensaje tal cual te lo manda tu proveedor — el sistema arma los borradores</div>
+      </div>
+      <button class="modal-close" id="btn-cerrar-wa">✕</button>
+    </div>
+
+    <div id="wa-step-texto">
+      <div class="adm-field">
+        <label class="adm-label">Mensaje del proveedor</label>
+        <textarea class="adm-textarea" id="wa-texto" style="min-height:240px;font-family:var(--font-mono);font-size:12px;" placeholder="📲A06 4/128GB u$135-&#10;📲A07 4/64GB u$115-&#10;…pegá acá el bloque completo del mensaje…"></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+        <button class="btn btn-primary" id="btn-analizar-wa" type="button">Analizar mensaje →</button>
+      </div>
+    </div>
+
+    <div id="wa-step-borradores" style="display:none;">
+      <div class="precio-box" style="margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--text-2);">
+          Estos valores se usan para calcular el <strong>precio final estimado</strong> de cada borrador (podés ajustarlo luego):
+        </div>
+        <div class="field-row">
+          <div class="adm-field">
+            <label class="adm-label">Margen (%)</label>
+            <input type="number" class="adm-input" id="wa-margen" min="0" step="0.1" value="30">
+          </div>
+          <div class="adm-field">
+            <label class="adm-label">Cotización USD → ARS</label>
+            <input type="number" class="adm-input" id="wa-cotizacion" min="0" step="1" placeholder="Ej: 1200">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:12px;color:var(--text-2);">
+          <strong id="wa-total-detectados">0</strong> productos detectados — desmarcá los que no querés publicar
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm btn-ghost" id="btn-wa-marcar-todos">Marcar todos</button>
+          <button class="btn btn-sm btn-ghost" id="btn-wa-desmarcar-todos">Desmarcar todos</button>
+        </div>
+      </div>
+
+      <div id="wa-borradores-list" style="display:flex;flex-direction:column;gap:10px;max-height:46vh;overflow-y:auto;padding-right:4px;"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+        <button class="btn btn-ghost" id="btn-wa-volver">← Volver al texto</button>
+        <button class="btn btn-primary" id="btn-wa-publicar">Publicar seleccionados</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk action toolbar -->
+<div class="bulk-toolbar" id="bulk-toolbar" role="status">
+  <span class="bulk-count" id="bulk-count">0</span>
+  seleccionados
+  <div class="bulk-sep"></div>
+  <button class="bulk-btn" id="bulk-btn-publicar" type="button">🌐 Publicar</button>
+  <button class="bulk-btn" id="bulk-btn-pausar" type="button">⏸ Pausar</button>
+  <div class="bulk-sep"></div>
+  <button class="bulk-btn danger" id="bulk-btn-eliminar" type="button">🗑 Eliminar</button>
+  <div class="bulk-sep"></div>
+  <button class="bulk-btn bulk-btn-close" id="bulk-btn-cerrar" type="button" title="Cancelar selección">✕</button>
+</div>
+
+<!-- Sidebar overlay móvil -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+/* ─── Theme ────────────────────────────────────────────────── */
+document.getElementById('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch {}
+});
+
+/* ─── Sidebar móvil ─────────────────────────────────────────── */
+const hamburger = document.getElementById('btn-hamburger');
+const sidebar   = document.getElementById('sidebar');
+const sidebarOv = document.getElementById('sidebar-overlay');
+hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); sidebarOv.classList.toggle('open'); });
+sidebarOv.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOv.classList.remove('open'); });
+
+/* ─── Toast ─────────────────────────────────────────────────── */
+let _toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3400);
+}
+
+/* ─── Helpers ───────────────────────────────────────────────── */
+function fmtArs(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-AR'); }
+function setBadge(text, type) {
+  const b = document.getElementById('status-badge');
+  b.textContent = text; b.className = `badge badge-${type}`;
+}
+function setStatus(text) { document.getElementById('page-status-text').textContent = text; }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+let CAT_LABELS = { celulares:'Celulares', smartwatches:'Smartwatches', consolas:'Consolas', tablets:'Tablets', accesorios:'Accesorios', otros:'Otros' };
+
+/* Carga categorías desde la API y actualiza los selectores + CAT_LABELS */
+async function initCategoriasUI() {
+  try {
+    const resp = await fetch('/api/tienda/admin/categorias');
+    const data = await resp.json();
+    const cats = data.categorias || [];
+    // Actualizar mapa de labels
+    CAT_LABELS = {};
+    cats.forEach(c => { CAT_LABELS[c.slug] = c.label; });
+    if (!cats.length) { CAT_LABELS = { otros: 'Otros' }; }
+
+    const optsFilter = ['<option value="">Todas las categorías</option>',
+      ...cats.map(c => `<option value="${c.slug}">${c.label}</option>`)].join('');
+    const optsForm = cats.map(c => `<option value="${c.slug}">${c.label}</option>`).join('')
+      || '<option value="otros">Otros</option>';
+
+    document.getElementById('sel-categoria').innerHTML    = optsFilter;
+    document.getElementById('sel-form-categoria').innerHTML = optsForm;
+
+    // Pre-seleccionar desde URL ?cat=slug
+    const catParam = new URLSearchParams(location.search).get('cat');
+    if (catParam) {
+      document.getElementById('sel-categoria').value = catParam;
+    }
+  } catch { /* mantener los valores hardcodeados del HTML */ }
+}
+
+/* ─── Estado ────────────────────────────────────────────────── */
+let page = 1;
+const LIMIT = 24;
+let editingId = null;
+let _searchTimer;
+
+/* ══════════════════════ TABLA ══════════════════════════════════ */
+async function loadProductos() {
+  const q         = document.getElementById('inp-search').value.trim();
+  const filtro    = document.getElementById('sel-filtro').value;
+  const categoria = document.getElementById('sel-categoria').value;
+  const params = new URLSearchParams({ page, limit: LIMIT });
+  if (q)         params.set('q', q);
+  if (filtro)    params.set('filtro', filtro);
+  if (categoria) params.set('categoria', categoria);
+
+  const tbody = document.getElementById('items-tbody');
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-3);padding:30px;">Cargando…</td></tr>`;
+  clearBulkSelection();
+
+  try {
+    const resp = await fetch('/api/tienda/admin/productos-propios?' + params.toString());
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al cargar');
+    renderTable(data.productos || [], data.total || 0);
+    setBadge(`${data.total} producto${data.total === 1 ? '' : 's'}`, 'blue');
+    setStatus(`${data.total} producto${data.total === 1 ? '' : 's'} propio${data.total === 1 ? '' : 's'}`);
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:30px;">Error: ${esc(e.message)}</td></tr>`;
+    setBadge('Error', 'red');
+  }
+}
+
+function renderTable(items, total) {
+  const tbody = document.getElementById('items-tbody');
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-3);padding:40px;">
+      <div style="font-size:32px;margin-bottom:8px;">📦</div>
+      <div>Todavía no hay productos propios.</div>
+      <div style="margin-top:8px;"><button class="btn btn-primary" onclick="window.location='/tienda-producto-propio.html'">+ Crear el primero</button></div>
+    </td></tr>`;
+    renderPager(0);
+    return;
+  }
+  tbody.innerHTML = items.map(p => {
+    const imgSrc = p.imagen_portada_url || '';
+    const imgCount = 1 + (Array.isArray(p.imagenes) ? p.imagenes.length : 0);
+    const thumbHtml = imgSrc
+      ? `<div style="position:relative;width:44px;height:44px;flex-shrink:0;">
+           <img class="prod-thumb" src="${esc(imgSrc)}" onerror="this.style.display='none'" alt="">
+           ${imgCount > 1 ? `<span style="position:absolute;bottom:-2px;right:-2px;background:var(--blue);color:#fff;font-size:9px;font-weight:700;border-radius:100px;padding:1px 4px;">${imgCount}</span>` : ''}
+         </div>`
+      : `<div style="width:44px;height:44px;border-radius:var(--r);background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+
+    const flags = [];
+    if (p.destacado) flags.push('<span class="badge badge-yellow">★</span>');
+    if (p.origen === 'whatsapp') flags.push('<span class="badge badge-blue" style="font-size:9px;">WA</span>');
+    if (p.video_url) flags.push('<span class="badge badge-gray" style="font-size:9px;">▶ video</span>');
+
+    const stockBadge = p.stock_estado === 'disponible'
+      ? '<span class="badge badge-green" style="font-size:10px;">✓ Stock</span>'
+      : '<span class="badge badge-red" style="font-size:10px;">Agotado</span>';
+
+    return `
+      <tr data-id="${esc(p.id)}">
+        <td class="row-chk-cell"><input type="checkbox" class="row-chk" data-id="${esc(p.id)}" title="Seleccionar"></td>
+        <td>${thumbHtml}</td>
+        <td>
+          <div style="font-weight:600;color:var(--text);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.titulo)}">${esc(p.titulo)}</div>
+          <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);">${esc(p.id)}${p.marca ? ' · ' + esc(p.marca) : ''}</div>
+          ${flags.length ? `<div class="prod-flags" style="margin-top:3px;">${flags.join('')}</div>` : ''}
+        </td>
+        <td><span class="badge badge-gray">${CAT_LABELS[p.categoria] || p.categoria}</span></td>
+        <td style="font-weight:600;">
+          ${fmtArs(p.precio_ars)}
+          ${p.precio_usd != null ? `<div style="font-size:11px;color:var(--text-3);font-weight:400;">u$${p.precio_usd}${p.margen_pct != null ? ' · ' + p.margen_pct + '%' : ''}</div>` : ''}
+        </td>
+        <td>${stockBadge}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label class="tswitch tswitch-sm" title="${p.activo ? 'Publicado — clic para pausar' : 'Pausado — clic para publicar'}">
+              <input type="checkbox" ${p.activo ? 'checked' : ''} onchange="toggleActivo('${esc(p.id)}', this.checked)">
+              <span class="slider"></span>
+            </label>
+            <span style="font-size:11px;color:var(--text-3);">${p.activo ? 'Publicado' : 'Pausado'}</span>
+          </div>
+        </td>
+        <td style="text-align:right;">
+          <div style="display:flex;gap:6px;justify-content:flex-end;">
+            <button class="btn btn-sm btn-ghost" onclick="duplicarProducto('${esc(p.id)}')" title="Duplicar producto">⎘</button>
+            <a class="btn btn-sm btn-ghost" href="/tienda-producto-propio.html?id=${esc(p.id)}">Editar</a>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+  renderPager(total);
+}
+
+function renderPager(total) {
+  const pager = document.getElementById('pager');
+  const pages = Math.max(1, Math.ceil(total / LIMIT));
+  if (total <= LIMIT) { pager.innerHTML = `<span>${total} resultado${total === 1 ? '' : 's'}</span><span></span>`; return; }
+  pager.innerHTML = `
+    <span>Página ${page} de ${pages} — ${total} resultados</span>
+    <span style="display:flex;gap:6px;">
+      <button class="btn btn-sm btn-ghost" id="btn-prev" ${page <= 1 ? 'disabled' : ''}>← Anterior</button>
+      <button class="btn btn-sm btn-ghost" id="btn-next" ${page >= pages ? 'disabled' : ''}>Siguiente →</button>
+    </span>`;
+  document.getElementById('btn-prev')?.addEventListener('click', () => { if (page > 1) { page--; loadProductos(); } });
+  document.getElementById('btn-next')?.addEventListener('click', () => { if (page < pages) { page++; loadProductos(); } });
+}
+
+document.getElementById('inp-search').addEventListener('input', () => {
+  clearTimeout(_searchTimer); _searchTimer = setTimeout(() => { page = 1; loadProductos(); }, 350);
+});
+document.getElementById('sel-filtro').addEventListener('change',    () => { page = 1; loadProductos(); });
+document.getElementById('sel-categoria').addEventListener('change', () => { page = 1; loadProductos(); });
+
+async function toggleActivo(id, activo) {
+  try {
+    const resp = await fetch(`/api/tienda/admin/productos-propios/${encodeURIComponent(id)}`,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activo }) });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error');
+    toast(activo ? '🌐 Producto publicado' : '⏸ Producto pausado', 'ok');
+  } catch (e) { toast(e.message, 'err'); loadProductos(); }
+}
+window.toggleActivo = toggleActivo;
+
+async function duplicarProducto(id) {
+  try {
+    // Load original product
+    const resp = await fetch('/api/tienda/admin/productos-propios/' + encodeURIComponent(id));
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al cargar');
+    const p = data.producto;
+    // Create copy with modified title, paused by default
+    const body = {
+      titulo:        'Copia de ' + p.titulo,
+      marca:         p.marca || '',
+      categoria:     p.categoria || 'otros',
+      condicion:     p.condicion || 'nuevo',
+      imagen_portada_url: p.imagen_portada_url || '',
+      imagenes:      Array.isArray(p.imagenes) ? p.imagenes : [],
+      stock_estado:  p.stock_estado || 'disponible',
+      destacado:     false,
+      activo:        false, // start paused
+      descripcion:   p.descripcion || '',
+      video_url:     p.video_url || '',
+      video_fuente:  p.video_fuente || '',
+      video_thumb_url: p.video_thumb_url || '',
+      notas_admin:   p.notas_admin || '',
+    };
+    if (p.precio_usd != null)     body.precio_usd     = p.precio_usd;
+    if (p.margen_pct != null)     body.margen_pct     = p.margen_pct;
+    if (p.cotizacion_usd != null) body.cotizacion_usd = p.cotizacion_usd;
+    if (p.precio_ars != null)     body.precio_ars     = p.precio_ars;
+
+    const resp2 = await fetch('/api/tienda/admin/productos-propios',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data2 = await resp2.json();
+    if (!resp2.ok) throw new Error(data2.error || 'Error al duplicar');
+    // Navigate to new product for editing
+    window.location.href = '/tienda-producto-propio.html?id=' + encodeURIComponent(data2.producto?.id || data2.id || '');
+  } catch (e) { toast('Error al duplicar: ' + e.message, 'err'); }
+}
+window.duplicarProducto = duplicarProducto;
+
+/* ══════════════════════ DRAWER ════════════════════════════════ */
+const drawer        = document.getElementById('drawer');
+const drawerOverlay = document.getElementById('drawer-overlay');
+
+function abrirNuevo() {
+  editingId = null;
+  document.getElementById('drawer-title').textContent = 'Nuevo producto propio';
+  document.getElementById('drawer-sub').textContent   = 'Completá los datos y publicalo en la tienda';
+  document.getElementById('btn-eliminar').style.display = 'none';
+  document.getElementById('delete-confirm').classList.remove('show');
+  limpiarFormulario();
+  abrirDrawer();
+}
+window.abrirNuevo = abrirNuevo;
+
+async function abrirEdicion(id) {
+  try {
+    const resp = await fetch('/api/tienda/admin/productos-propios/' + encodeURIComponent(id));
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'No se pudo cargar el producto');
+    editingId = id;
+    document.getElementById('drawer-title').textContent = 'Editar producto';
+    document.getElementById('drawer-sub').textContent   = id;
+    document.getElementById('btn-eliminar').style.display = '';
+    document.getElementById('delete-confirm').classList.remove('show');
+    cargarFormulario(data.producto);
+    abrirDrawer();
+  } catch (e) { toast(e.message, 'err'); }
+}
+window.abrirEdicion = abrirEdicion;
+
+function abrirDrawer() {
+  drawer.classList.add('open');
+  drawerOverlay.classList.add('open');
+  // Scroll al inicio del drawer
+  setTimeout(() => drawer.querySelector('.drawer-body').scrollTop = 0, 50);
+}
+function cerrarDrawer() {
+  drawer.classList.remove('open');
+  drawerOverlay.classList.remove('open');
+  editingId = null;
+  document.getElementById('delete-confirm').classList.remove('show');
+}
+
+document.getElementById('btn-nuevo').addEventListener('click', () => { window.location.href = '/tienda-producto-propio.html'; });
+document.getElementById('btn-cerrar-drawer').addEventListener('click', cerrarDrawer);
+document.getElementById('btn-cancelar').addEventListener('click', cerrarDrawer);
+drawerOverlay.addEventListener('click', cerrarDrawer);
+
+// Esc para cerrar
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && drawer.classList.contains('open')) cerrarDrawer();
+});
+
+/* ══════════════════════ MEDIA GALLERY ════════════════════════ */
+let allImages  = []; // array de { url, pending?, id? }
+let _dragIdx   = null;
+
+function renderMediaGrid() {
+  const grid    = document.getElementById('media-grid');
+  const hint    = document.getElementById('media-drop-hint');
+  const gridWrap = document.getElementById('media-grid-wrap');
+  const countEl  = document.getElementById('media-count-badge');
+
+  const real = allImages.filter(i => !i.pending);
+  const tot  = allImages.length;
+  countEl.textContent = `${real.length} / 10`;
+
+  if (!tot) {
+    hint.style.display    = '';
+    gridWrap.style.display = 'none';
+    return;
+  }
+  hint.style.display    = 'none';
+  gridWrap.style.display = '';
+
+  grid.innerHTML = '';
+
+  allImages.forEach((img, idx) => {
+    const div = document.createElement('div');
+    const isPortada = idx === 0 && !img.pending;
+    div.className = 'media-thumb' + (isPortada ? ' is-portada' : '') + (img.pending ? ' pending' : '');
+    div.dataset.idx = idx;
+
+    if (img.pending) {
+      div.innerHTML = `<div class="img-spinner"></div>`;
+    } else {
+      div.draggable = true;
+      div.innerHTML = `
+        <img src="${esc(img.url)}" alt="" loading="lazy" onerror="this.style.opacity=.2">
+        <div class="media-thumb-overlay">
+          ${idx > 0 ? `<button class="mth-btn set-portada" title="Poner como portada">★</button>` : ''}
+          <button class="mth-btn del" title="Quitar foto">✕</button>
+        </div>
+        ${isPortada ? `<div class="portada-badge">Portada</div>` : ''}
+      `;
+      div.querySelector('.del')?.addEventListener('click', (e) => {
+        e.stopPropagation(); allImages.splice(idx, 1); renderMediaGrid();
+      });
+      div.querySelector('.set-portada')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const [item] = allImages.splice(idx, 1); allImages.unshift(item); renderMediaGrid();
+      });
+      div.addEventListener('dragstart', (e) => {
+        _dragIdx = idx; div.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      div.addEventListener('dragend', () => {
+        div.classList.remove('dragging');
+        document.querySelectorAll('.media-thumb.drop-target').forEach(d => d.classList.remove('drop-target'));
+      });
+      div.addEventListener('dragover', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (_dragIdx !== null && _dragIdx !== idx) div.classList.add('drop-target');
+      });
+      div.addEventListener('dragleave', () => div.classList.remove('drop-target'));
+      div.addEventListener('drop', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        div.classList.remove('drop-target');
+        if (_dragIdx === null || _dragIdx === idx) return;
+        const [item] = allImages.splice(_dragIdx, 1);
+        allImages.splice(idx, 0, item);
+        _dragIdx = null; renderMediaGrid();
+      });
+    }
+    grid.appendChild(div);
+  });
+
+  // Tile "+ agregar" (si hay menos de 10)
+  if (real.length < 10) {
+    const add = document.createElement('div');
+    add.className = 'media-add-tile';
+    add.title = 'Agregar más fotos';
+    add.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Agregar</span>`;
+    add.addEventListener('click', () => document.getElementById('inp-files-fotos').click());
+    grid.appendChild(add);
+  }
+}
+
+/* Subir imagen al servidor */
+async function subirImagen(file) {
+  const fd = new FormData(); fd.append('file', file);
+  const resp = await fetch('/api/tienda/admin/productos-propios/imagen', { method: 'POST', body: fd });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'No se pudo subir la imagen');
+  return data.url;
+}
+
+/* Subir múltiples archivos en paralelo */
+async function subirMultiplesArchivos(files) {
+  const realCount = allImages.filter(i => !i.pending).length;
+  const toUpload  = [...files].slice(0, 10 - realCount);
+  if (!toUpload.length) { toast('El producto ya tiene el máximo de 10 fotos', 'err'); return; }
+  if (files.length > toUpload.length) {
+    toast(`Solo se subirán ${toUpload.length} de ${files.length} fotos (límite: 10)`, 'ok');
+  }
+
+  const pendingItems = toUpload.map((_, i) => ({ pending: true, _pid: Date.now() + i }));
+  allImages.push(...pendingItems);
+  renderMediaGrid();
+
+  await Promise.all(toUpload.map(async (file, i) => {
+    const pItem = pendingItems[i];
+    try {
+      const url = await subirImagen(file);
+      const idx = allImages.findIndex(x => x === pItem);
+      if (idx >= 0) allImages[idx] = { url };
+    } catch (err) {
+      const idx = allImages.findIndex(x => x === pItem);
+      if (idx >= 0) allImages.splice(idx, 1);
+      toast(`Error al subir ${file.name}: ${err.message}`, 'err');
+    }
+    renderMediaGrid();
+  }));
+}
+
+/* Drag & drop de archivos desde el SO sobre la media zone */
+const mediaSection = document.querySelector('.form-section');
+document.getElementById('inp-files-fotos').addEventListener('change', async (e) => {
+  const files = e.target.files;
+  if (!files?.length) return;
+  await subirMultiplesArchivos(files);
+  e.target.value = '';
+});
+document.getElementById('btn-subir-fotos').addEventListener('click', () => document.getElementById('inp-files-fotos').click());
+document.getElementById('btn-browse-fotos-hint').addEventListener('click', () => document.getElementById('inp-files-fotos').click());
+
+// Drag de archivos sobre el hint
+const dropHint = document.getElementById('media-drop-hint');
+['dragover','dragenter'].forEach(ev => dropHint.addEventListener(ev, (e) => {
+  if ([...e.dataTransfer.types].includes('Files')) { e.preventDefault(); dropHint.classList.add('active'); }
+}));
+['dragleave','dragend'].forEach(ev => dropHint.addEventListener(ev, () => dropHint.classList.remove('active')));
+dropHint.addEventListener('drop', async (e) => {
+  e.preventDefault(); dropHint.classList.remove('active');
+  const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+  if (files.length) await subirMultiplesArchivos(files);
+});
+
+// Drag de archivos sobre el grid wrap
+const mediaZone = document.getElementById('media-zone');
+mediaZone.addEventListener('dragover', (e) => {
+  if ([...e.dataTransfer.types].includes('Files')) {
+    e.preventDefault(); mediaZone.classList.add('drag-active');
+  }
+});
+mediaZone.addEventListener('dragleave', (e) => {
+  if (!mediaZone.contains(e.relatedTarget)) mediaZone.classList.remove('drag-active');
+});
+mediaZone.addEventListener('drop', async (e) => {
+  const types = [...e.dataTransfer.types];
+  if (!types.includes('Files')) return;
+  e.preventDefault(); mediaZone.classList.remove('drag-active');
+  const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+  if (files.length) await subirMultiplesArchivos(files);
+});
+
+/* URL externa */
+document.getElementById('btn-toggle-url-foto').addEventListener('click', () => {
+  const row = document.getElementById('media-url-row');
+  const shown = row.style.display !== 'none';
+  row.style.display = shown ? 'none' : 'flex';
+  if (!shown) setTimeout(() => document.getElementById('inp-url-foto').focus(), 30);
+});
+document.getElementById('btn-cancel-url-foto').addEventListener('click', () => {
+  document.getElementById('media-url-row').style.display = 'none';
+  document.getElementById('inp-url-foto').value = '';
+});
+function agregarUrlFoto() {
+  const url = document.getElementById('inp-url-foto').value.trim();
+  if (!url) return;
+  if (allImages.filter(i => !i.pending).length >= 10) { toast('Máximo 10 fotos', 'err'); return; }
+  allImages.push({ url });
+  renderMediaGrid();
+  document.getElementById('inp-url-foto').value = '';
+  document.getElementById('media-url-row').style.display = 'none';
+}
+document.getElementById('btn-add-url-foto').addEventListener('click', agregarUrlFoto);
+document.getElementById('inp-url-foto').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); agregarUrlFoto(); } });
+
+/* ══════════════════════ VIDEO ══════════════════════════════════ */
+let videoState = { url: '', fuente: '', thumb: '' };
+
+const VIDEO_PLATFORMS = {
+  youtube:    { re: /youtube\.com|youtu\.be/i,   label: 'YouTube',    pillClass: 'pill-yt' },
+  alibaba:    { re: /alibaba\.com/i,              label: 'Alibaba',    pillClass: 'pill-al' },
+  aliexpress: { re: /aliexpress\.com/i,           label: 'AliExpress', pillClass: 'pill-al' },
+  vimeo:      { re: /vimeo\.com/i,                label: 'Vimeo',      pillClass: 'pill-vi' },
+};
+
+function detectarVideoFuente(url) {
+  if (!url) return null;
+  for (const [key, cfg] of Object.entries(VIDEO_PLATFORMS)) {
+    if (cfg.re.test(url)) return key;
+  }
+  return 'otro';
+}
+
+function getYtThumbnail(url) {
+  const m = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
+}
+
+function actualizarVideoHint() {
+  const url   = document.getElementById('inp-video-url').value.trim();
+  const hint  = document.getElementById('video-platform-hint');
+  if (!url) { hint.innerHTML = ''; return; }
+  const fuente = detectarVideoFuente(url);
+  const cfg = VIDEO_PLATFORMS[fuente];
+  if (cfg) {
+    hint.innerHTML = `<span class="video-platform-hint detected">✓ Plataforma detectada: <strong>${cfg.label}</strong></span>`;
+  } else {
+    hint.innerHTML = `<span class="video-platform-hint">Plataforma desconocida — se guardará igual</span>`;
+  }
+}
+
+function actualizarVideoUI() {
+  const previewCard   = document.getElementById('video-preview-card');
+  const inputSection  = document.getElementById('video-input-section');
+  const urlEl         = document.getElementById('inp-video-url');
+
+  if (!videoState.url) {
+    previewCard.style.display  = 'none';
+    inputSection.style.display = '';
+    urlEl.value = '';
+    document.getElementById('video-platform-hint').innerHTML = '';
+    return;
+  }
+
+  // Hay video cargado → mostrar preview card
+  previewCard.style.display  = '';
+  inputSection.style.display = 'none';
+
+  const fuente = videoState.fuente || detectarVideoFuente(videoState.url) || 'otro';
+  const cfg    = VIDEO_PLATFORMS[fuente];
+  const pill   = document.getElementById('video-source-pill');
+  pill.textContent = cfg ? cfg.label : (fuente === 'upload' ? 'Archivo subido' : 'Video');
+  pill.className   = 'video-source-pill ' + (cfg ? cfg.pillClass : fuente === 'upload' ? 'pill-up' : 'pill-ot');
+
+  const cardUrl  = document.getElementById('video-card-url');
+  cardUrl.href        = videoState.url;
+  cardUrl.textContent = videoState.url.length > 55 ? videoState.url.slice(0, 55) + '…' : videoState.url;
+
+  // Thumbnail
+  const thumbWrap = document.getElementById('video-thumb-wrap');
+  const ytThumb   = fuente === 'youtube' ? getYtThumbnail(videoState.url) : null;
+  if (ytThumb) {
+    thumbWrap.innerHTML = `<img src="${esc(ytThumb)}" alt="thumbnail" onerror="this.style.display='none'">`;
+  } else {
+    thumbWrap.innerHTML = `<span class="video-card-ico">🎬</span>`;
+  }
+}
+
+document.getElementById('inp-video-url').addEventListener('input', actualizarVideoHint);
+
+// Confirmar URL de video con Enter
+document.getElementById('inp-video-url').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const url = document.getElementById('inp-video-url').value.trim();
+    if (!url) return;
+    const fuente = detectarVideoFuente(url) || 'otro';
+    videoState = { url, fuente, thumb: fuente === 'youtube' ? (getYtThumbnail(url) || '') : '' };
+    actualizarVideoUI();
+    // Asegurar que el details esté abierto
+    document.getElementById('video-details').open = true;
+  }
+});
+
+// También aplicar al perder el foco si hay contenido
+document.getElementById('inp-video-url').addEventListener('blur', () => {
+  const url = document.getElementById('inp-video-url').value.trim();
+  if (!url) return;
+  const fuente = detectarVideoFuente(url) || 'otro';
+  videoState = { url, fuente, thumb: fuente === 'youtube' ? (getYtThumbnail(url) || '') : '' };
+  actualizarVideoUI();
+});
+
+document.getElementById('btn-quitar-video').addEventListener('click', () => {
+  videoState = { url: '', fuente: '', thumb: '' };
+  actualizarVideoUI();
+});
+
+// Subir archivo de video
+document.getElementById('btn-subir-video').addEventListener('click', () => document.getElementById('inp-file-video').click());
+document.getElementById('inp-file-video').addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const btn = document.getElementById('btn-subir-video');
+  btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Subiendo…';
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const resp = await fetch('/api/tienda/admin/productos-propios/video', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al subir el video');
+    videoState = { url: data.url, fuente: 'upload', thumb: '' };
+    actualizarVideoUI();
+    document.getElementById('video-details').open = true;
+    toast('Video subido ✓', 'ok');
+  } catch (err) { toast(err.message, 'err'); }
+  finally { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir archivo'; }
+  e.target.value = '';
+});
+
+/* ══════════════════════ PRECIO EN VIVO ════════════════════════ */
+function actualizarPrecioPreview() {
+  const usd    = parseFloat(document.getElementById('inp-precio-usd').value);
+  const mg     = parseFloat(document.getElementById('inp-margen').value) || 0;
+  const cot    = parseFloat(document.getElementById('inp-cotizacion').value);
+  const manual = parseFloat(document.getElementById('inp-precio-ars-manual').value);
+  let final = 0;
+  if (!isNaN(usd) && !isNaN(cot)) final = usd * (1 + mg / 100) * cot;
+  else if (!isNaN(manual)) final = manual;
+  document.getElementById('precio-final-preview').textContent = fmtArs(final);
+}
+['inp-precio-usd','inp-margen','inp-cotizacion','inp-precio-ars-manual'].forEach(id =>
+  document.getElementById(id).addEventListener('input', actualizarPrecioPreview)
+);
+
+/* ══════════════════════ CONTADORES DE TEXTO ═══════════════════ */
+function updateCharCount(inputId, countId, max) {
+  const len = document.getElementById(inputId).value.length;
+  const el  = document.getElementById(countId);
+  el.textContent = len;
+  el.className = len > max * 0.9 ? (len >= max ? 'char-over' : 'char-warn') : '';
+}
+document.getElementById('inp-titulo').addEventListener('input', () => updateCharCount('inp-titulo', 'titulo-chars', 200));
+document.getElementById('inp-descripcion').addEventListener('input', () => updateCharCount('inp-descripcion', 'desc-chars', 5000));
+
+/* ══════════════════════ CARGAR / LIMPIAR FORMULARIO ══════════════ */
+function limpiarFormulario() {
+  allImages = [];
+  renderMediaGrid();
+  videoState = { url: '', fuente: '', thumb: '' };
+  actualizarVideoUI();
+  document.getElementById('video-details').open = false;
+  document.getElementById('notas-details').open = false;
+  document.getElementById('inp-titulo').value = '';
+  document.getElementById('titulo-chars').textContent = '0';
+  document.getElementById('titulo-chars').className = '';
+  document.getElementById('inp-marca').value = '';
+  document.getElementById('sel-form-categoria').value = 'celulares';
+  document.querySelector('input[name="condicion"][value="nuevo"]').checked = true;
+  document.getElementById('inp-precio-usd').value = '';
+  document.getElementById('inp-margen').value = '';
+  document.getElementById('inp-cotizacion').value = '';
+  document.getElementById('inp-precio-ars-manual').value = '';
+  document.getElementById('chk-stock').checked = true;
+  document.getElementById('chk-destacado').checked = false;
+  document.getElementById('chk-activo').checked = true;
+  document.getElementById('inp-descripcion').value = '';
+  document.getElementById('desc-chars').textContent = '0';
+  document.getElementById('inp-notas').value = '';
+  document.getElementById('media-url-row').style.display = 'none';
+  document.getElementById('inp-url-foto').value = '';
+  actualizarPrecioPreview();
+}
+
+function cargarFormulario(p) {
+  // Media
+  allImages = [];
+  if (p.imagen_portada_url) allImages.push({ url: p.imagen_portada_url });
+  if (Array.isArray(p.imagenes)) p.imagenes.filter(Boolean).forEach(u => allImages.push({ url: u }));
+  renderMediaGrid();
+
+  // Video
+  videoState = { url: p.video_url || '', fuente: p.video_fuente || '', thumb: p.video_thumb_url || '' };
+  actualizarVideoUI();
+  document.getElementById('video-details').open = !!p.video_url;
+  document.getElementById('notas-details').open = !!(p.notas_admin);
+
+  document.getElementById('inp-titulo').value = p.titulo || '';
+  updateCharCount('inp-titulo', 'titulo-chars', 200);
+  document.getElementById('inp-marca').value  = p.marca  || '';
+  document.getElementById('sel-form-categoria').value = p.categoria || 'otros';
+  const condVal = p.condicion || 'nuevo';
+  const condRadio = document.querySelector(`input[name="condicion"][value="${condVal}"]`);
+  if (condRadio) condRadio.checked = true;
+  else document.querySelector('input[name="condicion"][value="nuevo"]').checked = true;
+
+  document.getElementById('inp-precio-usd').value   = p.precio_usd     != null ? p.precio_usd     : '';
+  document.getElementById('inp-margen').value       = p.margen_pct     != null ? p.margen_pct     : '';
+  document.getElementById('inp-cotizacion').value   = p.cotizacion_usd != null ? p.cotizacion_usd : '';
+  const showManual = (p.precio_usd == null || p.cotizacion_usd == null);
+  document.getElementById('inp-precio-ars-manual').value = showManual ? (p.precio_ars || '') : '';
+  document.getElementById('chk-stock').checked     = p.stock_estado === 'disponible';
+  document.getElementById('chk-destacado').checked = !!p.destacado;
+  document.getElementById('chk-activo').checked    = !!p.activo;
+  document.getElementById('inp-descripcion').value = p.descripcion || '';
+  updateCharCount('inp-descripcion', 'desc-chars', 5000);
+  document.getElementById('inp-notas').value = p.notas_admin || '';
+  document.getElementById('media-url-row').style.display = 'none';
+  document.getElementById('inp-url-foto').value = '';
+  actualizarPrecioPreview();
+}
+
+/* ══════════════════════ GUARDAR ═══════════════════════════════ */
+document.getElementById('btn-guardar').addEventListener('click', async () => {
+  const titulo = document.getElementById('inp-titulo').value.trim();
+  if (!titulo) {
+    toast('El título es obligatorio', 'err');
+    document.getElementById('inp-titulo').focus();
+    return;
+  }
+
+  // Bloquear si hay uploads pendientes
+  if (allImages.some(i => i.pending)) {
+    toast('Esperá a que terminen de subir las fotos…', 'err'); return;
+  }
+
+  const usd    = document.getElementById('inp-precio-usd').value;
+  const margen = document.getElementById('inp-margen').value;
+  const cot    = document.getElementById('inp-cotizacion').value;
+  const manual = document.getElementById('inp-precio-ars-manual').value;
+  const condicion = document.querySelector('input[name="condicion"]:checked')?.value || 'nuevo';
+
+  const realImages = allImages.filter(i => !i.pending).map(i => i.url).filter(Boolean);
+
+  const body = {
+    titulo,
+    marca:        document.getElementById('inp-marca').value.trim(),
+    categoria:    document.getElementById('sel-form-categoria').value,
+    condicion,
+    imagen_portada_url: realImages[0] || '',
+    imagenes:     realImages.slice(1),
+    stock_estado: document.getElementById('chk-stock').checked ? 'disponible' : 'agotado',
+    destacado:    document.getElementById('chk-destacado').checked,
+    activo:       document.getElementById('chk-activo').checked,
+    descripcion:  document.getElementById('inp-descripcion').value.trim(),
+    video_url:    videoState.url  || '',
+    video_fuente: videoState.fuente || '',
+    video_thumb_url: videoState.thumb || '',
+    notas_admin:  document.getElementById('inp-notas').value.trim(),
+  };
+  if (usd !== '')    body.precio_usd     = parseFloat(usd);
+  if (margen !== '') body.margen_pct     = parseFloat(margen);
+  if (cot !== '')    body.cotizacion_usd = parseFloat(cot);
+  if (usd === '' || cot === '') {
+    if (manual !== '') body.precio_ars = parseFloat(manual);
+  }
+
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spin"></span>Guardando…';
+  try {
+    const url    = editingId ? `/api/tienda/admin/productos-propios/${encodeURIComponent(editingId)}` : '/api/tienda/admin/productos-propios';
+    const method = editingId ? 'PUT' : 'POST';
+    const resp   = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data   = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'No se pudo guardar');
+    toast(editingId ? '✓ Producto actualizado' : '✓ Producto publicado', 'ok');
+    cerrarDrawer();
+    loadProductos();
+  } catch (e) { toast(e.message, 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Guardar';
+  }
+});
+
+/* ══════════════════════ ELIMINAR ══════════════════════════════ */
+document.getElementById('btn-eliminar').addEventListener('click', () => {
+  document.getElementById('delete-confirm').classList.add('show');
+  document.getElementById('btn-eliminar').style.display = 'none';
+});
+document.getElementById('btn-cancelar-eliminar').addEventListener('click', () => {
+  document.getElementById('delete-confirm').classList.remove('show');
+  document.getElementById('btn-eliminar').style.display = '';
+});
+document.getElementById('btn-confirmar-eliminar').addEventListener('click', async () => {
+  if (!editingId) return;
+  try {
+    const resp = await fetch(`/api/tienda/admin/productos-propios/${encodeURIComponent(editingId)}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'No se pudo eliminar');
+    toast('Producto eliminado', 'ok');
+    cerrarDrawer(); loadProductos();
+  } catch (e) { toast(e.message, 'err'); }
+});
+
+/* ══════════════════════ MODAL WHATSAPP ════════════════════════ */
+const waOverlay = document.getElementById('wa-overlay');
+let borradoresActuales = [];
+
+function abrirModalWA() {
+  document.getElementById('wa-texto').value = '';
+  document.getElementById('wa-step-texto').style.display = '';
+  document.getElementById('wa-step-borradores').style.display = 'none';
+  waOverlay.classList.add('open');
+}
+function cerrarModalWA() { waOverlay.classList.remove('open'); borradoresActuales = []; }
+
+document.getElementById('btn-importar-wa').addEventListener('click', abrirModalWA);
+document.getElementById('btn-cerrar-wa').addEventListener('click', cerrarModalWA);
+waOverlay.addEventListener('click', cerrarModalWA);
+document.getElementById('btn-wa-volver').addEventListener('click', () => {
+  document.getElementById('wa-step-texto').style.display = '';
+  document.getElementById('wa-step-borradores').style.display = 'none';
+});
+
+document.getElementById('btn-analizar-wa').addEventListener('click', async () => {
+  const texto = document.getElementById('wa-texto').value;
+  if (!texto.trim()) { toast('Pegá el mensaje del proveedor primero', 'err'); return; }
+  const btn = document.getElementById('btn-analizar-wa');
+  btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Analizando…';
+  try {
+    const resp = await fetch('/api/tienda/admin/productos-propios/parse-whatsapp',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }) });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'No se pudo analizar el mensaje');
+    if (!data.borradores.length) { toast('No se detectaron productos — revisá el formato', 'err'); return; }
+    borradoresActuales = data.borradores.map((b, i) => ({ ...b, _id: i, _check: true }));
+    mostrarBorradores();
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Analizar mensaje →'; }
+});
+
+function mostrarBorradores() {
+  document.getElementById('wa-step-texto').style.display = 'none';
+  document.getElementById('wa-step-borradores').style.display = '';
+  document.getElementById('wa-total-detectados').textContent = borradoresActuales.length;
+  renderBorradores();
+}
+
+function calcArs(usd, margen, cot) {
+  if (usd == null || isNaN(usd) || cot == null || isNaN(cot)) return null;
+  return Math.round(usd * (1 + (margen || 0) / 100) * cot);
+}
+
+function renderBorradores() {
+  const margen = parseFloat(document.getElementById('wa-margen').value) || 0;
+  const cot    = parseFloat(document.getElementById('wa-cotizacion').value);
+  const list   = document.getElementById('wa-borradores-list');
+  list.innerHTML = borradoresActuales.map(b => {
+    const arsEst = calcArs(b.precio_usd, margen, cot);
+    const varTxt = b.variantes?.length
+      ? `<div class="orig">Variantes: ${b.variantes.map(v => `${esc(v.etiqueta)} (u$${v.precio_usd ?? '?'})`).join(' · ')}</div>` : '';
+    return `
+      <div class="draft-card" data-id="${b._id}">
+        <input type="checkbox" class="chk" ${b._check ? 'checked' : ''} data-id="${b._id}" data-f="_check">
+        <div class="body">
+          <div class="row">
+            <input type="text" class="adm-input" data-id="${b._id}" data-f="titulo" value="${esc(b.titulo)}" placeholder="Título">
+            <input type="text" class="adm-input" data-id="${b._id}" data-f="marca" value="${esc(b.marca || '')}" placeholder="Marca" style="max-width:140px;">
+          </div>
+          <div class="row">
+            <select class="adm-select" data-id="${b._id}" data-f="categoria_sugerida">
+              ${Object.keys(CAT_LABELS).map(c => `<option value="${c}" ${b.categoria_sugerida === c ? 'selected' : ''}>${CAT_LABELS[c]}</option>`).join('')}
+            </select>
+            <select class="adm-select" data-id="${b._id}" data-f="condicion">
+              <option value="nuevo" ${b.condicion === 'nuevo' ? 'selected' : ''}>Nuevo</option>
+              <option value="reacondicionado" ${b.condicion === 'reacondicionado' ? 'selected' : ''}>Reacondicionado</option>
+              <option value="usado" ${b.condicion === 'usado' ? 'selected' : ''}>Usado</option>
+            </select>
+            <input type="number" class="adm-input" data-id="${b._id}" data-f="precio_usd" value="${b.precio_usd != null ? b.precio_usd : ''}" placeholder="USD" style="max-width:100px;">
+            <span class="precio-preview">${arsEst != null ? '≈ ' + fmtArs(arsEst) : '—'}</span>
+          </div>
+          ${varTxt}
+          <div class="orig">Original: "${esc(b.linea_original || '')}"</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('input[data-f], select[data-f]').forEach(el => {
+    el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input', () => {
+      const id = +el.dataset.id, f = el.dataset.f;
+      const b  = borradoresActuales.find(x => x._id === id); if (!b) return;
+      if (f === '_check') b._check = el.checked;
+      else if (f === 'precio_usd') { b.precio_usd = el.value === '' ? null : parseFloat(el.value); renderBorradores(); }
+      else if (f === 'categoria_sugerida') b.categoria_sugerida = el.value;
+      else b[f] = el.value;
+    });
+  });
+}
+['wa-margen','wa-cotizacion'].forEach(id => document.getElementById(id).addEventListener('input', renderBorradores));
+document.getElementById('btn-wa-marcar-todos').addEventListener('click',   () => { borradoresActuales.forEach(b => b._check = true);  renderBorradores(); });
+document.getElementById('btn-wa-desmarcar-todos').addEventListener('click', () => { borradoresActuales.forEach(b => b._check = false); renderBorradores(); });
+
+document.getElementById('btn-wa-publicar').addEventListener('click', async () => {
+  const margen = parseFloat(document.getElementById('wa-margen').value) || 0;
+  const cot    = parseFloat(document.getElementById('wa-cotizacion').value);
+  const sel    = borradoresActuales.filter(b => b._check && b.titulo?.trim());
+  if (!sel.length) { toast('Marcá al menos un producto', 'err'); return; }
+
+  const btn = document.getElementById('btn-wa-publicar');
+  btn.disabled = true;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < sel.length; i++) {
+    const b = sel[i];
+    btn.innerHTML = `<span class="btn-spin"></span>Publicando ${i + 1} de ${sel.length}…`;
+    const body = {
+      titulo:    b.titulo.trim(),
+      marca:     b.marca || '',
+      categoria: b.categoria_sugerida || 'otros',
+      condicion: b.condicion || 'nuevo',
+      origen:    'whatsapp',
+      activo:    true,
+      notas_admin: b.linea_original ? `Importado WhatsApp — original: "${b.linea_original}"` : '',
+    };
+    if (b.precio_usd != null && !isNaN(b.precio_usd)) body.precio_usd = b.precio_usd;
+    if (!isNaN(margen)) body.margen_pct    = margen;
+    if (!isNaN(cot))    body.cotizacion_usd = cot;
+    try {
+      const resp = await fetch('/api/tienda/admin/productos-propios',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (resp.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  btn.disabled = false; btn.textContent = 'Publicar seleccionados';
+  toast(`Publicados ${ok} de ${sel.length}${fail ? ` (${fail} con error)` : ''}`, fail ? 'err' : 'ok');
+  if (ok > 0) { cerrarModalWA(); page = 1; loadProductos(); }
+});
+
+/* ══════════════════════ RECALCULAR COTIZACIÓN ════════════════ */
+let _cotizacionActual = null; // se detecta automáticamente del primer producto con USD
+
+async function abrirModalCot() {
+  // Detect current average cotizacion from products
+  try {
+    const resp = await fetch('/api/tienda/admin/productos-propios?limit=100&filtro=');
+    const data = await resp.json();
+    const prods = (data.productos || []).filter(p => p.cotizacion_usd != null);
+    if (prods.length) {
+      _cotizacionActual = prods[0].cotizacion_usd;
+      document.getElementById('cot-preview-anterior').textContent = `$${Number(_cotizacionActual).toLocaleString('es-AR')}`;
+      document.getElementById('cot-preview-count').textContent = prods.length;
+      document.getElementById('cot-preview-box').style.display = '';
+    } else {
+      document.getElementById('cot-preview-box').style.display = 'none';
+    }
+    document.getElementById('inp-cot-nueva').value = _cotizacionActual || '';
+  } catch {}
+  document.getElementById('cot-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('inp-cot-nueva').select(), 50);
+}
+
+function cerrarModalCot() {
+  document.getElementById('cot-overlay').classList.remove('open');
+}
+
+document.getElementById('inp-cot-nueva').addEventListener('input', () => {
+  const v = parseFloat(document.getElementById('inp-cot-nueva').value);
+  document.getElementById('cot-preview-nueva').textContent = v > 0 ? '$' + Math.round(v).toLocaleString('es-AR') : '—';
+});
+
+document.getElementById('btn-cot-aplicar').addEventListener('click', async () => {
+  const cot = parseFloat(document.getElementById('inp-cot-nueva').value);
+  if (!cot || cot <= 0) { toast('Ingresá una cotización válida', 'err'); return; }
+  const btn = document.getElementById('btn-cot-aplicar');
+  btn.disabled = true; btn.innerHTML = '<span class="btn-spin"></span>Recalculando…';
+  try {
+    const resp = await fetch('/api/tienda/admin/productos-propios/bulk-cotizacion',
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cotizacion_usd: cot }) });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al recalcular');
+    cerrarModalCot();
+    toast(`✓ ${data.updated} precio${data.updated === 1 ? '' : 's'} actualizado${data.updated === 1 ? '' : 's'} · Cotización: $${Math.round(cot).toLocaleString('es-AR')}`, 'ok');
+    loadProductos();
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; btn.textContent = 'Recalcular precios'; }
+});
+
+document.getElementById('btn-recalcular').addEventListener('click', abrirModalCot);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('cot-overlay').classList.contains('open')) cerrarModalCot();
+});
+
+/* ══════════════════════ BULK ACTIONS ══════════════════════════ */
+let selectedIds = new Set();
+
+function updateBulkUI() {
+  const count = selectedIds.size;
+  const toolbar = document.getElementById('bulk-toolbar');
+  document.getElementById('bulk-count').textContent = count;
+  toolbar.classList.toggle('show', count > 0);
+
+  // Sync "select all" checkbox
+  const chkAll = document.getElementById('chk-all');
+  if (chkAll) {
+    const allChks = document.querySelectorAll('#items-tbody .row-chk');
+    chkAll.checked = allChks.length > 0 && [...allChks].every(c => c.checked);
+    chkAll.indeterminate = count > 0 && !chkAll.checked;
+  }
+  // Highlight rows
+  document.querySelectorAll('#items-tbody tr[data-id]').forEach(tr => {
+    tr.classList.toggle('bulk-selected', selectedIds.has(tr.dataset.id));
+  });
+}
+
+// Delegate checkbox clicks from table body
+document.getElementById('items-tbody').addEventListener('change', (e) => {
+  if (!e.target.matches('.row-chk')) return;
+  const id = e.target.dataset.id;
+  if (e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateBulkUI();
+});
+
+// Select all
+document.addEventListener('change', (e) => {
+  if (e.target.id !== 'chk-all') return;
+  document.querySelectorAll('#items-tbody .row-chk').forEach(chk => {
+    chk.checked = e.target.checked;
+    if (e.target.checked) selectedIds.add(chk.dataset.id); else selectedIds.delete(chk.dataset.id);
+  });
+  updateBulkUI();
+});
+
+// Cancel selection
+document.getElementById('bulk-btn-cerrar').addEventListener('click', () => {
+  selectedIds.clear();
+  document.querySelectorAll('#items-tbody .row-chk').forEach(c => c.checked = false);
+  const chkAll = document.getElementById('chk-all');
+  if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+  updateBulkUI();
+});
+
+// Clear selection on table reload
+function clearBulkSelection() {
+  selectedIds.clear();
+  updateBulkUI();
+}
+
+async function bulkToggleActivo(activo) {
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  const btn = activo ? document.getElementById('bulk-btn-publicar') : document.getElementById('bulk-btn-pausar');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = activo ? '⏳ Publicando…' : '⏳ Pausando…';
+  let ok = 0, fail = 0;
+  for (const id of ids) {
+    try {
+      const resp = await fetch(`/api/tienda/admin/productos-propios/${encodeURIComponent(id)}`,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activo }) });
+      if (resp.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  btn.disabled = false; btn.textContent = orig;
+  toast(`${activo ? 'Publicados' : 'Pausados'} ${ok}${fail ? ` (${fail} con error)` : ''}`, fail ? 'err' : 'ok');
+  clearBulkSelection(); loadProductos();
+}
+
+async function bulkEliminar() {
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  if (!confirm(`¿Eliminar definitivamente ${ids.length} producto${ids.length > 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return;
+  const btn = document.getElementById('bulk-btn-eliminar');
+  btn.disabled = true; btn.textContent = '⏳ Eliminando…';
+  let ok = 0, fail = 0;
+  for (const id of ids) {
+    try {
+      const resp = await fetch(`/api/tienda/admin/productos-propios/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (resp.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  btn.disabled = false; btn.textContent = '🗑 Eliminar';
+  toast(`Eliminados ${ok}${fail ? ` (${fail} con error)` : ''}`, fail ? 'err' : 'ok');
+  clearBulkSelection(); loadProductos();
+}
+
+document.getElementById('bulk-btn-publicar').addEventListener('click', () => bulkToggleActivo(true));
+document.getElementById('bulk-btn-pausar').addEventListener('click', () => bulkToggleActivo(false));
+document.getElementById('bulk-btn-eliminar').addEventListener('click', bulkEliminar);
+
+// Reset selection on search/filter change
+['inp-search', 'sel-filtro', 'sel-categoria'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', clearBulkSelection);
+});
+
+/* ─── Init ──────────────────────────────────────────────────── */
+(async function() {
+  // Mostrar toast si volvemos desde el editor
+  const params = new URLSearchParams(location.search);
+  if (params.get('ok')) {
+    const msg = params.get('msg') ? decodeURIComponent(params.get('msg')) : '✓ Guardado correctamente';
+    setTimeout(() => toast('✓ ' + msg, 'ok'), 300);
+    history.replaceState({}, '', location.pathname + (params.get('cat') ? '?cat=' + params.get('cat') : ''));
+  }
+  // Cargar categorías primero (actualiza selectores y pre-selecciona ?cat=)
+  await initCategoriasUI();
+  loadProductos();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Admin Tienda — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC: tema guardado antes del primer paint -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Quick access cards ─────────────────────────────────── */
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.quick-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); text-decoration: none; color: inherit;
+  transition: box-shadow .15s, border-color .15s, transform .15s;
+}
+.quick-card:hover {
+  border-color: var(--border-2);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.quick-icon {
+  width: 38px; height: 38px; border-radius: var(--r);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.quick-icon.blue   { background: var(--blue-light);   color: var(--blue); }
+.quick-icon.green  { background: var(--green-light);  color: var(--green); }
+.quick-icon.red    { background: var(--red-light);    color: var(--red); }
+.quick-icon.yellow { background: var(--yellow-light); color: #8a5c00; }
+.quick-icon.gray   { background: var(--bg);           color: var(--text-2); border: 1px solid var(--border); }
+.quick-name  { font-size: 13px; font-weight: 600; color: var(--text); }
+.quick-desc  { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+/* ── Coming-soon pill ───────────────────────────────────── */
+.soon-tag {
+  display: inline-block; font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: 100px;
+  background: var(--yellow-light); color: #8a5c00;
+  letter-spacing: .04em; text-transform: uppercase;
+  vertical-align: middle; margin-left: 4px;
+}
+
+/* ── Form grid ──────────────────────────────────────────── */
+.coupon-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 2fr auto;
+  gap: 10px; align-items: end;
+}
+@media (max-width: 768px) {
+  .coupon-form-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Toast ──────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 999;
+  background: var(--text); color: #fff;
+  border-radius: var(--r-lg); padding: 10px 16px;
+  font-size: 13px; box-shadow: var(--shadow-lg);
+  transform: translateY(8px); opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+#toast.show           { opacity: 1; transform: translateY(0); }
+#toast.ok             { background: var(--green); }
+#toast.err            { background: var(--red); }
+
+/* ── Coupon code mono ───────────────────────────────────── */
+.code-cell {
+  font-family: var(--font-mono); font-weight: 600;
+  font-size: 13px; color: var(--blue);
+}
+
+/* ── Alert items ────────────────────────────────────────── */
+.alert-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.alert-item:last-child { border-bottom: none; }
+.alert-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  margin-top: 5px;
+}
+.alert-dot.red    { background: var(--red); }
+.alert-dot.yellow { background: #f59e0b; }
+.alert-dot.blue   { background: var(--blue); }
+.alert-title { font-weight: 600; color: var(--text); line-height: 1.3; }
+.alert-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.alert-action { margin-left: auto; flex-shrink: 0; }
+.alerts-ok {
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 0; color: var(--text-3); font-size: 13px;
+}
+
+/* ── Category bar chart ─────────────────────────────────── */
+.cat-bar-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px; font-size: 13px;
+}
+.cat-bar-row:last-child { margin-bottom: 0; }
+.cat-bar-name {
+  width: 130px; flex-shrink: 0; color: var(--text-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px;
+}
+.cat-bar-track {
+  flex: 1; height: 8px; background: var(--bg);
+  border-radius: 100px; border: 1px solid var(--border); overflow: hidden;
+}
+.cat-bar-fill {
+  height: 100%; border-radius: 100px;
+  background: var(--blue); transition: width .5s ease;
+}
+.cat-bar-count {
+  width: 28px; text-align: right; flex-shrink: 0;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-3);
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+
+  <a href="/tienda-admin.html" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Admin Tienda</div>
+      <div class="adm-logo-tag">WZMALLAS</div>
+    </div>
+  </a>
+
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">General</div>
+      <a href="/tienda-admin.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="#section-cupones" class="adm-item" id="nav-cupones">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>Cupones</span>
+      </a>
+      <a href="/tienda-productos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span>Productos ABM</span>
+      </a>
+      <a href="/tienda-productos-propios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+        <span>Productos propios</span>
+      </a>
+      <a href="/tienda-categorias.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        <span>Categorías</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/tienda-ordenes.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span>Órdenes</span>
+        <span class="adm-item-badge info" id="nav-ord-badge" style="display:none">0</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Clientes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Configuración</div>
+      <a href="/tienda-sync.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <span>Sincronizar ML</span>
+      </a>
+      <a href="#" class="adm-item" style="opacity:.5;cursor:not-allowed" title="Próximamente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2"/></svg>
+        <span>Ajustes</span>
+        <span class="soon-tag">pronto</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <div class="adm-sidebar-foot">
+    <a href="/tienda/catalogo.html" target="_blank" class="adm-item" style="color:var(--green)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      <span>Ver tienda</span>
+    </a>
+    <a href="/" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Volver a Stockroom</span>
+    </a>
+  </div>
+</aside>
+
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
+
+  <!-- HEADER -->
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Dashboard</div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot"></span>
+          <span>Panel de administración</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <!-- KPI GRID -->
+    <div class="adm-kpi-grid">
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Órdenes totales</div>
+        <div class="adm-kpi-value" id="s-ordenes">—</div>
+        <div class="adm-kpi-delta" id="s-pendientes-delta"></div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Órdenes este mes</div>
+        <div class="adm-kpi-value blue" id="s-mes">—</div>
+        <div class="adm-kpi-delta" id="s-hoy-delta"></div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Ingresos totales</div>
+        <div class="adm-kpi-value green" id="s-ingresos">—</div>
+        <div class="adm-kpi-delta" id="s-ingresos-mes"></div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Ticket promedio</div>
+        <div class="adm-kpi-value" id="s-aov">—</div>
+        <div class="adm-kpi-delta" id="s-aov-delta"></div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Productos en tienda</div>
+        <div class="adm-kpi-value" id="s-productos">—</div>
+      </div>
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Cupones activos</div>
+        <div class="adm-kpi-value yellow" id="s-cupones">—</div>
+      </div>
+    </div>
+
+    <!-- ACCESOS RÁPIDOS -->
+    <div class="adm-card" style="margin-bottom:16px">
+      <div class="adm-card-head">
+        <div class="adm-card-title">Accesos rápidos</div>
+      </div>
+      <div class="adm-card-body">
+        <div class="quick-grid">
+          <a href="/tienda-ordenes.html" class="quick-card">
+            <div class="quick-icon blue">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            </div>
+            <div>
+              <div class="quick-name">Gestionar órdenes</div>
+              <div class="quick-desc">Ver y actualizar pedidos</div>
+            </div>
+          </a>
+          <a href="/tienda-sync.html" class="quick-card">
+            <div class="quick-icon yellow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+            </div>
+            <div>
+              <div class="quick-name">Sincronizar productos</div>
+              <div class="quick-desc">Importar desde MercadoLibre</div>
+            </div>
+          </a>
+          <a href="#section-cupones" class="quick-card">
+            <div class="quick-icon red">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            </div>
+            <div>
+              <div class="quick-name">Cupones</div>
+              <div class="quick-desc">Crear y gestionar descuentos</div>
+            </div>
+          </a>
+          <a href="/tienda/catalogo.html" target="_blank" class="quick-card">
+            <div class="quick-icon green">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </div>
+            <div>
+              <div class="quick-name">Ver catálogo</div>
+              <div class="quick-desc">Tienda pública en vivo</div>
+            </div>
+          </a>
+          <a href="/tienda-productos.html" class="quick-card">
+            <div class="quick-icon blue">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div>
+              <div class="quick-name">Productos ABM</div>
+              <div class="quick-desc">Personalizá título, fotos, video y destacados</div>
+            </div>
+          </a>
+          <a href="/tienda-productos-propios.html" class="quick-card">
+            <div class="quick-icon green">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21 7.5 13.5 2 9h7z"/></svg>
+            </div>
+            <div>
+              <div class="quick-name">Productos propios</div>
+              <div class="quick-desc">Cargá celulares, consolas y más — no hace falta que estén en ML</div>
+            </div>
+          </a>
+          <a href="/tienda-categorias.html" class="quick-card">
+            <div class="quick-icon yellow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            </div>
+            <div>
+              <div class="quick-name">Categorías</div>
+              <div class="quick-desc">Ordenar, crear y activar categorías</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTOS MÁS VENDIDOS -->
+    <div class="adm-grid-2" style="margin-bottom:16px">
+      <div class="adm-card">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Productos más vendidos
+          </div>
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th style="width:32px">#</th>
+                <th>Producto</th>
+                <th class="right">Unid.</th>
+                <th class="right">Ingresos</th>
+              </tr>
+            </thead>
+            <tbody id="top-tbody">
+              <tr><td colspan="4"><div class="adm-empty" style="padding:24px"><span class="spinner"></span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CUPONES — resumen rápido -->
+      <div class="adm-card" id="section-cupones">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            Cupones
+          </div>
+          <div class="adm-card-actions">
+            <button class="btn btn-primary btn-sm" id="btn-show-new" onclick="openNewCouponForm()">
+              + Nuevo
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline form (toggle) -->
+        <div id="coupon-form-wrap" class="hidden" style="border-bottom:1px solid var(--border)">
+          <div style="padding:16px 18px">
+            <input type="hidden" id="f-edit-code">
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px" id="coupon-form-title">Nuevo cupón</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div class="adm-field">
+                <label class="adm-label">Código</label>
+                <input class="adm-input" id="f-code" placeholder="ej. VERANO20" style="text-transform:uppercase">
+              </div>
+              <div class="adm-field">
+                <label class="adm-label">Tipo</label>
+                <select class="adm-input adm-select" id="f-type">
+                  <option value="percent">% Descuento</option>
+                  <option value="fixed">$ Monto fijo</option>
+                  <option value="freeship">Envío gratis</option>
+                </select>
+              </div>
+              <div class="adm-field">
+                <label class="adm-label">Valor</label>
+                <input class="adm-input" id="f-value" type="number" min="0" placeholder="ej. 15">
+              </div>
+              <div class="adm-field">
+                <label class="adm-label">Descripción</label>
+                <input class="adm-input" id="f-label" placeholder="ej. 15% off en verano">
+              </div>
+              <div class="adm-field">
+                <label class="adm-label">Categoría aplicable</label>
+                <select class="adm-input adm-select" id="f-cat">
+                  <option value="">Todos los productos</option>
+                </select>
+              </div>
+              <div class="adm-field">
+                <label class="adm-label">Descuento máximo (ARS)</label>
+                <input class="adm-input" id="f-maxdesc" type="number" min="0" placeholder="Sin límite">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-primary btn-sm" id="btn-create" onclick="saveCoupon()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Guardar cupón
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelCouponForm()" style="display:none" id="btn-cancel-edit">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="adm-table-wrap" style="max-height:280px;overflow-y:auto">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Tipo</th>
+                <th>Valor</th>
+                <th>Categoría</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="coupon-tbody">
+              <tr><td colspan="6"><div class="adm-empty" style="padding:24px"><span class="spinner"></span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÓRDENES RECIENTES + ALERTAS -->
+    <div class="adm-grid-2" style="margin-bottom:16px">
+
+      <!-- Órdenes recientes -->
+      <div class="adm-card">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            Órdenes recientes
+          </div>
+          <div class="adm-card-actions">
+            <a href="/tienda-ordenes.html" class="btn btn-ghost btn-sm">Ver todas →</a>
+          </div>
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Productos</th>
+                <th class="right">Total</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="recent-orders-tbody">
+              <tr><td colspan="4"><div class="adm-empty" style="padding:24px"><span class="spinner"></span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Alertas de tienda -->
+      <div class="adm-card">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Alertas
+          </div>
+          <div class="adm-card-actions">
+            <button class="btn btn-ghost btn-sm" onclick="loadAlerts()" title="Refrescar">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="alerts-body" style="padding:0 18px 14px">
+          <div class="adm-empty" style="padding:24px"><span class="spinner"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISTRIBUCIÓN POR CATEGORÍA -->
+    <div class="adm-card" style="margin-bottom:16px">
+      <div class="adm-card-head">
+        <div class="adm-card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          Productos por categoría
+        </div>
+        <div class="adm-card-actions">
+          <a href="/tienda-categorias.html" class="btn btn-ghost btn-sm">Gestionar →</a>
+        </div>
+      </div>
+      <div class="adm-card-body" id="cat-dist-body">
+        <div class="adm-empty" style="padding:16px"><span class="spinner"></span></div>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /adm-main -->
+</div><!-- /adm-wrap -->
+
+<!-- OVERLAY -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+/* ── helpers ────────────────────────────────────────────── */
+const fmtARS = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+const esc    = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let _toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+/* ── theme toggle ────────────────────────────────────────── */
+document.getElementById('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch(e) {}
+});
+
+/* ── sidebar mobile ─────────────────────────────────────── */
+document.getElementById('btn-hamburger').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+});
+document.getElementById('sidebar-overlay').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+});
+
+/* ── badge types ────────────────────────────────────────── */
+const TYPE_LABEL = { percent: '% desc.', fixed: '$ fijo', freeship: 'Envío gratis' };
+const TYPE_CLASS = { percent: 'badge-yellow', fixed: 'badge-blue', freeship: 'badge-green' };
+
+// DB usa enums en inglés; también cubre alias en español que pudiera devolver getOrdenesStats
+const ORDER_STATUS_LABEL = {
+  pending:'Pendiente', pending_payment:'Pend. pago', paid:'Pagado',
+  preparing:'Preparando', shipped:'Enviado', delivered:'Entregado',
+  completed:'Completado', cancelled:'Cancelado', refunded:'Reembolsado', on_hold:'En espera',
+  // aliases español (por si algún endpoint los traduce)
+  pendiente:'Pendiente', confirmado:'Confirmado', enviado:'Enviado', entregado:'Entregado', cancelado:'Cancelado',
+};
+const ORDER_STATUS_CLASS = {
+  pending:'badge-yellow', pending_payment:'badge-yellow', paid:'badge-blue',
+  preparing:'badge-blue', shipped:'badge-blue', delivered:'badge-green',
+  completed:'badge-green', cancelled:'badge-gray', refunded:'badge-gray', on_hold:'badge-yellow',
+  pendiente:'badge-yellow', confirmado:'badge-blue', enviado:'badge-blue', entregado:'badge-green', cancelado:'badge-gray',
+};
+
+/* ═══════════════ CUPONES ═══════════════════════════════════ */
+function renderCoupons(list) {
+  const tbody = document.getElementById('coupon-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="adm-empty" style="padding:20px">No hay cupones</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(c => {
+    const valorTxt = c.type === 'freeship' ? '—' : c.type === 'percent' ? c.value + '%' : fmtARS(c.value);
+    const maxTxt   = c.max_descuento > 0 ? `<div style="font-size:10px;color:var(--text-3);margin-top:2px">máx ${fmtARS(c.max_descuento)}</div>` : '';
+    const catTxt   = c.categoria ? `<span class="badge badge-blue" style="font-size:10px">${esc(c.categoria)}</span>` : '<span style="color:var(--text-3);font-size:11px">Todos</span>';
+    return `
+    <tr>
+      <td class="code-cell">${esc(c.code)}</td>
+      <td><span class="badge ${TYPE_CLASS[c.type] || 'badge-gray'}">${TYPE_LABEL[c.type] || c.type}</span></td>
+      <td class="mono">${valorTxt}${maxTxt}</td>
+      <td>${catTxt}</td>
+      <td><span class="badge ${c.active !== false ? 'badge-green' : 'badge-gray'}">${c.active !== false ? 'Activo' : 'Inactivo'}</span></td>
+      <td style="white-space:nowrap">
+        <div class="btn-group">
+          <button class="btn btn-ghost btn-sm" onclick="editCoupon(${JSON.stringify(c)})">Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleCoupon('${esc(c.code)}', ${c.active !== false})">${c.active !== false ? 'Pausar' : 'Activar'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCoupon('${esc(c.code)}', this)">Eliminar</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════ STATS + KPIs ══════════════════════════════ */
+async function loadStats() {
+  try {
+    const [statsRes, prodRes, cupRes] = await Promise.all([
+      fetch('/api/tienda/admin/stats',   { credentials: 'include' }),
+      fetch('/api/tienda/productos?limit=1', { credentials: 'include' }),  // solo necesitamos `total`
+      fetch('/api/tienda/admin/cupones', { credentials: 'include' }),
+    ]);
+
+    if (statsRes.ok) {
+      const d = await statsRes.json();
+      const ordTotal  = d.ordenes?.total    ?? 0;
+      const ordMes    = d.ordenes?.este_mes  ?? 0;
+      const ordHoy    = d.ordenes?.hoy       ?? 0;
+      const pendientes = d.ordenes?.pendientes ?? 0;
+      const ingTotal  = d.ingresos?.total    || 0;
+      const ingMes    = d.ingresos?.este_mes  || 0;
+
+      document.getElementById('s-ordenes').textContent = ordTotal || '—';
+      document.getElementById('s-mes').textContent     = ordMes   || '—';
+      document.getElementById('s-ingresos').textContent = fmtARS(ingTotal);
+      document.getElementById('s-ingresos-mes').textContent = ingMes ? 'Este mes: ' + fmtARS(ingMes) : '';
+
+      // AOV — ticket promedio
+      if (ordTotal > 0 && ingTotal > 0) {
+        document.getElementById('s-aov').textContent = fmtARS(ingTotal / ordTotal);
+        if (ordMes > 0 && ingMes > 0) {
+          const aovMes = Math.round(ingMes / ordMes);
+          const aovGlobal = Math.round(ingTotal / ordTotal);
+          const diff = aovMes - aovGlobal;
+          const pct = Math.round(Math.abs(diff) / aovGlobal * 100);
+          document.getElementById('s-aov-delta').textContent =
+            diff >= 0 ? `↑ ${pct}% vs. promedio` : `↓ ${pct}% vs. promedio`;
+          document.getElementById('s-aov-delta').style.color =
+            diff >= 0 ? 'var(--green)' : 'var(--red)';
+        }
+      }
+
+      // Pendientes como delta bajo "Órdenes totales"
+      if (pendientes > 0) {
+        const pd = document.getElementById('s-pendientes-delta');
+        pd.textContent = pendientes + ' pendiente' + (pendientes !== 1 ? 's' : '');
+        pd.style.color = 'var(--yellow, #f59e0b)';
+      }
+      // Hoy como delta bajo "Órdenes este mes"
+      if (ordHoy > 0) {
+        document.getElementById('s-hoy-delta').textContent = ordHoy + ' hoy';
+      }
+
+      // Badge nav
+      const navBadge = document.getElementById('nav-ord-badge');
+      if (pendientes > 0) { navBadge.textContent = pendientes; navBadge.style.display = ''; }
+      else { navBadge.style.display = 'none'; }
+
+      // Top productos
+      const tops  = d.top_productos || [];
+      const tbody = document.getElementById('top-tbody');
+      if (!tops.length) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="adm-empty" style="padding:24px">Sin órdenes aún</div></td></tr>';
+      } else {
+        tbody.innerHTML = tops.map((p, i) => `
+          <tr>
+            <td class="muted">${i + 1}</td>
+            <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.title)}">${esc(p.title)}</td>
+            <td class="right mono">${p.qty}</td>
+            <td class="right mono">${fmtARS(p.ingresos)}</td>
+          </tr>`).join('');
+      }
+
+      // Órdenes recientes
+      renderRecentOrders(d.ordenes_recientes || []);
+    }
+
+    if (prodRes.ok) {
+      const d = await prodRes.json();
+      document.getElementById('s-productos').textContent = d.total ?? '—';
+    }
+
+    if (cupRes.ok) {
+      const list = await cupRes.json();
+      document.getElementById('s-cupones').textContent = list.filter(c => c.active !== false).length;
+      renderCoupons(list);
+    }
+  } catch(e) { console.error('loadStats:', e); }
+}
+
+/* ═══════════════ ÓRDENES RECIENTES ════════════════════════ */
+function renderRecentOrders(orders) {
+  const tbody = document.getElementById('recent-orders-tbody');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="adm-empty" style="padding:24px">Sin órdenes aún</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.slice(0, 8).map(o => {
+    const estado  = o.estado || 'pendiente';
+    const cliente = o.nombre_cliente || o.email || 'Anónimo';
+    const items   = o.items?.length
+      ? o.items.map(i => esc(i.title || i.nombre || '')).filter(Boolean).join(', ')
+      : '—';
+    return `
+    <tr style="cursor:pointer" onclick="window.location='/tienda-ordenes.html'">
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(cliente)}">${esc(cliente)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-3)" title="${esc(items)}">${esc(items)}</td>
+      <td class="right mono">${o.total ? fmtARS(o.total) : '—'}</td>
+      <td><span class="badge ${ORDER_STATUS_CLASS[estado] || 'badge-gray'}">${ORDER_STATUS_LABEL[estado] || estado}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════ ALERTAS ═══════════════════════════════════ */
+async function loadAlerts() {
+  const body = document.getElementById('alerts-body');
+  body.innerHTML = '<div class="adm-empty" style="padding:16px"><span class="spinner"></span></div>';
+  try {
+    const resp = await fetch('/api/tienda/admin/productos-propios?limit=200', { credentials: 'include' });
+    if (!resp.ok) throw new Error('Error al cargar productos');
+    const data = await resp.json();
+    const prods = data.productos || [];
+
+    const alerts = [];
+
+    // Sin stock total
+    const sinStock = prods.filter(p => {
+      if (p.variantes?.length) return p.variantes.every(v => !v.stock);
+      return p.stock === 0 || p.stock == null;
+    });
+    if (sinStock.length) alerts.push({
+      level: 'red',
+      title: `${sinStock.length} producto${sinStock.length !== 1 ? 's' : ''} sin stock`,
+      sub: sinStock.slice(0,3).map(p => p.titulo).join(', ') + (sinStock.length > 3 ? ` y ${sinStock.length-3} más` : ''),
+      href: '/tienda-productos-propios.html',
+      action: 'Ver productos',
+    });
+
+    // Stock bajo (al menos una variante con stock = 1)
+    const stockBajo = prods.filter(p => {
+      if (sinStock.find(s => s.id === p.id)) return false; // ya está en sin-stock
+      if (p.variantes?.length) return p.variantes.some(v => v.stock === 1);
+      return p.stock === 1;
+    });
+    if (stockBajo.length) alerts.push({
+      level: 'yellow',
+      title: `${stockBajo.length} producto${stockBajo.length !== 1 ? 's' : ''} con stock bajo (1 unidad)`,
+      sub: stockBajo.slice(0,3).map(p => p.titulo).join(', ') + (stockBajo.length > 3 ? ` y ${stockBajo.length-3} más` : ''),
+      href: '/tienda-productos-propios.html',
+      action: 'Revisar',
+    });
+
+    // Sin imagen
+    const sinImagen = prods.filter(p => !p.imagen_portada_url && p.activo);
+    if (sinImagen.length) alerts.push({
+      level: 'yellow',
+      title: `${sinImagen.length} producto${sinImagen.length !== 1 ? 's activos' : ' activo'} sin imagen`,
+      sub: sinImagen.slice(0,3).map(p => p.titulo).join(', ') + (sinImagen.length > 3 ? ` y ${sinImagen.length-3} más` : ''),
+      href: '/tienda-productos-propios.html',
+      action: 'Agregar imágenes',
+    });
+
+    // Sin variantes (si otros tienen variantes, es inconsistente)
+    const conVariantes = prods.filter(p => p.variantes?.length > 0).length;
+    if (conVariantes > 0) {
+      const sinVariantes = prods.filter(p => p.activo && (!p.variantes || p.variantes.length === 0));
+      if (sinVariantes.length) alerts.push({
+        level: 'blue',
+        title: `${sinVariantes.length} producto${sinVariantes.length !== 1 ? 's activos' : ' activo'} sin variantes`,
+        sub: 'Otros productos ya tienen variantes configuradas.',
+        href: '/tienda-productos-propios.html',
+        action: 'Revisar',
+      });
+    }
+
+    if (!alerts.length) {
+      body.innerHTML = `<div class="alerts-ok">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Todo en orden — no hay alertas.
+      </div>`;
+      return;
+    }
+
+    body.innerHTML = alerts.map(a => `
+      <div class="alert-item">
+        <div class="alert-dot ${a.level}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="alert-title">${esc(a.title)}</div>
+          <div class="alert-sub">${esc(a.sub)}</div>
+        </div>
+        <a href="${a.href}" class="btn btn-ghost btn-sm alert-action">${esc(a.action)}</a>
+      </div>`).join('');
+
+  } catch(e) {
+    body.innerHTML = `<div class="adm-empty" style="padding:16px;color:var(--red)">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+/* ═══════════════ CATEGORÍAS DISTRIBUCIÓN ══════════════════ */
+async function loadCatDist() {
+  const body = document.getElementById('cat-dist-body');
+  try {
+    const resp = await fetch('/api/tienda/admin/categorias');
+    const data = await resp.json();
+    const cats = (data.categorias || []).filter(c => c.activa && c.productos_total > 0);
+    if (!cats.length) {
+      body.innerHTML = '<div class="adm-empty" style="padding:16px">Sin productos asignados a categorías.</div>';
+      return;
+    }
+    const max = Math.max(...cats.map(c => c.productos_total));
+    // Bar colors cycling
+    const barColors = ['var(--blue)','#8b5cf6','var(--green)','#f59e0b','var(--red)','#06b6d4'];
+    body.innerHTML = cats.map((c, i) => {
+      const pct = max > 0 ? Math.round((c.productos_total / max) * 100) : 0;
+      return `
+      <div class="cat-bar-row">
+        <div class="cat-bar-name" title="${esc(c.label)}">${esc(c.emoji || '')} ${esc(c.label)}</div>
+        <div class="cat-bar-track">
+          <div class="cat-bar-fill" style="width:${pct}%;background:${barColors[i % barColors.length]}"></div>
+        </div>
+        <div class="cat-bar-count">${c.productos_total}</div>
+        ${c.productos_activos < c.productos_total
+          ? `<div style="font-size:11px;color:var(--text-3);margin-left:4px;">(${c.productos_activos} activos)</div>`
+          : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    body.innerHTML = `<div class="adm-empty" style="padding:16px;color:var(--red)">Error al cargar</div>`;
+  }
+}
+
+/* ═══════════════ CREAR CUPÓN ═══════════════════════════════ */
+async function loadCategoriesForCouponForm() {
+  try {
+    const res  = await fetch('/api/tienda/admin/categorias', { credentials: 'include' });
+    const data = await res.json();
+    const cats = data.categorias || [];
+    const sel  = document.getElementById('f-cat');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Todos los productos</option>' +
+      cats.map(c => `<option value="${esc(c.slug)}">${esc(c.label)}</option>`).join('');
+  } catch { /* silencioso — queda "Todos los productos" */ }
+}
+
+/* ── Editar cupón existente: pobla el formulario ──────────── */
+function editCoupon(c) {
+  document.getElementById('f-edit-code').value  = c.code;
+  document.getElementById('f-code').value        = c.code;
+  document.getElementById('f-code').readOnly     = true;
+  document.getElementById('f-code').style.opacity = '0.6';
+  document.getElementById('f-type').value        = c.type  || 'percent';
+  document.getElementById('f-value').value       = c.value != null ? c.value : '';
+  document.getElementById('f-label').value       = c.label || '';
+  document.getElementById('f-cat').value         = c.categoria || '';
+  document.getElementById('f-maxdesc').value     = c.max_descuento > 0 ? c.max_descuento : '';
+  document.getElementById('coupon-form-title').textContent = 'Editar cupón: ' + c.code;
+  document.getElementById('btn-cancel-edit').style.display = '';
+  document.getElementById('coupon-form-wrap').classList.remove('hidden');
+  document.getElementById('coupon-form-wrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelCouponForm() {
+  document.getElementById('f-edit-code').value    = '';
+  document.getElementById('f-code').readOnly       = false;
+  document.getElementById('f-code').style.opacity  = '';
+  ['f-code','f-value','f-label','f-maxdesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-cat').value           = '';
+  document.getElementById('f-type').value          = 'percent';
+  document.getElementById('coupon-form-title').textContent = 'Nuevo cupón';
+  document.getElementById('btn-cancel-edit').style.display = 'none';
+  document.getElementById('coupon-form-wrap').classList.add('hidden');
+}
+
+function openNewCouponForm() {
+  const wrap = document.getElementById('coupon-form-wrap');
+  const isEditMode = !!document.getElementById('f-edit-code').value;
+  // Si está oculto → mostrar en modo crear
+  // Si está visible en modo editar → resetear a modo crear y mantener visible
+  // Si está visible en modo crear → cerrar (toggle)
+  if (wrap.classList.contains('hidden')) {
+    cancelCouponForm();
+    wrap.classList.remove('hidden');
+  } else if (isEditMode) {
+    cancelCouponForm();
+    wrap.classList.remove('hidden');
+  } else {
+    cancelCouponForm(); // ya oculta
+  }
+}
+
+async function saveCoupon() {
+  const editCode   = document.getElementById('f-edit-code').value.trim();
+  const code       = document.getElementById('f-code').value.trim().toUpperCase();
+  const type       = document.getElementById('f-type').value;
+  const value      = parseFloat(document.getElementById('f-value').value) || 0;
+  const label      = document.getElementById('f-label').value.trim();
+  const categoria  = document.getElementById('f-cat').value || null;
+  const maxDesc    = parseFloat(document.getElementById('f-maxdesc').value) || 0;
+  if (!code) { toast('El código es obligatorio', 'err'); return; }
+
+  const btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner spinner-sm"></span> Guardando…';
+
+  try {
+    let res, d;
+    if (editCode) {
+      // MODO EDITAR — PATCH
+      res = await fetch('/api/tienda/admin/cupones/' + encodeURIComponent(editCode), {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, value, label, categoria, max_descuento: maxDesc }),
+      });
+      d = await res.json();
+      if (!res.ok) { toast(d.error || 'Error al actualizar', 'err'); return; }
+      toast('Cupón ' + editCode + ' actualizado ✓');
+    } else {
+      // MODO CREAR — POST
+      res = await fetch('/api/tienda/admin/cupones', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, type, value, label, active: true, categoria, max_descuento: maxDesc }),
+      });
+      d = await res.json();
+      if (!res.ok) { toast(d.error || 'Error al crear', 'err'); return; }
+      toast('Cupón ' + code + ' creado ✓');
+    }
+    cancelCouponForm();
+    renderCoupons(d.cupones);
+    document.getElementById('s-cupones').textContent = d.cupones.filter(c => c.active !== false).length;
+  } catch { toast('Error de red', 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Guardar cupón';
+  }
+}
+
+/* ═══════════════ TOGGLE / ELIMINAR CUPÓN ═══════════════════ */
+async function toggleCoupon(code, active) {
+  try {
+    const res = await fetch('/api/tienda/admin/cupones/' + encodeURIComponent(code), {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !active }),
+    });
+    const d = await res.json();
+    if (!res.ok) { toast(d.error || 'Error', 'err'); return; }
+    renderCoupons(d.cupones);
+    document.getElementById('s-cupones').textContent = d.cupones.filter(c => c.active !== false).length;
+    toast(code + (active ? ' pausado' : ' activado'));
+  } catch { toast('Error de red', 'err'); }
+}
+
+// BUG FIX: inline 2-click confirm en lugar de confirm() nativo
+async function deleteCoupon(code, btn) {
+  if (!btn._confirming) {
+    btn._confirming = true;
+    btn.textContent  = '¿Confirmar?';
+    btn.classList.replace('btn-danger', 'btn-primary');
+    btn._timer = setTimeout(() => {
+      btn._confirming = false;
+      btn.textContent = 'Eliminar';
+      btn.classList.replace('btn-primary', 'btn-danger');
+    }, 2500);
+    return;
+  }
+  clearTimeout(btn._timer);
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const res = await fetch('/api/tienda/admin/cupones/' + encodeURIComponent(code), { method: 'DELETE', credentials: 'include' });
+    const d   = await res.json();
+    if (!res.ok) { toast(d.error || 'Error', 'err'); return; }
+    renderCoupons(d.cupones);
+    document.getElementById('s-cupones').textContent = d.cupones.filter(c => c.active !== false).length;
+    toast('Cupón eliminado');  // BUG FIX: era 'err' (rojo), ahora es neutro
+  } catch { toast('Error de red', 'err'); }
+}
+
+/* ── input uppercase ──────────────────────────────────────── */
+document.getElementById('f-code').addEventListener('input', function() { this.value = this.value.toUpperCase(); });
+['f-code','f-type','f-value','f-label','f-cat','f-maxdesc'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') createCoupon(); });
+});
+loadCategoriesForCouponForm();
+
+/* ── init + auto-refresh ─────────────────────────────────── */
+loadStats();
+loadAlerts();
+loadCatDist();
+// Refrescar KPIs y alertas cada 90 segundos sin recargar cupones (costoso)
+setInterval(loadStats, 90_000);
+setInterval(loadAlerts, 90_000);
+</script>
+</body>
+</html>

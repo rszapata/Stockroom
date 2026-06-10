@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Verificar Logística — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Upload zone ─────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--border-2);
+  border-radius: var(--r-lg);
+  padding: 36px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  background: var(--bg-card);
+}
+.upload-zone:hover, .upload-zone.drag {
+  border-color: var(--blue);
+  background: var(--blue-light);
+}
+.upload-zone input { display: none; }
+.uz-icon { font-size: 36px; margin-bottom: 10px; }
+.uz-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.uz-sub { font-size: 13px; color: var(--text-3); }
+.uz-file { font-size: 13px; color: var(--green); margin-top: 8px; font-weight: 500; }
+
+/* ── Resumen del PDF cargado ─────────────────────────── */
+.pdf-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.pdf-summary-meta {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  font-size: 13px; color: var(--text-3);
+}
+.pdf-summary-meta strong { color: var(--text); }
+.pdf-totals {
+  display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+}
+.pdf-tot-item {
+  display: flex; flex-direction: column; gap: 1px;
+}
+.pdf-tot-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); font-weight: 600; }
+.pdf-tot-value { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--font-mono); }
+.pdf-tot-value.yellow { color: #c9a800; }
+
+/* ── Tabs ────────────────────────────────────────────── */
+.v-tabs { display: flex; gap: 2px; padding: 3px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--r-lg); width: fit-content;
+}
+.v-tab {
+  padding: 7px 14px; border-radius: var(--r-sm); border: none;
+  background: transparent; color: var(--text-3); font-size: 13px;
+  font-weight: 500; cursor: pointer; transition: all .12s;
+}
+.v-tab.active { background: var(--bg); color: var(--text); box-shadow: var(--shadow-sm); }
+.v-tab:hover:not(.active) { color: var(--text-2); }
+
+/* ── Tabla resultados ────────────────────────────────── */
+.tbl-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.tbl-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl-wrap th {
+  background: var(--bg);
+  color: var(--text-3);
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600;
+  padding: 10px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tbl-wrap td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tbl-wrap tr:last-child td { border-bottom: none; }
+.tbl-wrap tr:hover td { background: var(--bg); }
+
+/* ── Status badges ───────────────────────────────────── */
+.v-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 100px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.v-badge.ok    { background: var(--green-light); color: var(--green); }
+.v-badge.warn  { background: var(--yellow-light, #fff7d6); color: #c9a800; }
+.v-badge.err   { background: var(--red-light); color: var(--red); }
+.v-badge.grey  { background: var(--bg); color: var(--text-3); border: 1px solid var(--border); }
+.v-badge.blue  { background: var(--blue-light); color: var(--blue); }
+
+.mono { font-family: var(--font-mono); font-size: 12px; }
+.dim  { color: var(--text-3); }
+.addr-pdf { font-size: 12px; color: var(--text); }
+.addr-api { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+.ml-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--text-3); text-decoration: none;
+  font-size: 11px; font-weight: 500;
+  padding: 3px 8px; border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  transition: all .12s;
+}
+.ml-link:hover {
+  color: #ffe600; background: #1d1d1d;
+  border-color: #1d1d1d;
+}
+
+/* ── Status bar (action area) ────────────────────────── */
+.v-status { font-size: 13px; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+.spinner-sm { display: inline-block; width: 13px; height: 13px;
+  border: 2px solid var(--border-2); border-top-color: var(--blue);
+  border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PDFs guardados ──────────────────────────────────── */
+.saved-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 14px 18px;
+}
+.saved-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; gap: 12px;
+}
+.saved-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.saved-list { display: flex; flex-direction: column; gap: 8px; }
+.saved-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r); transition: border-color .12s;
+}
+.saved-row:hover { border-color: var(--border-2); }
+.saved-info { flex: 1; min-width: 0; }
+.saved-info-name { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-info-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+.saved-info-meta strong { color: var(--text-2); font-weight: 500; }
+.saved-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.saved-empty { font-size: 13px; color: var(--text-3); text-align: center; padding: 18px; }
+
+/* ── Debug panel ─────────────────────────────────────── */
+.debug-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px 16px; }
+.debug-panel summary { cursor: pointer; font-size: 13px; color: var(--text-3); user-select: none; padding: 4px 0; }
+.debug-panel summary:hover { color: var(--text); }
+.debug-content {
+  margin-top: 10px; padding: 12px;
+  background: var(--bg); border-radius: var(--r-sm);
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-2);
+  white-space: pre-wrap; overflow-x: auto;
+  max-height: 400px; overflow-y: auto;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+  <a href="/" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
+      </svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Stockroom</div>
+      <div class="adm-logo-tag">Panel Admin</div>
+    </div>
+  </a>
+
+  <nav class="adm-nav">
+    <div class="adm-group">
+      <div class="adm-group-label">Ventas</div>
+      <a href="/" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="/analytics.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Analytics</span>
+      </a>
+      <a href="/despachos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Despachos</span>
+      </a>
+      <a href="/cobros.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        <span>Cobros</span>
+      </a>
+      <a href="/verificar-envios.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>
+        <span>Verificar Logística</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/publicaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Publicaciones</span>
+      </a>
+      <a href="/vinculaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <span>Vinculaciones</span>
+      </a>
+      <a href="/migracion.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+        <span>Migración</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/preguntas.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Preguntas</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Tienda</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Admin Tienda</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <div class="adm-sidebar-foot">
+    <a href="/oauth/start" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <span>Conectar cuenta</span>
+    </a>
+    <a href="/logout" class="adm-item" style="color:var(--red)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Cerrar sesión</span>
+    </a>
+  </div>
+
+  <div class="foot-info" id="foot-clock">—</div>
+</aside>
+
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
+
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Verificar Logística</div>
+        <div class="adm-page-sub">
+          <span id="h-subtitle">Cruzá los resúmenes de logística con la API de ML</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+
+      <div class="adm-acct" id="acct-wrap">
+        <button class="adm-acct-btn" id="acc-btn">
+          <div class="adm-avatar" id="acc-initial">?</div>
+          <span class="adm-acct-name" id="acc-label">Cuenta</span>
+          <svg class="adm-acct-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="adm-dropdown hidden" id="acc-panel">
+          <div class="adm-dropdown-head">Cuenta activa</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)" id="acc-active">—</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px" id="acc-active-id">—</div>
+          </div>
+          <div id="acc-list"></div>
+          <div class="adm-dropdown-foot">
+            <a href="/oauth/start" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">+ Nueva cuenta</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <!-- Upload zone (visible al inicio) -->
+    <div class="upload-zone" id="upload-zone" onclick="$I('file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="onDrop(event)" style="margin-bottom:16px">
+      <input type="file" id="file-input" accept=".pdf" onchange="onFileChange(this.files[0])">
+      <div class="uz-icon">📄</div>
+      <div class="uz-title">Cargar resumen de logística</div>
+      <div class="uz-sub">Arrastrá un PDF (SINERGIA u otra empresa) o hacé clic para seleccionarlo</div>
+      <div class="uz-file" id="uz-file-name"></div>
+    </div>
+
+    <!-- Resúmenes guardados -->
+    <div class="saved-card" id="saved-card" style="margin-bottom:16px;display:none">
+      <div class="saved-head">
+        <div class="saved-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Resúmenes guardados
+          <span id="saved-count" class="dim" style="font-weight:400">(0)</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadSavedList()" title="Refrescar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        </button>
+      </div>
+      <div class="saved-list" id="saved-list"></div>
+    </div>
+
+    <!-- Resumen del PDF -->
+    <div class="pdf-summary" id="pdf-summary" style="display:none; margin-bottom:16px">
+      <div class="pdf-summary-meta" id="pdf-meta"></div>
+      <div class="pdf-totals" id="pdf-totals"></div>
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar" style="margin-bottom:16px;display:none" id="action-bar">
+      <div class="action-bar-left">
+        <span class="v-status" id="status"></span>
+      </div>
+      <div class="action-bar-right btn-group">
+        <button class="btn btn-ghost" id="btn-reset" onclick="resetPage()">↺ Otro PDF</button>
+        <button class="btn btn-secondary" id="btn-save" onclick="guardarPdf()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar PDF
+        </button>
+        <button class="btn btn-primary" id="btn-verify" onclick="verificar()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="8"/></svg>
+          Verificar con ML API
+        </button>
+      </div>
+    </div>
+
+    <!-- Debug panel (colapsable) -->
+    <div id="debug-panel" style="display:none; margin-bottom:16px">
+      <details class="debug-panel">
+        <summary>🔧 Debug del parser PDF</summary>
+        <div class="debug-content" id="debug-content"></div>
+      </details>
+    </div>
+
+    <!-- Resultados -->
+    <div id="results-section" style="display:none">
+      <div class="v-tabs" style="margin-bottom:14px">
+        <button class="v-tab active" id="tab-all"  onclick="showTab('all',this)">Todos</button>
+        <button class="v-tab"        id="tab-ok"   onclick="showTab('ok',this)">✓ OK</button>
+        <button class="v-tab"        id="tab-warn" onclick="showTab('warn',this)">⚠ Atención</button>
+        <button class="v-tab"        id="tab-err"  onclick="showTab('err',this)">✗ Problemas</button>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Tracking ID</th>
+              <th>Fecha</th>
+              <th>Estado ML</th>
+              <th>Logística</th>
+              <th>Dirección</th>
+              <th>Valor</th>
+              <th>Resultado</th>
+              <th>Cuenta</th>
+              <th>Venta</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- OVERLAY sidebar mobile -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+</div>
+
+<script>
+const $I = id => document.getElementById(id);
+const esc = s => String(s||'').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+/* ════════════════════════ Shell (clock, hamburger, theme, accounts) ═════════════════════ */
+(function clock(){
+  const el = $I('foot-clock');
+  if(!el) return;
+  const tick = () => { el.textContent = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
+  tick(); setInterval(tick, 1000);
+})();
+(function hamburger(){
+  const btn=$I('btn-hamburger'), sb=$I('sidebar'), ov=$I('sidebar-overlay');
+  if(!btn||!sb) return;
+  btn.addEventListener('click', () => { sb.classList.toggle('open'); if(ov) ov.classList.toggle('open'); });
+  if(ov) ov.addEventListener('click', () => { sb.classList.remove('open'); ov.classList.remove('open'); });
+})();
+(function theme(){
+  const btn=$I('btn-theme'); if(!btn) return;
+  const apply = t => { document.documentElement.setAttribute('data-theme',t); try{localStorage.setItem('adminTheme',t)}catch(e){} };
+  btn.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme')||'light';
+    apply(cur === 'dark' ? 'light' : 'dark');
+  });
+})();
+async function loadAccounts(){
+  try {
+    const r = await fetch('/accounts');
+    const d = await r.json();
+    const list = Array.isArray(d) ? d : (d.accounts||[]);
+    const active = list.find(a => a.active) || list[0];
+    if (active) {
+      const init=$I('acc-initial'), lbl=$I('acc-label'), act=$I('acc-active'), actId=$I('acc-active-id');
+      if (init)  init.textContent  = (active.label||'?').charAt(0).toUpperCase();
+      if (lbl)   lbl.textContent   = active.label || active.accountId || 'Cuenta';
+      if (act)   act.textContent   = active.label || active.accountId || '—';
+      if (actId) actId.textContent = active.accountId || '—';
+    }
+    const panel = $I('acc-list');
+    if (panel) panel.innerHTML = list.map(a => `
+      <button onclick="switchAcct('${esc(a.accountId)}')" class="adm-dropdown-item${a.active ? ' active' : ''}">
+        <div class="adm-avatar" style="width:26px;height:26px;font-size:11px">${(a.label||'?').charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.label||a.accountId)}</div>
+          <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.accountId)}</div>
+        </div>
+        ${a.active ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </button>`).join('');
+  } catch(e) { console.warn('accounts:', e); }
+}
+async function switchAcct(id){
+  try { await fetch('/switch-account', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ accountId:id }) }); location.reload(); } catch(e){}
+}
+(function(){
+  const btn = $I('acc-btn'), panel = $I('acc-panel');
+  if (btn && panel) {
+    btn.addEventListener('click', e => { e.stopPropagation(); panel.classList.toggle('hidden'); });
+    document.addEventListener('click', () => { if (panel) panel.classList.add('hidden'); });
+  }
+})();
+loadAccounts();
+
+/* ════════════════════════ Página: Verificar Logística ═════════════════════ */
+let pdfData = [];      // filas parseadas del PDF
+let verifiedData = []; // PDF + ML API
+let currentTab = 'all';
+let lastFile = null;          // archivo en memoria (para guardar)
+let lastFileBytes = null;     // bytes del PDF en memoria
+let lastParsed = null;        // metadata parseada
+let currentLoadedSavedId = null; // si se cargó desde "guardados"
+
+function setStatus(msg, spin=false) {
+  $I('status').innerHTML = (spin ? '<span class="spinner-sm"></span> ' : '') + (msg || '');
+}
+
+function showDebug(dbg, fileSize) {
+  if (!dbg) return;
+  $I('debug-panel').style.display = '';
+  const dicts = (dbg.streamDicts || []).map((s, i) => `  Stream ${i+1}: ${s || '(sin dict)'}`).join('\n');
+  const betweens = (dbg.sampleBetweens || []).map(b =>
+    `${b.tracking}\n  Joined: ${b.between}\n  Array: [${(b.betweenArr || []).map(s => `"${s}"`).join(', ')}]`
+  ).join('\n\n');
+  $I('debug-content').textContent = [
+    `📦 Tamaño PDF: ${(fileSize/1024).toFixed(1)} KB`,
+    `🗂  Buffer recibido: ${dbg.bufferSize} bytes — válido: ${dbg.bufferOk ? '✅' : '❌'}`,
+    `📝 Header PDF: "${dbg.pdfHeader || ''}"`,
+    `🔍 Streams encontrados: ${dbg.streamsFound}`,
+    `🖼  Streams imagen saltados: ${dbg.streamsSkippedImage}`,
+    `✅ Descomprimidos: ${dbg.streamsDecompressOk}`,
+    `⚠️ Falla descompresión: ${dbg.streamsDecompressFail}`,
+    `📄 Streams con texto: ${dbg.streamsWithText}`,
+    `🔤 Strings extraídos: ${dbg.stringCount}`,
+    '',
+    '── Diccionarios ──',
+    dicts || '(ninguno)',
+    '',
+    '── Muestra del primer stream ──',
+    dbg.rawSample || '(vacío)',
+    '',
+    '── Strings entre cada tracking ID ──',
+    betweens || '(ninguno)',
+    '',
+    '── Primeros strings ──',
+    (dbg.first200strings || []).slice(0, 80).map((s,i) => `[${i}] ${s}`).join('\n') || '(ninguno)',
+  ].join('\n');
+}
+
+function renderPdfSummary(meta) {
+  $I('pdf-summary').style.display = 'flex';
+  const m = $I('pdf-meta');
+  m.innerHTML = [
+    meta.cliente ? `<span><strong>Cliente:</strong> ${esc(meta.cliente)}</span>` : '',
+    meta.periodo ? `<span><strong>Período:</strong> ${esc(meta.periodo.desde)} al ${esc(meta.periodo.hasta)}</span>` : '',
+  ].filter(Boolean).join('');
+  renderTotals();
+}
+
+function renderTotals() {
+  const totalPdf = pdfData.reduce((s, r) => s + (r.valor || 0), 0);
+  const byAccount = {};
+  if (verifiedData.length) {
+    verifiedData.forEach(r => {
+      const cuenta = r.api?.cuenta || (r.api?.found === false ? 'Externo / no ML' : '—');
+      byAccount[cuenta] = (byAccount[cuenta] || 0) + (r.valor || 0);
+    });
+  }
+  const items = [
+    { label:'Entregas',    value: `${pdfData.length}`, },
+    { label:'Total',       value: `$${totalPdf.toLocaleString('es-AR')}`, yellow: true },
+  ];
+  for (const [cuenta, val] of Object.entries(byAccount)) {
+    items.push({ label: cuenta, value: `$${val.toLocaleString('es-AR')}` });
+  }
+  $I('pdf-totals').innerHTML = items.map(i => `
+    <div class="pdf-tot-item">
+      <div class="pdf-tot-label">${esc(i.label)}</div>
+      <div class="pdf-tot-value${i.yellow ? ' yellow' : ''}">${esc(i.value)}</div>
+    </div>`).join('');
+}
+
+/* ── Upload + parse ──────────────────────────────────── */
+function onDrop(e) {
+  e.preventDefault();
+  $I('upload-zone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') onFileChange(f);
+}
+
+async function onFileChange(file) {
+  if (!file) return;
+  $I('uz-file-name').textContent = '⏳ Procesando ' + file.name + '…';
+  setStatus('Extrayendo datos del PDF…', true);
+  $I('debug-panel').style.display = 'none';
+  $I('action-bar').style.display = 'flex';
+  currentLoadedSavedId = null;
+
+  const arrayBuf = await file.arrayBuffer();
+  lastFile = file;
+  lastFileBytes = new Uint8Array(arrayBuf);
+
+  try {
+    const resp = await fetch('/parse-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: arrayBuf,
+    });
+    const data = await resp.json();
+    showDebug(data._debug, file.size);
+
+    if (!data.ok) throw new Error(data.error || 'Error al parsear PDF');
+
+    pdfData = data.rows;
+    lastParsed = {
+      cliente: data.cliente, periodo: data.periodo,
+      total_entregas: data.total_entregas, total_valor: data.total_valor,
+      rows: data.rows,
+    };
+    $I('uz-file-name').textContent = '✓ ' + file.name;
+    renderPdfSummary({ cliente: data.cliente, periodo: data.periodo });
+    $I('btn-verify').disabled = pdfData.length === 0;
+    $I('btn-save').disabled = pdfData.length === 0;
+
+    if (pdfData.length === 0) {
+      setStatus('⚠ No se detectaron envíos — revisá el debug');
+    } else {
+      setStatus(`✓ PDF cargado: ${pdfData.length} envíos detectados`);
+    }
+  } catch(e) {
+    $I('uz-file-name').textContent = '❌ Error: ' + e.message;
+    setStatus('❌ ' + e.message);
+  }
+}
+
+function resetPage() {
+  pdfData = []; verifiedData = []; currentTab = 'all';
+  lastFile = null; lastFileBytes = null; lastParsed = null;
+  currentLoadedSavedId = null;
+  $I('pdf-summary').style.display = 'none';
+  $I('action-bar').style.display = 'none';
+  $I('debug-panel').style.display = 'none';
+  $I('results-section').style.display = 'none';
+  $I('uz-file-name').textContent = '';
+  $I('btn-verify').disabled = true;
+  $I('btn-save').disabled = true;
+  $I('file-input').value = '';
+  setStatus('');
+}
+
+/* ── Guardar / cargar / eliminar PDFs ────────────────── */
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+async function guardarPdf() {
+  if (!lastFileBytes || !lastFile) return;
+  if (currentLoadedSavedId) {
+    setStatus('⚠ Este PDF ya está guardado.');
+    return;
+  }
+  $I('btn-save').disabled = true;
+  setStatus('Guardando PDF…', true);
+  try {
+    const pdf_b64 = bytesToBase64(lastFileBytes);
+    const r = await fetch('/pdf-resumenes/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: lastFile.name, pdf_b64, parsed: lastParsed }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Error al guardar');
+    currentLoadedSavedId = d.id;
+    setStatus(`✓ PDF guardado (${pdfData.length} envíos · $${(lastParsed?.rows||[]).reduce((s,r)=>s+(r.valor||0),0).toLocaleString('es-AR')})`);
+    loadSavedList();
+  } catch(e) {
+    setStatus('❌ ' + e.message);
+    $I('btn-save').disabled = false;
+  }
+}
+
+async function loadSavedList() {
+  try {
+    const r = await fetch('/pdf-resumenes/list');
+    const d = await r.json();
+    if (!d.ok) return;
+    const items = d.items || [];
+    $I('saved-count').textContent = `(${items.length})`;
+    if (!items.length) {
+      $I('saved-card').style.display = 'none';
+      return;
+    }
+    $I('saved-card').style.display = '';
+    $I('saved-list').innerHTML = items.map(it => {
+      const dt = new Date(it.savedAt);
+      const dtStr = dt.toLocaleDateString('es-AR') + ' ' + dt.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+      const periodo = it.periodo ? `${it.periodo.desde} → ${it.periodo.hasta}` : '';
+      const total = it.total_valor ? `$${it.total_valor.toLocaleString('es-AR')}` : '';
+      return `
+        <div class="saved-row" data-id="${esc(it.id)}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <div class="saved-info">
+            <div class="saved-info-name">${esc(it.filename)}</div>
+            <div class="saved-info-meta">
+              <span>📅 ${esc(dtStr)}</span>
+              ${periodo ? `<span><strong>Período:</strong> ${esc(periodo)}</span>` : ''}
+              ${it.total_entregas ? `<span><strong>${it.total_entregas}</strong> envíos</span>` : ''}
+              ${total ? `<span><strong>${esc(total)}</strong></span>` : ''}
+              ${it.cliente ? `<span>${esc(it.cliente)}</span>` : ''}
+            </div>
+          </div>
+          <div class="saved-actions">
+            <button class="btn btn-ghost btn-sm" onclick="cargarGuardado('${esc(it.id)}')" title="Re-cargar y verificar">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+              Cargar
+            </button>
+            <a class="btn btn-ghost btn-sm" href="/pdf-resumenes/pdf?id=${encodeURIComponent(it.id)}" title="Descargar PDF">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            <button class="btn btn-ghost btn-sm" onclick="eliminarGuardado('${esc(it.id)}','${esc(it.filename)}')" title="Eliminar" style="color:var(--red)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) { console.warn('loadSavedList:', e); }
+}
+
+async function cargarGuardado(id) {
+  setStatus('Cargando PDF guardado…', true);
+  try {
+    const r = await fetch(`/pdf-resumenes/data?id=${encodeURIComponent(id)}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'No se pudo cargar');
+
+    pdfData = d.rows || [];
+    lastParsed = { cliente: d.cliente, periodo: d.periodo, total_entregas: d.total_entregas, total_valor: d.total_valor, rows: d.rows };
+    lastFile = null; lastFileBytes = null;
+    currentLoadedSavedId = id;
+    verifiedData = [];
+
+    const item = (await (await fetch('/pdf-resumenes/list')).json()).items.find(i => i.id === id);
+    $I('uz-file-name').textContent = '✓ ' + (item?.filename || 'PDF guardado');
+    $I('action-bar').style.display = 'flex';
+    $I('debug-panel').style.display = 'none';
+    $I('results-section').style.display = 'none';
+
+    renderPdfSummary({ cliente: d.cliente, periodo: d.periodo });
+    $I('btn-verify').disabled = pdfData.length === 0;
+    $I('btn-save').disabled = true; // ya está guardado
+    setStatus(`✓ ${pdfData.length} envíos cargados desde guardados`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch(e) { setStatus('❌ ' + e.message); }
+}
+
+async function eliminarGuardado(id, filename) {
+  if (!confirm(`¿Eliminar definitivamente "${filename}"?`)) return;
+  try {
+    const r = await fetch(`/pdf-resumenes/delete?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'No se pudo eliminar');
+    if (currentLoadedSavedId === id) {
+      currentLoadedSavedId = null;
+      $I('btn-save').disabled = pdfData.length === 0;
+    }
+    loadSavedList();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+loadSavedList();
+
+/* ── Verificar con ML ─────────────────────────────────── */
+async function verificar() {
+  if (!pdfData.length) return;
+  $I('btn-verify').disabled = true;
+  $I('results-section').style.display = 'none';
+  setStatus(`Consultando ML API para ${pdfData.length} envíos…`, true);
+
+  const ids = pdfData.map(r => r.tracking);
+  try {
+    const resp = await fetch('/verificar-envios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shipping_ids: ids }),
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Error del servidor');
+
+    verifiedData = pdfData.map(row => {
+      const api = data.results.find(r => r.raw === row.tracking) || {};
+      return { ...row, api };
+    });
+
+    renderResults();
+    setStatus(`✓ ${data.found} encontrados · ${data.not_found} no encontrados`);
+    $I('results-section').style.display = '';
+  } catch(e) {
+    setStatus('❌ Error: ' + e.message);
+  }
+  $I('btn-verify').disabled = false;
+}
+
+/* ── Clasificación ──────────────────────────────────── */
+function classify(row) {
+  const api = row.api || {};
+  if (!api.found) return /^ML\d/.test(row.tracking) ? 'err' : 'warn';
+  if (!api.ok_owner) return 'err';
+  if (['cancelled','not_delivered','lost'].includes(api.status)) return 'err';
+  if (['shipped','handling','ready_to_ship'].includes(api.status)) return 'warn';
+  return 'ok';
+}
+
+const STATUS_MAP = {
+  delivered:     { text:'Entregado',    cls:'ok'   },
+  shipped:       { text:'En camino',    cls:'warn' },
+  handling:      { text:'Preparando',   cls:'warn' },
+  ready_to_ship: { text:'Listo',        cls:'warn' },
+  cancelled:     { text:'Cancelado',    cls:'err'  },
+  not_delivered: { text:'No entregado', cls:'err'  },
+  lost:          { text:'Perdido',      cls:'err'  },
+};
+
+function renderResults() {
+  renderTotals(); // refresca el resumen con desglose por cuenta
+  const counts = { ok:0, warn:0, err:0 };
+  verifiedData.forEach(r => counts[classify(r)]++);
+  $I('tab-all').textContent  = `Todos (${verifiedData.length})`;
+  $I('tab-ok').textContent   = `✓ OK (${counts.ok})`;
+  $I('tab-warn').textContent = `⚠ Atención (${counts.warn})`;
+  $I('tab-err').textContent  = `✗ Problemas (${counts.err})`;
+  renderTable();
+}
+
+function renderTable() {
+  const filtered = currentTab === 'all'
+    ? verifiedData
+    : verifiedData.filter(r => classify(r) === currentTab);
+
+  const rows = filtered.map(row => {
+    const api    = row.api || {};
+    const cls    = classify(row);
+    const stInfo = STATUS_MAP[api.status] || { text: api.status || '—', cls:'grey' };
+    const isExt  = !/^ML\d/.test(row.tracking);
+    const num    = verifiedData.indexOf(row) + 1;
+
+    let res = '';
+    if (!api.found) {
+      res = isExt
+        ? '<span class="v-badge warn">⚠ Externo</span>'
+        : '<span class="v-badge err">✗ No en ML</span>';
+    } else if (!api.ok_owner) {
+      res = '<span class="v-badge err">✗ Cuenta incorrecta</span>';
+    } else if (cls === 'err') {
+      res = `<span class="v-badge err">✗ ${stInfo.text}</span>`;
+    } else if (cls === 'warn') {
+      res = `<span class="v-badge warn">⚠ ${stInfo.text}</span>`;
+    } else {
+      res = '<span class="v-badge ok">✓ Verificado</span>';
+    }
+
+    const logText = api.logistic_type || '';
+    const logBadge = logText
+      ? `<span class="v-badge ${logText.toLowerCase().includes('flex') ? 'blue' : 'grey'}">${esc(logText)}</span>`
+      : '<span class="dim">—</span>';
+
+    const addrApi = api.found
+      ? `<div class="addr-api">ML: ${esc(api.address || '')}${api.city ? ', '+esc(api.city) : ''}</div>`
+      : '';
+
+    const mlUrl = api.order_id ? `https://www.mercadolibre.com.ar/ventas/${api.order_id}/detalle` : null;
+    const mlBtn = mlUrl
+      ? `<a class="ml-link" href="${mlUrl}" target="_blank" rel="noopener">
+           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+           Ver
+         </a>`
+      : '<span class="dim" style="font-size:11px">—</span>';
+
+    return `<tr>
+      <td class="dim">${num}</td>
+      <td class="mono">${esc(row.tracking)}</td>
+      <td class="dim" style="white-space:nowrap">${esc(row.fecha || '—')}</td>
+      <td>${api.found ? `<span class="v-badge ${stInfo.cls}">${stInfo.text}</span>` : '<span class="v-badge grey">—</span>'}</td>
+      <td>${logBadge}</td>
+      <td style="max-width:240px">
+        <div class="addr-pdf">${esc(row.domicilio || '—')}</div>
+        ${addrApi}
+      </td>
+      <td style="white-space:nowrap;font-weight:600;font-family:var(--font-mono)">$${(row.valor||0).toLocaleString('es-AR')}</td>
+      <td>${res}</td>
+      <td style="font-size:12px;font-weight:500">${api.cuenta ? esc(api.cuenta) : '<span class="dim">—</span>'}</td>
+      <td>${mlBtn}</td>
+    </tr>`;
+  }).join('');
+
+  $I('results-body').innerHTML = rows ||
+    '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-3)">Sin resultados en este filtro</td></tr>';
+}
+
+function showTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.v-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderTable();
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+</body>
+</html>
