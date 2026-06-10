@@ -30,6 +30,7 @@ const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = requi
 const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion } = require('./lib/email-templates');
 const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset } = require('./lib/json-store');
+const { tgRequest } = require('./lib/telegram');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 
 // ── Log de auditoría admin ─────────────────────────────────────
@@ -7405,30 +7406,6 @@ let lastVincCheck = null;
 //  Configurar en config.json:
 //    "telegram": { "bot_token": "123:ABC...", "chat_id": "-100..." }
 // ══════════════════════════════════════════════════════════════
-
-function tgRequest(botToken, method, params) {
-  return new Promise(resolve => {
-    const payload = JSON.stringify(params);
-    const req = https.request({
-      hostname: 'api.telegram.org',
-      path: `/bot${botToken}/${method}`,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
-    }, res => {
-      let b = '';
-      res.on('data', c => b += c);
-      res.on('end', () => { try { resolve(JSON.parse(b)); } catch(e) { resolve({ ok: false }); } });
-    });
-    // ⚠ Excepción: getUpdates usa long-polling con timeout: 25s del lado de TG.
-    // Le damos 35s al socket para que TG pueda responder con el timeout completo.
-    const isLongPoll = method === 'getUpdates';
-    req.setTimeout(isLongPoll ? 35000 : HTTP_TIMEOUT_MS, () => {
-      req.destroy(new Error(`tgRequest ${method} timeout`));
-    });
-    req.on('error', () => resolve({ ok: false }));
-    req.write(payload); req.end();
-  });
-}
 
 function tgSend(text, keyboard) {
   const tg = fullConfig.telegram;
