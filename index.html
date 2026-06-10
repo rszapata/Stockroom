@@ -2,677 +2,592 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0a0a">
-<meta name="description" content="Stockroom — MercadoLibre Dashboard">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>Stockroom — Dashboard</title>
-
+<title>Dashboard — Stockroom</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        fontFamily: {
-          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-        },
-        colors: {
-          brand: {
-            DEFAULT: '#FFE600',
-            50:  '#FFFBE5',
-            100: '#FFF7B8',
-            200: '#FFEF70',
-            300: '#FFE82E',
-            400: '#FFE600',
-            500: '#E6CF00',
-            600: '#B8A600',
-          },
-        },
-        boxShadow: {
-          'soft': '0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.2)',
-          'pop':  '0 10px 30px -10px rgb(0 0 0 / 0.6)',
-          'ring': '0 0 0 1px rgb(255 230 0 / 0.3)',
-        },
-      },
-    },
-  }
-</script>
-
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC: aplicar tema guardado antes del primer paint -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<script src="/chart.umd.min.js"></script>
+<script src="/pdf-lib.min.js"></script>
 <style>
-  body { font-family: 'Inter', system-ui, sans-serif; }
-  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+/* ── Sparklines ─────────────────────────────────────────── */
+.spark-wrap { height: 40px; width: 100%; overflow: hidden; }
 
-  /* scrollbar */
-  *::-webkit-scrollbar { width: 10px; height: 10px; }
-  *::-webkit-scrollbar-track { background: transparent; }
-  *::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
-  *::-webkit-scrollbar-thumb:hover { background: #404040; }
+/* ── Chart card ─────────────────────────────────────────── */
+.chart-area { height: 200px; position: relative; }
 
-  /* subtle grid background */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background-image:
-      radial-gradient(circle at 20% 10%, rgba(255,230,0,0.04) 0%, transparent 40%),
-      radial-gradient(circle at 80% 90%, rgba(120,180,255,0.03) 0%, transparent 40%);
-    pointer-events: none;
-    z-index: 0;
-  }
+/* ── KPI badge (delta) ──────────────────────────────────── */
+.kpi-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: 100px;
+}
+.kpi-badge.up   { background: var(--green-light); color: var(--green); }
+.kpi-badge.down { background: var(--red-light);   color: var(--red); }
+.kpi-badge.neu  { background: var(--bg); color: var(--text-3); border: 1px solid var(--border); }
 
-  /* card hover lift */
-  .card-lift { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s; }
-  .card-lift:hover { transform: translateY(-2px); border-color: #3f3f46; box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
-
-  /* sparkline path animation */
-  .sparkline path.line { stroke-dasharray: 600; stroke-dashoffset: 600; animation: drawLine .9s ease-out forwards; }
-  @keyframes drawLine { to { stroke-dashoffset: 0; } }
-
-  /* sidebar item */
-  .side-item {
-    position: relative;
-    display: flex; align-items: center; justify-content: center;
-    width: 44px; height: 44px; border-radius: 12px;
-    color: #71717a;
-    transition: background .2s, color .2s;
-  }
-  .side-item:hover { background: #171717; color: #e4e4e7; }
-  .side-item.active { background: #1a1a1a; color: #FFE600; }
-  .side-item.active::before {
-    content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
-    width: 3px; height: 22px; background: #FFE600; border-radius: 2px;
-  }
-  .side-item .tip {
-    position: absolute; left: 60px; top: 50%; transform: translateY(-50%);
-    background: #171717; color: #e4e4e7; font-size: 11px; font-weight: 500;
-    padding: 6px 10px; border-radius: 8px; border: 1px solid #262626;
-    white-space: nowrap; opacity: 0; pointer-events: none;
-    transition: opacity .15s, transform .15s; letter-spacing: .02em;
-    z-index: 60;
-  }
-  .side-item:hover .tip { opacity: 1; transform: translateY(-50%) translateX(4px); }
-
-  /* animated fade */
-  .fade-in { animation: fadeUp .5s ease-out both; }
-  .fade-in.d1 { animation-delay: .05s; }
-  .fade-in.d2 { animation-delay: .1s; }
-  .fade-in.d3 { animation-delay: .15s; }
-  .fade-in.d4 { animation-delay: .2s; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-
-  /* pulse dot */
-  .pulse-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
-  .pulse-dot::after {
-    content: ''; position: absolute; inset: -4px; border-radius: 50%;
-    background: #22c55e; opacity: .35; animation: ring 2s ease-out infinite;
-  }
-  @keyframes ring { 0% { transform: scale(0.6); opacity: .6; } 100% { transform: scale(1.8); opacity: 0; } }
-
-  /* spinner */
-  .spinner { width: 14px; height: 14px; border: 2px solid #404040; border-top-color: #FFE600; border-radius: 50%; animation: spin .7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* table */
-  table.data { width: 100%; border-collapse: collapse; }
-  table.data th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #737373; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #262626; }
-  table.data td { padding: 12px; font-size: 13px; color: #d4d4d8; border-bottom: 1px solid #1a1a1a; }
-  table.data tr:last-child td { border-bottom: none; }
-  table.data tbody tr { transition: background .15s; }
-  table.data tbody tr:hover { background: #0f0f0f; }
-
-  /* badges */
-  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; letter-spacing: .02em; }
-  .chip-green { background: rgba(34,197,94,.12); color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
-  .chip-red   { background: rgba(239,68,68,.12); color: #f87171; border: 1px solid rgba(239,68,68,.25); }
-  .chip-neutral { background: #171717; color: #a1a1aa; border: 1px solid #262626; }
-  .chip-brand { background: rgba(255,230,0,.1); color: #FFE600; border: 1px solid rgba(255,230,0,.25); }
-
-  /* date-range picker */
-  .drp-panel { transform-origin: top right; animation: pop .18s ease-out both; }
-  @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
-
-  /* glowing ring on primary CTAs */
-  .btn-primary { position: relative; }
-  .btn-primary::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,230,0,.4), transparent 40%); opacity: 0; transition: opacity .2s; pointer-events: none; }
-  .btn-primary:hover::after { opacity: 1; }
-
-  /* hide number spinner */
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-
-/* ═══════════════════════════════════════════════
-   RESPONSIVE / MOBILE
-   ═══════════════════════════════════════════════ */
-
-/* ocultar sidebar y bottom nav en escritorio */
-.btm-nav,.btm-sheet,.btm-overlay{display:none}
-
-@media(max-width:767px){
-  /* sidebar desktop → oculto */
-  aside.fixed{display:none!important}
-  /* quitar padding-left del sidebar */
-  .pl-16{padding-left:0!important}
-  /* espacio inferior para nav bar */
-  body{padding-bottom:72px}
-  /* padding horizontal más angosto */
-  .px-8{padding-left:1rem!important;padding-right:1rem!important}
-  /* header más compacto */
-  header h1{font-size:1rem!important}
-  header .py-4{padding-top:.75rem!important;padding-bottom:.75rem!important}
-  /* kpi pills → 2 columnas */
-  .kpi-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
-  .kpi-pill{min-width:0!important;padding:10px 12px!important}
-  .kpi-pill.ml-auto{grid-column:1/-1}
-  /* anchos máximos */
-  .max-w-5xl,.max-w-4xl{max-width:100%!important}
-  /* tablas: scroll horizontal */
-  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:12px}
-  /* acct-header: columna en móvil */
-  .acct-header{flex-direction:column!important;align-items:flex-start!important}
-  /* quick replies: scroll horizontal */
-  .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-  .quick-btn{flex-shrink:0}
-  /* textarea más chica */
-  .q-textarea{min-height:60px!important}
-  /* btn group en header */
-  header .flex.items-center.gap-2{flex-wrap:wrap;gap:4px!important}
-  /* ocultar botones secundarios en header móvil */
-  .btn-mobile-hide{display:none!important}
-  /* bottom nav visible */
-  .btm-nav{display:flex!important}
+/* ── Producto img en tabla ──────────────────────────────── */
+.tbl-img {
+  width: 36px; height: 36px;
+  border-radius: var(--r); object-fit: cover;
+  border: 1px solid var(--border); flex-shrink: 0;
+  background: var(--bg);
 }
 
-/* ── BOTTOM NAV ──────────────────────────────── */
-.btm-nav{
-  position:fixed;bottom:0;left:0;right:0;z-index:50;
-  background:#111113;border-top:1px solid #262626;
-  align-items:stretch;
-  padding-bottom:env(safe-area-inset-bottom,0px)
+/* ── Cantidad badge ─────────────────────────────────────── */
+.qty-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 24px; padding: 0 8px;
+  background: var(--blue-light); color: var(--blue);
+  border-radius: 100px; font-size: 12px; font-weight: 700;
+  font-family: var(--font-mono);
 }
-.btm-item{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;padding:7px 2px 5px;color:#71717a;text-decoration:none;
-  font-size:9px;font-weight:600;letter-spacing:.04em;font-family:'JetBrains Mono',monospace;
-  transition:color .15s;border:none;background:transparent;cursor:pointer;
-  min-width:0;white-space:nowrap;overflow:hidden;
-}
-.btm-item:hover,.btm-item.active{color:#FFE600}
-.btm-item.active svg{stroke:#FFE600}
-.btm-item svg{flex-shrink:0}
-.btm-sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:52;
-  background:#141416;border:1px solid #2a2a30;border-radius:16px 16px 0 0;
-  padding:6px 16px 0;display:flex;flex-direction:column;gap:2px;
-  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
-  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 72px)
-}
-.btm-sheet.open{transform:translateY(0)}
-.btm-overlay{
-  position:fixed;inset:0;z-index:51;background:rgba(0,0,0,.65);
-  opacity:0;pointer-events:none;transition:opacity .22s
-}
-.btm-overlay.open{opacity:1;pointer-events:all}
-.btm-handle{width:32px;height:3px;background:#3a3a42;border-radius:2px;margin:6px auto 12px}
-.btm-more-link{
-  display:flex;align-items:center;gap:12px;padding:11px 10px;
-  border-radius:10px;color:#a1a1aa;text-decoration:none;font-size:13px;font-weight:500;
-  transition:background .15s,color .15s
-}
-.btm-more-link:hover{background:#1c1c20;color:#e4e4e7}
-.btm-more-link.active{color:#FFE600}
 
+/* ── Chart tabs ─────────────────────────────────────────── */
+.chart-tab {
+  padding: 5px 12px; font-size: 12px; font-weight: 500;
+  border-radius: var(--r-sm); cursor: pointer;
+  color: var(--text-3); background: none; border: none;
+  transition: all .12s;
+}
+.chart-tab.active { background: var(--bg); color: var(--text); }
+.chart-tab:hover:not(.active) { color: var(--text-2); }
+
+/* ── Variant chip ───────────────────────────────────────── */
+.var-chip {
+  display: inline-block;
+  font-size: 10px; padding: 2px 7px;
+  background: var(--bg-card); color: var(--text-2);
+  border: 1px solid var(--border-2); border-radius: var(--r-sm);
+  font-weight: 500;
+}
+
+/* ── Modal ──────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-xl); width: 100%; max-width: 440px;
+  box-shadow: var(--shadow-lg); overflow: hidden;
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.modal-body  { padding: 20px; }
+.modal-row   { display: flex; align-items: center; justify-content: space-between;
+               padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.modal-row:last-child { border: none; }
+.modal-key   { color: var(--text-3); font-weight: 500; }
+.modal-val   { color: var(--text); font-family: var(--font-mono); font-size: 12px; }
+.modal-val.ok  { color: var(--green); font-family: var(--font); font-size: 13px; font-weight: 600; }
+.modal-val.err { color: var(--red); }
+
+
+/* ── Search shortcut hint ───────────────────────────────── */
+.search-hint {
+  font-size: 10px; color: var(--text-3);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 1px 5px;
+  font-family: var(--font-mono); white-space: nowrap;
+}
+
+/* ── KPI uniform height ── */
+#kpi-row .adm-kpi { min-height: 130px; justify-content: space-between; }
+
+/* ── Lightbox dashboard ── */
+.dash-lb{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;cursor:zoom-out;opacity:0;pointer-events:none;transition:opacity .18s}
+.dash-lb.open{opacity:1;pointer-events:all}
+.dash-lb img{max-width:min(88vw,480px);max-height:80vh;border-radius:14px;border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.7);transform:scale(.92);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.dash-lb.open img{transform:scale(1)}
+.tbl-img[src]{cursor:zoom-in;transition:opacity .15s}
+.tbl-img[src]:hover{opacity:.8}
 </style>
 </head>
-<body class="bg-neutral-950 text-neutral-200 antialiased min-h-screen">
 
-<!-- ────────────────────────────────────────────────────── SIDEBAR ──── -->
-<aside class="fixed left-0 top-0 bottom-0 w-16 bg-neutral-900 border-r border-neutral-800 hidden md:flex flex-col items-center py-4 z-40">
-  <!-- logo -->
-  <div class="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mb-6 shadow-pop">
-    <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
-    </svg>
-  </div>
+<body>
+<div class="adm-wrap">
 
-  <!-- nav -->
-  <nav class="flex flex-col gap-1 flex-1">
-    <a href="/" class="side-item active" aria-label="Dashboard">
-      <!-- home -->
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-      <span class="tip">Dashboard</span>
-    </a>
-    <a href="/analytics.html" class="side-item" aria-label="Analytics">
-      <!-- bar-chart -->
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      <span class="tip">Stock &amp; Analytics</span>
-    </a>
-    <a href="/publicaciones.html" class="side-item" aria-label="Publicaciones">
-      <!-- plus-square -->
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <span class="tip">Publicar</span>
-    </a>
-    <a href="/vinculaciones.html" class="side-item" aria-label="Vinculaciones">
-      <!-- link -->
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-      <span class="tip">Vinculaciones</span>
-    </a>
-    <a href="/migracion.html" class="side-item" aria-label="Migración">
-      <!-- shuffle -->
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-      <span class="tip">Migración</span>
-    </a>
-    <a href="/cobros.html" class="side-item" aria-label="Cobros">
-      <!-- wallet -->
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-      <span class="tip">Cobros</span>
-    </a>
-    <a href="/despachos.html" class="side-item" aria-label="Despachos">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-      <span class="tip">Despachos</span>
-    </a>
-    <a href="/preguntas.html" class="side-item" aria-label="Preguntas">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      <span class="tip">Preguntas</span>
-    </a>
+<!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+
+  <!-- Logo -->
+  <a href="/" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
+      </svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Stockroom</div>
+      <div class="adm-logo-tag">Panel Admin</div>
+    </div>
+  </a>
+
+  <!-- Nav -->
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">Ventas</div>
+      <a href="/" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="/analytics.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Analytics</span>
+      </a>
+      <a href="/despachos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Despachos</span>
+        <span class="adm-item-badge info" id="nav-desp-badge" style="display:none">0</span>
+      </a>
+      <a href="/cobros.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        <span>Cobros</span>
+      </a>
+      <a href="/verificar-envios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>
+        <span>Verificar Logística</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/publicaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Publicaciones</span>
+      </a>
+      <a href="/vinculaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <span>Vinculaciones</span>
+      </a>
+      <a href="/migracion.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+        <span>Migración</span>
+      </a>
+      <a href="/alibaba.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+        <span>Carga Alibaba</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/preguntas.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Preguntas</span>
+        <span class="adm-item-badge" id="nav-preg-badge" style="display:none">0</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Tienda</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Admin Tienda</span>
+      </a>
+    </div>
+
   </nav>
 
-  <!-- bottom nav -->
-  <div class="flex flex-col gap-1 mt-auto">
-    <button id="btn-config" class="side-item" aria-label="Configuración">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      <span class="tip">Configuración</span>
+  <!-- Footer -->
+  <div class="adm-sidebar-foot">
+    <a href="/oauth/start" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <span>Conectar cuenta</span>
+    </a>
+    <button class="adm-item" id="btn-cfg" style="width:100%;text-align:left">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
+      <span>Configuración</span>
     </button>
-    <a href="/logout" class="side-item" aria-label="Cerrar sesión">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span class="tip">Cerrar sesión</span>
+    <a href="/logout" class="adm-item" style="color:var(--red)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Cerrar sesión</span>
     </a>
   </div>
+
+  <!-- Clock -->
+  <div class="foot-info" id="foot-clock">—</div>
 </aside>
 
-<!-- ────────────────────────────────────────────────────── MAIN ──── -->
-<div class="md:pl-16 min-h-screen relative z-10">
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
 
   <!-- HEADER -->
-  <header class="sticky top-0 z-30 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800">
-    <div class="flex items-center justify-between px-8 py-4 gap-4">
-      <div class="min-w-0">
-        <h1 class="text-xl font-semibold tracking-tight text-neutral-100">Dashboard</h1>
-        <p class="text-xs text-neutral-500 mt-0.5 flex items-center gap-2">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Dashboard</div>
+        <div class="adm-page-sub">
           <span class="pulse-dot"></span>
-          <span id="h-subtitle">Sincronizando con MercadoLibre…</span>
-        </p>
+          <span id="h-subtitle">Cargando…</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <!-- Theme toggle -->
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+
+      <!-- Search -->
+      <div class="adm-search" style="width:220px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" type="search" placeholder="Buscar…" autocomplete="off">
+        <span class="search-hint">⌘K</span>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- search -->
-        <div class="hidden md:flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 w-64 focus-within:border-neutral-700 transition-colors">
-          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="search" type="text" placeholder="Buscar orden, producto, comprador…" class="bg-transparent outline-none text-sm text-neutral-200 placeholder:text-neutral-600 w-full"/>
-          <kbd class="text-[10px] font-mono text-neutral-600 border border-neutral-800 rounded px-1.5 py-0.5">⌘K</kbd>
-        </div>
-
-        <!-- date range -->
-        <div class="relative">
-          <button id="drp-btn" class="flex items-center gap-2 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl px-3 py-2 text-sm text-neutral-300 transition-colors">
-            <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span id="drp-label" class="font-mono text-xs">Hoy</span>
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-
-          <!-- panel -->
-          <div id="drp-panel" class="hidden absolute right-0 mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-pop p-3 drp-panel">
-            <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium px-1 mb-2">Rangos rápidos</div>
-            <div class="grid grid-cols-2 gap-1.5 mb-3">
-              <button data-range="today" class="drp-preset text-left text-sm px-3 py-2 rounded-lg bg-neutral-800/50 hover:bg-neutral-800 text-neutral-200 transition">Hoy</button>
-              <button data-range="yesterday" class="drp-preset text-left text-sm px-3 py-2 rounded-lg hover:bg-neutral-800 text-neutral-300 transition">Ayer</button>
-              <button data-range="7d" class="drp-preset text-left text-sm px-3 py-2 rounded-lg hover:bg-neutral-800 text-neutral-300 transition">Últimos 7 días</button>
-              <button data-range="30d" class="drp-preset text-left text-sm px-3 py-2 rounded-lg hover:bg-neutral-800 text-neutral-300 transition">Últimos 30 días</button>
-              <button data-range="mtd" class="drp-preset text-left text-sm px-3 py-2 rounded-lg hover:bg-neutral-800 text-neutral-300 transition">Mes actual</button>
-              <button data-range="ytd" class="drp-preset text-left text-sm px-3 py-2 rounded-lg hover:bg-neutral-800 text-neutral-300 transition">Año actual</button>
-            </div>
-            <div class="border-t border-neutral-800 pt-3">
-              <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium px-1 mb-2">Personalizado</div>
-              <div class="flex items-center gap-2">
-                <input type="date" id="drp-from" class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-xs font-mono text-neutral-200 focus:border-brand outline-none" />
-                <span class="text-neutral-500 text-xs">→</span>
-                <input type="date" id="drp-to" class="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1.5 text-xs font-mono text-neutral-200 focus:border-brand outline-none" />
-              </div>
-              <button id="drp-apply" class="mt-2 w-full bg-brand hover:bg-brand-300 text-neutral-950 text-xs font-semibold rounded-lg py-1.5 transition">Aplicar</button>
-            </div>
+      <!-- Account switcher -->
+      <div class="adm-acct" id="acct-wrap">
+        <button class="adm-acct-btn" id="acc-btn">
+          <div class="adm-avatar" id="acc-initial">?</div>
+          <span class="adm-acct-name" id="acc-label">Cuenta</span>
+          <svg class="adm-acct-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="adm-dropdown hidden" id="acc-panel">
+          <div class="adm-dropdown-head">Cuenta activa</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)" id="acc-active">—</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px" id="acc-active-id">—</div>
           </div>
-        </div>
-
-        <!-- account switcher -->
-        <div class="relative">
-          <button id="acc-btn" class="flex items-center gap-2 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl px-3 py-2 text-sm transition-colors">
-            <span class="w-6 h-6 rounded-full bg-gradient-to-br from-brand to-yellow-500 flex items-center justify-center text-[10px] font-bold text-neutral-950" id="acc-initial">?</span>
-            <span id="acc-label" class="hidden sm:inline text-xs font-medium text-neutral-200 max-w-[120px] truncate">Cargando…</span>
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <div id="acc-panel" class="hidden absolute right-0 mt-2 w-72 bg-neutral-900 border border-neutral-800 rounded-xl shadow-pop drp-panel overflow-hidden">
-            <div class="p-3 border-b border-neutral-800">
-              <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1">Cuenta activa</div>
-              <div id="acc-active" class="text-sm text-neutral-200 font-medium truncate">—</div>
-              <div id="acc-active-id" class="text-[11px] font-mono text-neutral-500 mt-0.5">—</div>
-            </div>
-            <div id="acc-list" class="max-h-60 overflow-y-auto py-1"></div>
-            <div class="p-2 border-t border-neutral-800 flex gap-2">
-              <a href="/oauth/start" class="flex-1 text-center text-xs text-neutral-300 hover:text-neutral-100 bg-neutral-800 hover:bg-neutral-700 rounded-lg py-1.5 transition">+ Nueva cuenta</a>
-            </div>
+          <div id="acc-list"></div>
+          <div class="adm-dropdown-foot">
+            <a href="/oauth/start" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">+ Nueva cuenta</a>
           </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="p-4 md:p-8 max-w-[1800px] mx-auto">
+  <!-- CONTENT -->
+  <main class="adm-content">
 
-    <!-- ──────────── BENTO GRID: KPI CARDS ──────────── -->
-    <section class="grid grid-cols-12 gap-4 mb-4">
-      <!-- Card 1: Ventas hoy -->
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-5 card-lift fade-in d1">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-[11px] uppercase tracking-wider text-neutral-500 font-medium">Ventas hoy</div>
-          <span id="kpi-ventas-badge" class="chip chip-neutral">—</span>
+    <!-- KPI ROW -->
+    <div class="adm-kpi-grid" id="kpi-row">
+      <!-- Ventas -->
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Ventas hoy</div>
+        <div class="adm-kpi-value" id="kpi-ventas-value">—</div>
+        <div class="adm-kpi-delta">
+          <span id="kpi-ventas-badge" class="kpi-badge neu">—</span>
+          <span id="kpi-ventas-sub" style="color:var(--text-3);font-size:12px"></span>
         </div>
-        <div class="flex items-end justify-between gap-3">
-          <div>
-            <div class="text-3xl font-bold text-neutral-100 font-mono tabular-nums" id="kpi-ventas-value">$0</div>
-            <div class="text-xs text-neutral-500 mt-1"><span id="kpi-ventas-sub">— órdenes</span></div>
-          </div>
-          <div class="w-24 h-10 shrink-0" id="spark-ventas"></div>
-        </div>
+        <div class="spark-wrap"><div id="spark-ventas"></div></div>
       </div>
-
-      <!-- Card 2: Pedidos a despachar -->
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-5 card-lift fade-in d2">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-[11px] uppercase tracking-wider text-neutral-500 font-medium">Pedidos a despachar</div>
-          <span id="kpi-desp-badge" class="chip chip-neutral">—</span>
+      <!-- Neto -->
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Neto est.</div>
+        <div class="adm-kpi-value" id="kpi-neto-value">—</div>
+        <div class="adm-kpi-delta">
+          <span id="kpi-neto-badge" class="kpi-badge neu">—</span>
         </div>
-        <div class="flex items-end justify-between gap-3">
-          <div>
-            <div class="text-3xl font-bold text-neutral-100 font-mono tabular-nums" id="kpi-desp-value">0</div>
-            <div class="text-xs text-neutral-500 mt-1"><span id="kpi-desp-sub">— unidades</span></div>
-          </div>
-          <div class="w-24 h-10 shrink-0" id="spark-desp"></div>
-        </div>
+        <div class="spark-wrap"><div id="spark-neto"></div></div>
       </div>
-
-      <!-- Card 3: Neto estimado -->
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-5 card-lift fade-in d3">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-[11px] uppercase tracking-wider text-neutral-500 font-medium">Neto estimado</div>
-          <span id="kpi-neto-badge" class="chip chip-neutral">—</span>
+      <!-- Ticket -->
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Ticket prom.</div>
+        <div class="adm-kpi-value" id="kpi-ticket-value">—</div>
+        <div class="adm-kpi-delta">
+          <span id="kpi-ticket-badge" class="kpi-badge neu">—</span>
         </div>
-        <div class="flex items-end justify-between gap-3">
-          <div>
-            <div class="text-3xl font-bold text-neutral-100 font-mono tabular-nums" id="kpi-neto-value">$0</div>
-            <div class="text-xs text-neutral-500 mt-1">después de comisiones</div>
-          </div>
-          <div class="w-24 h-10 shrink-0" id="spark-neto"></div>
-        </div>
+        <div class="spark-wrap"><div id="spark-ticket"></div></div>
       </div>
-
-      <!-- Card 4: Ticket promedio -->
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-5 card-lift fade-in d4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-[11px] uppercase tracking-wider text-neutral-500 font-medium">Ticket promedio</div>
-          <span id="kpi-ticket-badge" class="chip chip-neutral">—</span>
+      <!-- Despachos -->
+      <div class="adm-kpi">
+        <div class="adm-kpi-label">Despachos</div>
+        <div class="adm-kpi-value blue" id="kpi-desp-value">—</div>
+        <div class="adm-kpi-delta">
+          <span id="kpi-desp-badge" class="kpi-badge neu">—</span>
+          <span id="kpi-desp-sub" style="color:var(--text-3);font-size:12px"></span>
         </div>
-        <div class="flex items-end justify-between gap-3">
-          <div>
-            <div class="text-3xl font-bold text-neutral-100 font-mono tabular-nums" id="kpi-ticket-value">$0</div>
-            <div class="text-xs text-neutral-500 mt-1">por orden</div>
-          </div>
-          <div class="w-24 h-10 shrink-0" id="spark-ticket"></div>
-        </div>
+        <div class="spark-wrap"><div id="spark-desp"></div></div>
       </div>
-    </section>
+    </div>
 
-    <!-- ──────────── BENTO: FLEX + ACTIONS + TREND CHART ──────────── -->
-    <section class="grid grid-cols-12 gap-4 mb-4">
-      <!-- Flex PDF -->
-      <div class="col-span-12 xl:col-span-4 bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-900/50 border border-neutral-800 rounded-2xl p-6 card-lift fade-in d1 relative overflow-hidden">
-        <div class="absolute -top-10 -right-10 w-40 h-40 bg-brand/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="relative">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="chip chip-brand">FLEX</span>
-            <span class="text-xs text-neutral-500">MercadoLibre</span>
+    <!-- GRID: Ventas + Despachos -->
+    <div class="adm-grid-2" style="margin-bottom:16px">
+
+      <!-- VENTAS HOY -->
+      <div class="adm-card" style="display:flex;flex-direction:column">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span id="vh-title">Ventas de hoy</span>
+            <span id="desp-filtered-badge" class="badge badge-yellow" style="display:none">—</span>
           </div>
-          <h3 class="text-lg font-semibold text-neutral-100 mb-1">Despacho Flex del día</h3>
-          <p class="text-xs text-neutral-400 mb-4 leading-relaxed">Genera el PDF con las etiquetas oficiales de todos los envíos Flex listos para despachar.</p>
-
-          <div class="flex flex-col gap-2">
-            <button id="btn-flex" class="btn-primary bg-brand text-neutral-950 font-semibold text-sm rounded-xl py-2.5 hover:bg-brand-300 transition flex items-center justify-center gap-2">
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>Generar PDF Flex</span>
-            </button>
-            <button id="btn-flex-todos" class="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium rounded-xl py-2 transition flex items-center justify-center gap-2">
-              <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
-              <span>Todos los Flex de hoy</span>
+          <div class="adm-card-actions">
+            <button class="btn btn-ghost btn-sm" id="btn-refresh-ventas">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+              Actualizar
             </button>
           </div>
-
-          <div id="flex-status" class="mt-3 text-xs text-neutral-500 min-h-[20px]"></div>
+        </div>
+        <div class="adm-table-wrap" style="height:320px;overflow-y:auto;flex:1">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th style="width:60px">#</th>
+                <th>Comprador</th>
+                <th>Productos</th>
+                <th class="right">Total</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-ventas">
+              <tr><td colspan="4"><div class="adm-empty" style="padding:32px"><span class="spinner"></span></div></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Chart: ventas por hora -->
-      <div class="col-span-12 xl:col-span-8 bg-neutral-900 border border-neutral-800 rounded-2xl p-6 card-lift fade-in d2">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="text-sm font-semibold text-neutral-100">Ventas por hora</h3>
-            <p class="text-xs text-neutral-500 mt-0.5">Distribución del día actual</p>
+      <!-- DESPACHOS -->
+      <div class="adm-card" style="display:flex;flex-direction:column">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Pedidos para despachar
           </div>
-          <div class="flex gap-1">
-            <button class="chart-tab text-[11px] px-2.5 py-1 rounded-lg bg-neutral-800 text-neutral-200 transition" data-metric="revenue">$</button>
-            <button class="chart-tab text-[11px] px-2.5 py-1 rounded-lg hover:bg-neutral-800 text-neutral-500 transition" data-metric="orders">Órdenes</button>
+          <div class="adm-card-actions">
+            <button class="btn btn-ghost btn-sm" id="btn-refresh-despachos">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+              Actualizar
+            </button>
           </div>
         </div>
-        <div class="relative h-56">
+        <div class="adm-table-wrap" style="height:320px;overflow-y:auto;flex:1">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th class="right">Cant.</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-despachos">
+              <tr><td colspan="2"><div class="adm-empty" style="padding:32px"><span class="spinner"></span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ETIQUETAS FLEX -->
+    <div class="adm-card" style="margin-bottom:16px">
+      <div class="adm-card-head">
+        <div class="adm-card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Etiquetas Flex
+        </div>
+        <span class="adm-status" id="flex-status"></span>
+      </div>
+      <div class="adm-card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <!-- PDF Flex — todas las cuentas unidas en un solo PDF -->
+        <button class="btn btn-primary btn-lg" id="btn-flex-todos" disabled style="justify-content:flex-start;padding:14px 18px;flex-direction:column;align-items:flex-start;gap:4px">
+          <span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            PDF Flex · todas
+          </span>
+          <span style="font-size:11px;font-weight:400;opacity:.85">Combina PDFs de todas las cuentas</span>
+        </button>
+        <!-- ZPL — todas las cuentas -->
+        <button class="btn btn-secondary btn-lg" id="btn-zpl-all" disabled style="justify-content:flex-start;padding:14px 18px;flex-direction:column;align-items:flex-start;gap:4px">
+          <span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+            ZPL · todas
+          </span>
+          <span style="font-size:11px;font-weight:400;opacity:.85">Etiquetas impresora · ambas cuentas</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CHART ventas por hora -->
+    <div class="adm-card">
+      <div class="adm-card-head">
+        <div class="adm-card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Ventas por hora
+        </div>
+        <div class="adm-card-actions">
+          <button class="chart-tab active" data-metric="revenue">$ Monto</button>
+          <button class="chart-tab" data-metric="count">Órdenes</button>
+        </div>
+      </div>
+      <div class="adm-card-body">
+        <div class="chart-area">
           <canvas id="chart-hours"></canvas>
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- ──────────── BENTO: VENTAS + DESPACHOS TABLES ──────────── -->
-    <section class="grid grid-cols-12 gap-4 mb-4">
-
-      <!-- Ventas de hoy -->
-      <div class="col-span-12 xl:col-span-7 bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d3">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
-          <div>
-            <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">Actividad</div>
-            <h3 class="text-sm font-semibold text-neutral-100" id="vh-title">Ventas de hoy</h3>
-          </div>
-          <button id="btn-refresh-ventas" class="text-xs text-neutral-400 hover:text-neutral-100 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-neutral-800 transition">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-            Actualizar
-          </button>
-        </div>
-        <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
-          <table class="data">
-            <thead class="sticky top-0 bg-neutral-900">
-              <tr><th>#</th><th>Comprador</th><th>Productos</th><th class="text-right">Total</th></tr>
-            </thead>
-            <tbody id="tbl-ventas">
-              <tr><td colspan="4" class="text-center text-neutral-500 py-10 text-sm">Cargando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Pedidos para despachar -->
-      <div class="col-span-12 xl:col-span-5 bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d4">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
-          <div>
-            <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">Operaciones</div>
-            <h3 class="text-sm font-semibold text-neutral-100 flex items-center gap-2">
-              Pedidos para despachar
-              <span id="desp-filtered-badge" class="text-[10px] font-mono text-neutral-500 bg-neutral-800 border border-neutral-700 rounded px-1.5 py-0.5" style="display:none" title="Órdenes ya despachadas que se filtraron">—</span>
-            </h3>
-          </div>
-          <button id="btn-refresh-despachos" class="text-xs text-neutral-400 hover:text-neutral-100 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-neutral-800 transition">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-            Actualizar
-          </button>
-        </div>
-        <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
-          <table class="data">
-            <thead class="sticky top-0 bg-neutral-900">
-              <tr><th>Producto</th><th class="text-right">Cant.</th></tr>
-            </thead>
-            <tbody id="tbl-despachos">
-              <tr><td colspan="2" class="text-center text-neutral-500 py-10 text-sm">Cargando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ──────────── BENTO: QUICK ACCESS GRID ──────────── -->
-    <section class="grid grid-cols-12 gap-4 mb-8">
-      <a href="/analytics.html" class="col-span-6 md:col-span-3 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-2xl p-5 card-lift fade-in d1 group">
-        <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition">
-          <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-blue-400" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-        </div>
-        <div class="text-sm font-semibold text-neutral-100">Stock &amp; Catálogo</div>
-        <div class="text-xs text-neutral-500 mt-1">Publicaciones, velocidad y alertas</div>
-      </a>
-
-      <a href="/publicaciones.html" class="col-span-6 md:col-span-3 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-2xl p-5 card-lift fade-in d2 group">
-        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3 group-hover:bg-emerald-500/20 transition">
-          <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-emerald-400" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        </div>
-        <div class="text-sm font-semibold text-neutral-100">Publicar</div>
-        <div class="text-xs text-neutral-500 mt-1">Crear nueva publicación</div>
-      </a>
-
-      <a href="/vinculaciones.html" class="col-span-6 md:col-span-3 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-2xl p-5 card-lift fade-in d3 group">
-        <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3 group-hover:bg-purple-500/20 transition">
-          <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-purple-400" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-        </div>
-        <div class="text-sm font-semibold text-neutral-100">Vinculaciones</div>
-        <div class="text-xs text-neutral-500 mt-1">Sync de stock multi-cuenta</div>
-      </a>
-
-      <a href="/cobros.html" class="col-span-6 md:col-span-3 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-2xl p-5 card-lift fade-in d4 group">
-        <div class="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mb-3 group-hover:bg-brand/20 transition">
-          <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5 text-brand" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-        </div>
-        <div class="text-sm font-semibold text-neutral-100">Cobros</div>
-        <div class="text-xs text-neutral-500 mt-1">Liquidación de fundas &amp; socios</div>
-      </a>
-    </section>
-
-    <footer class="text-center text-[11px] text-neutral-600 pb-6 font-mono">
-      STOCKROOM · MercadoLibre Argentina · <span id="foot-clock">--:--</span>
-    </footer>
   </main>
+</div><!-- /adm-main -->
+
+<!-- Lightbox -->
+<div class="dash-lb" id="dash-lb" onclick="closeDashImg()">
+  <img id="dash-lb-img" src="" alt="">
 </div>
 
-<!-- ────────────────────────────────────────────────────── CONFIG MODAL ──── -->
-<div id="cfg-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md p-6 shadow-pop">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-neutral-100">Configuración</h3>
-      <button id="cfg-close" class="text-neutral-500 hover:text-neutral-200 transition">
-        <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+</div><!-- /adm-wrap -->
+
+<!-- OVERLAY sidebar mobile -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- BOTTOM NAV (mobile) -->
+<nav class="adm-btm-nav">
+  <a href="/" class="adm-btm-item active">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Inicio
+  </a>
+  <a href="/despachos.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    Despachos
+  </a>
+  <a href="/preguntas.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    Preguntas
+  </a>
+  <a href="/cobros.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+    Cobros
+  </a>
+  <a href="/analytics.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+    Analytics
+  </a>
+</nav>
+
+<!-- MODAL Configuración -->
+<div class="modal-overlay hidden" id="cfg-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-title">Configuración</span>
+      <button class="btn btn-ghost btn-sm" id="cfg-close">✕</button>
     </div>
-    <div class="space-y-4 text-sm">
-      <div>
-        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium block mb-1">Cuenta activa</label>
-        <div id="cfg-active" class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200">—</div>
+    <div class="modal-body">
+      <div class="modal-row">
+        <span class="modal-key">Cuenta activa</span>
+        <span class="modal-val" id="cfg-active">—</span>
       </div>
-      <div>
-        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium block mb-1">Token ML</label>
-        <div id="cfg-token" class="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-neutral-200 font-mono text-xs">—</div>
+      <div class="modal-row">
+        <span class="modal-key">Token ML</span>
+        <span class="modal-val" id="cfg-token">—</span>
       </div>
-      <div class="border-t border-neutral-800 pt-4 space-y-2">
-        <a href="/analytics.html#config" class="block text-center bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium rounded-lg py-2 transition">Editar tokens &amp; credenciales</a>
-        <a href="/oauth/start" class="block text-center bg-brand hover:bg-brand-300 text-neutral-950 text-xs font-semibold rounded-lg py-2 transition">Conectar cuenta con MercadoLibre</a>
+      <div class="modal-row">
+        <span class="modal-key">Servidor</span>
+        <span class="modal-val ok">● Conectado</span>
       </div>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <a href="/oauth/start" class="btn btn-primary btn-sm">Reconectar cuenta</a>
+      <a href="/logout" class="btn btn-danger btn-sm">Cerrar sesión</a>
     </div>
   </div>
 </div>
 
-<!-- Chart.js -->
-<script src="/chart.umd.min.js"></script>
-
 <script>
-/* ───── helpers ───── */
-const $ = (s, r=document) => r.querySelector(s);
-const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-const fmt = n => new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }).format(n || 0);
-const fmtNum = n => new Intl.NumberFormat('es-AR').format(n || 0);
-const escapeHtml = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ── helpers ── */
+const $  = id  => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+const esc = s  => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt    = v => v != null ? '$ ' + Math.round(v).toLocaleString('es-AR') : '—';
+const fmtNum = v => v != null ? String(v) : '—';
 
-/* ───── sparkline (pure SVG) ───── */
-function sparkline(container, data, { color = '#FFE600', fill = true } = {}) {
-  container.innerHTML = '';
-  if (!data || data.length < 2) {
-    container.innerHTML = '<div class="text-[10px] text-neutral-700 text-right font-mono">— sin datos</div>';
-    return;
-  }
-  const w = container.clientWidth || 96;
-  const h = container.clientHeight || 40;
-  const pad = 2;
+/* ── sparkline ── */
+function sparkline(container, data, { color = '#3483FA', fill = true } = {}) {
+  if (!container || !data || data.length < 2) { container && (container.innerHTML = ''); return; }
+  const w = 200, h = 40, pad = 3;
   const min = Math.min(...data), max = Math.max(...data);
-  const range = (max - min) || 1;
-  const step = (w - pad*2) / (data.length - 1);
-  const points = data.map((v,i) => [pad + i*step, h - pad - ((v - min) / range) * (h - pad*2)]);
-  const linePath = 'M ' + points.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' L ');
-  const areaPath = fill ? `${linePath} L ${points.at(-1)[0].toFixed(1)},${h} L ${points[0][0].toFixed(1)},${h} Z` : '';
-  const last = points.at(-1);
-
+  const range = max - min || 1;
+  const step = (w - pad * 2) / (data.length - 1);
+  const pts = data.map((v, i) => [pad + i * step, h - pad - ((v - min) / range) * (h - pad * 2)]);
+  const line = 'M ' + pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' L ');
+  const area = fill ? `${line} L ${pts.at(-1)[0].toFixed(1)},${h} L ${pts[0][0].toFixed(1)},${h} Z` : '';
+  const last = pts.at(-1);
+  const uid = Math.random().toString(36).slice(2, 8);
   container.innerHTML = `
-    <svg viewBox="0 0 ${w} ${h}" class="sparkline w-full h-full" preserveAspectRatio="none">
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:100%" preserveAspectRatio="none">
       <defs>
-        <linearGradient id="g-${Math.random().toString(36).slice(2,8)}" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity="0.35"/>
+        <linearGradient id="sg${uid}" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity=".3"/>
           <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      ${fill ? `<path d="${areaPath}" fill="${color}" fill-opacity="0.12"/>` : ''}
-      <path class="line" d="${linePath}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.2" fill="${color}"/>
+      ${fill ? `<path d="${area}" fill="url(#sg${uid})"/>` : ''}
+      <path d="${line}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.5" fill="${color}"/>
     </svg>`;
 }
 
-/* ───── KPI setters ───── */
+/* ── KPI badge delta ── */
 function setBadge(el, pct) {
-  if (pct == null || isNaN(pct)) { el.className = 'chip chip-neutral'; el.textContent = '—'; return; }
+  if (pct == null || isNaN(pct)) { el.className = 'kpi-badge neu'; el.textContent = '—'; return; }
   const up = pct >= 0;
-  el.className = 'chip ' + (up ? 'chip-green' : 'chip-red');
-  el.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" class="w-2.5 h-2.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      ${up ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>'}
-    </svg>
-    ${Math.abs(pct).toFixed(1)}%`;
+  el.className = 'kpi-badge ' + (up ? 'up' : 'down');
+  el.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${up ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>'}</svg>${Math.abs(pct).toFixed(1)}%`;
 }
 
-/* ───── state ───── */
-const state = {
-  range: 'today',
-  ventasData: null,
-  despachosData: null,
-  chartHours: null,
-  hourMetric: 'revenue',
-};
+/* ── state ── */
+const state = { ventasData: null, chartHours: null, hourMetric: 'revenue' };
 
-/* ───── account switcher ───── */
+/* ── sidebar mobile ── */
+const sidebar  = $('sidebar');
+const overlay  = $('sidebar-overlay');
+$('btn-hamburger').addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+});
+overlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  overlay.classList.remove('open');
+});
+
+/* ── modals ── */
+$('btn-cfg').addEventListener('click', () => $('cfg-modal').classList.remove('hidden'));
+$('cfg-close').addEventListener('click', () => $('cfg-modal').classList.add('hidden'));
+$('cfg-modal').addEventListener('click', e => { if (e.target === $('cfg-modal')) $('cfg-modal').classList.add('hidden'); });
+
+/* ── theme toggle ── */
+$('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch(e) {}
+});
+
+/* ── account panel ── */
+$('acc-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const willOpen = $('acc-panel').classList.contains('hidden');
+  $('acc-panel').classList.toggle('hidden', !willOpen);
+  this.classList.toggle('open', willOpen);
+  this.blur();
+});
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#acct-wrap')) {
+    $('acc-panel').classList.add('hidden');
+    $('acc-btn').classList.remove('open');
+  }
+});
+
+/* ── accounts ── */
 async function loadAccounts() {
   try {
     const r = await fetch('/accounts');
@@ -680,442 +595,405 @@ async function loadAccounts() {
     const d = await r.json();
     const active = d.accounts.find(a => a.active);
     if (active) {
-      $('#acc-label').textContent = active.label;
-      $('#acc-initial').textContent = (active.label || '?').trim().charAt(0).toUpperCase();
-      $('#acc-active').textContent = active.label;
-      $('#acc-active-id').textContent = active.user_id ? 'ID ' + active.user_id : '—';
-      $('#cfg-active').textContent = active.label;
-      $('#cfg-token').textContent = active.has_token ? '●●●●●●●●●● conectado' : '⚠ sin token';
+      const initial = (active.label || '?').trim().charAt(0).toUpperCase();
+      $('acc-initial').textContent = initial;
+      $('acc-label').textContent   = active.label;
+      $('acc-active').textContent  = active.label;
+      $('acc-active-id').textContent = active.user_id ? 'ID ' + active.user_id : '—';
+      $('cfg-active').textContent  = active.label;
+      $('cfg-token').textContent   = active.has_token ? '● Conectado' : '⚠ Sin token';
+      $('cfg-token').className     = 'modal-val ' + (active.has_token ? 'ok' : 'err');
+      const flexLabel = $('flex-active-label');
+      if (flexLabel) flexLabel.textContent = active.label;
     }
-    $('#acc-list').innerHTML = d.accounts.map(a => `
-      <button data-id="${escapeHtml(a.id)}" class="acc-item w-full flex items-center gap-3 px-3 py-2 hover:bg-neutral-800 transition text-left ${a.active ? 'bg-neutral-800/50' : ''}">
-        <span class="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-yellow-600 flex items-center justify-center text-[10px] font-bold text-neutral-950">
-          ${escapeHtml((a.label || '?').trim().charAt(0).toUpperCase())}
-        </span>
-        <div class="flex-1 min-w-0">
-          <div class="text-xs font-medium text-neutral-100 truncate">${escapeHtml(a.label)}</div>
-          <div class="text-[10px] font-mono text-neutral-500">${escapeHtml(a.user_id || '—')}</div>
+    $('acc-list').innerHTML = d.accounts.map(a => `
+      <button data-id="${esc(a.id)}" class="adm-dropdown-item${a.active ? ' active' : ''}">
+        <div class="adm-avatar" style="width:24px;height:24px;font-size:10px;${a.active ? '' : 'background:var(--text-3)'}">${esc((a.label||'?').trim().charAt(0).toUpperCase())}</div>
+        <div style="flex:1;min-width:0;text-align:left">
+          <div style="font-size:13px;font-weight:${a.active ? 600 : 400}">${esc(a.label)}</div>
+          <div style="font-size:10px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.user_id||'—')}</div>
         </div>
-        ${a.active ? '<svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-brand" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-        ${!a.has_token ? '<span class="text-[9px] text-red-400 font-mono">SIN TOKEN</span>' : ''}
+        ${a.active ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+        ${!a.has_token ? `<span class="badge badge-red" style="font-size:9px">SIN TOKEN</span>` : ''}
       </button>`).join('');
-
-    $$('.acc-item').forEach(btn => {
+    $$('#acc-list button').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        await fetch('/accounts/switch', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id })
-        });
+        await fetch('/accounts/switch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: btn.dataset.id }) });
         location.reload();
       });
     });
-  } catch (e) {
-    console.error('accounts', e);
-  }
+  } catch(e) { console.error('accounts', e); }
 }
 
-/* ───── ventas-hoy ───── */
+/* ── ventas ── */
 async function loadVentas() {
-  const tbody = $('#tbl-ventas');
-  tbody.innerHTML = '<tr><td colspan="4" class="text-center text-neutral-500 py-10 text-sm"><span class="spinner inline-block mr-2 align-middle"></span>Cargando…</td></tr>';
+  const tbody = $('tbl-ventas');
+  tbody.innerHTML = '<tr><td colspan="4"><div class="adm-empty" style="padding:24px"><span class="spinner"></span></div></td></tr>';
   try {
     const r = await fetch('/ventas-hoy');
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error');
     state.ventasData = d;
 
-    // KPIs
-    $('#kpi-ventas-value').textContent = fmt(d.total_ventas);
-    $('#kpi-ventas-sub').textContent = `${d.count} ${d.count === 1 ? 'orden' : 'órdenes'}`;
-    const neto = Math.round(d.total_ventas / 1.21 * 0.82);
-    $('#kpi-neto-value').textContent = fmt(neto);
+    $('kpi-ventas-value').textContent = fmt(d.total_ventas);
+    $('kpi-ventas-sub').textContent   = `${d.count} ${d.count === 1 ? 'orden' : 'órdenes'}`;
+    const neto   = Math.round(d.total_ventas / 1.21 * 0.82);
     const ticket = d.count ? Math.round(d.total_ventas / d.count) : 0;
-    $('#kpi-ticket-value').textContent = fmt(ticket);
+    $('kpi-neto-value').textContent   = fmt(neto);
+    $('kpi-ticket-value').textContent = fmt(ticket);
 
-    // sparkline by hour
     const buckets = new Array(24).fill(0);
-    d.orders.forEach(o => {
-      if (!o.date_created) return;
-      const hr = new Date(o.date_created).getHours();
-      buckets[hr] += o.total_amount || 0;
-    });
-    sparkline($('#spark-ventas'), buckets.slice(8, 24), { color: '#FFE600' });
-    sparkline($('#spark-neto'), buckets.slice(8, 24).map(v => v/1.21*0.82), { color: '#4ade80' });
-    sparkline($('#spark-ticket'), buckets.slice(8, 24).map(v => v ? Math.min(v, ticket*3) : 0), { color: '#60a5fa' });
+    d.orders.forEach(o => { if (!o.date_created) return; buckets[new Date(o.date_created).getHours()] += o.total_amount || 0; });
+    sparkline($('spark-ventas'), buckets.slice(8, 24), { color: '#3483FA' });
+    sparkline($('spark-neto'),   buckets.slice(8, 24).map(v => v / 1.21 * 0.82), { color: '#00A650' });
+    sparkline($('spark-ticket'), buckets.slice(8, 24).map(v => v ? Math.min(v, ticket * 3) : 0), { color: '#F5A623' });
 
-    // badge — comparing first half vs second half of active hours as proxy
-    const half = Math.floor(buckets.filter(v => v > 0).length / 2);
-    const arr = buckets.filter(v => v > 0);
-    let pct = null;
-    if (arr.length >= 4) {
-      const aH = arr.slice(0, half).reduce((a,b)=>a+b,0) / Math.max(half,1);
-      const bH = arr.slice(-half).reduce((a,b)=>a+b,0) / Math.max(half,1);
-      if (aH > 0) pct = ((bH - aH) / aH) * 100;
-    }
-    setBadge($('#kpi-ventas-badge'), pct);
-    setBadge($('#kpi-neto-badge'), pct);
-    setBadge($('#kpi-ticket-badge'), pct != null ? pct * 0.4 : null);
+    // Comparación real con ayer (ML API)
+    loadComparacionAyer(d.total_ventas, d.count, ticket).catch(e => console.warn('cmp ayer:', e));
 
-    // Title with date
     if (d.today) {
       const [y,m,da] = d.today.split('-');
-      $('#vh-title').textContent = `Ventas del ${da}/${m}/${y}`;
+      $('vh-title').textContent = `Ventas del ${da}/${m}/${y}`;
     }
 
-    // Rows
-    if (d.orders.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-neutral-500 py-10 text-sm">Sin ventas todavía hoy</td></tr>';
+    if (!d.orders.length) {
+      tbody.innerHTML = '<tr><td colspan="4"><div class="adm-empty">Sin ventas todavía hoy</div></td></tr>';
     } else {
       tbody.innerHTML = d.orders.map(o => `
         <tr>
-          <td class="font-mono text-xs text-neutral-500">#${escapeHtml(String(o.id).slice(-6))}</td>
-          <td class="text-neutral-200">${escapeHtml(o.buyer || '—')}</td>
-          <td>
-            ${o.items.map(i => `
-              <div class="text-sm">
-                <span class="text-neutral-300">${i.quantity}× ${escapeHtml(i.title)}</span>
-                ${(i.variation_attributes || []).map(v => `<span class="chip chip-neutral ml-1">${escapeHtml(v.value_name || v.value_id || '')}</span>`).join('')}
-              </div>`).join('')}
-          </td>
-          <td class="text-right font-mono text-neutral-100 font-semibold">${fmt(o.total_amount)}</td>
+          <td class="mono muted">#${esc(String(o.id).slice(-6))}</td>
+          <td>${esc(o.buyer || '—')}</td>
+          <td>${o.items.map(i => `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span style="font-size:13px">${i.quantity}× ${esc(i.title)}</span>
+              ${(i.variation_attributes||[]).map(v => `<span class="var-chip">${esc(v.value_name||v.value_id||'')}</span>`).join('')}
+            </div>`).join('')}</td>
+          <td class="right mono" style="font-weight:600">${fmt(o.total_amount)}</td>
         </tr>`).join('');
     }
-
-    // chart
     renderHourChart();
-
-    $('#h-subtitle').textContent = `Actualizado ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-red-400 py-10 text-sm">Error: ${escapeHtml(e.message)}</td></tr>`;
+    $('h-subtitle').textContent = `Actualizado ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="adm-empty adm-status error">Error: ${esc(e.message)}</div></td></tr>`;
   }
 }
 
-/* ───── despachos-hoy ───── */
+/* ── comparación con ayer (a la misma hora) ──
+   Compara las ventas de HOY hasta este momento vs ventas de AYER hasta la misma hora.
+*/
+async function loadComparacionAyer(hoyTotal, hoyCount, hoyTicket) {
+  const now = new Date();
+  // Argentina UTC-3
+  const arNow = new Date(now.getTime() - 3 * 3600000);
+  const yest = new Date(arNow);
+  yest.setDate(yest.getDate() - 1);
+  const ystr = yest.toISOString().slice(0, 10);
+
+  const r = await fetch(`/ventas-rango?from=${ystr}&to=${ystr}`);
+  const d = await r.json();
+  if (!d.ok) return;
+
+  // Solo contar órdenes de ayer hasta la HORA ACTUAL (mismo cutoff que hoy)
+  const cutoffHr = arNow.getHours();
+  const cutoffMin = arNow.getMinutes();
+  const ayerHasta = d.orders.filter(o => {
+    if (!o.date_created) return false;
+    const od = new Date(o.date_created);
+    const odHr = od.getHours();
+    const odMin = od.getMinutes();
+    return odHr < cutoffHr || (odHr === cutoffHr && odMin <= cutoffMin);
+  });
+  const ayerTotal  = ayerHasta.reduce((s, o) => s + (o.total_amount || 0), 0);
+  const ayerCount  = ayerHasta.length;
+  const ayerTicket = ayerCount ? Math.round(ayerTotal / ayerCount) : 0;
+  const ayerNeto   = Math.round(ayerTotal / 1.21 * 0.82);
+  const hoyNeto    = Math.round(hoyTotal / 1.21 * 0.82);
+
+  const pct = (hoy, prev) => prev > 0 ? ((hoy - prev) / prev) * 100 : (hoy > 0 ? null : 0);
+  const dayLabel = `vs. ayer · $${fmtNum(ayerTotal)}`;
+
+  setBadge($('kpi-ventas-badge'), pct(hoyTotal, ayerTotal));
+  setBadge($('kpi-neto-badge'),   pct(hoyNeto,  ayerNeto));
+  setBadge($('kpi-ticket-badge'), pct(hoyTicket, ayerTicket));
+  // Tooltip con valor de ayer
+  ['kpi-ventas-badge','kpi-neto-badge','kpi-ticket-badge'].forEach(id => {
+    const el = $(id);
+    if (el) el.title = dayLabel;
+  });
+}
+
+/* ── despachos ── */
 async function loadDespachos() {
-  const tbody = $('#tbl-despachos');
-  tbody.innerHTML = '<tr><td colspan="2" class="text-center text-neutral-500 py-10 text-sm"><span class="spinner inline-block mr-2 align-middle"></span>Cargando…</td></tr>';
+  const tbody = $('tbl-despachos');
+  tbody.innerHTML = '<tr><td colspan="2"><div class="adm-empty" style="padding:24px"><span class="spinner"></span></div></td></tr>';
   try {
     const r = await fetch('/despachos-hoy');
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error');
-    state.despachosData = d;
 
-    const units = d.orders.reduce((s,o) => s + o.items.reduce((a,i) => a + (i.quantity||0), 0), 0);
-    $('#kpi-desp-value').textContent = fmtNum(d.count);
-    $('#kpi-desp-sub').textContent = `${fmtNum(units)} unidades`;
+    const units = d.orders.reduce((s, o) => s + o.items.reduce((a, i) => a + (i.quantity||0), 0), 0);
+    $('kpi-desp-value').textContent = fmtNum(d.count);
+    $('kpi-desp-sub').textContent   = `${fmtNum(units)} unidades`;
 
-    // Mostrar cuántas órdenes ya despachadas se filtraron (si las hay)
-    const badge = $('#desp-filtered-badge');
-    if (badge) {
-      if (d.filtered > 0) {
-        badge.textContent = '−' + d.filtered + ' ya en camino';
-        badge.style.display = '';
-      } else {
-        badge.style.display = 'none';
-      }
-    }
+    const badge = $('desp-filtered-badge');
+    if (d.filtered > 0) { badge.textContent = '−' + d.filtered + ' ya en camino'; badge.style.display = ''; }
+    else badge.style.display = 'none';
 
-    // sparkline: units per order
-    const perOrder = d.orders.map(o => o.items.reduce((a,i) => a + (i.quantity||0), 0));
-    sparkline($('#spark-desp'), perOrder.length >= 2 ? perOrder : [0, units, 0], { color: '#a78bfa' });
-    setBadge($('#kpi-desp-badge'), d.count > 0 ? 0 : null);
+    const perOrder = d.orders.map(o => o.items.reduce((a,i) => a+(i.quantity||0), 0));
+    sparkline($('spark-desp'), perOrder.length >= 2 ? perOrder : [0, units, 0], { color: '#3483FA' });
 
-    // aggregate by product+variant for the table
+    // nav badge
+    const navBadge = $('nav-desp-badge');
+    if (d.count > 0) { navBadge.textContent = d.count; navBadge.style.display = ''; }
+    else navBadge.style.display = 'none';
+
+    // aggregate
     const agg = new Map();
     d.orders.forEach(o => o.items.forEach(i => {
-      const variant = (i.variation_attributes || []).map(v => v.value_name || v.value_id || '').filter(Boolean).join(' · ');
+      const variant = (i.variation_attributes||[]).map(v => v.value_name||v.value_id||'').filter(Boolean).join(' · ');
       const key = i.title + '::' + variant;
       if (!agg.has(key)) agg.set(key, { title: i.title, variant, picture: i.picture, qty: 0 });
       agg.get(key).qty += (i.quantity || 0);
     }));
-
     const rows = [...agg.values()].sort((a,b) => b.qty - a.qty);
-    if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="2" class="text-center text-neutral-500 py-10 text-sm">Nada para despachar ✓</td></tr>';
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="2"><div class="adm-empty">✓ Nada para despachar</div></td></tr>';
+      $('btn-flex-todos').disabled = true;
+      $('btn-zpl-all').disabled = true;
     } else {
-      tbody.innerHTML = rows.map(r => `
+      tbody.innerHTML = rows.map(row => `
         <tr>
           <td>
-            <div class="flex items-center gap-3">
-              ${r.picture ? `<img src="${escapeHtml(r.picture)}" alt="" class="w-10 h-10 rounded-lg object-cover border border-neutral-800 shrink-0"/>` : '<div class="w-10 h-10 rounded-lg bg-neutral-800 shrink-0"></div>'}
-              <div class="min-w-0">
-                <div class="text-sm text-neutral-100 truncate max-w-[280px]" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</div>
-                ${r.variant ? `<div class="text-[11px] text-neutral-500 mt-0.5">${escapeHtml(r.variant)}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:10px">
+              ${row.picture ? `<img src="${esc(row.picture)}" class="tbl-img" loading="lazy" onclick="openDashImg(this.src)"/>` : '<div class="tbl-img"></div>'}
+              <div style="min-width:0">
+                <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px" title="${esc(row.title)}">${esc(row.title)}</div>
+                ${row.variant ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px">${esc(row.variant)}</div>` : ''}
               </div>
             </div>
           </td>
-          <td class="text-right font-mono font-semibold text-neutral-100">
-            <span class="inline-flex items-center justify-center min-w-[32px] h-7 px-2 rounded-lg bg-brand/10 text-brand border border-brand/25">${r.qty}</span>
-          </td>
+          <td class="right"><span class="qty-pill">${row.qty}</span></td>
         </tr>`).join('');
+      $('btn-flex-todos').disabled = false;
+      $('btn-zpl-all').disabled = false;
     }
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="2" class="text-center text-red-400 py-10 text-sm">Error: ${escapeHtml(e.message)}</td></tr>`;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="2"><div class="adm-empty adm-status error">Error: ${esc(e.message)}</div></td></tr>`;
   }
 }
 
-/* ───── Chart.js — ventas por hora ───── */
+/* ── Chart ── */
 function renderHourChart() {
   if (!state.ventasData) return;
-  const ctx = $('#chart-hours').getContext('2d');
-  const buckets = new Array(24).fill(0);
-  const ordBuckets = new Array(24).fill(0);
+  const ctx    = $('chart-hours').getContext('2d');
+  const bkts   = new Array(24).fill(0), ordBkts = new Array(24).fill(0);
   state.ventasData.orders.forEach(o => {
     if (!o.date_created) return;
     const hr = new Date(o.date_created).getHours();
-    buckets[hr] += o.total_amount || 0;
-    ordBuckets[hr] += 1;
+    bkts[hr]    += o.total_amount || 0;
+    ordBkts[hr]++;
   });
-  const data = state.hourMetric === 'revenue' ? buckets : ordBuckets;
-
+  const data = state.hourMetric === 'revenue' ? bkts : ordBkts;
   if (state.chartHours) state.chartHours.destroy();
+
+  const isDark  = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridClr = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.06)';
+  const tickClr = isDark ? '#555' : '#aaa';
+  const ttBg    = isDark ? '#1a1a1a' : '#fff';
+  const ttBdr   = isDark ? '#333'   : '#e4e4e4';
+  const ttTitle = isDark ? '#eee'   : '#111';
+  const ttBody  = isDark ? '#888'   : '#666';
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 190);
+  grad.addColorStop(0, 'rgba(52,131,250,.28)');
+  grad.addColorStop(1, 'rgba(52,131,250,0)');
+
   state.chartHours = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: Array.from({length:24}, (_,i) => String(i).padStart(2,'0') + 'h'),
       datasets: [{
         data,
-        backgroundColor: ctx => {
-          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 220);
-          g.addColorStop(0, 'rgba(255,230,0,0.9)');
-          g.addColorStop(1, 'rgba(255,230,0,0.15)');
-          return g;
-        },
-        borderRadius: 6,
-        borderSkipped: false,
-        maxBarThickness: 24,
+        borderColor: '#3483FA',
+        backgroundColor: grad,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.42,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#3483FA',
+        pointHoverBorderColor: isDark ? '#1a1a1a' : '#fff',
+        pointHoverBorderWidth: 2,
       }],
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#171717', borderColor: '#262626', borderWidth: 1, padding: 10,
-          titleColor: '#e4e4e7', bodyColor: '#a1a1aa', cornerRadius: 8,
-          callbacks: {
-            label: c => state.hourMetric === 'revenue'
-              ? fmt(c.parsed.y) : `${c.parsed.y} órdenes`
-          }
+          backgroundColor: ttBg, borderColor: ttBdr, borderWidth: 1,
+          padding: 10, titleColor: ttTitle, bodyColor: ttBody, cornerRadius: 8,
+          callbacks: { label: c => state.hourMetric === 'revenue' ? fmt(c.parsed.y) : `${c.parsed.y} órdenes` }
         }
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#525252', font: { size: 10, family: 'JetBrains Mono' }, maxRotation: 0 } },
-        y: { grid: { color: '#1a1a1a' }, border: { display: false }, ticks: { color: '#525252', font: { size: 10, family: 'JetBrains Mono' }, callback: v => state.hourMetric === 'revenue' ? '$'+Math.round(v/1000)+'k' : v } },
+        x: {
+          grid: { display: false },
+          ticks: { color: tickClr, font: { size: 10, family: 'JetBrains Mono' }, maxRotation: 0, maxTicksLimit: 13 }
+        },
+        y: {
+          grid: { color: gridClr },
+          border: { display: false },
+          ticks: {
+            color: tickClr, font: { size: 10, family: 'JetBrains Mono' },
+            callback: v => state.hourMetric === 'revenue'
+              ? (v >= 1000 ? '$' + Math.round(v/1000) + 'k' : v > 0 ? '$' + Math.round(v) : '')
+              : (v > 0 ? v : '')
+          }
+        },
       },
     },
   });
 }
-
-/* ───── Flex PDF ───── */
-async function generateFlex(endpoint) {
-  const btnIds = ['#btn-flex', '#btn-flex-todos'];
-  btnIds.forEach(id => $(id).disabled = true);
-  const status = $('#flex-status');
-  status.innerHTML = '<span class="spinner inline-block mr-2 align-middle"></span>Generando PDF…';
+/* ── Flex PDF todas las cuentas (merge client-side) ── */
+async function generateFlexTodas() {
+  const btns = [$('btn-flex-todos'), $('btn-zpl-all')];
+  btns.forEach(b => b && (b.disabled = true));
+  const st = $('flex-status');
+  st.innerHTML = '<span class="spinner spinner-sm"></span> Generando PDFs Flex…';
+  st.className = 'adm-status';
   try {
-    const r = await fetch(endpoint);
+    const r = await fetch('/flex-pdf-all?responseType=pdf');
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error');
-    if (!d.pdf_b64) throw new Error('PDF vacío');
-    // download
-    const bin = atob(d.pdf_b64);
-    const buf = new Uint8Array(bin.length);
-    for (let i=0; i<bin.length; i++) buf[i] = bin.charCodeAt(i);
-    const blob = new Blob([buf], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `flex-${new Date().toISOString().slice(0,10)}.pdf`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.innerHTML = `<span class="text-emerald-400">✓ ${d.count} envíos listos</span>`;
-  } catch (e) {
-    status.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(e.message)}</span>`;
+    const acctOk = (d.accounts || []).filter(a => a.data_b64);
+    if (!acctOk.length) throw new Error('Sin envíos Flex');
+
+    const libOk = !!window.PDFLib;
+    if (libOk && acctOk.length > 0) {
+      st.innerHTML = '<span class="spinner spinner-sm"></span> Uniendo PDFs…';
+      const { PDFDocument } = window.PDFLib;
+      const merged = await PDFDocument.create();
+      for (const acct of acctOk) {
+        try {
+          const bytes = Uint8Array.from(atob(acct.data_b64), c => c.charCodeAt(0));
+          const src   = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const pages = await merged.copyPages(src, src.getPageIndices());
+          pages.forEach(p => merged.addPage(p));
+        } catch(e) { console.warn('merge:', acct.accountId, e); }
+      }
+      const blob = new Blob([await merged.save()], { type: 'application/pdf' });
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(blob),
+        download: `flex_todas_${new Date().toISOString().slice(0,10)}.pdf`
+      });
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      st.innerHTML = `✓ PDF unificado (${d.total || acctOk.length} Flex · ${acctOk.length} cuentas)`;
+    } else {
+      // fallback: descarga individual
+      acctOk.forEach(acct => {
+        const bin = atob(acct.data_b64), buf = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        const a = Object.assign(document.createElement('a'), {
+          href: URL.createObjectURL(new Blob([buf], { type: 'application/pdf' })),
+          download: `flex_${acct.accountId}_${new Date().toISOString().slice(0,10)}.pdf`
+        });
+        a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      });
+      st.innerHTML = `✓ ${acctOk.length} PDF(s) descargados`;
+    }
+    st.className = 'adm-status ok';
+  } catch(e) {
+    st.innerHTML = 'Error: ' + esc(e.message);
+    st.className = 'adm-status error';
   } finally {
-    btnIds.forEach(id => $(id).disabled = false);
+    btns.forEach(b => b && (b.disabled = false));
   }
 }
 
-/* ───── wire UI ───── */
-document.addEventListener('click', (e) => {
-  // account panel toggle
-  if (e.target.closest('#acc-btn')) {
-    $('#acc-panel').classList.toggle('hidden');
-    $('#drp-panel').classList.add('hidden');
-    return;
-  }
-  // drp toggle
-  if (e.target.closest('#drp-btn')) {
-    $('#drp-panel').classList.toggle('hidden');
-    $('#acc-panel').classList.add('hidden');
-    return;
-  }
-  // close on outside
-  if (!e.target.closest('#acc-panel') && !e.target.closest('#acc-btn')) $('#acc-panel').classList.add('hidden');
-  if (!e.target.closest('#drp-panel') && !e.target.closest('#drp-btn')) $('#drp-panel').classList.add('hidden');
-});
-
-$$('.drp-preset').forEach(btn => {
-  btn.addEventListener('click', () => {
-    $$('.drp-preset').forEach(b => b.classList.remove('bg-neutral-800/50','text-neutral-200'));
-    $$('.drp-preset').forEach(b => b.classList.add('text-neutral-300'));
-    btn.classList.add('bg-neutral-800/50','text-neutral-200');
-    btn.classList.remove('text-neutral-300');
-    state.range = btn.dataset.range;
-    $('#drp-label').textContent = btn.textContent.trim();
-    $('#drp-panel').classList.add('hidden');
-    // NOTE: currently the backend /ventas-hoy only returns TODAY. Keep UI responsive but don't re-fetch for other ranges.
-    if (state.range !== 'today') {
-      $('#h-subtitle').textContent = 'Vista "Hoy" · los rangos extendidos requieren extender el backend';
-    } else {
-      loadVentas();
+/* ── ZPL todas las cuentas ── */
+async function generateZplAll() {
+  const btns = [$('btn-flex-todos'), $('btn-zpl-all')];
+  btns.forEach(b => b && (b.disabled = true));
+  const st = $('flex-status');
+  st.innerHTML = '<span class="spinner spinner-sm"></span> Generando etiquetas ZPL…';
+  st.className = 'adm-status';
+  try {
+    const r = await fetch('/etiquetas-all?responseType=zpl2');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    const acctOk = (d.accounts || []).filter(a => a.data_b64);
+    if (!acctOk.length) throw new Error('Sin órdenes para etiquetas');
+    let ok = 0;
+    for (const acct of acctOk) {
+      const bin = atob(acct.data_b64), buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([buf], { type: 'application/zip' })),
+        download: `etiquetas_${acct.accountId}_${new Date().toISOString().slice(0,10)}.zip`
+      });
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      ok++;
     }
-  });
-});
-
-$('#drp-apply')?.addEventListener('click', () => {
-  const from = $('#drp-from').value, to = $('#drp-to').value;
-  if (from && to) {
-    $('#drp-label').textContent = `${from} → ${to}`;
-    $('#drp-panel').classList.add('hidden');
-    $('#h-subtitle').textContent = 'Rango custom · requiere extender el backend';
+    st.innerHTML = `✓ ${ok} ZIP(s) ZPL descargados (${d.total || '?'} órdenes)`;
+    st.className = 'adm-status ok';
+  } catch(e) {
+    st.innerHTML = 'Error: ' + esc(e.message);
+    st.className = 'adm-status error';
+  } finally {
+    btns.forEach(b => b && (b.disabled = false));
   }
-});
+}
 
+/* ── Chart tabs ── */
 $$('.chart-tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    $$('.chart-tab').forEach(t => { t.classList.remove('bg-neutral-800','text-neutral-200'); t.classList.add('text-neutral-500'); });
-    tab.classList.add('bg-neutral-800','text-neutral-200'); tab.classList.remove('text-neutral-500');
+    $$('.chart-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
     state.hourMetric = tab.dataset.metric;
     renderHourChart();
   });
 });
 
-$('#btn-refresh-ventas').addEventListener('click', loadVentas);
-$('#btn-refresh-despachos').addEventListener('click', loadDespachos);
-$('#btn-flex').addEventListener('click', () => generateFlex('/flex-pdf'));
-$('#btn-flex-todos').addEventListener('click', () => generateFlex('/flex-pdf-todos'));
+/* ── Buttons ── */
+$('btn-refresh-ventas').addEventListener('click', loadVentas);
+$('btn-refresh-despachos').addEventListener('click', loadDespachos);
+$('btn-flex-todos').addEventListener('click', generateFlexTodas);
+$('btn-zpl-all').addEventListener('click', generateZplAll);
 
-$('#btn-config').addEventListener('click', () => $('#cfg-modal').classList.remove('hidden'));
-$('#cfg-close').addEventListener('click', () => $('#cfg-modal').classList.add('hidden'));
-$('#cfg-modal').addEventListener('click', e => { if (e.target.id === 'cfg-modal') $('#cfg-modal').classList.add('hidden'); });
-
-// ⌘K focuses search
-document.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#search').focus(); }
-  if (e.key === 'Escape') { $('#acc-panel').classList.add('hidden'); $('#drp-panel').classList.add('hidden'); $('#cfg-modal').classList.add('hidden'); }
-});
-
-// client-side row filter via search box
-$('#search').addEventListener('input', e => {
+/* ── Search ── */
+$('search').addEventListener('input', e => {
   const q = e.target.value.toLowerCase().trim();
-  ['#tbl-ventas', '#tbl-despachos'].forEach(sel => {
-    $$(sel + ' tr').forEach(tr => {
-      const show = !q || tr.textContent.toLowerCase().includes(q);
-      tr.style.display = show ? '' : 'none';
-    });
+  ['tbl-ventas', 'tbl-despachos'].forEach(id => {
+    $$('#' + id + ' tr').forEach(tr => { tr.style.display = (!q || tr.textContent.toLowerCase().includes(q)) ? '' : 'none'; });
   });
 });
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('search').focus(); }
+  if (e.key === 'Escape') { $('acc-panel').classList.add('hidden'); $('cfg-modal').classList.add('hidden'); }
+});
 
-// clock
-function tick() {
-  $('#foot-clock').textContent = new Date().toLocaleTimeString('es-AR', { hour12: false });
-}
+/* ── Clock ── */
+function tick() { $('foot-clock').textContent = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
 tick(); setInterval(tick, 1000);
 
-// initial range selection
-$$('.drp-preset')[0]?.classList.add('bg-neutral-800/50','text-neutral-200');
+/* ── Dashboard lightbox ── */
+function openDashImg(src) {
+  $('dash-lb-img').src = src;
+  $('dash-lb').classList.add('open');
+}
+function closeDashImg() {
+  $('dash-lb').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDashImg(); });
 
-// boot
+/* ── Boot ── */
 Promise.all([loadAccounts(), loadVentas(), loadDespachos()]).catch(console.error);
-
-// auto-refresh every 2 min
 setInterval(() => { loadVentas(); loadDespachos(); }, 120000);
 
-// service worker (PWA)
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>
-
-<!-- ── BOTTOM NAV (solo móvil) ───────────────── -->
-<div class="btm-overlay" id="btm-overlay" onclick="closeBtmSheet()"></div>
-<div class="btm-sheet" id="btm-sheet">
-  <div class="btm-handle"></div>
-  <a href="/publicaciones.html" class="btm-more-link" id="bnav-publicaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    Publicar
-  </a>
-  <a href="/vinculaciones.html" class="btm-more-link" id="bnav-vinculaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-    Vinculaciones
-  </a>
-  <a href="/migracion.html" class="btm-more-link" id="bnav-migracion">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-    Migración
-  </a>
-  <a href="/oauth/start" class="btm-more-link">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-    Conectar cuenta
-  </a>
-</div>
-<nav class="btm-nav" id="btm-nav">
-  <a href="/" class="btm-item" id="bnav-home">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-    Inicio
-  </a>
-  <a href="/despachos.html" class="btm-item" id="bnav-despachos">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-    Despachos
-  </a>
-  <a href="/preguntas.html" class="btm-item" id="bnav-preguntas">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    Preguntas
-  </a>
-  <a href="/analytics.html" class="btm-item" id="bnav-analytics">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-    Analytics
-  </a>
-  <a href="/cobros.html" class="btm-item" id="bnav-cobros">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-    Cobros
-  </a>
-  <button class="btm-item" id="bnav-more" onclick="openBtmSheet()">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
-    Mas
-  </button>
-</nav>
-<script>
-(function(){
-  var p=location.pathname;
-  var map={
-    '/':'bnav-home','/index.html':'bnav-home',
-    '/despachos.html':'bnav-despachos',
-    '/preguntas.html':'bnav-preguntas',
-    '/analytics.html':'bnav-analytics',
-    '/cobros.html':'bnav-cobros',
-    '/publicaciones.html':'bnav-publicaciones',
-    '/vinculaciones.html':'bnav-vinculaciones',
-    '/migracion.html':'bnav-migracion'
-  };
-  var id=map[p];
-  if(id){var el=document.getElementById(id);if(el)el.classList.add('active');}
-  if(['bnav-publicaciones','bnav-vinculaciones','bnav-migracion'].indexOf(id)>=0){
-    var m=document.getElementById('bnav-more');if(m)m.classList.add('active');
-  }
-})();
-function openBtmSheet(){
-  document.getElementById('btm-sheet').classList.add('open');
-  document.getElementById('btm-overlay').classList.add('open');
-}
-function closeBtmSheet(){
-  document.getElementById('btm-sheet').classList.remove('open');
-  document.getElementById('btm-overlay').classList.remove('open');
-}
-</script>
-
 </body>
 </html>

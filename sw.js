@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v3';
+const CACHE_NAME = 'stockroom-v4'; // v4: excluye /tienda/ del scope
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -43,6 +43,9 @@ self.addEventListener('fetch', event => {
   // Solo manejamos http(s) del mismo origen — ignorar chrome-extension://, data:, etc.
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
   if (url.origin !== self.location.origin) return;
+
+  // La tienda pública (/tienda/) nunca debe ser interceptada por el SW del Stockroom
+  if (url.pathname.startsWith('/tienda/') || url.pathname === '/tienda') return;
 
   // API calls y métodos no-GET: red directa, no cachear
   if (event.request.method !== 'GET' || API_PATH_PREFIXES.some(p => url.pathname.startsWith(p))) {

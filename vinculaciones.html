@@ -2,645 +2,699 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0a0a">
-<meta name="description" content="Vinculaciones — Sincronización de stock multi-cuenta">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>Stockroom — Vinculaciones</title>
-
+<title>Vinculaciones — Stockroom</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        fontFamily: {
-          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-        },
-        colors: {
-          brand: {
-            DEFAULT: '#FFE600',
-            50:  '#FFFBE5',
-            100: '#FFF7B8',
-            200: '#FFEF70',
-            300: '#FFE82E',
-            400: '#FFE600',
-            500: '#E6CF00',
-            600: '#B8A600',
-          },
-        },
-        boxShadow: {
-          'soft': '0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.2)',
-          'pop':  '0 10px 30px -10px rgb(0 0 0 / 0.6)',
-          'ring': '0 0 0 1px rgb(255 230 0 / 0.3)',
-        },
-      },
-    },
-  }
-</script>
-
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
-  body { font-family: 'Inter', system-ui, sans-serif; }
 
-  /* CSS vars — solo para HTML generado por JS */
-  :root {
-    --ye: #FFE600; --gr: #4ade80; --re: #f87171; --cy: #FFE600; --or: #fb923c;
-    --t2: #a1a1aa; --t3: #52525b;
-    --b1: #262626; --b2: #3f3f46;
-    --s2: #171717; --s3: #0f0f0f;
-    --tx: #d4d4d8;
-    --mono: 'JetBrains Mono', monospace;
-    accent-color: #FFE600;
-    color-scheme: dark;
-  }
+/* ── Page-specific styles (scoped to .pg) ── */
+.pg {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  display: block;
+  color: var(--text);
+  /* local vars (all: initial resets CSS variable inheritance) */
+  --ye: #FFE600; --gr: #4ade80; --re: #f87171; --or: #fb923c;
+  --t2: var(--text-2); --t3: var(--text-3);
+  --b1: var(--border); --b2: var(--border-2);
+  --s1: var(--bg); --s2: var(--bg-card); --s3: var(--bg);
+  --tx: var(--text);
+  --mono: 'JetBrains Mono', monospace;
+}
+.pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
 
-  /* kill all browser default blues */
-  html, body, input, select, textarea, button { accent-color: #FFE600; }
-  ::selection { background: rgba(255,230,0,.35); color: #fff; }
-  ::-moz-selection { background: rgba(255,230,0,.35); color: #fff; }
-  a { color: inherit; }
-  *:focus-visible { outline: 1px solid #FFE600; outline-offset: 2px; }
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #d4d4d8 !important;
-    -webkit-box-shadow: 0 0 0 1000px #171717 inset !important;
-    caret-color: #FFE600;
-  }
+/* ── Auto-sync indicator ── */
+.pg .auto-sync-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 8px 12px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.pg .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .3s; flex-shrink: 0; }
+.pg .auto-dot.active { background: #4ade80; animation: pg-ring 2s ease-out infinite; }
+@keyframes pg-ring { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.5); } 100% { box-shadow: 0 0 0 8px rgba(74,222,128,0); } }
+.pg .auto-sep { color: var(--border-2); font-size: 12px; }
+.pg .auto-status-txt { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.pg .btn-check-now {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-3);
+  background: none; border: none; cursor: pointer; padding: 0;
+  transition: color .15s;
+}
+.pg .btn-check-now:hover { color: var(--text); }
 
-  /* scrollbar */
-  *::-webkit-scrollbar { width: 6px; height: 6px; }
-  *::-webkit-scrollbar-track { background: transparent; }
-  *::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
-  *::-webkit-scrollbar-thumb:hover { background: #404040; }
+/* ── Animations ── */
+@keyframes pg-fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.pg .fade-in { animation: pg-fadeUp .5s ease-out both; }
+.pg .fade-in.d1 { animation-delay: .05s; }
+.pg .fade-in.d2 { animation-delay: .1s; }
+.pg .fade-in.d3 { animation-delay: .15s; }
 
-  /* subtle gradient background */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background-image:
-      radial-gradient(circle at 20% 10%, rgba(255,230,0,0.04) 0%, transparent 40%),
-      radial-gradient(circle at 80% 90%, rgba(120,180,255,0.03) 0%, transparent 40%);
-    pointer-events: none; z-index: 0;
-  }
+/* ── Cards ── */
+.pg .card {
+  background: var(--bg); border: 1px solid var(--bg-card); border-radius: 16px; overflow: hidden;
+  margin-bottom: 16px; transition: border-color .25s, box-shadow .25s;
+}
+.pg .card-lift:hover { border-color: var(--border-2); box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
+.pg .card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--bg-card); background: rgba(255,255,255,.015);
+}
+.pg .card-head-left {}
+.pg .card-num { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 500; margin-bottom: 2px; }
+.pg .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.pg .card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-  /* card hover lift */
-  .card-lift { transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s; }
-  .card-lift:hover { transform: translateY(-2px); border-color: #3f3f46; box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
+/* ── Buttons ── */
+.pg .jsbtn {
+  height: 28px; padding: 0 11px; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
+  border: 1px solid var(--border); background: var(--bg-card); color: var(--text-2); cursor: pointer;
+  transition: all .2s; white-space: nowrap; display: inline-flex; align-items: center;
+  justify-content: center; gap: 5px; border-radius: 8px;
+}
+.pg .jsbtn:hover { border-color: var(--border-2); color: var(--text); background: var(--bg); }
+.pg .jsbtn.primary { background: #FFE600; color: var(--bg); border-color: #FFE600; font-weight: 700; }
+.pg .jsbtn.primary:hover { background: #FFE82E; }
+.pg .jsbtn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.pg .jsbtn.danger { border-color: rgba(248,113,113,.3); color: #f87171; }
+.pg .jsbtn.danger:hover { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.5); }
 
-  /* sidebar */
-  .side-item {
-    position: relative;
-    display: flex; align-items: center; justify-content: center;
-    width: 44px; height: 44px; border-radius: 12px;
-    color: #71717a; transition: background .2s, color .2s;
-  }
-  .side-item:hover { background: #171717; color: #e4e4e7; }
-  .side-item.active { background: #1a1a1a; color: #FFE600; }
-  .side-item.active::before {
-    content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
-    width: 3px; height: 22px; background: #FFE600; border-radius: 2px;
-  }
-  .side-item .tip {
-    position: absolute; left: 60px; top: 50%; transform: translateY(-50%);
-    background: #171717; color: #e4e4e7; font-size: 11px; font-weight: 500;
-    padding: 6px 10px; border-radius: 8px; border: 1px solid #262626;
-    white-space: nowrap; opacity: 0; pointer-events: none;
-    transition: opacity .15s, transform .15s; letter-spacing: .02em; z-index: 60;
-  }
-  .side-item:hover .tip { opacity: 1; transform: translateY(-50%) translateX(4px); }
+.pg .btn-outline {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-2); background: transparent;
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 6px 12px; cursor: pointer; transition: all .15s;
+}
+.pg .btn-outline:hover { background: var(--bg-card); color: var(--text); border-color: var(--border-2); }
+.pg .btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--bg); background: #FFE600;
+  border: none; border-radius: 10px; padding: 6px 14px; cursor: pointer; transition: background .15s;
+}
+.pg .btn-primary:hover { background: #FFE82E; }
 
-  /* animations */
-  .fade-in { animation: fadeUp .5s ease-out both; }
-  .fade-in.d1 { animation-delay: .05s; }
-  .fade-in.d2 { animation-delay: .1s; }
-  .fade-in.d3 { animation-delay: .15s; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+/* ── Chips ── */
+.pg .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; letter-spacing: .02em; }
+.pg .chip-green   { background: rgba(34,197,94,.12);  color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+.pg .chip-red     { background: rgba(239,68,68,.12);  color: #f87171; border: 1px solid rgba(239,68,68,.25); }
+.pg .chip-neutral { background: var(--bg-card); color: var(--text-2); border: 1px solid var(--border); }
+.pg .chip-brand   { background: rgba(255,230,0,.1);   color: #FFE600; border: 1px solid rgba(255,230,0,.25); }
+.pg .chip-blue    { background: rgba(255,230,0,.1);   color: #FFE600; border: 1px solid rgba(255,230,0,.25); }
 
-  /* pulse dot */
-  .pulse-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
-  .pulse-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: #22c55e; opacity: .35; animation: ring 2s ease-out infinite; }
-  @keyframes ring { 0% { transform: scale(0.6); opacity: .6; } 100% { transform: scale(1.8); opacity: 0; } }
+/* ── Table ── */
+.pg table.data { width: 100%; border-collapse: collapse; }
+.pg table.data th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 500; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.pg table.data td { padding: 11px 12px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--bg-card); }
+.pg table.data tr:last-child td { border-bottom: none; }
+.pg table.data tbody tr { transition: background .15s; }
+.pg table.data tbody tr:hover { background: var(--bg); }
 
-  /* panel pop */
-  .drp-panel { transform-origin: top right; animation: pop .18s ease-out both; }
-  @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+/* ── Link groups ── */
+.pg .link-group { border: 1px solid var(--border); background: var(--bg-card); margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: border-color .3s, box-shadow .3s; }
+.pg .link-group.syncing { border-color: rgba(255,230,0,.35); box-shadow: 0 0 24px rgba(255,230,0,.05); }
+.pg .lg-header { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--bg-card); background: rgba(255,255,255,.015); }
+.pg .lg-name { font-family: var(--mono); font-weight: 600; font-size: 12px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg .lg-stock { font-family: var(--mono); font-size: 24px; font-weight: 700; color: #FFE600; min-width: 52px; text-align: center; line-height: 1; }
+.pg .lg-stock-label { font-family: var(--mono); font-size: 8px; color: var(--border-2); text-transform: uppercase; letter-spacing: .1em; text-align: center; margin-top: 3px; }
+.pg .link-group table.data { background: transparent; }
+.pg .link-group table.data th { padding: 8px 12px; font-size: 9px; color: var(--text-3); border-bottom: 1px solid var(--bg-card); }
+.pg .link-group table.data td { padding: 9px 12px; border-bottom: 1px solid var(--bg); color: var(--text-2); font-size: 12px; }
+.pg .link-group table.data tr:last-child td { border-bottom: none; }
+.pg .link-group table.data tbody tr:hover { background: rgba(255,255,255,.018); }
+.pg .link-group table.data tbody tr.row-max { background: rgba(74,222,128,.025); }
+.pg .link-group table.data tbody tr.row-min { background: rgba(251,146,60,.025); }
+.pg .li-acct { display: inline-block; font-family: var(--mono); font-size: 9px; padding: 2px 7px; border: 1px solid var(--border); color: var(--text-3); border-radius: 6px; background: var(--bg-card); white-space: nowrap; }
+.pg .li-id { font-family: var(--mono); font-size: 10px; color: var(--border-2); }
+.pg .li-stock { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.pg .li-stock.ok   { color: #4ade80; }
+.pg .li-stock.warn { color: #fb923c; }
+.pg .li-stock.err  { color: #f87171; }
+.pg .btn-rm { background: none; border: none; color: var(--border-2); cursor: pointer; font-size: 16px; padding: 2px 4px; transition: color .15s; line-height: 1; }
+.pg .btn-rm:hover { color: #f87171; }
+.pg .lg-actions { padding: 9px 14px; border-top: 1px solid var(--bg-card); display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.pg .lg-tbl { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pg .lg-tbl table.data { min-width: 560px; }
 
-  /* btn-primary glow */
-  .btn-primary { position: relative; }
-  .btn-primary::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,230,0,.4), transparent 40%); opacity: 0; transition: opacity .2s; pointer-events: none; }
-  .btn-primary:hover::after { opacity: 1; }
-
-  /* chips */
-  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; letter-spacing: .02em; }
-  .chip-green   { background: rgba(34,197,94,.12);  color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
-  .chip-red     { background: rgba(239,68,68,.12);  color: #f87171; border: 1px solid rgba(239,68,68,.25); }
-  .chip-neutral { background: #171717; color: #a1a1aa; border: 1px solid #262626; }
-  .chip-brand   { background: rgba(255,230,0,.1);   color: #FFE600; border: 1px solid rgba(255,230,0,.25); }
-  .chip-blue    { background: rgba(255,230,0,.1);   color: #FFE600; border: 1px solid rgba(255,230,0,.25); }
-  .chip-purple  { background: rgba(192,132,252,.1); color: #c084fc; border: 1px solid rgba(192,132,252,.25); }
-
-  /* table */
-  table.data { width: 100%; border-collapse: collapse; }
-  table.data th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #737373; font-weight: 500; padding: 10px 12px; border-bottom: 1px solid #262626; }
-  table.data td { padding: 11px 12px; font-size: 13px; color: #d4d4d8; border-bottom: 1px solid #1a1a1a; }
-  table.data tr:last-child td { border-bottom: none; }
-  table.data tbody tr { transition: background .15s; }
-  table.data tbody tr:hover { background: #0f0f0f; }
-
-  /* ─── ESTILOS SOLO PARA HTML GENERADO POR JS ─── */
-
-  /* Botones JS */
-  .jsbtn {
-    height: 28px; padding: 0 11px; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
-    border: 1px solid #262626; background: #171717; color: #a1a1aa; cursor: pointer;
-    transition: all .2s; white-space: nowrap; display: inline-flex; align-items: center;
-    justify-content: center; gap: 5px; border-radius: 8px;
-  }
-  .jsbtn:hover { border-color: #3f3f46; color: #d4d4d8; background: #1c1c1c; }
-  .jsbtn.primary { background: #FFE600; color: #0a0a0a; border-color: #FFE600; font-weight: 700; }
-  .jsbtn.primary:hover { background: #FFE82E; }
-  .jsbtn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
-  .jsbtn.danger { border-color: rgba(248,113,113,.3); color: #f87171; }
-  .jsbtn.danger:hover { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.5); }
-
-  /* Link groups */
-  .link-group { border: 1px solid #1f1f1f; background: #0c0c0c; margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: border-color .3s, box-shadow .3s; }
-  .link-group.syncing { border-color: rgba(255,230,0,.35); box-shadow: 0 0 24px rgba(255,230,0,.05); }
-  .lg-header { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #171717; background: rgba(255,255,255,.015); }
-  .lg-name { font-family: var(--mono); font-weight: 600; font-size: 12px; color: #d4d4d8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lg-stock { font-family: var(--mono); font-size: 24px; font-weight: 700; color: #FFE600; min-width: 52px; text-align: center; line-height: 1; }
-  .lg-stock-label { font-family: var(--mono); font-size: 8px; color: #3f3f46; text-transform: uppercase; letter-spacing: .1em; text-align: center; margin-top: 3px; }
-  /* tabla interior de grupos — columnas alineadas por table.data */
-  .link-group table.data { background: transparent; }
-  .link-group table.data th { padding: 8px 12px; font-size: 9px; color: #737373; border-bottom: 1px solid #171717; border-top: none; }
-  .link-group table.data td { padding: 9px 12px; border-bottom: 1px solid #0f0f0f; color: #a1a1aa; font-size: 12px; }
-  .link-group table.data tr:last-child td { border-bottom: none; }
-  .link-group table.data tbody tr:hover { background: rgba(255,255,255,.018); }
-  .link-group table.data tbody tr.row-max { background: rgba(74,222,128,.025); }
-  .link-group table.data tbody tr.row-min { background: rgba(251,146,60,.025); }
-  .li-acct { display: inline-block; font-family: var(--mono); font-size: 9px; padding: 2px 7px; border: 1px solid #262626; color: #737373; border-radius: 6px; background: #171717; white-space: nowrap; }
-  .li-id { font-family: var(--mono); font-size: 10px; color: #3f3f46; }
-  .li-stock { font-family: var(--mono); font-size: 12px; font-weight: 600; }
-  .li-stock.ok   { color: #4ade80; }
-  .li-stock.warn { color: #fb923c; }
-  .li-stock.err  { color: #f87171; }
-  .btn-rm { background: none; border: none; color: #3f3f46; cursor: pointer; font-size: 16px; padding: 2px 4px; transition: color .15s; line-height: 1; }
-  .btn-rm:hover { color: #f87171; }
-  .lg-actions { padding: 9px 14px; border-top: 1px solid #171717; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
-
-  /* Tabla interior scrolleable horizontalmente en mobile */
-  .lg-tbl { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .lg-tbl table.data { min-width: 560px; }
-
-  @media (max-width: 640px) {
-    .lg-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
-    .lg-name { flex: 1 1 100%; order: 1; font-size: 13px; }
-    .sync-badge { order: 2; }
-    .lg-header > div:last-child { order: 3; margin-left: auto; }
-    .lg-stock { font-size: 20px; min-width: 44px; }
-    .link-group table.data th,
-    .link-group table.data td { padding: 8px 8px; font-size: 11px; }
-    .link-group table.data th:nth-child(5),
-    .link-group table.data td:nth-child(5) { display: none; } /* ocultar ID en mobile */
-    .link-group table.data td:nth-child(4) { max-width: 160px !important; }
-    .li-acct { font-size: 8px; padding: 2px 5px; }
-    .lg-actions { gap: 5px; padding: 8px 10px; justify-content: stretch; }
-    .lg-actions .jsbtn { flex: 1 1 auto; font-size: 10px; padding: 7px 8px; text-align: center; }
-  }
-
-  /* Sync badges */
-  .sync-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
-  .sync-ok      { color: #4ade80; border-color: rgba(74,222,128,.25);  background: rgba(74,222,128,.07);  }
-  .sync-pending { color: #fb923c; border-color: rgba(251,146,60,.25);  background: rgba(251,146,60,.07);  }
-  .sync-err     { color: #f87171; border-color: rgba(248,113,113,.25); background: rgba(248,113,113,.07); }
-
-  /* Suggestions */
-  .suggestion { border: 1px solid #1f1f1f; background: #0c0c0c; margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: opacity .3s; }
-  .suggestion.accepted { border-color: rgba(74,222,128,.25); opacity: .5; pointer-events: none; }
-  .suggestion.dismissed { display: none; }
-  .sg-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,.015); border-bottom: 1px solid #171717; }
-  .sg-title { font-family: var(--mono); font-size: 11px; color: #d4d4d8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sg-count { font-family: var(--mono); font-size: 9px; color: #52525b; padding: 2px 7px; border: 1px solid #1f1f1f; border-radius: 6px; white-space: nowrap; }
-  .sg-items { padding: 4px 0; }
-  .sg-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 11px; }
-  .sg-item img { width: 26px; height: 26px; object-fit: cover; border: 1px solid #1f1f1f; border-radius: 5px; flex-shrink: 0; }
-  .sg-item .sg-acct { font-family: var(--mono); font-size: 8px; padding: 1px 5px; border: 1px solid #2a2a2a; color: #737373; border-radius: 4px; min-width: 56px; text-align: center; }
-  .sg-item .sg-stk { font-family: var(--mono); font-size: 10px; color: #FFE600; min-width: 36px; text-align: right; font-weight: 600; }
-  .sg-actions { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid #171717; justify-content: flex-end; }
-
-  /* Search results */
-  .search-results { max-height: 240px; overflow-y: auto; border: 1px solid #1f1f1f; background: #0c0c0c; border-radius: 12px; margin-top: 4px; }
-  .search-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #171717; cursor: pointer; transition: background .15s; font-size: 12px; }
-  .search-item:last-child { border-bottom: none; }
-  .search-item:hover { background: rgba(255,230,0,.03); }
-  .search-item img { width: 32px; height: 32px; object-fit: cover; border: 1px solid #1f1f1f; border-radius: 6px; flex-shrink: 0; }
-  .search-item .si-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d4d4d8; }
-  .search-item .si-id { font-family: var(--mono); font-size: 9px; color: #52525b; }
-  .search-item .si-stock { font-family: var(--mono); font-size: 10px; color: #FFE600; font-weight: 600; }
-
-  /* Auto-sync dot */
-  .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: #2a2a2a; transition: background .3s; flex-shrink: 0; }
-  .auto-dot.active { background: #4ade80; animation: ring 2s ease-out infinite; }
-
-  /* Log */
-  .log-wrap { max-height: 200px; overflow-y: auto; padding: 12px 16px; }
-  .log-e { font-family: var(--mono); font-size: 10px; line-height: 2; }
-  .log-e.info { color: #3f3f46; }
-  .log-e.ok   { color: #4ade80; }
-  .log-e.err  { color: #f87171; }
-  .log-e.warn { color: #fb923c; }
-
-  /* Detection progress bar */
-  .detect-bar { width: 100%; height: 2px; background: #1a1a1a; margin-top: 10px; border-radius: 2px; overflow: hidden; }
-  .detect-fill { height: 100%; background: #FFE600; transition: width .4s; border-radius: 2px; }
-
-/* ═══════════════════════════════════════════════
-   RESPONSIVE / MOBILE
-   ═══════════════════════════════════════════════ */
-
-/* ocultar sidebar y bottom nav en escritorio */
-.btm-nav,.btm-sheet,.btm-overlay{display:none}
-
-@media(max-width:767px){
-  /* sidebar desktop → oculto */
-  aside.fixed{display:none!important}
-  /* quitar padding-left del sidebar */
-  .pl-16{padding-left:0!important}
-  /* espacio inferior para nav bar */
-  body{padding-bottom:72px}
-  /* padding horizontal más angosto */
-  .px-8{padding-left:1rem!important;padding-right:1rem!important}
-  /* header más compacto */
-  header h1{font-size:1rem!important}
-  header .py-4{padding-top:.75rem!important;padding-bottom:.75rem!important}
-  /* kpi pills → 2 columnas */
-  .kpi-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
-  .kpi-pill{min-width:0!important;padding:10px 12px!important}
-  .kpi-pill.ml-auto{grid-column:1/-1}
-  /* anchos máximos */
-  .max-w-5xl,.max-w-4xl{max-width:100%!important}
-  /* tablas: scroll horizontal */
-  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:12px}
-  /* acct-header: columna en móvil */
-  .acct-header{flex-direction:column!important;align-items:flex-start!important}
-  /* quick replies: scroll horizontal */
-  .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-  .quick-btn{flex-shrink:0}
-  /* textarea más chica */
-  .q-textarea{min-height:60px!important}
-  /* btn group en header */
-  header .flex.items-center.gap-2{flex-wrap:wrap;gap:4px!important}
-  /* ocultar botones secundarios en header móvil */
-  .btn-mobile-hide{display:none!important}
-  /* bottom nav visible */
-  .btm-nav{display:flex!important}
+@media (max-width: 640px) {
+  .pg .lg-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .pg .lg-name { flex: 1 1 100%; order: 1; font-size: 13px; }
+  .pg .sync-badge { order: 2; }
+  .pg .lg-stock { font-size: 20px; min-width: 44px; }
+  .pg .link-group table.data th,
+  .pg .link-group table.data td { padding: 8px 8px; font-size: 11px; }
+  .pg .link-group table.data th:nth-child(5),
+  .pg .link-group table.data td:nth-child(5) { display: none; }
+  .pg .link-group table.data td:nth-child(4) { max-width: 160px !important; }
+  .pg .li-acct { font-size: 8px; padding: 2px 5px; }
+  .pg .lg-actions { gap: 5px; padding: 8px 10px; justify-content: stretch; }
+  .pg .lg-actions .jsbtn { flex: 1 1 auto; font-size: 10px; padding: 7px 8px; text-align: center; }
 }
 
-/* ── BOTTOM NAV ──────────────────────────────── */
-.btm-nav{
-  position:fixed;bottom:0;left:0;right:0;z-index:50;
-  background:#111113;border-top:1px solid #262626;
-  align-items:stretch;
-  padding-bottom:env(safe-area-inset-bottom,0px)
+/* ── Sync badges ── */
+.pg .sync-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.pg .sync-ok      { color: #4ade80; border-color: rgba(74,222,128,.25);  background: rgba(74,222,128,.07);  }
+.pg .sync-pending { color: #fb923c; border-color: rgba(251,146,60,.25);  background: rgba(251,146,60,.07);  }
+.pg .sync-err     { color: #f87171; border-color: rgba(248,113,113,.25); background: rgba(248,113,113,.07); }
+
+/* ── Suggestions ── */
+.pg .suggestion { border: 1px solid var(--border); background: var(--bg-card); margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: opacity .3s; }
+.pg .suggestion.accepted { border-color: rgba(74,222,128,.25); opacity: .5; pointer-events: none; }
+.pg .suggestion.dismissed { display: none; }
+.pg .sg-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,.015); border-bottom: 1px solid var(--bg-card); }
+.pg .sg-title { font-family: var(--mono); font-size: 11px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg .sg-count { font-family: var(--mono); font-size: 9px; color: var(--text-3); padding: 2px 7px; border: 1px solid var(--border); border-radius: 6px; white-space: nowrap; }
+.pg .sg-items { padding: 4px 0; }
+.pg .sg-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 11px; }
+.pg .sg-item img { width: 26px; height: 26px; object-fit: cover; border: 1px solid var(--bg-card); border-radius: 5px; flex-shrink: 0; }
+.pg .sg-item .sg-acct { font-family: var(--mono); font-size: 8px; padding: 1px 5px; border: 1px solid var(--border); color: var(--text-3); border-radius: 4px; min-width: 56px; text-align: center; }
+.pg .sg-item .sg-stk { font-family: var(--mono); font-size: 10px; color: #FFE600; min-width: 36px; text-align: right; font-weight: 600; }
+.pg .sg-actions { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--bg-card); justify-content: flex-end; }
+
+/* ── Search results ── */
+.pg .search-results { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); background: var(--bg-card); border-radius: 12px; margin-top: 4px; }
+.pg .search-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--bg-card); cursor: pointer; transition: background .15s; font-size: 12px; }
+.pg .search-item:last-child { border-bottom: none; }
+.pg .search-item:hover { background: rgba(255,230,0,.03); }
+.pg .search-item img { width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--bg-card); border-radius: 6px; flex-shrink: 0; }
+.pg .search-item .si-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.pg .search-item .si-id { font-family: var(--mono); font-size: 9px; color: var(--text-3); }
+.pg .search-item .si-stock { font-family: var(--mono); font-size: 10px; color: #FFE600; font-weight: 600; }
+
+/* ── Log ── */
+.pg .log-wrap { max-height: 200px; overflow-y: auto; padding: 12px 16px; }
+.pg .log-e { font-family: var(--mono); font-size: 10px; line-height: 2; }
+.pg .log-e.info { color: var(--border-2); }
+.pg .log-e.ok   { color: #4ade80; }
+.pg .log-e.err  { color: #f87171; }
+.pg .log-e.warn { color: #fb923c; }
+
+/* ── Detect progress ── */
+.pg .detect-bar { width: 100%; height: 2px; background: var(--bg-card); margin-top: 10px; border-radius: 2px; overflow: hidden; }
+.pg .detect-fill { height: 100%; background: #FFE600; transition: width .4s; border-radius: 2px; }
+
+/* ── New group form inputs ── */
+.pg input[type=text], .pg input[type=search] {
+  background: var(--bg-card); border: 1px solid var(--border-2); color: var(--text);
+  border-radius: 12px; padding: 10px 14px; font-size: 13px; outline: none;
+  transition: border-color .2s; width: 100%;
+  font-family: 'JetBrains Mono', monospace;
 }
-.btm-item{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;padding:7px 2px 5px;color:#71717a;text-decoration:none;
-  font-size:9px;font-weight:600;letter-spacing:.04em;font-family:'JetBrains Mono',monospace;
-  transition:color .15s;border:none;background:transparent;cursor:pointer;
-  min-width:0;white-space:nowrap;overflow:hidden;
+.pg input[type=text]:focus, .pg input[type=search]:focus { border-color: #FFE600; }
+.pg input::placeholder { color: var(--text-3); }
+.pg select {
+  width: 100%; background: var(--bg-card); border: 1px solid var(--border-2); color: var(--text);
+  border-radius: 12px; padding: 10px 14px; font-size: 13px; outline: none;
+  appearance: none; cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  transition: border-color .2s;
 }
-.btm-item:hover,.btm-item.active{color:#FFE600}
-.btm-item.active svg{stroke:#FFE600}
-.btm-item svg{flex-shrink:0}
-.btm-sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:52;
-  background:#141416;border:1px solid #2a2a30;border-radius:16px 16px 0 0;
-  padding:6px 16px 0;display:flex;flex-direction:column;gap:2px;
-  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
-  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 72px)
+.pg select:focus { border-color: #FFE600; }
+.pg label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 500; display: block; margin-bottom: 6px; }
+
+/* ── Pending card ── */
+.pg .pending-card {
+  background: var(--bg); border: 1px solid rgba(249,115,22,.3); border-radius: 16px; overflow: hidden;
+  margin-bottom: 16px; display: none;
 }
-.btm-sheet.open{transform:translateY(0)}
-.btm-overlay{
-  position:fixed;inset:0;z-index:51;background:rgba(0,0,0,.65);
-  opacity:0;pointer-events:none;transition:opacity .22s
+.pg .pending-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px; border-bottom: 1px solid rgba(249,115,22,.2);
+  background: rgba(249,115,22,.05);
 }
-.btm-overlay.open{opacity:1;pointer-events:all}
-.btm-handle{width:32px;height:3px;background:#3a3a42;border-radius:2px;margin:6px auto 12px}
-.btm-more-link{
-  display:flex;align-items:center;gap:12px;padding:11px 10px;
-  border-radius:10px;color:#a1a1aa;text-decoration:none;font-size:13px;font-weight:500;
-  transition:background .15s,color .15s
+.pg .pending-count-badge {
+  font-family: var(--mono); font-size: 10px; color: rgba(249,115,22,.7);
+  background: rgba(249,115,22,.1); border: 1px solid rgba(249,115,22,.2);
+  border-radius: 4px; padding: 2px 6px;
 }
-.btm-more-link:hover{background:#1c1c20;color:#e4e4e7}
-.btm-more-link.active{color:#FFE600}
+.pg .btn-apply-all {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #f97316; color: var(--bg); font-size: 11px; font-weight: 600;
+  border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+  transition: background .15s;
+}
+.pg .btn-apply-all:hover { background: #fb923c; }
+
+/* ── Historial ── */
+.pg .log-hist-card { background: var(--bg); border: 1px solid var(--bg-card); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+.pg .log-hist-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--bg-card); }
+.pg .log-hist-list { max-height: 288px; overflow-y: auto; }
+.pg .log-hist-entry { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); transition: background .15s; }
+.pg .log-hist-entry:last-child { border-bottom: none; }
+.pg .log-hist-entry:hover { background: rgba(255,255,255,.015); }
+
+/* ── Empty state ── */
+.pg .empty-hint { padding: 64px 24px; text-align: center; }
+.pg .empty-icon { width: 48px; height: 48px; border-radius: 16px; background: var(--bg-card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--text-3); }
+
+/* ── Footer ── */
+.pg footer { text-align: center; font-size: 11px; color: var(--border-2); padding-bottom: 24px; font-family: var(--mono); }
+
+/* ── Scrollbar ── */
+.pg *::-webkit-scrollbar { width: 6px; height: 6px; }
+.pg *::-webkit-scrollbar-track { background: transparent; }
+.pg *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.pg *::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
 
 </style>
 </head>
-<body class="bg-neutral-950 text-neutral-200 antialiased min-h-screen">
+<body>
+<div class="adm-wrap">
 
-<!-- ────────────────────────────────────────────────── SIDEBAR ──── -->
-<aside class="fixed left-0 top-0 bottom-0 w-16 bg-neutral-900 border-r border-neutral-800 hidden md:flex flex-col items-center py-4 z-40">
-  <div class="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mb-6 shadow-pop">
-    <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
-    </svg>
-  </div>
-  <nav class="flex flex-col gap-1 flex-1">
-    <a href="/" class="side-item" aria-label="Dashboard">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-      <span class="tip">Dashboard</span>
-    </a>
-    <a href="/analytics.html" class="side-item" aria-label="Analytics">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      <span class="tip">Stock &amp; Analytics</span>
-    </a>
-    <a href="/publicaciones.html" class="side-item" aria-label="Publicaciones">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <span class="tip">Publicar</span>
-    </a>
-    <a href="/vinculaciones.html" class="side-item active" aria-label="Vinculaciones">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-      <span class="tip">Vinculaciones</span>
-    </a>
-    <a href="/migracion.html" class="side-item" aria-label="Migración">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-      <span class="tip">Migración</span>
-    </a>
-    <a href="/cobros.html" class="side-item" aria-label="Cobros">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-      <span class="tip">Cobros</span>
-    </a>
-    <a href="/despachos.html" class="side-item" aria-label="Despachos">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-      <span class="tip">Despachos</span>
-    </a>
-    <a href="/preguntas.html" class="side-item" aria-label="Preguntas">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      <span class="tip">Preguntas</span>
-    </a>
+<!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+
+  <!-- Logo -->
+  <a href="/" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
+      </svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Stockroom</div>
+      <div class="adm-logo-tag">Panel Admin</div>
+    </div>
+  </a>
+
+  <!-- Nav -->
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">Ventas</div>
+      <a href="/" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="/analytics.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Analytics</span>
+      </a>
+      <a href="/despachos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Despachos</span>
+      </a>
+      <a href="/cobros.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        <span>Cobros</span>
+      </a>
+      <a href="/verificar-envios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>
+        <span>Verificar Logística</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/publicaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Publicaciones</span>
+      </a>
+      <a href="/vinculaciones.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <span>Vinculaciones</span>
+      </a>
+      <a href="/migracion.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+        <span>Migración</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/preguntas.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Preguntas</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Tienda</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Admin Tienda</span>
+      </a>
+    </div>
+
   </nav>
-  <div class="flex flex-col gap-1 mt-auto">
-    <button class="side-item" aria-label="Configuración">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      <span class="tip">Configuración</span>
-    </button>
-    <a href="/logout" class="side-item" aria-label="Cerrar sesión">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span class="tip">Cerrar sesión</span>
+
+  <!-- Footer -->
+  <div class="adm-sidebar-foot">
+    <a href="/oauth/start" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <span>Conectar cuenta</span>
+    </a>
+    <a href="/logout" class="adm-item" style="color:var(--red)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Cerrar sesión</span>
     </a>
   </div>
+
+  <!-- Clock -->
+  <div class="foot-info" id="foot-clock">—</div>
 </aside>
 
-<!-- ────────────────────────────────────────────────────── MAIN ──── -->
-<div class="md:pl-16 min-h-screen relative z-10">
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
 
   <!-- HEADER -->
-  <header class="sticky top-0 z-30 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800">
-    <div class="flex items-center justify-between px-8 py-4 gap-4">
-      <div class="min-w-0">
-        <h1 class="text-xl font-semibold tracking-tight text-neutral-100">Vinculaciones</h1>
-        <p class="text-xs text-neutral-500 mt-0.5 flex items-center gap-2">
-          <span class="pulse-dot"></span>
-          <span>Sincronización de stock multi-cuenta</span>
-        </p>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <!-- Auto-sync -->
-        <div class="flex items-center gap-2.5 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2">
-          <div class="auto-dot" id="auto-dot"></div>
-          <span class="text-[11px] font-mono text-neutral-500 uppercase tracking-wider hidden sm:block">Auto-sync</span>
-          <label class="flex items-center gap-1.5 cursor-pointer">
-            <input type="checkbox" id="auto-sync-chk" onchange="toggleAutoSync(this.checked)" style="accent-color:#FFE600;width:13px;height:13px">
-            <span id="auto-sync-label" class="text-[11px] font-mono text-neutral-500">OFF</span>
-          </label>
-          <span class="text-neutral-700 text-xs">·</span>
-          <select id="auto-interval" onchange="updateAutoInterval()"
-            class="bg-transparent border-0 text-neutral-500 font-mono text-[11px] outline-none cursor-pointer">
-            <option value="60000">1 min</option>
-            <option value="120000">2 min</option>
-            <option value="300000" selected>5 min</option>
-            <option value="600000">10 min</option>
-            <option value="1800000">30 min</option>
-          </select>
-          <span id="auto-status" class="text-[11px] font-mono text-neutral-600 hidden md:block">—</span>
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Vinculaciones</div>
+        <div class="adm-page-sub">
+          <span id="h-subtitle">Sincronización de stock</span>
         </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <!-- Theme toggle -->
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
 
-        <!-- Account switcher -->
-        <div class="relative" id="acct-wrap">
-          <button id="acct-btn" onclick="toggleAcctMenu()"
-            class="flex items-center gap-2 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl px-3 py-2 text-sm transition-colors">
-            <span class="w-6 h-6 rounded-full bg-gradient-to-br from-brand to-yellow-500 flex items-center justify-center text-[10px] font-bold text-neutral-950">?</span>
-            <span id="acct-label" class="inline text-xs font-medium text-neutral-200 max-w-[140px] truncate">—</span>
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <div id="acct-menu" style="display:none"
-            class="absolute right-0 mt-2 w-72 bg-neutral-900 border border-neutral-800 rounded-xl shadow-pop drp-panel overflow-hidden z-50">
-            <div class="p-3 border-b border-neutral-800">
-              <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1">Cuenta activa</div>
-              <div id="acct-active" class="text-sm text-neutral-200 font-medium truncate">—</div>
-              <div id="acct-active-id" class="text-[11px] font-mono text-neutral-500 mt-0.5">—</div>
-            </div>
-            <div id="acct-list" class="max-h-60 overflow-y-auto py-1"></div>
-            <div class="p-2 border-t border-neutral-800 flex gap-2">
-              <a href="/oauth/start" class="flex-1 text-center text-xs text-neutral-300 hover:text-neutral-100 bg-neutral-800 hover:bg-neutral-700 rounded-lg py-1.5 transition">
-                + Nueva cuenta
-              </a>
-            </div>
+      <!-- Account switcher -->
+      <div class="adm-acct" id="acct-wrap">
+        <button class="adm-acct-btn" id="acc-btn">
+          <div class="adm-avatar" id="acc-initial">?</div>
+          <span class="adm-acct-name" id="acc-label">Cuenta</span>
+          <svg class="adm-acct-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="adm-dropdown hidden" id="acc-panel">
+          <div class="adm-dropdown-head">Cuenta activa</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)" id="acc-active">—</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px" id="acc-active-id">—</div>
+          </div>
+          <div id="acc-list"></div>
+          <div class="adm-dropdown-foot">
+            <a href="/oauth/start" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">+ Nueva cuenta</a>
           </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="p-4 md:p-8 max-w-[1400px] mx-auto">
+  <!-- CONTENT -->
+  <main class="adm-content">
+    <div class="pg">
 
-    <!-- ── CARD: VINCULAR PUBLICACIONES ── -->
-    <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d1 mb-4">
+  <!-- ── Auto-sync indicator bar ── -->
+  <div class="auto-sync-bar">
+    <div class="auto-dot active" id="auto-dot" title="Servidor verificando cada 10 min"></div>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--text-3)">Cada 10 min</span>
+    <span class="auto-sep">·</span>
+    <span id="auto-status" class="auto-status-txt">—</span>
+    <span class="auto-sep">·</span>
+    <button onclick="manualCheck()" id="btn-check-now" class="btn-check-now">
+      <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+      Revisar ahora
+    </button>
+    <span class="auto-sep">·</span>
+    <button onclick="manualCheckVariants()" id="btn-check-variants" class="btn-check-now" title="Compara stock variante por variante (talle, color, etc.) entre publicaciones vinculadas">
+      <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      Por variante
+    </button>
+  </div>
 
-      <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">01</div>
-          <h3 class="text-sm font-semibold text-neutral-100">Vincular Publicaciones</h3>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="startDetection()" id="btn-detect"
-            class="text-xs text-neutral-400 hover:text-neutral-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Detectar
-          </button>
-          <button onclick="showNewGroup()" id="btn-new"
-            class="btn-primary bg-brand text-neutral-950 text-xs font-semibold rounded-xl px-3 py-1.5 hover:bg-brand-300 transition flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nuevo grupo
-          </button>
-        </div>
+  <!-- ── CARD: VINCULAR PUBLICACIONES ── -->
+  <div class="card card-lift fade-in d1">
+
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-num">01</div>
+        <div class="card-title">Vincular Publicaciones</div>
       </div>
-
-      <!-- Detection progress -->
-      <div id="detect-progress" style="display:none" class="px-6 py-4 border-b border-neutral-800">
-        <p id="detect-status" class="text-xs font-mono text-neutral-400">Escaneando publicaciones...</p>
-        <div class="detect-bar"><div class="detect-fill" id="detect-fill" style="width:0%"></div></div>
-      </div>
-
-      <!-- Auto-detect suggestions -->
-      <div id="suggestions-wrap" style="display:none" class="px-6 py-5 border-b border-neutral-800">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <span class="chip chip-blue">
-              <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              Coincidencias detectadas
-            </span>
-            <span class="text-[11px] font-mono text-neutral-500"><span id="sg-count">0</span> grupos</span>
-          </div>
-          <div class="flex gap-2">
-            <button onclick="acceptAllSuggestions()"
-              class="text-xs text-neutral-400 hover:text-neutral-100 px-3 py-1.5 rounded-lg hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
-              Aceptar todos
-            </button>
-            <button onclick="dismissAllSuggestions()"
-              class="text-xs text-red-400/70 hover:text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/5 border border-red-500/20 transition">
-              Descartar todos
-            </button>
-          </div>
-        </div>
-        <div id="suggestions-list"></div>
-      </div>
-
-      <!-- New group form -->
-      <div id="new-group-form" style="display:none" class="px-6 py-5 border-b border-neutral-800 space-y-4">
-
-        <div>
-          <label class="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Nombre del grupo</label>
-          <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80"
-            class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-sm text-neutral-200 font-mono outline-none focus:border-neutral-600 transition placeholder:text-neutral-600">
-        </div>
-
-        <div class="bg-neutral-950/50 border border-neutral-800 rounded-xl p-4 space-y-3">
-          <div class="text-[10px] uppercase tracking-wider text-neutral-600 font-medium font-mono">Items vinculados</div>
-          <div id="ng-items"></div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-            <div>
-              <label class="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Cuenta</label>
-              <div class="relative">
-                <select id="ng-acct"
-                  class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-sm text-neutral-200 font-mono outline-none focus:border-neutral-600 transition appearance-none pr-8">
-                </select>
-                <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5 text-neutral-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </div>
-            </div>
-            <div class="sm:col-span-2">
-              <label class="block text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1.5">Buscar publicación (título o MLA ID)</label>
-              <input type="text" id="ng-search" placeholder="Ej: iPhone 15 o MLA123456789" oninput="debounceSearch(this.value)"
-                class="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2.5 text-sm text-neutral-200 font-mono outline-none focus:border-neutral-600 transition placeholder:text-neutral-600">
-            </div>
-          </div>
-          <div id="ng-results" class="search-results" style="display:none"></div>
-        </div>
-
-        <div class="flex items-center justify-end gap-2 pt-1">
-          <button onclick="cancelNewGroup()"
-            class="text-xs text-neutral-400 hover:text-neutral-100 px-4 py-2 rounded-xl hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
-            Cancelar
-          </button>
-          <button onclick="saveNewGroup()" id="btn-save-group"
-            class="btn-primary bg-brand text-neutral-950 text-xs font-semibold rounded-xl px-4 py-2 hover:bg-brand-300 transition flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Guardar grupo
-          </button>
-        </div>
-      </div>
-
-      <!-- Empty state -->
-      <div id="empty-hint" class="px-6 py-16 text-center">
-        <div class="w-12 h-12 rounded-2xl bg-neutral-800 border border-neutral-700 flex items-center justify-center mx-auto mb-4">
-          <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-neutral-600" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-        </div>
-        <p class="text-sm font-medium text-neutral-500 mb-1">Sin vinculaciones</p>
-        <p class="text-xs text-neutral-600 max-w-sm mx-auto leading-relaxed">Vincula publicaciones iguales de distintas cuentas para mantener el stock sincronizado. Cuando se vende en una, se descuenta en todas.</p>
-      </div>
-    </div>
-
-    <!-- ── CARD: LOG ── -->
-    <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden fade-in d2 mb-4">
-      <div class="flex items-center justify-between px-6 py-3 border-b border-neutral-800">
-        <div class="flex items-center gap-2">
-          <div class="w-1.5 h-1.5 rounded-full bg-neutral-700"></div>
-          <span class="text-[11px] font-mono uppercase tracking-wider text-neutral-500">Log</span>
-        </div>
-        <button onclick="clearLog()" class="text-[11px] text-neutral-600 hover:text-neutral-400 font-mono transition">
-          Limpiar
+      <div class="card-actions">
+        <button onclick="startDetection()" id="btn-detect" class="btn-outline">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Detectar
+        </button>
+        <button onclick="showNewGroup()" id="btn-new" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuevo grupo
         </button>
       </div>
-      <div class="log-wrap" id="log">
-        <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
+    </div>
+
+    <!-- Detection progress -->
+    <div id="detect-progress" style="display:none;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <p id="detect-status" style="font-family:var(--mono);font-size:12px;color:var(--text-2)">Escaneando publicaciones...</p>
+      <div class="detect-bar"><div class="detect-fill" id="detect-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Auto-detect suggestions -->
+    <div id="suggestions-wrap" style="display:none;padding:20px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="chip chip-blue">
+            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            Coincidencias detectadas
+          </span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text-3)"><span id="sg-count">0</span> grupos</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="acceptAllSuggestions()" class="btn-outline" style="font-size:12px">Aceptar todos</button>
+          <button onclick="dismissAllSuggestions()" class="btn-outline" style="font-size:12px;color:#f87171;border-color:rgba(248,113,113,.3)">Descartar todos</button>
+        </div>
+      </div>
+      <div id="suggestions-list"></div>
+    </div>
+
+    <!-- New group form -->
+    <div id="new-group-form" style="display:none;padding:20px;border-bottom:1px solid var(--border)">
+
+      <div style="margin-bottom:16px">
+        <label for="ng-name">Nombre del grupo</label>
+        <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80">
+      </div>
+
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);font-weight:500;font-family:var(--mono);margin-bottom:12px">Items vinculados</div>
+        <div id="ng-items"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-top:12px">
+          <div>
+            <label for="ng-acct">Cuenta</label>
+            <div style="position:relative">
+              <select id="ng-acct"></select>
+              <svg viewBox="0 0 24 24" fill="none" width="14" height="14" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-3)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+          <div>
+            <label for="ng-search">Buscar publicación (título o MLA ID)</label>
+            <input type="text" id="ng-search" placeholder="Ej: iPhone 15 o MLA123456789" oninput="debounceSearch(this.value)">
+          </div>
+        </div>
+        <div id="ng-results" class="search-results" style="display:none"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
+        <button onclick="cancelNewGroup()" class="btn-outline">Cancelar</button>
+        <button onclick="saveNewGroup()" id="btn-save-group" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Guardar grupo
+        </button>
       </div>
     </div>
 
-    <!-- ── CARD: PENDIENTES (auto-detect) ── -->
-    <div id="pending-card" class="bg-neutral-900 border border-orange-500/30 rounded-2xl overflow-hidden fade-in mb-4" style="display:none">
-      <div class="flex items-center justify-between px-6 py-3 border-b border-orange-500/20 bg-orange-500/5">
-        <div class="flex items-center gap-2">
-          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-orange-400" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-          <span class="text-xs font-semibold text-orange-300">Ajustes pendientes detectados</span>
-          <span id="pending-count" class="text-[10px] font-mono text-orange-400/70 bg-orange-500/10 border border-orange-500/20 rounded px-1.5 py-0.5">0</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="dismissPending()" class="text-[11px] text-neutral-500 hover:text-neutral-300 px-2 py-1 transition">Descartar</button>
-          <button onclick="applyPending()" class="bg-orange-500 hover:bg-orange-400 text-neutral-950 text-[11px] font-semibold rounded-lg px-3 py-1.5 transition flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Aplicar todo
-          </button>
-        </div>
+    <!-- Empty state -->
+    <div id="empty-hint" class="empty-hint">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" width="24" height="24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
       </div>
-      <div id="pending-list" class="p-3 space-y-2"></div>
+      <p style="font-size:14px;font-weight:500;color:var(--text-3);margin-bottom:6px">Sin vinculaciones</p>
+      <p style="font-size:12px;color:var(--text-3);max-width:380px;margin:0 auto;line-height:1.6">Vincula publicaciones iguales de distintas cuentas para mantener el stock sincronizado. Cuando se vende en una, se descuenta en todas.</p>
     </div>
+  </div>
 
-    <!-- ── CARD: GRUPOS VINCULADOS ── -->
-    <div class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden card-lift fade-in d3 mb-8" id="groups-card" style="display:none">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-0.5">02</div>
-          <h3 class="text-sm font-semibold text-neutral-100">Grupos Vinculados</h3>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="refreshAllStocks()"
-            class="text-xs text-neutral-400 hover:text-neutral-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 transition">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-            Actualizar stocks
-          </button>
-          <button onclick="syncAll()"
-            class="btn-primary bg-brand text-neutral-950 text-xs font-semibold rounded-xl px-3 py-1.5 hover:bg-brand-300 transition flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
-            Sincronizar todo
-          </button>
-        </div>
+  <!-- ── CARD: LOG OPERATIVO ── -->
+  <div class="card fade-in d2">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--text-3)"></div>
+        <span style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)">Log</span>
       </div>
-      <div class="p-4" id="groups-list"></div>
+      <button onclick="clearLog()" style="font-family:var(--mono);font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;transition:color .15s" onmouseover="this.style.color='var(--text-2)'" onmouseout="this.style.color='var(--text-3)'">
+        Limpiar
+      </button>
     </div>
+    <div class="log-wrap" id="log">
+      <div class="log-e info">— Crea un grupo para vincular publicaciones entre cuentas</div>
+    </div>
+  </div>
 
-    <footer class="text-center text-[11px] text-neutral-700 pb-6 font-mono">
-      STOCKROOM · Vinculaciones · MercadoLibre Argentina
-    </footer>
+  <!-- ── CARD: AJUSTES PENDIENTES (server-detected) ── -->
+  <div id="pending-card" class="pending-card">
+    <div class="pending-head">
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <span style="font-size:12px;font-weight:600;color:#fdba74">Ajustes de stock pendientes</span>
+        <span id="pending-count" class="pending-count-badge">0</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="dismissAllPending()" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 8px;transition:color .15s" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--text-3)'">Descartar todos</button>
+        <button onclick="applyAllPending()" id="btn-apply-all" class="btn-apply-all">
+          <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Aplicar todos
+        </button>
+      </div>
+    </div>
+    <div id="pending-list" style="padding:12px;display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+
+  <!-- ── CARD: HISTORIAL DE CAMBIOS ── -->
+  <div id="log-card" class="log-hist-card fade-in">
+    <div class="log-hist-head">
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">Historial de cambios</span>
+        <span id="log-count" style="font-family:var(--mono);font-size:10px;color:var(--text-3);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px">0</span>
+      </div>
+      <button onclick="loadLog()" class="btn-outline" style="font-size:11px;padding:4px 10px">
+        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4.36"/></svg>
+        Actualizar
+      </button>
+    </div>
+    <div id="log-list" class="log-hist-list">
+      <div style="padding:16px 20px;font-size:12px;color:var(--text-3);text-align:center">Cargando…</div>
+    </div>
+  </div>
+
+  <!-- ── CARD: GRUPOS VINCULADOS ── -->
+  <div class="card card-lift fade-in d3" id="groups-card" style="display:none">
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-num">02</div>
+        <div class="card-title">Grupos Vinculados</div>
+      </div>
+      <div class="card-actions">
+        <button onclick="refreshAllStocks()" class="btn-outline">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Actualizar stocks
+        </button>
+        <button onclick="syncAll()" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+          Sincronizar todo
+        </button>
+      </div>
+    </div>
+    <div style="padding:16px" id="groups-list"></div>
+  </div>
+
+  <footer>STOCKROOM · Vinculaciones · MercadoLibre Argentina</footer>
+
+    </div><!-- /.pg -->
   </main>
-</div>
+</div><!-- /.adm-main -->
 
-<script src="/theme.js"></script>
+</div><!-- /.adm-wrap -->
+
+<!-- Sidebar overlay -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- Bottom nav -->
+<nav class="adm-btm-nav">
+  <a href="/" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a href="/despachos.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    <span>Despachos</span>
+  </a>
+  <a href="/preguntas.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span>Preguntas</span>
+  </a>
+  <a href="/cobros.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+    <span>Cobros</span>
+  </a>
+  <a href="/analytics.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+    <span>Analytics</span>
+  </a>
+</nav>
+
 <script>
-// ── State ─────────────────────────────────────────────────────
+// ── Shell bootstrap ───────────────────────────────────────────
+const $I = id => document.getElementById(id);
+
+// Clock
+(function tick(){
+  const el = $I('foot-clock'); if(!el) return;
+  const n = new Date();
+  el.textContent = n.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  setTimeout(tick, 1000);
+})();
+
+// Hamburger / sidebar
+const _ham = $I('btn-hamburger'), _sb = $I('sidebar'), _ov = $I('sidebar-overlay');
+if(_ham && _sb && _ov){
+  _ham.addEventListener('click',()=>{_sb.classList.toggle('open');_ov.classList.toggle('open');});
+  _ov.addEventListener('click',()=>{_sb.classList.remove('open');_ov.classList.remove('open');});
+}
+
+// Theme toggle
+(function(){
+  const btn = $I('btn-theme'); if(!btn) return;
+  function apply(t){ document.documentElement.setAttribute('data-theme',t); try{localStorage.setItem('adminTheme',t);}catch(e){} }
+  btn.addEventListener('click',()=>{ apply(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'); });
+})();
+
+// Account switcher (shell)
+function loadAccounts(){
+  fetch('/accounts').then(r=>r.json()).then(d=>{
+    const accounts = d.accounts||[];
+    const active = accounts.find(a=>a.active)||accounts[0];
+    if(active){
+      const lbl = $I('acc-label'); if(lbl) lbl.textContent = active.label||active.id||'Cuenta';
+      const ini = $I('acc-initial'); if(ini) ini.textContent = (active.label||active.id||'?').trim().charAt(0).toUpperCase();
+      const acA = $I('acc-active'); if(acA) acA.textContent = active.label||active.id||'—';
+      const acI = $I('acc-active-id'); if(acI) acI.textContent = active.user_id||'—';
+    }
+    const list = $I('acc-list'); if(!list) return;
+    list.innerHTML = accounts.map(a=>{
+      const lbl = esc(a.label||a.id||'');
+      const uid = esc(a.user_id||'—');
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;transition:background .15s'+(a.active?';background:rgba(255,255,255,.04)':'')+'" onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\''+(a.active?'rgba(255,255,255,.04)':'transparent')+'\'" onclick="(async()=>{await fetch(\'/accounts/switch\',{method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({id:\''+a.id+'\'})});location.reload();})()">'
+        +'<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#FFE600,#ca8a04);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0a0a0a;flex-shrink:0">'+esc((a.label||a.id||'?').trim().charAt(0).toUpperCase())+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+lbl+'</div>'
+        +'<div style="font-size:10px;color:var(--text-3);font-family:var(--font-mono)">'+uid+'</div></div>'
+        +(a.active?'<svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="#FFE600" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':'')
+        +'</div>';
+    }).join('');
+  }).catch(()=>{});
+}
+loadAccounts();
+
+const _accBtn = $I('acc-btn'), _accPanel = $I('acc-panel');
+if(_accBtn && _accPanel){
+  _accBtn.addEventListener('click',e=>{e.stopPropagation();_accPanel.classList.toggle('hidden');});
+  document.addEventListener('click',e=>{ if(!_accBtn.contains(e.target)&&!_accPanel.contains(e.target)) _accPanel.classList.add('hidden'); });
+}
+
+// Service worker
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+
+// HTML escape helper (used by page JS and shell)
+function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+</script>
+
+<script>
+// ── Page State ────────────────────────────────────────────────
 let accounts = [];
 let groups = [];
 let suggestions = [];
@@ -651,33 +705,25 @@ let detecting = false;
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
-  await loadAccounts();
+  await loadPageAccounts();
   await loadGroups();
   renderGroups();
   restoreAutoSync();
+  await loadPendingFromServer();
+  loadLog();
 }
 init();
 
-async function loadAccounts() {
+async function loadPageAccounts() {
   try {
     const r = await fetch('/accounts');
     const d = await r.json();
     accounts = d.accounts || [];
-    const sel = document.getElementById('ng-acct');
-    sel.innerHTML = accounts.map(a =>
+    const sel = $I('ng-acct');
+    if (sel) sel.innerHTML = accounts.map(a =>
       '<option value="' + a.id + '">' + esc(a.label || a.id) + '</option>'
     ).join('');
-    const active = accounts.find(a => a.active) || accounts[0];
-    if (active) {
-      document.getElementById('acct-label').textContent = active.label || active.id;
-      const ini = document.querySelector('#acct-btn .w-6');
-      if (ini) ini.textContent = (active.label || active.id || '?').trim().charAt(0).toUpperCase();
-      const ac = document.getElementById('acct-active');
-      const aid = document.getElementById('acct-active-id');
-      if (ac) ac.textContent = active.label || active.id || '—';
-      if (aid) aid.textContent = active.user_id || '—';
-    }
-    renderAcctMenu();
+    // Old header account elements no longer exist; shell's loadAccounts() handles adm-header
   } catch(e) { log('err', 'Error cargando cuentas: ' + e.message); }
 }
 
@@ -697,18 +743,20 @@ async function saveGroups() {
   });
 }
 
-// ── Account menu ──────────────────────────────────────────────
+// ── Account menu (old header elements gone — these are silent no-ops) ──
 function toggleAcctMenu() {
-  const m = document.getElementById('acct-menu');
+  const m = $I('acct-menu');
+  if (!m) return;
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
 }
 document.addEventListener('click', e => {
-  const w = document.getElementById('acct-wrap');
-  if (!w.contains(e.target)) document.getElementById('acct-menu').style.display = 'none';
+  const w = $I('acct-wrap');
+  const m = $I('acct-menu');
+  if (w && m && !w.contains(e.target)) m.style.display = 'none';
 });
 function renderAcctMenu() {
-  const list = document.getElementById('acct-list');
-  const check = '<svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-brand mr-2" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  const list = $I('acct-list');
+  if (!list) return;
   list.innerHTML = accounts.map(a => {
     const initial = (a.label || a.id || '?').trim().charAt(0).toUpperCase();
     const label = esc(a.label || a.id || '');
@@ -717,22 +765,19 @@ function renderAcctMenu() {
     return (
       '<div class="group w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-800 transition ' + (a.active ? 'bg-neutral-800/50' : '') + '">' +
         '<button onclick="switchAcct(\'' + a.id + '\')" class="flex items-center gap-3 flex-1 min-w-0 text-left">' +
-          '<span class="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-yellow-600 flex items-center justify-center text-[10px] font-bold text-neutral-950 shrink-0">' + esc(initial) + '</span>' +
+          '<span>' + esc(initial) + '</span>' +
           '<div class="flex-1 min-w-0">' +
-            '<div class="text-xs font-medium text-neutral-100 truncate">' + label + '</div>' +
-            '<div class="text-[10px] font-mono text-neutral-500 truncate">' + uid + '</div>' +
+            '<div>' + label + '</div>' +
+            '<div>' + uid + '</div>' +
           '</div>' +
         '</button>' +
-        (a.active ? check : '') +
-        (a.has_token === false ? '<span class="text-[9px] text-red-400 font-mono shrink-0">SIN TOKEN</span>' : '') +
-        '<button onclick="event.stopPropagation();renameAcct(\'' + a.id + '\',\'' + labelEsc + '\')" title="Renombrar" class="opacity-0 group-hover:opacity-100 text-[9px] text-neutral-400 hover:text-neutral-100 border border-neutral-700 hover:border-neutral-600 rounded px-1.5 py-0.5 font-mono transition shrink-0">REN</button>' +
       '</div>'
     );
   }).join('');
 }
 
 async function switchAcct(id) {
-  document.getElementById('acct-menu').style.display = 'none';
+  const m = $I('acct-menu'); if (m) m.style.display = 'none';
   try {
     await fetch('/accounts/switch', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) });
     location.reload();
@@ -740,44 +785,44 @@ async function switchAcct(id) {
 }
 
 async function renameAcct(id, current) {
-  document.getElementById('acct-menu').style.display = 'none';
+  const m = $I('acct-menu'); if (m) m.style.display = 'none';
   const label = prompt('Nuevo nombre:', current);
   if (!label || label.trim() === current) return;
   await fetch('/accounts/rename', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, label:label.trim()}) });
-  loadAccounts();
+  loadPageAccounts();
 }
 
 // ── New Group ─────────────────────────────────────────────────
 function showNewGroup() {
   newGroupItems = [];
-  document.getElementById('ng-name').value = '';
-  document.getElementById('ng-search').value = '';
-  document.getElementById('ng-results').style.display = 'none';
+  $I('ng-name').value = '';
+  $I('ng-search').value = '';
+  $I('ng-results').style.display = 'none';
   renderNewGroupItems();
-  document.getElementById('new-group-form').style.display = 'block';
-  document.getElementById('empty-hint').style.display = 'none';
-  document.getElementById('btn-new').style.display = 'none';
+  $I('new-group-form').style.display = 'block';
+  $I('empty-hint').style.display = 'none';
+  $I('btn-new').style.display = 'none';
 }
 function cancelNewGroup() {
-  document.getElementById('new-group-form').style.display = 'none';
-  document.getElementById('btn-new').style.display = '';
-  if (!groups.length) document.getElementById('empty-hint').style.display = '';
+  $I('new-group-form').style.display = 'none';
+  $I('btn-new').style.display = '';
+  if (!groups.length) $I('empty-hint').style.display = '';
 }
 
 function renderNewGroupItems() {
-  const c = document.getElementById('ng-items');
+  const c = $I('ng-items');
   if (!newGroupItems.length) {
-    c.innerHTML = '<p style="font-size:11px;color:#3f3f46;padding:4px 0">Sin items. Busca y selecciona publicaciones abajo.</p>';
+    c.innerHTML = '<p style="font-size:11px;color:var(--text-3);padding:4px 0">Sin items. Busca y selecciona publicaciones abajo.</p>';
     return;
   }
   c.innerHTML = newGroupItems.map((it, i) =>
-    '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #171717">' +
-      (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:28px;height:28px;object-fit:cover;border:1px solid #1f1f1f;border-radius:6px">' : '') +
+    '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+      (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:28px;height:28px;object-fit:cover;border:1px solid var(--border);border-radius:6px">' : '') +
       '<span class="li-acct">' + esc(it.acctLabel) + '</span>' +
-      '<span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d4d4d8">' + esc(it.title) + '</span>' +
-      '<span style="font-family:var(--mono);font-size:9px;color:#3f3f46">' + it.itemId + '</span>' +
+      '<span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">' + esc(it.title) + '</span>' +
+      '<span style="font-family:var(--mono);font-size:9px;color:var(--text-3)">' + it.itemId + '</span>' +
       '<span style="font-family:var(--mono);font-size:10px;color:#FFE600;font-weight:600">x' + it.stock + '</span>' +
-      '<button onclick="removeNewGroupItem(' + i + ')" style="background:none;border:none;color:#3f3f46;cursor:pointer;font-size:16px;padding:2px 4px;line-height:1;transition:color .15s" onmouseover="this.style.color=\'#f87171\'" onmouseout="this.style.color=\'#3f3f46\'">&times;</button>' +
+      '<button onclick="removeNewGroupItem(' + i + ')" class="btn-rm">&times;</button>' +
     '</div>'
   ).join('');
 }
@@ -789,18 +834,18 @@ function removeNewGroupItem(i) {
 // ── Search ────────────────────────────────────────────────────
 function debounceSearch(q) {
   clearTimeout(searchTimer);
-  if (q.length < 3) { document.getElementById('ng-results').style.display = 'none'; return; }
+  if (q.length < 3) { $I('ng-results').style.display = 'none'; return; }
   searchTimer = setTimeout(() => doSearch(q), 400);
 }
 
 async function doSearch(q) {
-  const acctId = document.getElementById('ng-acct').value;
+  const acctId = $I('ng-acct').value;
   const acct = accounts.find(a => a.id === acctId);
   if (!acct || !acct.user_id) { log('err', 'Cuenta sin user_id'); return; }
 
-  const results = document.getElementById('ng-results');
+  const results = $I('ng-results');
   results.style.display = 'block';
-  results.innerHTML = '<div style="padding:12px;font-size:11px;color:#3f3f46">Buscando...</div>';
+  results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-3)">Buscando...</div>';
 
   try {
     if (/^MLA\d+$/i.test(q.trim())) {
@@ -811,7 +856,7 @@ async function doSearch(q) {
     const r = await fetch('/api-as/' + acctId + '/users/' + acct.user_id + '/items/search?q=' + encodeURIComponent(q) + '&limit=20');
     const d = await r.json();
     if (!d.results || !d.results.length) {
-      results.innerHTML = '<div style="padding:12px;font-size:11px;color:#3f3f46">Sin resultados</div>';
+      results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-3)">Sin resultados</div>';
       return;
     }
     const ids = d.results.slice(0, 20);
@@ -825,7 +870,7 @@ async function doSearch(q) {
 }
 
 function renderSearchResults(items, acctId) {
-  const results = document.getElementById('ng-results');
+  const results = $I('ng-results');
   const acct = accounts.find(a => a.id === acctId);
   const acctLabel = acct ? (acct.label || acct.id) : acctId;
   results.innerHTML = items.map(it => {
@@ -836,7 +881,7 @@ function renderSearchResults(items, acctId) {
         accountId: acctId, acctLabel, itemId: it.id, title: it.title || '',
         thumb, stock: it.available_quantity || 0, price: it.price || 0,
       }).replace(/'/g, '&#39;') + ')\'>' +
-      (thumb ? '<img src="' + esc(thumb) + '">' : '<div style="width:32px;height:32px;background:#0c0c0c;border-radius:6px;flex-shrink:0"></div>') +
+      (thumb ? '<img src="' + esc(thumb) + '">' : '<div style="width:32px;height:32px;background:var(--bg);border-radius:6px;flex-shrink:0;border:1px solid var(--border)"></div>') +
       '<div class="si-title">' + esc(it.title || '—') + '</div>' +
       '<div class="si-id">' + it.id + '</div>' +
       '<div class="si-stock">x' + (it.available_quantity || 0) + '</div>' +
@@ -848,14 +893,14 @@ function addSearchItem(item) {
   if (newGroupItems.some(x => x.itemId === item.itemId)) return;
   newGroupItems.push(item);
   renderNewGroupItems();
-  const nameInput = document.getElementById('ng-name');
+  const nameInput = $I('ng-name');
   if (!nameInput.value.trim() && item.title) nameInput.value = item.title.substring(0, 80);
-  document.getElementById('ng-search').value = '';
-  document.getElementById('ng-results').style.display = 'none';
+  $I('ng-search').value = '';
+  $I('ng-results').style.display = 'none';
 }
 
 async function saveNewGroup() {
-  const name = document.getElementById('ng-name').value.trim();
+  const name = $I('ng-name').value.trim();
   if (!name) { alert('Ingresa un nombre para el grupo'); return; }
   if (newGroupItems.length < 2) { alert('Agrega al menos 2 publicaciones de distintas cuentas'); return; }
   const group = {
@@ -869,16 +914,16 @@ async function saveNewGroup() {
   groups.push(group);
   await saveGroups();
   log('ok', 'Grupo "' + name + '" creado con ' + group.items.length + ' items');
-  document.getElementById('new-group-form').style.display = 'none';
-  document.getElementById('btn-new').style.display = '';
+  $I('new-group-form').style.display = 'none';
+  $I('btn-new').style.display = '';
   renderGroups();
 }
 
 // ── Render Groups ─────────────────────────────────────────────
 function renderGroups() {
-  const card = document.getElementById('groups-card');
-  const list = document.getElementById('groups-list');
-  const empty = document.getElementById('empty-hint');
+  const card = $I('groups-card');
+  const list = $I('groups-list');
+  const empty = $I('empty-hint');
   if (!groups.length) { card.style.display = 'none'; empty.style.display = ''; return; }
   card.style.display = ''; empty.style.display = 'none';
 
@@ -924,7 +969,7 @@ function renderGroups() {
           return '<tr' + rowClass + '>' +
             '<td style="padding:9px 8px 9px 12px"><input type="radio" name="src_' + g.id + '" value="' + it.itemId + '"' + (isMax ? ' checked' : '') +
               ' style="accent-color:#FFE600;width:14px;height:14px;cursor:pointer" title="Usar como fuente de stock"></td>' +
-            '<td style="padding:9px 4px">' + (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:30px;height:30px;object-fit:cover;border:1px solid #1f1f1f;border-radius:6px;display:block">' : '<div style="width:30px;height:30px;background:#0c0c0c;border-radius:6px"></div>') + '</td>' +
+            '<td style="padding:9px 4px">' + (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:30px;height:30px;object-fit:cover;border:1px solid var(--border);border-radius:6px;display:block">' : '<div style="width:30px;height:30px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border)"></div>') + '</td>' +
             '<td><span class="li-acct">' + esc(it.acctLabel || it.accountId) + '</span></td>' +
             '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.title || '—') + '</td>' +
             '<td><span class="li-id">' + it.itemId + '</span></td>' +
@@ -956,7 +1001,7 @@ function syncGroupFromSource(gid) {
 async function syncGroup(gid, sourceItemId) {
   const g = groups.find(x => x.id === gid);
   if (!g) return;
-  const el = document.getElementById('lg-' + gid);
+  const el = $I('lg-' + gid);
   if (el) el.classList.add('syncing');
   log('info', 'Sincronizando "' + g.name + '" (' + (sourceItemId ? 'desde ' + sourceItemId : 'al minimo') + ')...');
   try {
@@ -1022,7 +1067,7 @@ async function syncAll() {
 async function refreshGroupStocks(gid) {
   const g = groups.find(x => x.id === gid);
   if (!g) return;
-  const el = document.getElementById('lg-' + gid);
+  const el = $I('lg-' + gid);
   if (el) el.classList.add('syncing');
   log('info', 'Actualizando stocks de "' + g.name + '"...');
   for (const it of g.items) {
@@ -1064,7 +1109,6 @@ async function refreshAllStocks(opts) {
   }
   await saveGroups(); renderGroups();
   if (!silent) log('ok', 'Stocks actualizados');
-  // devuelve grupos pendientes (stock no sincronizado entre items)
   return groups.filter(g => {
     const s = g.items.map(it => it.lastStock);
     const allNum = s.every(x => typeof x === 'number');
@@ -1117,13 +1161,13 @@ async function startDetection() {
   if (detecting) return;
   if (accounts.length < 2) { log('err', 'Se necesitan al menos 2 cuentas para detectar coincidencias'); return; }
   detecting = true; suggestions = [];
-  const btn = document.getElementById('btn-detect');
+  const btn = $I('btn-detect');
   btn.disabled = true;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5 animate-spin" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Escaneando...';
-  document.getElementById('detect-progress').style.display = '';
-  document.getElementById('suggestions-wrap').style.display = 'none';
-  const fillEl = document.getElementById('detect-fill');
-  const statusEl = document.getElementById('detect-status');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Escaneando...';
+  $I('detect-progress').style.display = '';
+  $I('suggestions-wrap').style.display = 'none';
+  const fillEl = $I('detect-fill');
+  const statusEl = $I('detect-status');
   const titleMap = {};
   const total = accounts.length;
   let done = 0;
@@ -1179,18 +1223,18 @@ async function startDetection() {
   suggestions.sort((a, b) => b.items.length - a.items.length);
   detecting = false;
   btn.disabled = false;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Detectar';
-  document.getElementById('detect-progress').style.display = 'none';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Detectar';
+  $I('detect-progress').style.display = 'none';
   if (suggestions.length) { log('ok', suggestions.length + ' coincidencias detectadas'); renderSuggestions(); }
-  else { log('info', 'Sin publicaciones con titulo identico en distintas cuentas'); document.getElementById('suggestions-wrap').style.display = 'none'; }
+  else { log('info', 'Sin publicaciones con titulo identico en distintas cuentas'); $I('suggestions-wrap').style.display = 'none'; }
 }
 
 function renderSuggestions() {
   const pending = suggestions.filter(s => s.status === 'pending');
-  if (!pending.length) { document.getElementById('suggestions-wrap').style.display = 'none'; return; }
-  document.getElementById('suggestions-wrap').style.display = '';
-  document.getElementById('sg-count').textContent = pending.length;
-  document.getElementById('suggestions-list').innerHTML = pending.map(sg =>
+  if (!pending.length) { $I('suggestions-wrap').style.display = 'none'; return; }
+  $I('suggestions-wrap').style.display = '';
+  $I('sg-count').textContent = pending.length;
+  $I('suggestions-list').innerHTML = pending.map(sg =>
     '<div class="suggestion" id="sg-' + sg.id + '">' +
       '<div class="sg-header">' +
         '<input type="checkbox" checked style="accent-color:#FFE600;width:13px;height:13px;cursor:pointer;flex-shrink:0">' +
@@ -1200,9 +1244,9 @@ function renderSuggestions() {
       '<div class="sg-items">' +
         sg.items.map(it =>
           '<div class="sg-item">' +
-            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:26px;height:26px;background:#0c0c0c;border-radius:5px"></div>') +
+            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:26px;height:26px;background:var(--bg-card);border:1px solid var(--border);border-radius:5px"></div>') +
             '<span class="sg-acct">' + esc(it.acctLabel) + '</span>' +
-            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#52525b;font-family:var(--mono);font-size:10px">' + it.itemId + '</span>' +
+            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-3);font-family:var(--mono);font-size:10px">' + it.itemId + '</span>' +
             '<span class="sg-stk">x' + it.stock + '</span>' +
           '</div>'
         ).join('') +
@@ -1258,245 +1302,376 @@ function dismissAllSuggestions() {
   log('info', 'Sugerencias descartadas');
 }
 
-// ── Auto Sync ─────────────────────────────────────────────────
-function toggleAutoSync(on) {
-  if (autoSyncTimer) { clearInterval(autoSyncTimer); autoSyncTimer = null; }
-  const dot = document.getElementById('auto-dot');
-  const label = document.getElementById('auto-sync-label');
-  try { localStorage.setItem('vinc_autosync', on ? '1' : '0'); } catch(e) {}
-  if (on) {
-    dot.classList.add('active');
-    label.textContent = 'ON'; label.style.color = '#FFE600';
-    const ms = parseInt(document.getElementById('auto-interval').value) || 300000;
-    autoSyncTimer = setInterval(autoCheck, ms);
-    log('info', 'Auto-sync activado cada ' + Math.round(ms/1000) + 's');
-    autoCheck();
-  } else {
-    dot.classList.remove('active');
-    label.textContent = 'OFF'; label.style.color = '';
-    const st = document.getElementById('auto-status'); if (st) { st.textContent = '—'; st.style.color = ''; }
-    log('info', 'Auto-sync desactivado');
-  }
-}
-
-function updateAutoInterval() {
-  const ms = document.getElementById('auto-interval').value;
-  try { localStorage.setItem('vinc_autosync_ms', ms); } catch(e) {}
-  if (document.getElementById('auto-sync-chk').checked) toggleAutoSync(true);
-}
-
+// ── Auto-check (server-side polling) ─────────────────────────
 function restoreAutoSync() {
-  try {
-    const ms = localStorage.getItem('vinc_autosync_ms');
-    if (ms) {
-      const sel = document.getElementById('auto-interval');
-      if ([...sel.options].some(o => o.value === ms)) sel.value = ms;
-    }
-    if (localStorage.getItem('vinc_autosync') === '1') {
-      document.getElementById('auto-sync-chk').checked = true;
-      toggleAutoSync(true);
-    }
-  } catch(e) {}
+  setInterval(loadPendingFromServer, 60000);
 }
 
-// Propuestas pendientes detectadas (no aplicadas todavía)
-let pendingSyncs = [];
-
-async function autoCheck() {
-  const status = document.getElementById('auto-status');
-  status.textContent = 'Revisando...';
-  status.style.color = '';
+async function loadPendingFromServer() {
   try {
-    // 1. check-orders DRY-RUN — detecta ventas pero NO ajusta nada todavía
-    const r = await fetch('/vinculaciones/check-orders', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dryRun: true })
-    });
+    const r = await fetch('/vinculaciones/pending');
     const d = await r.json();
-    const now = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    renderPending(d.pending || []);
+    updateAutoStatus(d.pending || [], d.lastCheck);
+  } catch(e) { /* silencioso */ }
+}
 
-    // Mergear nuevas propuestas con las que ya estaban (sin duplicar por item)
-    if (d.details && d.details.length) {
-      const existing = new Set(pendingSyncs.map(p => p.item));
-      let added = 0;
-      for (const p of d.details) {
-        if (!existing.has(p.item)) { pendingSyncs.push(p); added++; }
-      }
-      if (added > 0) {
-        log('warn', '[auto] ' + added + ' ajuste' + (added>1?'s':'') + ' detectado' + (added>1?'s':'') + ' — revisá el panel para aplicar');
-      }
-    }
-    renderPending();
+function updateAutoStatus(pending, lastCheck) {
+  const status = $I('auto-status');
+  if (!status) return;
+  if (pending.length > 0) {
+    status.textContent = pending.length + ' pendiente' + (pending.length > 1 ? 's' : '');
+    status.style.color = '#fb923c';
+  } else if (lastCheck) {
+    const t = new Date(lastCheck).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    status.textContent = 'OK · ' + t;
+    status.style.color = '#4ade80';
+  } else {
+    status.textContent = '—';
+    status.style.color = '';
+  }
+}
 
-    // 2. refresh de stocks reales + verificación de grupos desincronizados
-    const pendingGroups = await refreshAllStocks({ silent: true });
-    const totalPending = pendingSyncs.length;
-    if (totalPending > 0) {
-      status.textContent = now + ' · ' + totalPending + ' pendiente' + (totalPending > 1 ? 's' : '');
-      status.style.color = '#fb923c';
-    } else if (pendingGroups.length) {
-      status.textContent = now + ' · ' + pendingGroups.length + ' desync';
-      status.style.color = '#fb923c';
+async function manualCheck() {
+  const btn = $I('btn-check-now');
+  const status = $I('auto-status');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  if (status) { status.textContent = 'Revisando...'; status.style.color = ''; }
+  log('info', 'Verificando stock de todos los grupos...');
+  try {
+    const r = await fetch('/vinculaciones/check-now', { method: 'POST' });
+    const d = await r.json();
+    renderPending(d.pending || []);
+    updateAutoStatus(d.pending || [], d.lastCheck);
+    if (d.pending && d.pending.length) {
+      log('warn', d.pending.length + ' ajuste' + (d.pending.length > 1 ? 's' : '') + ' pendiente' + (d.pending.length > 1 ? 's' : '') + ' detectado' + (d.pending.length > 1 ? 's' : ''));
     } else {
-      status.textContent = now + ' · OK';
-      status.style.color = '#4ade80';
+      log('ok', 'Stocks verificados — todo sincronizado');
     }
+    await loadGroups();
+    renderGroups();
   } catch(e) {
-    status.textContent = 'Error';
-    status.style.color = '#f87171';
-    log('err', '[auto] ' + e.message);
+    log('err', 'Error al verificar: ' + e.message);
+    if (status) { status.textContent = 'Error'; status.style.color = '#f87171'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
 }
 
-function renderPending() {
-  const card = document.getElementById('pending-card');
-  const list = document.getElementById('pending-list');
-  const count = document.getElementById('pending-count');
-  if (!pendingSyncs.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
-  count.textContent = pendingSyncs.length;
-  // Agrupar por grupo para mostrarlo prolijo
-  const byGroup = {};
-  for (const p of pendingSyncs) {
-    if (!byGroup[p.groupId]) byGroup[p.groupId] = { name: p.group, items: [] };
-    byGroup[p.groupId].items.push(p);
-  }
-  list.innerHTML = Object.values(byGroup).map(g =>
-    '<div class="border border-neutral-800 rounded-lg overflow-hidden">' +
-      '<div class="px-3 py-2 bg-neutral-800/40 text-[11px] font-mono text-neutral-300 border-b border-neutral-800">' + esc(g.name) + '</div>' +
-      g.items.map(p =>
-        '<div class="flex items-center gap-3 px-3 py-2 text-xs border-b border-neutral-800/50 last:border-b-0">' +
-          (p.thumb ? '<img src="' + esc(p.thumb) + '" class="w-7 h-7 object-cover rounded border border-neutral-800 shrink-0">' : '<div class="w-7 h-7 rounded bg-neutral-800 shrink-0"></div>') +
-          '<span class="li-acct shrink-0">' + esc(p.acctLabel) + '</span>' +
-          '<span class="flex-1 min-w-0 truncate text-neutral-300">' + esc(p.title || p.item) + '</span>' +
-          '<span class="font-mono text-[10px] text-neutral-600 hidden sm:inline">' + p.item + '</span>' +
-          '<span class="font-mono text-[11px] shrink-0">' +
-            '<span class="text-red-400">x' + p.from + '</span>' +
-            '<span class="text-neutral-600 mx-1.5">→</span>' +
-            '<span class="text-green-400 font-semibold">x' + p.to + '</span>' +
-          '</span>' +
-        '</div>'
-      ).join('') +
-    '</div>'
-  ).join('');
-}
-
-async function applyPending() {
-  if (!pendingSyncs.length) return;
-  if (!confirm('Aplicar ' + pendingSyncs.length + ' ajuste' + (pendingSyncs.length>1?'s':'') + ' de stock? Esto modifica las publicaciones en MercadoLibre.')) return;
-  log('info', 'Aplicando ' + pendingSyncs.length + ' ajustes...');
+async function manualCheckVariants() {
+  const btn = $I('btn-check-variants');
+  const status = $I('auto-status');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  if (status) { status.textContent = 'Revisando variantes...'; status.style.color = ''; }
+  log('info', 'Verificando stock por variante...');
   try {
-    const r = await fetch('/vinculaciones/check-orders', {
+    const r = await fetch('/vinculaciones/check-variants', { method: 'POST' });
+    const d = await r.json();
+    renderPending(d.pending || []);
+    updateAutoStatus(d.pending || [], d.lastCheck);
+    const newV = d.newAdjustments?.length || 0;
+    if (newV) {
+      log('warn', newV + ' grupo' + (newV > 1 ? 's' : '') + ' con variantes desbalanceadas detectado' + (newV > 1 ? 's' : ''));
+    } else {
+      const mismatches = d.groupsMismatch || 0;
+      log('ok', 'Variantes OK — ' + (d.groupsOk || 0) + ' grupos sin desvíos' +
+        (d.groupsNoVariants ? ', ' + d.groupsNoVariants + ' sin variantes comparables' : '') +
+        (mismatches ? ' (' + mismatches + ' nuevos)' : ''));
+    }
+    if (status) { status.textContent = d.pending?.length ? d.pending.length + ' pendiente(s)' : 'OK'; }
+    await loadGroups();
+    renderGroups();
+  } catch(e) {
+    log('err', 'Error al verificar variantes: ' + e.message);
+    if (status) { status.textContent = 'Error'; status.style.color = '#f87171'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
+// ── Helpers de variante ────────────────────────────────────────
+function fmtAttrKey(key) {
+  if (!key) return '';
+  return key.split('|').map(part => {
+    const eq = part.indexOf('=');
+    const val = eq === -1 ? part : part.slice(eq + 1);
+    return val.trim().replace(/\b\w/g, c => c.toUpperCase());
+  }).join(' · ');
+}
+
+// ── Pending panel ─────────────────────────────────────────────
+function renderPending(list) {
+  const card = $I('pending-card');
+  const container = $I('pending-list');
+  const count = $I('pending-count');
+  if (!list || !list.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  count.textContent = list.length;
+
+  container.innerHTML = list.map(adj => {
+    const ts = new Date(adj.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    const isVariantAdj = adj.type === 'variant';
+
+    // ── Línea de descripción del ajuste ──
+    let triggerTxt;
+    if (isVariantAdj) {
+      const mm = adj.variantMismatches || [];
+      const varBadges = mm.map(m =>
+        '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--mono);font-size:10px;color:var(--text)">' +
+        esc(m.label || fmtAttrKey(m.attrKey)) +
+        '<span style="color:#f87171;font-weight:600;margin-left:2px">x' + Math.max(...m.perItem.map(p => p.qty)) + '</span>' +
+        '<span style="color:var(--text-3);margin:0 3px">→</span>' +
+        '<span style="color:#4ade80;font-weight:600">x' + m.targetQty + '</span>' +
+        '</span>'
+      ).join(' ');
+      triggerTxt = '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg> Desbalance por variante &nbsp;' + varBadges;
+    } else {
+      triggerTxt = adj.trigger
+        ? 'Venta en <strong>' + esc(adj.trigger.acctLabel) + '</strong>: x' + adj.trigger.from + ' → x' + adj.trigger.to
+        : 'Stock desincronizado';
+      if (adj.trigger?.variantDeltas?.length) {
+        const vd = adj.trigger.variantDeltas;
+        const varParts = vd.map(d =>
+          '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px;color:var(--text)">' +
+          esc(fmtAttrKey(d.attrKey)) +
+          '<span style="color:#f87171;font-weight:600">−' + d.delta + '</span>' +
+          '</span>'
+        ).join(' ');
+        triggerTxt += ' &nbsp;' + varParts;
+      }
+    }
+
+    // ── Filas de items a ajustar ──
+    const changesHtml = adj.changes.map(ch => {
+      let varHtml = '';
+      if (isVariantAdj && ch.variantChanges && ch.variantChanges.length) {
+        // Mostrar cada variante que hay que ajustar con su from → to
+        varHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">' +
+          ch.variantChanges.map(vc =>
+            '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--mono);font-size:9px;color:var(--text-2)">' +
+            '<span style="color:var(--text-3)">' + esc(vc.label || fmtAttrKey(vc.attrKey)) + '</span>' +
+            '<span style="color:#f87171;text-decoration:line-through;opacity:.7;margin-left:2px">x' + vc.from + '</span>' +
+            '<span style="color:var(--text-3);margin:0 2px">→</span>' +
+            '<span style="color:#4ade80;font-weight:600">x' + vc.to + '</span>' +
+            '</span>'
+          ).join('') +
+        '</div>';
+      } else {
+        const varDeltas = ch.sourceVariantDeltas || [];
+        if (varDeltas.length) {
+          varHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">' +
+            varDeltas.map(d =>
+              '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:9px;color:var(--text-2)">' +
+              '<svg viewBox="0 0 24 24" fill="none" width="10" height="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+              esc(fmtAttrKey(d.attrKey)) +
+              '</span>'
+            ).join('') +
+          '</div>';
+        }
+      }
+
+      // Para ajustes de variante no mostramos el total from→to (se ve en cada variante)
+      const stockBadge = isVariantAdj
+        ? ''
+        : '<span style="font-family:var(--mono);font-size:11px;flex-shrink:0;margin-top:2px">' +
+            '<span style="color:#f87171;text-decoration:line-through;opacity:.6">x' + ch.from + '</span>' +
+            '<span style="color:var(--text-3);margin:0 6px">→</span>' +
+            '<span style="color:#4ade80;font-weight:600">x' + ch.to + '</span>' +
+          '</span>';
+
+      return (
+        '<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)">' +
+          (ch.thumb
+            ? '<img src="' + esc(ch.thumb) + '" style="width:32px;height:32px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;margin-top:2px">'
+            : '<div style="width:32px;height:32px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);flex-shrink:0;margin-top:2px"></div>') +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<span class="li-acct" style="flex-shrink:0">' + esc(ch.acctLabel) + '</span>' +
+              '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-2)">' + esc(ch.title || ch.itemId) + '</span>' +
+            '</div>' +
+            varHtml +
+          '</div>' +
+          stockBadge +
+        '</div>'
+      );
+    }).join('');
+
+    return (
+      '<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden" id="adj-' + adj.id + '">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border)">' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="font-size:11px;font-weight:600;color:var(--text)">' + esc(adj.groupName) + '</span>' +
+            (isVariantAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(99,102,241,.15);color:#818cf8;border-radius:4px;padding:1px 6px;font-weight:600">POR VARIANTE</span>' : '') +
+            '<span style="font-family:var(--mono);font-size:10px;color:var(--text-3)">' + ts + '</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+            '<button onclick="dismissOneAdjustment(\'' + adj.id + '\')" ' +
+              'style="font-family:var(--mono);font-size:10px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;transition:color .15s" ' +
+              'onmouseover="this.style.color=\'#f87171\'" onmouseout="this.style.color=\'var(--text-3)\'">Descartar</button>' +
+            '<button onclick="applyOneAdjustment(\'' + adj.id + '\')" ' +
+              'style="font-family:var(--mono);font-size:10px;background:#f97316;color:#0a0a0a;font-weight:600;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:background .15s" ' +
+              'onmouseover="this.style.background=\'#fb923c\'" onmouseout="this.style.background=\'#f97316\'">' +
+              '<svg viewBox="0 0 24 24" fill="none" width="10" height="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+              'Aplicar' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="padding:8px 16px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-3);display:flex;flex-wrap:wrap;align-items:center;gap:6px">' + triggerTxt + '</div>' +
+        changesHtml +
+      '</div>'
+    );
+  }).join('');
+}
+
+async function applyOneAdjustment(id) {
+  const el = $I('adj-' + id);
+  if (el) el.style.opacity = '.5';
+  log('info', 'Aplicando ajuste...');
+  try {
+    const r = await fetch('/vinculaciones/apply-adjustment', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dryRun: false })
+      body: JSON.stringify({ id })
     });
     const d = await r.json();
-    log('ok', '[manual] ' + d.synced + ' stocks ajustados en ML');
-    pendingSyncs = [];
-    renderPending();
-    await loadGroups();
-    await refreshAllStocks({ silent: true });
+    if (d.ok) {
+      log('ok', 'Ajuste aplicado — ' + d.applied + ' item(s) actualizado' + (d.applied !== 1 ? 's' : '') + ' en ML');
+      await loadPendingFromServer();
+      await loadGroups(); renderGroups();
+      loadLog();
+    } else {
+      log('err', 'Error al aplicar: ' + (d.error || 'unknown'));
+      if (el) el.style.opacity = '';
+    }
   } catch(e) {
-    log('err', 'Error aplicando ajustes: ' + e.message);
+    log('err', 'Error: ' + e.message);
+    if (el) el.style.opacity = '';
   }
 }
 
-function dismissPending() {
-  if (!pendingSyncs.length) return;
-  if (!confirm('Descartar ' + pendingSyncs.length + ' ajuste' + (pendingSyncs.length>1?'s':'') + ' detectado' + (pendingSyncs.length>1?'s':'') + '?')) return;
-  pendingSyncs = [];
-  renderPending();
-  log('info', 'Pendientes descartados');
+async function applyAllPending() {
+  const btn = $I('btn-apply-all');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  log('info', 'Aplicando todos los ajustes pendientes...');
+  try {
+    const r = await fetch('/vinculaciones/apply-adjustment', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      log('ok', 'Listo — ' + d.applied + ' item(s) actualizado' + (d.applied !== 1 ? 's' : '') + ' en MercadoLibre');
+      await loadPendingFromServer();
+      await loadGroups(); renderGroups();
+      loadLog();
+    } else {
+      log('err', 'Error: ' + (d.error || 'unknown'));
+    }
+  } catch(e) {
+    log('err', 'Error: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
+async function dismissAllPending() {
+  if (!confirm('Descartar todos los ajustes pendientes?')) return;
+  try {
+    await fetch('/vinculaciones/dismiss-adjustment', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    await loadPendingFromServer();
+    loadLog();
+    log('info', 'Ajustes pendientes descartados');
+  } catch(e) { log('err', 'Error: ' + e.message); }
+}
+
+async function dismissOneAdjustment(id) {
+  try {
+    await fetch('/vinculaciones/dismiss-adjustment', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await loadPendingFromServer();
+    loadLog();
+  } catch(e) { log('err', 'Error: ' + e.message); }
+}
+
+// ── Historial de cambios ───────────────────────────────────────
+async function loadLog() {
+  try {
+    const r = await fetch('/vinculaciones/log?limit=100');
+    const d = await r.json();
+    renderLog(d.entries || []);
+  } catch(e) { /* silencioso */ }
+}
+
+function renderLog(entries) {
+  const container = $I('log-list');
+  const counter   = $I('log-count');
+  counter.textContent = entries.length;
+
+  if (!entries.length) {
+    container.innerHTML = '<div style="padding:20px 20px;font-size:12px;color:var(--text-3);text-align:center">Sin cambios registrados todavía</div>';
+    return;
+  }
+
+  const ACTION_CFG = {
+    applied:    { icon: '✅', label: 'Aplicado',    color: '#4ade80' },
+    'sync-from':{ icon: '🔄', label: 'Sincronizado', color: '#60a5fa' },
+    dismissed:  { icon: '↩️', label: 'Descartado',  color: 'var(--text-3)' },
+    error:      { icon: '❌', label: 'Error',        color: '#f87171' },
+  };
+  const SOURCE_CFG = {
+    telegram: { label: '📱 Telegram', bg: 'rgba(59,130,246,.1)', border: 'rgba(59,130,246,.2)', color: '#60a5fa' },
+    web:      { label: '🖥 Web',       bg: 'var(--bg)',  border: 'var(--border-2)',              color: 'var(--text-2)' },
+  };
+
+  container.innerHTML = entries.map(e => {
+    const ac = ACTION_CFG[e.action] || { icon: '·', label: e.action, color: 'var(--text-2)' };
+    const sc = SOURCE_CFG[e.source] || { label: e.source || '—', bg: 'var(--bg)', border: 'var(--border)', color: 'var(--text-3)' };
+    const ts = new Date(e.ts).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+
+    let detail = '';
+    if (e.action === 'applied') {
+      const acctShort = (e.triggerAcctLabel || '').split(/\s[—-]\s/).pop().trim() || e.triggerAcctLabel || '—';
+      detail = '<span style="color:var(--text-2)">' + esc(acctShort) + '</span>';
+      if (e.targetStock != null) detail += ' → <span style="color:var(--text);font-family:var(--mono)">' + e.targetStock + ' u.</span>';
+      if (e.itemsApplied != null) detail += '<span style="color:var(--text-3);margin-left:8px">(' + e.itemsApplied + ' item' + (e.itemsApplied !== 1 ? 's' : '') + ')</span>';
+    } else if (e.action === 'sync-from') {
+      const lbl = (e.syncFromLabel || '').split(/\s[—-]\s/).pop().trim() || e.syncFromLabel || '—';
+      detail = 'desde <span style="color:var(--text-2)">' + esc(lbl) + '</span>';
+      if (e.syncFromStock != null) detail += ' <span style="font-family:var(--mono);color:var(--text)">' + e.syncFromStock + ' u.</span>';
+    } else if (e.action === 'dismissed') {
+      const acctShort = (e.triggerAcctLabel || '').split(/\s[—-]\s/).pop().trim() || e.triggerAcctLabel || '';
+      detail = acctShort ? '<span style="color:var(--text-3)">' + esc(acctShort) + '</span>' : '';
+      if (e.bulk) detail += '<span style="color:var(--text-3);margin-left:4px">(todos)</span>';
+    }
+
+    return '<div class="log-hist-entry">' +
+      '<span style="font-size:14px;flex-shrink:0">' + ac.icon + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span style="font-size:12px;font-weight:500;color:' + ac.color + '">' + ac.label + '</span>' +
+          '<span style="font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid ' + sc.border + ';background:' + sc.bg + ';color:' + sc.color + '">' + sc.label + '</span>' +
+          (detail ? '<span style="font-size:12px;color:var(--text-3)">' + detail + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<span style="font-family:var(--mono);font-size:10px;color:var(--text-3);flex-shrink:0">' + ts + '</span>' +
+    '</div>';
+  }).join('');
 }
 
 // ── Utils ─────────────────────────────────────────────────────
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
 function log(type, msg) {
-  const wrap = document.getElementById('log');
+  const wrap = $I('log');
   const ts = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
   wrap.innerHTML += '<div class="log-e ' + type + '">[' + ts + '] ' + esc(msg) + '</div>';
   wrap.scrollTop = wrap.scrollHeight;
 }
 
 function clearLog() {
-  document.getElementById('log').innerHTML = '<div class="log-e info">— Log limpiado</div>';
-}
-</script>
-
-<!-- ── BOTTOM NAV (solo móvil) ───────────────── -->
-<div class="btm-overlay" id="btm-overlay" onclick="closeBtmSheet()"></div>
-<div class="btm-sheet" id="btm-sheet">
-  <div class="btm-handle"></div>
-  <a href="/publicaciones.html" class="btm-more-link" id="bnav-publicaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    Publicar
-  </a>
-  <a href="/vinculaciones.html" class="btm-more-link" id="bnav-vinculaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-    Vinculaciones
-  </a>
-  <a href="/migracion.html" class="btm-more-link" id="bnav-migracion">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-    Migración
-  </a>
-  <a href="/oauth/start" class="btm-more-link">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-    Conectar cuenta
-  </a>
-</div>
-<nav class="btm-nav" id="btm-nav">
-  <a href="/" class="btm-item" id="bnav-home">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-    Inicio
-  </a>
-  <a href="/despachos.html" class="btm-item" id="bnav-despachos">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-    Despachos
-  </a>
-  <a href="/preguntas.html" class="btm-item" id="bnav-preguntas">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    Preguntas
-  </a>
-  <a href="/analytics.html" class="btm-item" id="bnav-analytics">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-    Analytics
-  </a>
-  <a href="/cobros.html" class="btm-item" id="bnav-cobros">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-    Cobros
-  </a>
-  <button class="btm-item" id="bnav-more" onclick="openBtmSheet()">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
-    Mas
-  </button>
-</nav>
-<script>
-(function(){
-  var p=location.pathname;
-  var map={
-    '/':'bnav-home','/index.html':'bnav-home',
-    '/despachos.html':'bnav-despachos',
-    '/preguntas.html':'bnav-preguntas',
-    '/analytics.html':'bnav-analytics',
-    '/cobros.html':'bnav-cobros',
-    '/publicaciones.html':'bnav-publicaciones',
-    '/vinculaciones.html':'bnav-vinculaciones',
-    '/migracion.html':'bnav-migracion'
-  };
-  var id=map[p];
-  if(id){var el=document.getElementById(id);if(el)el.classList.add('active');}
-  if(['bnav-publicaciones','bnav-vinculaciones','bnav-migracion'].indexOf(id)>=0){
-    var m=document.getElementById('bnav-more');if(m)m.classList.add('active');
-  }
-})();
-function openBtmSheet(){
-  document.getElementById('btm-sheet').classList.add('open');
-  document.getElementById('btm-overlay').classList.add('open');
-}
-function closeBtmSheet(){
-  document.getElementById('btm-sheet').classList.remove('open');
-  document.getElementById('btm-overlay').classList.remove('open');
+  $I('log').innerHTML = '<div class="log-e info">— Log limpiado</div>';
 }
 </script>
 

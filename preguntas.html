@@ -2,289 +2,396 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0c0c0e">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
-<title>PREGUNTAS — STOCKROOM</title>
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Preguntas — Stockroom</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        fontFamily: { sans: ['Inter','ui-sans-serif','system-ui','sans-serif'], mono: ['JetBrains Mono','ui-monospace','monospace'] },
-        colors: { brand: { DEFAULT:'#FFE600', 300:'#FFE82E', 400:'#FFE600', 500:'#E6CF00' } },
-        boxShadow: { pop: '0 10px 30px -10px rgb(0 0 0 / 0.6)' },
-      }
-    }
-  }
-</script>
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
-:root{--bg:#0c0c0e;--s1:#141416;--s2:#1c1c20;--b1:#2a2a30;--b2:#3a3a42;--tx:#e8e8f0;--t2:#8888a0;--t3:#55556a;--ye:#FFE600;--cy:#47ffe8;--re:#ff4747;--or:#ff9547;--gr:#47ff8a}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh}
-body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 20% 10%,rgba(255,230,0,.04) 0%,transparent 40%),radial-gradient(circle at 80% 90%,rgba(120,180,255,.03) 0%,transparent 40%);pointer-events:none;z-index:0}
-.app{position:relative;z-index:1}
-.side-item{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;color:#71717a;transition:background .2s,color .2s;text-decoration:none;cursor:pointer;border:none;background:transparent}
-.side-item:hover{background:#171717;color:#e4e4e7}
-.side-item.active{background:#1a1a1a;color:#FFE600}
-.side-item.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:3px;height:22px;background:#FFE600;border-radius:2px}
-.side-item .tip{position:absolute;left:56px;top:50%;transform:translateY(-50%);background:#171717;color:#e4e4e7;font-size:11px;font-weight:500;padding:6px 10px;border-radius:8px;border:1px solid #262626;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;letter-spacing:.02em;z-index:60}
-.side-item:hover .tip{opacity:1;transform:translateY(-50%) translateX(4px)}
-.pulse-dot{position:relative;width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0}
-.pulse-dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;background:#22c55e;opacity:.35;animation:ring 2s ease-out infinite}
-@keyframes ring{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.8);opacity:0}}
-html,body,input,select,textarea,button{accent-color:#FFE600;color-scheme:dark}
-::selection{background:rgba(255,230,0,.35);color:#fff}
-*:focus-visible{outline:1px solid #FFE600;outline-offset:2px}
+
+/* ── Page-specific styles (scoped to .pg) ── */
+.pg { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; display: block; color: var(--text); }
+.pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
+
+/* page-local css vars */
+.pg {
+  --bg:var(--bg);--s1:var(--bg-card);--s2:var(--bg-card);--b1:var(--border);--b2:var(--border-2);
+  --tx:var(--text);--t2:var(--text-2);--t3:var(--text-3);
+  --ye:#FFE600;--cy:#47ffe8;--re:#ff4747;--or:#ff9547;--gr:#47ff8a;
+}
 
 /* ── spinner ── */
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);border-top-color:#FFE600;border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.pg .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);border-top-color:#FFE600;border-radius:50%;animation:pg-spin .7s linear infinite}
+@keyframes pg-spin{to{transform:rotate(360deg)}}
+.pg #btn-refresh.is-loading #btn-refresh-icon{animation:pg-spin .7s linear infinite}
 
 /* ── btn ── */
-.btn{height:36px;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px}
-.btn:hover{border-color:var(--b2);color:var(--tx)}
-.btn:disabled{opacity:.45;cursor:default}
-.btn-primary{background:var(--ye);color:#0c0c0e;border-color:var(--ye);font-weight:700}
-.btn-primary:hover{background:#f5dc00;border-color:#f5dc00;color:#0c0c0e}
-.btn-ghost{background:transparent;border-color:var(--b1);color:var(--t2)}
-.btn-send{background:#22c55e;border-color:#22c55e;color:#000;font-weight:700}
-.btn-send:hover{background:#16a34a;border-color:#16a34a;color:#000}
-.btn-send:disabled{opacity:.4;cursor:default}
+.pg .btn{height:36px;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px}
+.pg .btn:hover{border-color:var(--b2);color:var(--tx)}
+.pg .btn:disabled{opacity:.45;cursor:default}
+.pg .btn-ghost{background:transparent;border-color:var(--b1);color:var(--t2)}
+.pg .btn-send{background:#22c55e;border-color:#22c55e;color:#000;font-weight:700}
+.pg .btn-send:hover{background:#16a34a;border-color:#16a34a;color:#000}
+.pg .btn-send:disabled{opacity:.4;cursor:default}
+
+/* ── toolbar ── */
+.pg .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:10px 14px;background:var(--s1);border:1px solid var(--b1);border-radius:12px}
+.pg .toolbar-left{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.pg .toolbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pg #hdr-updated{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
 
 /* ── kpi pill ── */
-.kpi-pill{background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:14px 20px;min-width:120px}
+.pg .kpi-pill{background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:14px 20px;min-width:120px}
 
 /* ── account section ── */
-.acct-section{background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;margin-bottom:20px}
-.acct-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--b1);gap:12px;flex-wrap:wrap}
-.acct-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#FFE600,#E6CF00);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0c0c0e;flex-shrink:0}
-.acct-name{font-size:13px;font-weight:600;color:var(--tx)}
-.acct-meta{font-size:11px;color:var(--t2);font-family:'JetBrains Mono',monospace}
+.pg .acct-section{background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;margin-bottom:20px}
+.pg .acct-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--b1);gap:12px;flex-wrap:wrap}
+.pg .acct-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.pg .acct-name{font-size:13px;font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg .acct-meta{font-size:11px;color:var(--t2);font-family:'JetBrains Mono',monospace}
 
 /* ── question card ── */
-.q-card{padding:16px 18px;border-bottom:1px solid var(--b1);display:flex;flex-direction:column;gap:12px}
-.q-card:last-child{border-bottom:none}
-.q-card.answered{opacity:.5;pointer-events:none}
-.q-item-row{display:flex;align-items:center;gap:10px}
-.q-item-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--b1);background:var(--s2);flex-shrink:0}
-.q-item-title{font-size:11px;color:var(--t2);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.q-text-bubble{background:var(--s2);border:1px solid var(--b1);border-radius:10px;border-top-left-radius:2px;padding:10px 14px;font-size:13px;line-height:1.55;color:var(--tx);position:relative}
-.q-text-bubble::before{content:'';position:absolute;left:-6px;top:10px;width:6px;height:10px;background:var(--b1);clip-path:polygon(100% 0,100% 100%,0 50%)}
-.q-meta{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace}
-.q-answer-row{display:flex;flex-direction:column;gap:8px}
-.q-textarea{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--tx);font-size:13px;font-family:'Inter',sans-serif;padding:10px 14px;resize:vertical;min-height:72px;line-height:1.5;transition:border-color .2s}
-.q-textarea:focus{outline:none;border-color:rgba(255,230,0,.4)}
-.q-textarea::placeholder{color:var(--t3)}
-.q-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.char-count{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
-.char-count.warn{color:var(--or)}
-.char-count.error{color:var(--re)}
-.q-status{font-size:11px;font-family:'JetBrains Mono',monospace;min-height:16px}
-.q-status.ok{color:var(--gr)}
-.q-status.err{color:var(--re)}
+.pg .q-card{padding:16px 18px;border-bottom:1px solid var(--b1);display:flex;flex-direction:column;gap:12px}
+.pg .q-card:last-child{border-bottom:none}
+.pg .q-card.answered{opacity:.5;pointer-events:none}
+.pg .q-item-row{display:flex;align-items:center;gap:10px}
+.pg .q-item-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid var(--b1);background:var(--s2);flex-shrink:0}
+.pg .q-item-title{font-size:11px;color:var(--t2);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;flex:1;min-width:0}
+.pg .q-text-bubble{background:var(--s2);border:1px solid var(--b1);border-radius:10px;border-top-left-radius:2px;padding:10px 14px;font-size:13px;line-height:1.55;color:var(--tx);position:relative}
+.pg .q-text-bubble::before{content:'';position:absolute;left:-6px;top:10px;width:6px;height:10px;background:var(--b1);clip-path:polygon(100% 0,100% 100%,0 50%)}
+.pg .q-meta{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:6px}
+.pg .q-answer-row{display:flex;flex-direction:column;gap:8px}
+.pg .q-textarea{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--tx);font-size:13px;font-family:'Inter',sans-serif;padding:10px 14px;resize:vertical;min-height:72px;line-height:1.5;transition:border-color .2s}
+.pg .q-textarea:focus{outline:none;border-color:rgba(255,230,0,.4)}
+.pg .q-textarea::placeholder{color:var(--t3)}
+.pg .q-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pg .char-count{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
+.pg .char-count.warn{color:var(--or)}
+.pg .char-count.error{color:var(--re)}
+.pg .q-status{font-size:11px;font-family:'JetBrains Mono',monospace;min-height:16px}
+.pg .q-status.ok{color:var(--gr)}
+.pg .q-status.err{color:var(--re)}
 
 /* ── quick replies ── */
-.quick-replies{display:flex;flex-wrap:wrap;gap:6px}
-.quick-btn{height:26px;padding:0 10px;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em;border:1px solid var(--b1);background:transparent;color:var(--t2);border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.quick-btn:hover{border-color:rgba(255,230,0,.3);color:var(--ye);background:rgba(255,230,0,.05)}
+.pg .quick-replies{display:flex;flex-wrap:wrap;gap:6px}
+.pg .quick-btn{height:26px;padding:0 10px;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em;border:1px solid var(--b1);background:transparent;color:var(--t2);border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.pg .quick-btn:hover{border-color:rgba(255,230,0,.3);color:var(--ye);background:rgba(255,230,0,.05)}
 
 /* ── empty / error ── */
-.empty-row{padding:32px 18px;text-align:center;color:var(--t3);font-size:12px}
-.error-row{padding:16px 18px;color:var(--re);font-size:12px;font-family:'JetBrains Mono',monospace}
+.pg .empty-row{padding:32px 18px;text-align:center;color:var(--t3);font-size:12px}
+.pg .error-row{padding:16px 18px;color:var(--re);font-size:12px;font-family:'JetBrains Mono',monospace}
 
 /* ── status bar ── */
-.status-bar{min-height:22px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t2)}
+.pg .status-bar{min-height:22px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t2);margin-bottom:20px}
 
-@media(max-width:640px){.kpi-row{flex-wrap:wrap}}
+/* ── kpi row ── */
+.pg .kpi-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 
-/* ═══════════════════════════════════════════════
-   RESPONSIVE / MOBILE
-   ═══════════════════════════════════════════════ */
-
-/* ocultar sidebar y bottom nav en escritorio */
-.btm-nav,.btm-sheet,.btm-overlay{display:none}
-
-@media(max-width:767px){
-  /* sidebar desktop → oculto */
-  aside.fixed{display:none!important}
-  /* quitar padding-left del sidebar */
-  .pl-16{padding-left:0!important}
-  /* espacio inferior para nav bar */
-  body{padding-bottom:72px}
-  /* padding horizontal más angosto */
-  .px-8{padding-left:1rem!important;padding-right:1rem!important}
-  /* header más compacto */
-  header h1{font-size:1rem!important}
-  header .py-4{padding-top:.75rem!important;padding-bottom:.75rem!important}
-  /* kpi pills → 2 columnas */
-  .kpi-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
-  .kpi-pill{min-width:0!important;padding:10px 12px!important}
-  .kpi-pill.ml-auto{grid-column:1/-1}
-  /* anchos máximos */
-  .max-w-5xl,.max-w-4xl{max-width:100%!important}
-  /* tablas: scroll horizontal */
-  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:12px}
-  /* acct-header: columna en móvil */
-  .acct-header{flex-direction:column!important;align-items:flex-start!important}
-  /* quick replies: scroll horizontal */
-  .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-  .quick-btn{flex-shrink:0}
-  /* textarea más chica */
-  .q-textarea{min-height:60px!important}
-  /* btn group en header */
-  header .flex.items-center.gap-2{flex-wrap:wrap;gap:4px!important}
-  /* ocultar botones secundarios en header móvil */
-  .btn-mobile-hide{display:none!important}
-  /* bottom nav visible */
-  .btm-nav{display:flex!important}
+@media(max-width:640px){
+  .pg .kpi-row{flex-wrap:wrap}
+  .pg .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .pg .quick-btn{flex-shrink:0}
+  .pg .q-textarea{min-height:60px}
 }
-
-/* ── BOTTOM NAV ──────────────────────────────── */
-.btm-nav{
-  position:fixed;bottom:0;left:0;right:0;z-index:50;
-  background:#111113;border-top:1px solid #262626;
-  align-items:stretch;
-  padding-bottom:env(safe-area-inset-bottom,0px)
-}
-.btm-item{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;padding:7px 2px 5px;color:#71717a;text-decoration:none;
-  font-size:9px;font-weight:600;letter-spacing:.04em;font-family:'JetBrains Mono',monospace;
-  transition:color .15s;border:none;background:transparent;cursor:pointer;
-  min-width:0;white-space:nowrap;overflow:hidden;
-}
-.btm-item:hover,.btm-item.active{color:#FFE600}
-.btm-item.active svg{stroke:#FFE600}
-.btm-item svg{flex-shrink:0}
-.btm-sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:52;
-  background:#141416;border:1px solid #2a2a30;border-radius:16px 16px 0 0;
-  padding:6px 16px 0;display:flex;flex-direction:column;gap:2px;
-  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
-  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 72px)
-}
-.btm-sheet.open{transform:translateY(0)}
-.btm-overlay{
-  position:fixed;inset:0;z-index:51;background:rgba(0,0,0,.65);
-  opacity:0;pointer-events:none;transition:opacity .22s
-}
-.btm-overlay.open{opacity:1;pointer-events:all}
-.btm-handle{width:32px;height:3px;background:#3a3a42;border-radius:2px;margin:6px auto 12px}
-.btm-more-link{
-  display:flex;align-items:center;gap:12px;padding:11px 10px;
-  border-radius:10px;color:#a1a1aa;text-decoration:none;font-size:13px;font-weight:500;
-  transition:background .15s,color .15s
-}
-.btm-more-link:hover{background:#1c1c20;color:#e4e4e7}
-.btm-more-link.active{color:#FFE600}
 
 </style>
 </head>
-<body class="bg-neutral-950 text-neutral-200 antialiased min-h-screen">
+<body>
+<div class="adm-wrap">
 
-<!-- ────────────────────────────── SIDEBAR ──── -->
-<aside class="fixed left-0 top-0 bottom-0 w-16 bg-neutral-900 border-r border-neutral-800 hidden md:flex flex-col items-center py-4 z-40">
-  <div class="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mb-6 shadow-pop">
-    <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-  </div>
-  <nav class="flex flex-col gap-1 flex-1">
-    <a href="/" class="side-item" aria-label="Dashboard">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-      <span class="tip">Dashboard</span>
-    </a>
-    <a href="/analytics.html" class="side-item" aria-label="Analytics">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      <span class="tip">Stock &amp; Analytics</span>
-    </a>
-    <a href="/publicaciones.html" class="side-item" aria-label="Publicaciones">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <span class="tip">Publicar</span>
-    </a>
-    <a href="/vinculaciones.html" class="side-item" aria-label="Vinculaciones">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-      <span class="tip">Vinculaciones</span>
-    </a>
-    <a href="/migracion.html" class="side-item" aria-label="Migración">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-      <span class="tip">Migración</span>
-    </a>
-    <a href="/cobros.html" class="side-item" aria-label="Cobros">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-      <span class="tip">Cobros</span>
-    </a>
-    <a href="/despachos.html" class="side-item" aria-label="Despachos">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-      <span class="tip">Despachos</span>
-    </a>
-    <a href="/preguntas.html" class="side-item active" aria-label="Preguntas">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      <span class="tip">Preguntas</span>
-    </a>
+<!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
+
+  <!-- Logo -->
+  <a href="/" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
+      </svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Stockroom</div>
+      <div class="adm-logo-tag">Panel Admin</div>
+    </div>
+  </a>
+
+  <!-- Nav -->
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">Ventas</div>
+      <a href="/" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="/analytics.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Analytics</span>
+      </a>
+      <a href="/despachos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Despachos</span>
+      </a>
+      <a href="/cobros.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        <span>Cobros</span>
+      </a>
+      <a href="/verificar-envios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>
+        <span>Verificar Logística</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/publicaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Publicaciones</span>
+      </a>
+      <a href="/vinculaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <span>Vinculaciones</span>
+      </a>
+      <a href="/migracion.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+        <span>Migración</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/preguntas.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Preguntas</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Tienda</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Admin Tienda</span>
+      </a>
+    </div>
+
   </nav>
-  <div class="flex flex-col gap-1 mt-auto">
-    <a href="/oauth/start" class="side-item" aria-label="Nueva cuenta ML">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-      <span class="tip">Conectar cuenta ML</span>
+
+  <!-- Footer -->
+  <div class="adm-sidebar-foot">
+    <a href="/oauth/start" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <span>Conectar cuenta</span>
+    </a>
+    <a href="/logout" class="adm-item" style="color:var(--red)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Cerrar sesión</span>
     </a>
   </div>
+
+  <!-- Clock -->
+  <div class="foot-info" id="foot-clock">—</div>
 </aside>
 
-<!-- ────────────────────────────────── MAIN ──── -->
-<div class="md:pl-16 min-h-screen relative z-10">
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
 
   <!-- HEADER -->
-  <header class="sticky top-0 z-30 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800">
-    <div class="flex items-center justify-between px-8 py-4 gap-4">
-      <div class="min-w-0">
-        <h1 class="text-xl font-semibold tracking-tight text-neutral-100">Preguntas</h1>
-        <p class="text-xs text-neutral-500 mt-0.5 flex items-center gap-2">
-          <span class="pulse-dot"></span>
-          <span id="hdr-sub">Todas las cuentas · sin responder</span>
-        </p>
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Preguntas</div>
+        <div class="adm-page-sub">
+          <span id="h-subtitle">Mensajes de compradores</span>
+        </div>
       </div>
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <button onclick="load()" class="btn btn-ghost" id="btn-refresh">
-          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-          Actualizar
+    </div>
+    <div class="adm-header-right">
+      <!-- Theme toggle -->
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+
+      <!-- Account switcher -->
+      <div class="adm-acct" id="acct-wrap">
+        <button class="adm-acct-btn" id="acc-btn">
+          <div class="adm-avatar" id="acc-initial">?</div>
+          <span class="adm-acct-name" id="acc-label">Cuenta</span>
+          <svg class="adm-acct-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
+        <div class="adm-dropdown hidden" id="acc-panel">
+          <div class="adm-dropdown-head">Cuenta activa</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)" id="acc-active">—</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px" id="acc-active-id">—</div>
+          </div>
+          <div id="acc-list"></div>
+          <div class="adm-dropdown-foot">
+            <a href="/oauth/start" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">+ Nueva cuenta</a>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="px-8 py-7 max-w-4xl mx-auto">
+  <!-- CONTENT -->
+  <main class="adm-content">
+    <div class="pg">
 
-    <!-- KPI row -->
-    <div class="flex gap-4 mb-7 kpi-row">
-      <div class="kpi-pill">
-        <div class="text-[10px] font-mono uppercase tracking-widest text-neutral-500 mb-1">Sin responder</div>
-        <div class="text-2xl font-bold font-mono text-neutral-100" id="kpi-total">—</div>
-      </div>
-      <div class="kpi-pill ml-auto">
-        <div class="text-[10px] font-mono uppercase tracking-widest text-neutral-500 mb-1">Actualizado</div>
-        <div class="text-xs font-mono text-neutral-400" id="kpi-updated">—</div>
-      </div>
+  <!-- Toolbar (replaces old header buttons) -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span id="hdr-updated"></span>
     </div>
-
-    <!-- Status bar -->
-    <div class="status-bar mb-5" id="status-bar">
-      <span class="spinner mr-2"></span>Cargando preguntas…
+    <div class="toolbar-right">
+      <button onclick="load()" class="btn btn-ghost" id="btn-refresh">
+        <svg id="btn-refresh-icon" viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Actualizar
+      </button>
     </div>
+  </div>
 
-    <!-- Accounts container -->
-    <div id="accounts-container"></div>
+  <!-- KPI row -->
+  <div class="kpi-row">
+    <div class="kpi-pill">
+      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Sin responder</div>
+      <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--tx)" id="kpi-total">—</div>
+    </div>
+    <div class="kpi-pill" style="margin-left:auto">
+      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Actualizado</div>
+      <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--t2)" id="kpi-updated">—</div>
+    </div>
+  </div>
 
+  <!-- Status bar -->
+  <div class="status-bar" id="status-bar">
+    <span class="spinner" style="margin-right:8px"></span>Cargando preguntas…
+  </div>
+
+  <!-- Accounts container -->
+  <div id="accounts-container"></div>
+
+    </div><!-- /.pg -->
   </main>
-</div>
+
+</div><!-- /.adm-main -->
+</div><!-- /.adm-wrap -->
+
+<!-- Sidebar overlay for mobile -->
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- Bottom nav -->
+<nav class="adm-btm-nav">
+  <a href="/" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a href="/despachos.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    <span>Despachos</span>
+  </a>
+  <a href="/preguntas.html" class="adm-btm-item active">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span>Preguntas</span>
+  </a>
+  <a href="/cobros.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+    <span>Cobros</span>
+  </a>
+  <a href="/analytics.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+    <span>Analytics</span>
+  </a>
+</nav>
 
 <script>
+/* ─── Shell bootstrap (inline) ─── */
+const $I = id => document.getElementById(id);
 const esc = s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const $ = id => document.getElementById(id);
+
+/* Clock */
+(function clock(){
+  const el = $I('foot-clock');
+  if(!el) return;
+  const tick = () => { el.textContent = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
+  tick(); setInterval(tick, 1000);
+})();
+
+/* Hamburger */
+(function(){
+  const btn = $I('btn-hamburger');
+  const sb  = $I('sidebar');
+  const ov  = $I('sidebar-overlay');
+  if(!btn||!sb) return;
+  btn.addEventListener('click', () => { sb.classList.toggle('open'); if(ov) ov.classList.toggle('open'); });
+  if(ov) ov.addEventListener('click', () => { sb.classList.remove('open'); ov.classList.remove('open'); });
+})();
+
+/* Theme toggle */
+(function(){
+  const btn = $I('btn-theme');
+  if(!btn) return;
+  const apply = t => { document.documentElement.setAttribute('data-theme', t); try{ localStorage.setItem('adminTheme',t); }catch(e){} };
+  btn.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme')||'light';
+    apply(cur === 'dark' ? 'light' : 'dark');
+  });
+})();
+
+/* Account switcher */
+async function loadAccounts(){
+  try {
+    const r = await fetch('/accounts');
+    const d = await r.json();
+    const list = Array.isArray(d) ? d : (d.accounts||[]);
+    const active = list.find(a=>a.active) || list[0];
+    if(active){
+      const init = $I('acc-initial'); const lbl = $I('acc-label');
+      const act = $I('acc-active'); const actId = $I('acc-active-id');
+      if(init) init.textContent = (active.label||'?').charAt(0).toUpperCase();
+      if(lbl)  lbl.textContent  = active.label||active.accountId||'Cuenta';
+      if(act)  act.textContent  = active.label||active.accountId||'—';
+      if(actId)actId.textContent= active.accountId||'—';
+    }
+    const panel = $I('acc-list');
+    if(panel){
+      panel.innerHTML = list.map(a=>`
+        <button onclick="switchAcctShell('${esc(a.accountId)}')" class="adm-dropdown-item${a.active?' active':''}">
+          <div class="adm-avatar" style="width:26px;height:26px;font-size:11px">${(a.label||'?').charAt(0).toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.label||a.accountId)}</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.accountId)}</div>
+          </div>
+          ${a.active?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+        </button>`).join('');
+    }
+  } catch(e) { console.warn('loadAccounts:', e); }
+}
+async function switchAcctShell(id){
+  try{ await fetch('/switch-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:id})}); location.reload(); }catch(e){}
+}
+const accBtn = $I('acc-btn');
+const accPanel = $I('acc-panel');
+if(accBtn && accPanel){
+  accBtn.addEventListener('click', e => { e.stopPropagation(); accPanel.classList.toggle('hidden'); });
+  document.addEventListener('click', () => { if(accPanel) accPanel.classList.add('hidden'); });
+}
+loadAccounts();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+/* ─── Page-specific JS ─── */
 
 // ── Quick replies predefinidos ─────────────────────────────────
 const QUICK_REPLIES = [
@@ -313,16 +420,18 @@ function fmtDate(iso) {
          d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
 }
 function setStatus(msg, loading=false) {
-  $('status-bar').innerHTML = (loading ? '<span class="spinner mr-2"></span>' : '') + msg;
+  $I('status-bar').innerHTML = (loading ? '<span class="spinner" style="margin-right:8px"></span>' : '') + msg;
 }
 
 // ── Render ─────────────────────────────────────────────────────
-function renderData(d) {
+function renderData(d, ts) {
   lastData = d;
-  $('kpi-total').textContent  = d.total;
-  $('kpi-updated').textContent = fmtNow();
+  $I('kpi-total').textContent  = d.total;
+  const timeStr = ts ? new Date(ts).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }) : fmtNow();
+  $I('kpi-updated').textContent = timeStr;
+  $I('hdr-updated').textContent = 'Última carga: ' + timeStr;
 
-  const container = $('accounts-container');
+  const container = $I('accounts-container');
   container.innerHTML = '';
 
   for (const acct of d.accounts) {
@@ -335,8 +444,8 @@ function renderData(d) {
       <div class="acct-header">
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
           <div class="acct-avatar">${esc((acct.label||'?').trim().charAt(0).toUpperCase())}</div>
-          <div class="min-w-0">
-            <div class="acct-name truncate">${esc(acct.label || acct.accountId)}</div>
+          <div style="min-width:0">
+            <div class="acct-name">${esc(acct.label || acct.accountId)}</div>
             <div class="acct-meta">${acct.ok
               ? (count ? `${count} pregunta${count!==1?'s':''} sin responder` : '✓ Sin preguntas pendientes')
               : `<span style="color:var(--re)">Error: ${esc(acct.error||'')}</span>`}
@@ -374,7 +483,7 @@ function renderQuestions(acct) {
           : `<div class="q-item-thumb"></div>`}
         <div class="q-item-title">${esc(q.item_title)}</div>
         <a href="https://www.mercadolibre.com.ar/p/${esc(q.item_id)}" target="_blank" rel="noopener"
-           style="flex-shrink:0;color:var(--t3);transition:color .15s" onmouseover="this.style.color='var(--ye)'" onmouseout="this.style.color='var(--t3)'"
+           style="flex-shrink:0;color:var(--t3);transition:color .15s;display:flex;align-items:center" onmouseover="this.style.color='var(--ye)'" onmouseout="this.style.color='var(--t3)'"
            title="Ver publicación">
           <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </a>
@@ -383,7 +492,7 @@ function renderQuestions(acct) {
       <!-- Burbuja de pregunta -->
       <div>
         <div class="q-text-bubble">${esc(q.text)}</div>
-        <div class="q-meta" style="margin-top:6px">
+        <div class="q-meta">
           <svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.2 21a7 7 0 0113.6 0"/></svg>
           ${q.buyer_id ? `ID ${q.buyer_id}` : 'Comprador'}
           <span>·</span>
@@ -430,7 +539,7 @@ function renderQuestions(acct) {
 
 // ── Lógica de respuesta ────────────────────────────────────────
 function fillQuick(qid, text) {
-  const ta = $(`ta-${qid}`);
+  const ta = $I(`ta-${qid}`);
   if (!ta) return;
   ta.value = text;
   ta.focus();
@@ -439,9 +548,9 @@ function fillQuick(qid, text) {
 }
 
 function updateCharCount(qid) {
-  const ta = $(`ta-${qid}`);
-  const cc = $(`cc-${qid}`);
-  const sb = $(`sb-${qid}`);
+  const ta = $I(`ta-${qid}`);
+  const cc = $I(`cc-${qid}`);
+  const sb = $I(`sb-${qid}`);
   if (!ta) return;
   const len = ta.value.length;
   cc.textContent = `${len} / 2000`;
@@ -458,9 +567,9 @@ function handleKey(e, qid, accountId) {
 }
 
 async function responder(qid, accountId) {
-  const ta  = $(`ta-${qid}`);
-  const sb  = $(`sb-${qid}`);
-  const qs  = $(`qs-${qid}`);
+  const ta  = $I(`ta-${qid}`);
+  const sb  = $I(`sb-${qid}`);
+  const qs  = $I(`qs-${qid}`);
   const text = ta?.value?.trim();
   if (!text) return;
 
@@ -482,7 +591,7 @@ async function responder(qid, accountId) {
     qs.textContent = '✓ Enviada';
     qs.className = 'q-status ok';
 
-    const card = $(`qcard-${qid}`);
+    const card = $I(`qcard-${qid}`);
     if (card) {
       card.classList.add('answered');
       setTimeout(() => {
@@ -510,12 +619,12 @@ async function responder(qid, accountId) {
 
 function actualizarContadorCuenta(accountId) {
   // Contar cards restantes en la sección
-  const list = $(`qlist-${accountId}`);
+  const list = $I(`qlist-${accountId}`);
   if (!list) return;
   const remaining = list.querySelectorAll('.q-card').length;
 
   // Actualizar KPI global
-  const kpi = $('kpi-total');
+  const kpi = $I('kpi-total');
   const prev = parseInt(kpi.textContent) || 0;
   kpi.textContent = Math.max(0, prev - 1);
 
@@ -533,101 +642,43 @@ function actualizarContadorCuenta(accountId) {
   }
 }
 
+// ── caché local ───────────────────────────────────────────────
+const CACHE_KEY = 'stockroom_preguntas_v1';
+function saveCache(d) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ d, ts: new Date().toISOString() })); } catch(e) {}
+}
+function loadFromCache() {
+  try { const s = localStorage.getItem(CACHE_KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+}
+
 // ── Carga de datos ─────────────────────────────────────────────
 async function load() {
-  $('btn-refresh').disabled = true;
-  setStatus('Cargando preguntas de todas las cuentas…', true);
+  const btn = $I('btn-refresh');
+  btn.disabled = true;
+  btn.classList.add('is-loading');
   try {
     const r = await fetch('/preguntas-all');
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Error del servidor');
-    renderData(d);
+    saveCache(d);
+    renderData(d, new Date().toISOString());
   } catch(e) {
     setStatus('❌ Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
   }
-  $('btn-refresh').disabled = false;
 }
 
-// ── Auto-refresh cada 3 min ────────────────────────────────────
-load();
-setInterval(load, 180_000);
-</script>
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
-
-<!-- ── BOTTOM NAV (solo móvil) ───────────────── -->
-<div class="btm-overlay" id="btm-overlay" onclick="closeBtmSheet()"></div>
-<div class="btm-sheet" id="btm-sheet">
-  <div class="btm-handle"></div>
-  <a href="/publicaciones.html" class="btm-more-link" id="bnav-publicaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    Publicar
-  </a>
-  <a href="/vinculaciones.html" class="btm-more-link" id="bnav-vinculaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-    Vinculaciones
-  </a>
-  <a href="/migracion.html" class="btm-more-link" id="bnav-migracion">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-    Migración
-  </a>
-  <a href="/oauth/start" class="btm-more-link">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-    Conectar cuenta
-  </a>
-</div>
-<nav class="btm-nav" id="btm-nav">
-  <a href="/" class="btm-item" id="bnav-home">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-    Inicio
-  </a>
-  <a href="/despachos.html" class="btm-item" id="bnav-despachos">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-    Despachos
-  </a>
-  <a href="/preguntas.html" class="btm-item" id="bnav-preguntas">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    Preguntas
-  </a>
-  <a href="/analytics.html" class="btm-item" id="bnav-analytics">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-    Analytics
-  </a>
-  <a href="/cobros.html" class="btm-item" id="bnav-cobros">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-    Cobros
-  </a>
-  <button class="btm-item" id="bnav-more" onclick="openBtmSheet()">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
-    Mas
-  </button>
-</nav>
-<script>
-(function(){
-  var p=location.pathname;
-  var map={
-    '/':'bnav-home','/index.html':'bnav-home',
-    '/despachos.html':'bnav-despachos',
-    '/preguntas.html':'bnav-preguntas',
-    '/analytics.html':'bnav-analytics',
-    '/cobros.html':'bnav-cobros',
-    '/publicaciones.html':'bnav-publicaciones',
-    '/vinculaciones.html':'bnav-vinculaciones',
-    '/migracion.html':'bnav-migracion'
-  };
-  var id=map[p];
-  if(id){var el=document.getElementById(id);if(el)el.classList.add('active');}
-  if(['bnav-publicaciones','bnav-vinculaciones','bnav-migracion'].indexOf(id)>=0){
-    var m=document.getElementById('bnav-more');if(m)m.classList.add('active');
+// Al abrir la página: mostrar caché si existe, sin llamar a la API
+(function initFromCache() {
+  const cached = loadFromCache();
+  if (cached) {
+    renderData(cached.d, cached.ts);
+  } else {
+    setStatus('Presioná Actualizar para cargar las preguntas.');
   }
 })();
-function openBtmSheet(){
-  document.getElementById('btm-sheet').classList.add('open');
-  document.getElementById('btm-overlay').classList.add('open');
-}
-function closeBtmSheet(){
-  document.getElementById('btm-sheet').classList.remove('open');
-  document.getElementById('btm-overlay').classList.remove('open');
-}
 </script>
 
 </body>

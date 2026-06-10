@@ -2,164 +2,485 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0a0a0a">
-<meta name="description" content="Stock & Analytics — MercadoLibre">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>Stock &amp; Analytics — Stockroom</title>
-
+<title>Analytics — Stockroom</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="/shell.js" defer></script>
-
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
-  /* KPI card colored top bars */
-  .kpi-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
 
-  /* animated shimmer for loading rows */
-  @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
-  .shimmer { background: linear-gradient(90deg, #171717 0%, #262626 50%, #171717 100%); background-size: 800px 100%; animation: shimmer 1.4s infinite linear; }
+/* ── Page-specific styles (scoped to avoid conflicts with admin.css) ── */
+.pg { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; display: block; color: var(--text); }
+.pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
 
-  /* table */
-  table.stock-table { width: 100%; border-collapse: collapse; }
-  table.stock-table th {
-    text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
-    color: #737373; font-weight: 500; padding: 12px 14px;
-    border-bottom: 1px solid #262626; background: #0f0f0f; position: sticky; top: 0; z-index: 2;
-    cursor: pointer; user-select: none;
-  }
-  table.stock-table th:hover { color: #d4d4d8; }
-  table.stock-table th.sorted { color: #FFE600; }
-  table.stock-table th .si { display: inline-block; margin-left: 4px; opacity: .4; font-size: 10px; }
-  table.stock-table th.sorted .si { opacity: 1; }
-  table.stock-table td { padding: 12px 14px; font-size: 13px; color: #d4d4d8; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
-  table.stock-table tbody tr { transition: background .15s; animation: rowIn .25s ease-out both; }
-  table.stock-table tbody tr:hover { background: #0f0f0f; }
-  table.stock-table tr.variant-row { background: #0a0a0a; }
-  table.stock-table tr.variant-row td { font-size: 12px; color: #a1a1aa; padding-top: 8px; padding-bottom: 8px; border-bottom-color: #141414; }
-  .var-indent { padding-left: 32px !important; }
-  @keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* KPI cards clickeables (igual diseño que dashboard, pero como botón con filtro) */
+.adm-kpi-btn {
+  cursor: pointer; text-align: left; font: inherit;
+  transition: border-color .15s, background .15s, transform .08s;
+  position: relative;
+}
+.adm-kpi-btn:hover  { border-color: var(--border-2); background: var(--bg); }
+.adm-kpi-btn:active { transform: translateY(1px); }
+.adm-kpi-btn.active {
+  border-color: var(--blue); background: var(--blue-light);
+  box-shadow: 0 0 0 3px var(--blue-light);
+}
 
-  .stock-bar-bg { width: 64px; height: 4px; background: #262626; border-radius: 4px; overflow: hidden; }
-  .stock-bar { height: 100%; border-radius: 4px; transition: width .3s; }
+/* Card con dos métricas lado a lado (Catálogo: SKUs + Variantes) */
+.adm-kpi-split {
+  display: flex; align-items: stretch; gap: 12px;
+  margin-top: 2px;
+}
+.adm-kpi-split-col {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.adm-kpi-split-divider {
+  width: 1px; background: var(--border); flex-shrink: 0;
+}
+.adm-kpi-split-sub {
+  font-size: 11px; color: var(--text-3); font-weight: 500;
+}
 
-  .badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px;
-    letter-spacing: .02em; white-space: nowrap;
-  }
-  .badge-active   { background: rgba(34,197,94,.1);  color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
-  .badge-low      { background: rgba(249,115,22,.1); color: #fb923c; border: 1px solid rgba(249,115,22,.25); }
-  .badge-critical { background: rgba(239,68,68,.1);  color: #f87171; border: 1px solid rgba(239,68,68,.25); }
-  .badge-velocity { background: rgba(168,85,247,.1); color: #c084fc; border: 1px solid rgba(168,85,247,.25); }
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.pg .shimmer { background: linear-gradient(90deg, var(--bg-card) 0%, var(--border) 50%, var(--bg-card) 100%); background-size: 800px 100%; animation: shimmer 1.4s infinite linear; }
 
-  .var-chip {
-    font-size: 9px; font-family: 'JetBrains Mono', monospace;
-    background: #262626; color: #737373; padding: 1px 6px; border-radius: 4px;
-    margin-right: 6px; letter-spacing: .05em;
-  }
+.pg table.stock-table { width: 100%; border-collapse: collapse; }
+.pg table.stock-table th {
+  text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--text-3); font-weight: 500; padding: 12px 14px;
+  border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 2;
+  cursor: pointer; user-select: none;
+}
+.pg table.stock-table th:hover { color: var(--text); }
+.pg table.stock-table th.sorted { color: #FFE600; }
+.pg table.stock-table th .si { display: inline-block; margin-left: 4px; opacity: .4; font-size: 10px; }
+.pg table.stock-table th.sorted .si { opacity: 1; }
+.pg table.stock-table td { padding: 12px 14px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--bg-card); vertical-align: middle; }
+.pg table.stock-table tbody tr { transition: background .15s; animation: rowIn .25s ease-out both; }
+.pg table.stock-table tbody tr:hover { background: var(--bg); }
+.pg table.stock-table tr.variant-row { background: var(--bg); }
+.pg table.stock-table tr.variant-row td { font-size: 12px; color: var(--text-2); padding-top: 8px; padding-bottom: 8px; border-bottom-color: var(--bg-card); }
+.pg .var-indent { padding-left: 32px !important; }
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-  .expand-btn {
-    width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
-    background: #171717; border: 1px solid #262626; border-radius: 6px; color: #737373;
-    font-size: 11px; cursor: pointer; margin-right: 8px; transition: all .15s;
-  }
-  .expand-btn:hover { background: #262626; color: #FFE600; border-color: #FFE600; }
+.pg .stock-bar-bg { width: 64px; height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.pg .stock-bar { height: 100%; border-radius: 4px; transition: width .3s; }
 
-  .ftag {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: rgba(255,230,0,.08); border: 1px solid rgba(255,230,0,.25); color: #FFE600;
-    font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 999px;
-    cursor: pointer; transition: background .15s;
-  }
-  .ftag:hover { background: rgba(255,230,0,.18); }
+.pg .badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px;
+  letter-spacing: .02em; white-space: nowrap;
+}
+.pg .badge-active   { background: rgba(0,166,80,.12);   color: #00A650; border: 1px solid rgba(0,166,80,.25); }
+.pg .badge-low      { background: rgba(249,115,22,.12); color: #e07010; border: 1px solid rgba(249,115,22,.3); }
+.pg .badge-critical { background: rgba(239,68,68,.12);  color: #d32f2f; border: 1px solid rgba(239,68,68,.3); }
+.pg .badge-velocity { background: rgba(168,85,247,.12); color: #8b32d8; border: 1px solid rgba(168,85,247,.3); }
+[data-theme="dark"] .pg .badge-active   { color: #4ade80; }
+[data-theme="dark"] .pg .badge-low      { color: #fb923c; }
+[data-theme="dark"] .pg .badge-critical { color: #f87171; }
+[data-theme="dark"] .pg .badge-velocity { color: #c084fc; }
 
-  .spinner { width: 14px; height: 14px; border: 2px solid #262626; border-top-color: #FFE600; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+.pg .var-chip {
+  font-size: 9px; font-family: 'JetBrains Mono', monospace;
+  background: var(--border); color: var(--text-3); padding: 1px 6px; border-radius: 4px;
+  margin-right: 6px; letter-spacing: .05em;
+}
 
-  .fade-in { animation: fadeUp .4s ease-out both; }
-  .fade-in.d1 { animation-delay: .05s; }
-  .fade-in.d2 { animation-delay: .1s; }
-  .fade-in.d3 { animation-delay: .15s; }
-  .fade-in.d4 { animation-delay: .2s; }
-  .fade-in.d5 { animation-delay: .25s; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.pg .expand-btn {
+  width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-3);
+  font-size: 11px; cursor: pointer; margin-right: 8px; transition: all .15s;
+}
+.pg .expand-btn:hover { background: var(--border); color: #FFE600; border-color: #FFE600; }
 
-  /* KPI click state */
-  .kpi-card { cursor: pointer; transition: transform .2s, border-color .2s, box-shadow .2s; }
-  .kpi-card:hover { transform: translateY(-2px); border-color: #404040; box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
-  .kpi-card.active { border-color: rgba(255,230,0,.4); box-shadow: 0 0 0 1px rgba(255,230,0,.3) inset; }
+.pg .ftag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(255,230,0,.08); border: 1px solid rgba(255,230,0,.25); color: #FFE600;
+  font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 999px;
+  cursor: pointer; transition: background .15s;
+}
+.pg .ftag:hover { background: rgba(255,230,0,.18); }
 
-  /* pagination */
-  .pbtn {
-    min-width: 32px; height: 32px; padding: 0 10px;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: #171717; border: 1px solid #262626; color: #a1a1aa;
-    font-size: 12px; font-family: 'JetBrains Mono', monospace;
-    border-radius: 8px; cursor: pointer; transition: all .15s;
-  }
-  .pbtn:hover:not(:disabled) { background: #262626; color: #e4e4e7; }
-  .pbtn.active { background: #FFE600; color: #0a0a0a; border-color: #FFE600; font-weight: 600; }
-  .pbtn:disabled { opacity: .4; cursor: not-allowed; }
+.pg .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: #FFE600; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes loadSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-  /* modal */
-  .modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
-  .modal-ov.show { display: flex; }
+.pg .fade-in { animation: fadeUp .4s ease-out both; }
+.pg .fade-in.d1 { animation-delay: .05s; }
+.pg .fade-in.d2 { animation-delay: .1s; }
+.pg .fade-in.d3 { animation-delay: .15s; }
+.pg .fade-in.d4 { animation-delay: .2s; }
+.pg .fade-in.d5 { animation-delay: .25s; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-  .fld label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #737373; font-weight: 500; display: block; margin-bottom: 6px; }
-  .fld input {
-    width: 100%; background: #0f0f0f; border: 1px solid #262626; color: #e4e4e7;
-    padding: 10px 12px; border-radius: 10px; font-family: 'JetBrains Mono', monospace;
-    font-size: 14px; outline: none; transition: border-color .2s;
-  }
-  .fld input:focus { border-color: #FFE600; }
+.pg .kpi-card { cursor: pointer; transition: transform .2s, border-color .2s, box-shadow .2s; }
+.pg .kpi-card:hover { transform: translateY(-2px); border-color: var(--border-2); box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
+.pg .kpi-card.active { border-color: rgba(255,230,0,.4); box-shadow: 0 0 0 1px rgba(255,230,0,.3) inset; }
 
-  /* scrollbar */
-  *::-webkit-scrollbar { width: 10px; height: 10px; }
-  *::-webkit-scrollbar-track { background: transparent; }
-  *::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
-  *::-webkit-scrollbar-thumb:hover { background: #404040; }
+.pg .pbtn {
+  min-width: 32px; height: 32px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-2);
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  border-radius: 8px; cursor: pointer; transition: all .15s;
+}
+.pg .pbtn:hover:not(:disabled) { background: var(--border); color: var(--text); }
+.pg .pbtn.active { background: #FFE600; color: var(--bg); border-color: #FFE600; font-weight: 600; }
+.pg .pbtn:disabled { opacity: .4; cursor: not-allowed; }
+
+.pg .modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+.pg .modal-ov.show { display: flex; }
+
+/* ── Toolbar controls — adaptables al tema ───────────────── */
+.pg .tb-control {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: var(--bg); border: 1px solid var(--border-2);
+  border-radius: 0.75rem; padding: 0.5rem 0.75rem;
+  font-size: 0.875rem; font-weight: 500;
+  color: var(--text); cursor: pointer;
+  transition: border-color .15s, background .15s;
+  outline: none;
+}
+.pg .tb-control:hover { border-color: var(--text-3); }
+.pg .tb-search {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--bg); border: 1px solid var(--border-2);
+  border-radius: 0.75rem; padding: 0.5rem 0.75rem;
+  flex: 1; min-width: 220px;
+}
+.pg .tb-search svg { color: var(--text-3); flex-shrink: 0; }
+.pg .tb-search input {
+  background: transparent; outline: none; border: none;
+  font-size: 0.875rem; color: var(--text); width: 100%;
+}
+.pg .tb-search input::placeholder { color: var(--text-3); }
+
+/* ── Modal panel — adaptable al tema ─────────────────────── */
+.pg .modal-panel {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 1rem; width: 100%; max-width: 32rem;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,.3);
+}
+.pg .modal-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+}
+.pg .modal-panel-foot {
+  display: flex; gap: 0.5rem; padding: 0 1.5rem 1.5rem;
+}
+.pg .modal-btn-cancel {
+  background: var(--bg); color: var(--text-2); border: 1px solid var(--border);
+  border-radius: 0.75rem; padding: 0.625rem 1rem; font-size: 0.875rem; cursor: pointer;
+}
+.pg .modal-btn-cancel:hover { background: var(--border); }
+
+.pg .fld label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 500; display: block; margin-bottom: 6px; }
+.pg .fld input {
+  width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 10px 12px; border-radius: 10px; font-family: 'JetBrains Mono', monospace;
+  font-size: 14px; outline: none; transition: border-color .2s;
+}
+.pg .fld input:focus { border-color: #FFE600; }
+
+.pg *::-webkit-scrollbar { width: 10px; height: 10px; }
+.pg *::-webkit-scrollbar-track { background: transparent; }
+.pg *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.pg *::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
+
+/* Tailwind utility replacements */
+.pg .grid { display: grid; }
+.pg .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pg .gap-4 { gap: 1rem; }
+.pg .mb-4 { margin-bottom: 1rem; }
+.pg .mb-8 { margin-bottom: 2rem; }
+.pg .p-4 { padding: 1rem; }
+.pg .p-5 { padding: 1.25rem; }
+.pg .p-6 { padding: 1.5rem; }
+.pg .pb-6 { padding-bottom: 1.5rem; }
+.pg .pt-4 { padding-top: 1rem; }
+.pg .mt-2 { margin-top: 0.5rem; }
+.pg .mt-3 { margin-top: 0.75rem; }
+.pg .gap-2 { gap: 0.5rem; }
+.pg .gap-3 { gap: 0.75rem; }
+.pg .flex { display: flex; }
+.pg .flex-wrap { flex-wrap: wrap; }
+.pg .items-center { align-items: center; }
+.pg .justify-between { justify-content: space-between; }
+.pg .overflow-hidden { overflow: hidden; }
+.pg .overflow-x-auto { overflow-x: auto; }
+.pg .overflow-y-auto { overflow-y: auto; }
+.pg .rounded-2xl { border-radius: 1rem; }
+.pg .bg-neutral-900 { background: var(--bg-card); }
+.pg .border { border: 1px solid; }
+.pg .border-neutral-800 { border-color: var(--border); }
+.pg .text-center { text-align: center; }
+.pg .text-left { text-align: left; }
+.pg .text-right { text-align: right; }
+.pg .text-xs { font-size: 0.75rem; }
+.pg .text-sm { font-size: 0.875rem; }
+.pg .text-3xl { font-size: 1.875rem; }
+.pg .font-bold { font-weight: 700; }
+.pg .font-semibold { font-weight: 600; }
+.pg .font-medium { font-weight: 500; }
+.pg .font-mono { font-family: 'JetBrains Mono', monospace; }
+.pg .tabular-nums { font-variant-numeric: tabular-nums; }
+.pg .text-neutral-100 { color: var(--text); }
+.pg .text-neutral-200 { color: var(--text); }
+.pg .text-neutral-300 { color: var(--text); }
+.pg .text-neutral-400 { color: var(--text-2); }
+.pg .text-neutral-500 { color: var(--text-3); }
+.pg .text-neutral-600 { color: var(--text-3); }
+.pg .text-cyan-400 { color: #22d3ee; }
+.pg .text-orange-400 { color: #fb923c; }
+.pg .text-red-400 { color: #f87171; }
+.pg .text-purple-400 { color: #c084fc; }
+.pg .text-neutral-950 { color: #0a0a0a; }
+.pg .hidden { display: none; }
+.pg .inline-block { display: inline-block; }
+.pg .flex-1 { flex: 1; }
+.pg .min-w-\[220px\] { min-width: 220px; }
+.pg .min-w-\[180px\] { min-width: 180px; }
+.pg .w-4 { width: 1rem; }
+.pg .h-4 { height: 1rem; }
+.pg .w-5 { width: 1.25rem; }
+.pg .h-5 { height: 1.25rem; }
+.pg .bg-brand { background: #FFE600; }
+.pg .hover\:bg-yellow-400:hover { background: #facc15; }
+.pg .py-16 { padding-top: 4rem; padding-bottom: 4rem; }
+.pg .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.pg .py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+.pg .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.pg .px-4 { padding-left: 1rem; padding-right: 1rem; }
+.pg .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.pg .mx-auto { margin-left: auto; margin-right: auto; }
+.pg .max-w-md { max-width: 28rem; }
+.pg .max-h-\[70vh\] { max-height: 70vh; }
+.pg .w-full { width: 100%; }
+.pg .max-w-lg { max-width: 32rem; }
+.pg .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,.25); }
+.pg .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1); }
+.pg .shadow-yellow-500\/20 { box-shadow: 0 10px 15px -3px rgba(234,179,8,.2); }
+.pg .transition { transition: all .15s; }
+.pg .space-y-2 > * + * { margin-top: 0.5rem; }
+.pg .space-y-4 > * + * { margin-top: 1rem; }
+.pg .empty\:hidden:empty { display: none; }
+.pg .border-t { border-top-width: 1px; }
+.pg .border-neutral-800 { border-color: var(--border); }
+.pg .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pg .relative { position: relative; }
+.pg .text-neutral-200 { color: var(--text); }
+.pg .bg-red-500\/5 { background: rgba(239,68,68,.05); }
+.pg .border-red-500\/20 { border-color: rgba(239,68,68,.2); }
+.pg .rounded-2xl { border-radius: 1rem; }
+.pg .p-6 { padding: 1.5rem; }
+.pg .mr-2 { margin-right: 0.5rem; }
+.pg .align-middle { vertical-align: middle; }
+.pg .underline { text-decoration: underline; }
+.pg .no-underline { text-decoration: none; }
+.pg .accent-brand { accent-color: #FFE600; }
+.pg select { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 13px; outline: none; cursor: pointer; }
+.pg select:focus { border-color: #FFE600; }
+.pg input[type=text], .pg input[type=search] { background: transparent; border: none; outline: none; color: var(--text); font-size: 13px; width: 100%; }
+.pg .focus-within\:border-neutral-600:focus-within { border-color: var(--text-3); }
+.pg .transition { transition: all .15s; }
+.pg button { cursor: pointer; border: none; background: none; }
+.pg .adm-kpi-btn { border: 1px solid var(--border); background: var(--bg-card); }
+
+@media(min-width:768px) { .pg .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media(min-width:1280px) { .pg .xl\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
 </style>
 </head>
-<body data-shell-page="analytics" data-shell-title="Stock &amp; Analytics" data-shell-subtitle="Catálogo, velocidad y orden de compra" class="bg-neutral-950 text-neutral-200 antialiased min-h-screen">
+<body>
+<div class="adm-wrap">
 
-<main class="p-4 md:p-8 max-w-[1800px] mx-auto">
+<!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar">
 
-  <!-- ───── KPIs ───── -->
-  <section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-4">
-    <button type="button" data-filter="" class="kpi-card relative bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-left fade-in d1">
-      <div class="kpi-bar" style="background:#FFE600"></div>
-      <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-2">SKUs activos</div>
-      <div class="text-3xl font-bold font-mono tabular-nums text-neutral-100" id="k-total">—</div>
-      <div class="text-xs text-neutral-500 mt-1">Publicaciones</div>
+  <!-- Logo -->
+  <a href="/" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
+      </svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Stockroom</div>
+      <div class="adm-logo-tag">Panel Admin</div>
+    </div>
+  </a>
+
+  <!-- Nav -->
+  <nav class="adm-nav">
+
+    <div class="adm-group">
+      <div class="adm-group-label">Ventas</div>
+      <a href="/" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="/analytics.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Analytics</span>
+      </a>
+      <a href="/despachos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Despachos</span>
+      </a>
+      <a href="/cobros.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        <span>Cobros</span>
+      </a>
+      <a href="/verificar-envios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>
+        <span>Verificar Logística</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/publicaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Publicaciones</span>
+      </a>
+      <a href="/vinculaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <span>Vinculaciones</span>
+      </a>
+      <a href="/migracion.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+        <span>Migración</span>
+      </a>
+    </div>
+
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/preguntas.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Preguntas</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Tienda</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Admin Tienda</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <!-- Footer -->
+  <div class="adm-sidebar-foot">
+    <a href="/oauth/start" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <span>Conectar cuenta</span>
+    </a>
+    <a href="/logout" class="adm-item" style="color:var(--red)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Cerrar sesión</span>
+    </a>
+  </div>
+
+  <!-- Clock -->
+  <div class="foot-info" id="foot-clock">—</div>
+</aside>
+
+<!-- ══════════════════════════ MAIN ════════════════════════ -->
+<div class="adm-main">
+
+  <!-- HEADER -->
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Analytics</div>
+        <div class="adm-page-sub">
+          <span id="h-subtitle">Stock &amp; catálogo</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <!-- Theme toggle -->
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+
+      <!-- Search -->
+      <div class="adm-search" style="width:220px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="hdr-search" type="search" placeholder="Buscar…" autocomplete="off">
+      </div>
+
+      <!-- Account switcher -->
+      <div class="adm-acct" id="acct-wrap">
+        <button class="adm-acct-btn" id="acc-btn">
+          <div class="adm-avatar" id="acc-initial">?</div>
+          <span class="adm-acct-name" id="acc-label">Cuenta</span>
+          <svg class="adm-acct-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="adm-dropdown hidden" id="acc-panel">
+          <div class="adm-dropdown-head">Cuenta activa</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)" id="acc-active">—</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px" id="acc-active-id">—</div>
+          </div>
+          <div id="acc-list"></div>
+          <div class="adm-dropdown-foot">
+            <a href="/oauth/start" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">+ Nueva cuenta</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="adm-content">
+    <div class="pg">
+
+  <!-- ───── KPIs (mismo diseño que el Dashboard) ───── -->
+  <section class="adm-kpi-grid" id="kpi-row">
+    <button type="button" data-filter="" class="adm-kpi adm-kpi-btn">
+      <div class="adm-kpi-label">Catálogo</div>
+      <div class="adm-kpi-split">
+        <div class="adm-kpi-split-col">
+          <div class="adm-kpi-value" id="k-total">—</div>
+          <div class="adm-kpi-split-sub">SKUs activos</div>
+        </div>
+        <div class="adm-kpi-split-divider"></div>
+        <div class="adm-kpi-split-col">
+          <div class="adm-kpi-value blue" id="k-vars">—</div>
+          <div class="adm-kpi-split-sub">Variantes</div>
+        </div>
+      </div>
     </button>
-    <button type="button" data-filter="" class="kpi-card relative bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-left fade-in d2">
-      <div class="kpi-bar" style="background:#22d3ee"></div>
-      <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-2">Variantes totales</div>
-      <div class="text-3xl font-bold font-mono tabular-nums text-cyan-400" id="k-vars">—</div>
-      <div class="text-xs text-neutral-500 mt-1">SKUs + variaciones</div>
+    <button type="button" data-filter="low" class="adm-kpi adm-kpi-btn">
+      <div class="adm-kpi-label">Stock bajo</div>
+      <div class="adm-kpi-value yellow" id="k-low">—</div>
+      <div class="adm-kpi-delta"><span style="color:var(--text-3)">&lt; 20 unidades</span></div>
     </button>
-    <button type="button" data-filter="low" class="kpi-card relative bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-left fade-in d3">
-      <div class="kpi-bar" style="background:#f97316"></div>
-      <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-2">Stock bajo</div>
-      <div class="text-3xl font-bold font-mono tabular-nums text-orange-400" id="k-low">—</div>
-      <div class="text-xs text-neutral-500 mt-1">&lt; 20 unidades</div>
+    <button type="button" data-filter="critical" class="adm-kpi adm-kpi-btn">
+      <div class="adm-kpi-label">Stock crítico</div>
+      <div class="adm-kpi-value red" id="k-crit">—</div>
+      <div class="adm-kpi-delta"><span style="color:var(--text-3)">&lt; 5 unidades</span></div>
     </button>
-    <button type="button" data-filter="critical" class="kpi-card relative bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-left fade-in d4">
-      <div class="kpi-bar" style="background:#ef4444"></div>
-      <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-2">Stock crítico</div>
-      <div class="text-3xl font-bold font-mono tabular-nums text-red-400" id="k-crit">—</div>
-      <div class="text-xs text-neutral-500 mt-1">&lt; 5 unidades</div>
-    </button>
-    <button type="button" data-filter="velocity" class="kpi-card relative bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-left fade-in d5">
-      <div class="kpi-bar" style="background:#a855f7"></div>
-      <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-2">⚡ Alta rotación</div>
-      <div class="text-3xl font-bold font-mono tabular-nums text-purple-400" id="k-vel">—</div>
-      <div class="text-xs text-neutral-500 mt-1">Vendedores estrella</div>
+    <button type="button" data-filter="velocity" class="adm-kpi adm-kpi-btn">
+      <div class="adm-kpi-label">⚡ Alta rotación</div>
+      <div class="adm-kpi-value green" id="k-vel">—</div>
+      <div class="adm-kpi-delta"><span style="color:var(--text-3)">Vendedores estrella</span></div>
     </button>
   </section>
 
@@ -170,16 +491,16 @@
   <section class="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 mb-4">
     <div class="flex flex-wrap items-center gap-2">
       <!-- search -->
-      <div class="flex items-center gap-2 bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2 flex-1 min-w-[220px] focus-within:border-neutral-600 transition">
-        <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="search" type="text" placeholder="Buscar por título, ID, variante…" class="bg-transparent outline-none text-sm text-neutral-200 placeholder:text-neutral-600 w-full"/>
+      <div class="tb-search">
+        <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem;flex-shrink:0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" type="text" placeholder="Buscar por título, ID, variante…"/>
       </div>
       <!-- category -->
-      <select id="f-cat" class="bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-xl px-3 py-2 text-sm font-medium cursor-pointer outline-none focus:border-neutral-600 min-w-[180px]">
+      <select id="f-cat" class="tb-control" style="min-width:180px">
         <option value="">Todas las categorías</option>
       </select>
       <!-- status -->
-      <select id="f-status" class="bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-xl px-3 py-2 text-sm font-medium cursor-pointer outline-none focus:border-neutral-600">
+      <select id="f-status" class="tb-control">
         <option value="">Todos los estados</option>
         <option value="active">Activo</option>
         <option value="low">Stock bajo</option>
@@ -187,31 +508,31 @@
         <option value="velocity">⚡ Alta rotación</option>
       </select>
       <!-- expand -->
-      <button id="btn-expand" class="bg-neutral-800 border border-neutral-700 hover:border-neutral-600 hover:bg-neutral-700 text-neutral-200 rounded-xl px-3 py-2 text-sm font-medium transition flex items-center gap-2">
-        <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+      <button id="btn-expand" class="tb-control">
+        <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
         <span id="btn-expand-label">Expandir variantes</span>
       </button>
       <!-- clear -->
-      <button id="btn-clear" style="display:none" class="bg-neutral-800 border border-neutral-700 hover:border-red-500/40 hover:text-red-400 text-neutral-300 rounded-xl px-3 py-2 text-sm font-medium transition">
+      <button id="btn-clear" class="tb-control" style="display:none">
         ✕ Limpiar filtros
       </button>
       <!-- export -->
-      <button id="btn-export" class="bg-neutral-800 border border-neutral-700 hover:border-neutral-600 hover:bg-neutral-700 text-neutral-200 rounded-xl px-3 py-2 text-sm font-medium transition flex items-center gap-2">
-        <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <button id="btn-export" class="tb-control">
+        <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Exportar CSV
       </button>
       <!-- orden de compra -->
-      <button id="btn-orden" class="bg-brand hover:bg-yellow-400 text-neutral-950 rounded-xl px-4 py-2 text-sm font-semibold transition flex items-center gap-2 shadow-lg shadow-yellow-500/20">
-        <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+      <button id="btn-orden" style="background:#FFE600;color:#0a0a0a;border:none;border-radius:0.75rem;padding:0.5rem 1rem;font-size:0.875rem;font-weight:600;display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;box-shadow:0 10px 15px -3px rgba(234,179,8,.2)">
+        <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
         Orden de compra
       </button>
     </div>
-    <div id="ftags" class="flex flex-wrap gap-2 mt-3 empty:hidden"></div>
+    <div id="ftags" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.75rem"></div>
   </section>
 
   <!-- ───── Table ───── -->
   <section class="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden mb-4">
-    <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+    <div style="overflow-x:auto;max-height:70vh;overflow-y:auto">
       <table class="stock-table">
         <thead><tr>
           <th data-col="id" style="width:120px">ID <span class="si">↕</span></th>
@@ -219,7 +540,7 @@
           <th data-col="category_name">Categoría <span class="si">↕</span></th>
           <th data-col="available_quantity" style="width:160px">Stock <span class="si">↕</span></th>
           <th data-col="sold_quantity" style="width:110px">Vendidos <span class="si">↕</span></th>
-          <th data-col="price" style="width:130px; text-align:right">Precio <span class="si">↕</span></th>
+          <th data-col="price" style="width:130px;text-align:right">Precio <span class="si">↕</span></th>
           <th data-col="status" style="width:140px">Estado <span class="si">↕</span></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -228,44 +549,43 @@
   </section>
 
   <!-- ───── Pagination ───── -->
-  <div class="flex items-center justify-between flex-wrap gap-3 mb-8">
-    <div id="pg-info" class="text-xs text-neutral-500 font-mono">—</div>
-    <div id="pg-btns" class="flex items-center gap-1"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:2rem">
+    <div id="pg-info" style="font-size:0.75rem;color:var(--text-3);font-family:'JetBrains Mono',monospace">—</div>
+    <div id="pg-btns" style="display:flex;align-items:center;gap:0.25rem"></div>
   </div>
-</main>
 
 <!-- ───── Orden de Compra modal ───── -->
 <div id="orden-overlay" class="modal-ov">
-  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-lg shadow-2xl">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+  <div class="modal-panel">
+    <div class="modal-panel-head">
       <div>
-        <div class="flex items-center gap-2 mb-1">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem">
           <span class="badge badge-velocity">📦</span>
-          <h3 class="text-lg font-semibold text-neutral-100">Orden de Compra</h3>
+          <h3 style="font-size:1.125rem;font-weight:600;color:var(--text)">Orden de Compra</h3>
         </div>
-        <p class="text-xs text-neutral-500">Excel con productos a reponer (alta rotación + stock bajo)</p>
+        <p style="font-size:0.75rem;color:var(--text-3)">Excel con productos a reponer (alta rotación + stock bajo)</p>
       </div>
-      <button id="orden-close" class="text-neutral-500 hover:text-neutral-200 transition p-1">
-        <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button id="orden-close" style="color:var(--text-3);cursor:pointer;padding:0.25rem;background:none;border:none;transition:color .15s">
+        <svg viewBox="0 0 24 24" fill="none" style="width:1.25rem;height:1.25rem" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="p-6 space-y-4">
-      <div class="fld">
+    <div style="padding:1.5rem">
+      <div class="fld" style="margin-bottom:1rem">
         <label>Tipo de cambio ARS / USD</label>
         <input type="number" id="orden-tc" value="1421" min="1"/>
       </div>
-      <div class="fld">
+      <div class="fld" style="margin-bottom:1rem">
         <label>Flete + impuestos del último pedido (ARS)</label>
         <input type="number" id="orden-flete" value="800000" min="0"/>
       </div>
-      <div class="fld">
+      <div class="fld" style="margin-bottom:1rem">
         <label>Unidades de referencia de ese pedido</label>
         <input type="number" id="orden-units" value="415" min="1"/>
       </div>
 
-      <div class="border-t border-neutral-800 pt-4 mt-2">
-        <div class="text-xs text-neutral-500 mb-2 font-medium">Criterios de inclusión</div>
-        <div class="grid grid-cols-2 gap-3">
+      <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem">
+        <div style="font-size:0.75rem;color:var(--text-3);margin-bottom:0.5rem;font-weight:500">Criterios de inclusión</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
           <div class="fld">
             <label>Vendidos ≥</label>
             <input type="number" id="orden-vmin" value="5" min="0"/>
@@ -275,27 +595,134 @@
             <input type="number" id="orden-smax" value="7" min="0"/>
           </div>
         </div>
-        <label class="flex items-center gap-2 text-xs text-neutral-400 mt-3 cursor-pointer">
-          <input type="checkbox" id="orden-allprods" class="accent-brand"/>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:var(--text-2);margin-top:0.75rem;cursor:pointer">
+          <input type="checkbox" id="orden-allprods" style="accent-color:#FFE600"/>
           <span>Incluir todas las publicaciones (no solo fundas)</span>
         </label>
       </div>
 
-      <div id="orden-status" class="hidden text-xs font-mono px-3 py-2 rounded-lg"></div>
+      <div id="orden-status" class="hidden" style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;padding:0.75rem;border-radius:0.5rem;margin-top:0.75rem"></div>
     </div>
-    <div class="flex gap-2 px-6 pb-6">
-      <button id="btn-orden-gen" class="flex-1 bg-brand hover:bg-yellow-400 text-neutral-950 font-semibold rounded-xl py-2.5 text-sm transition">Generar Excel</button>
-      <button id="btn-orden-cancel" class="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-xl px-4 py-2.5 text-sm transition">Cancelar</button>
+    <div class="modal-panel-foot">
+      <button id="btn-orden-gen" style="flex:1;background:#FFE600;color:#0a0a0a;font-weight:600;border:none;border-radius:0.75rem;padding:0.625rem 0;font-size:0.875rem;cursor:pointer">Generar Excel</button>
+      <button id="btn-orden-cancel" class="modal-btn-cancel">Cancelar</button>
     </div>
   </div>
 </div>
 
+    </div>
+  </main>
+
+</div><!-- adm-main -->
+</div><!-- adm-wrap -->
+
+<!-- Mobile bottom nav -->
+<nav class="adm-btm-nav">
+  <a href="/" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a href="/despachos.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    <span>Despachos</span>
+  </a>
+  <a href="/cobros.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+    <span>Cobros</span>
+  </a>
+  <a href="/publicaciones.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>Publicaciones</span>
+  </a>
+  <a href="/preguntas.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span>Preguntas</span>
+  </a>
+</nav>
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
 <script>
-/* ═════ helpers ═════ */
+/* ─── Shell helpers ─── */
 const $ = id => document.getElementById(id);
 const $$ = (sel, r=document) => Array.from(r.querySelectorAll(sel));
+const esc = s => String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* hamburger */
+$('btn-hamburger').addEventListener('click', () => {
+  $('sidebar').classList.toggle('open');
+  $('sidebar-overlay').classList.toggle('open');
+});
+$('sidebar-overlay').addEventListener('click', () => {
+  $('sidebar').classList.remove('open');
+  $('sidebar-overlay').classList.remove('open');
+});
+
+/* theme */
+$('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch(e) {}
+});
+
+/* account panel */
+$('acc-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const willOpen = $('acc-panel').classList.contains('hidden');
+  $('acc-panel').classList.toggle('hidden', !willOpen);
+  this.classList.toggle('open', willOpen);
+  this.blur();
+});
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#acct-wrap')) {
+    $('acc-panel').classList.add('hidden');
+    $('acc-btn').classList.remove('open');
+  }
+});
+
+/* load accounts */
+async function loadAccounts() {
+  try {
+    const r = await fetch('/accounts');
+    if (!r.ok) return;
+    const d = await r.json();
+    const active = d.accounts.find(a => a.active);
+    if (active) {
+      $('acc-initial').textContent = (active.label || '?').trim().charAt(0).toUpperCase();
+      $('acc-label').textContent   = active.label;
+      $('acc-active').textContent  = active.label;
+      $('acc-active-id').textContent = active.user_id ? 'ID ' + active.user_id : '—';
+    }
+    $('acc-list').innerHTML = d.accounts.map(a => `
+      <button data-id="${esc(a.id)}" class="adm-dropdown-item${a.active ? ' active' : ''}">
+        <div class="adm-avatar" style="width:24px;height:24px;font-size:10px;${a.active ? '' : 'background:var(--text-3)'}">${esc((a.label||'?').trim().charAt(0).toUpperCase())}</div>
+        <div style="flex:1;min-width:0;text-align:left">
+          <div style="font-size:13px;font-weight:${a.active ? 600 : 400}">${esc(a.label)}</div>
+          <div style="font-size:10px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.user_id||'—')}</div>
+        </div>
+        ${a.active ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+        ${!a.has_token ? `<span class="badge badge-red" style="font-size:9px">SIN TOKEN</span>` : ''}
+      </button>`).join('');
+    $$('#acc-list button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await fetch('/accounts/switch', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:btn.dataset.id})});
+        location.reload();
+      });
+    });
+  } catch(e) { console.error('accounts', e); }
+}
+
+/* clock */
+function tick() { const el = $('foot-clock'); if(el) el.textContent = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+tick(); setInterval(tick, 1000);
+
+/* boot */
+loadAccounts();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+/* ─── Page-specific JS below ─── */
 const FMT = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
-const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ═════ estado ═════ */
 let VEL_THRESHOLD = 5;
@@ -385,30 +812,41 @@ async function loadFromAPI() {
     finishLoad();
   } catch (e) {
     setError(`${esc(e.message)}<br><br>
-      <a href="/" class="inline-block bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 px-3 py-1.5 rounded-lg text-xs text-neutral-200 mt-2 no-underline">⚙ Revisar configuración</a>`);
+      <a href="/" style="display:inline-block;background:var(--bg);border:1px solid var(--border-2);padding:6px 12px;border-radius:8px;font-size:0.75rem;color:var(--text-2);margin-top:0.5rem;text-decoration:none">⚙ Revisar configuración</a>`);
   }
 }
 
 function processItems(raw) {
   return raw.map(it => {
     const catName = CAT_NAMES[it.category_id] || it.category_id;
+    const pics = it.pictures || [];
+    const itemPic = pics[0]?.secure_url || pics[0]?.url || it.thumbnail || '';
     if (it.variations?.length) {
       const totalStock = it.variations.reduce((s, v) => s + (v.available_quantity || 0), 0);
       return {
         id: it.id, title: it.title, category_name: catName,
         available_quantity: totalStock, sold_quantity: it.sold_quantity || 0, price: it.price || 0,
         status: computeStatus(totalStock, it.sold_quantity || 0),
+        picture: itemPic,
         hasVariations: true, variationCount: it.variations.length, isParent: true,
-        variations: it.variations.map(v => ({
-          id: it.id, varId: v.id, title: it.title,
-          varLabel: v.attribute_combinations?.map(a => `${a.name}: ${a.value_name}`).join(' · ') || `#${v.id}`,
-          category_name: catName,
-          available_quantity: v.available_quantity || 0,
-          sold_quantity: v.sold_quantity || 0,
-          price: v.price || it.price || 0,
-          status: computeStatus(v.available_quantity || 0, v.sold_quantity || 0),
-          hasVariations: false, isVariant: true, parentId: it.id,
-        })),
+        variations: it.variations.map(v => {
+          let vPic = null;
+          if (v.picture_ids?.length) {
+            const found = pics.find(p => p.id === v.picture_ids[0]);
+            if (found) vPic = found.secure_url || found.url;
+          }
+          return {
+            id: it.id, varId: v.id, title: it.title,
+            varLabel: v.attribute_combinations?.map(a => `${a.name}: ${a.value_name}`).join(' · ') || `#${v.id}`,
+            category_name: catName,
+            available_quantity: v.available_quantity || 0,
+            sold_quantity: v.sold_quantity || 0,
+            price: v.price || it.price || 0,
+            status: computeStatus(v.available_quantity || 0, v.sold_quantity || 0),
+            picture: vPic || itemPic,
+            hasVariations: false, isVariant: true, parentId: it.id,
+          };
+        }),
       };
     }
     return {
@@ -416,13 +854,13 @@ function processItems(raw) {
       available_quantity: it.available_quantity || 0, sold_quantity: it.sold_quantity || 0,
       price: it.price || 0,
       status: computeStatus(it.available_quantity || 0, it.sold_quantity || 0),
+      picture: itemPic,
       hasVariations: false,
     };
   });
 }
 
 function finishLoad() {
-  // categorías
   const cats = [...new Set(S.items.map(i => i.category_name))].sort();
   const fCat = $('f-cat');
   fCat.innerHTML = '<option value="">Todas las categorías</option>';
@@ -499,10 +937,10 @@ function renderTable() {
   const page = S.filtered.slice((S.page - 1) * S.pageSize, S.page * S.pageSize);
 
   if (!page.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-neutral-500">
-      <div class="text-3xl mb-2">🔍</div>
-      <div class="text-sm">Sin resultados para estos filtros</div>
-      <button onclick="clearFilters()" class="mt-3 text-xs text-neutral-400 hover:text-neutral-100 underline">Limpiar filtros</button>
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:4rem 1rem;color:var(--text-3)">
+      <div style="font-size:1.875rem;margin-bottom:0.5rem">🔍</div>
+      <div style="font-size:0.875rem">Sin resultados para estos filtros</div>
+      <button onclick="clearFilters()" style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-3);background:none;border:none;cursor:pointer;text-decoration:underline">Limpiar filtros</button>
     </td></tr>`;
     return;
   }
@@ -515,24 +953,24 @@ function renderTable() {
                 (S.status && item.hasVariations && item.variations.some(v => v.status === S.status));
 
     html += `<tr style="animation-delay:${ri * 0.015}s">
-      <td class="font-mono text-xs text-neutral-500">${esc(item.id)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-3)">${esc(item.id)}</td>
       <td>
         ${item.hasVariations ? `<button class="expand-btn" data-toggle="${esc(item.id)}">${exp ? '−' : '+'}</button>` : ''}
-        <span class="text-neutral-100">${esc(item.title)}</span>
-        ${item.hasVariations ? `<span class="text-[10px] font-mono text-neutral-600 ml-2">(${item.variationCount} var.)</span>` : ''}
+        <span style="color:var(--text)">${esc(item.title)}</span>
+        ${item.hasVariations ? `<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-3);margin-left:0.5rem">(${item.variationCount} var.)</span>` : ''}
       </td>
       <td><span class="var-chip">${esc(item.category_name)}</span></td>
       <td>
-        <div class="flex items-center gap-2">
-          <span class="font-mono font-semibold tabular-nums min-w-[28px]" style="color:${bc}">${item.available_quantity}</span>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:600;font-variant-numeric:tabular-nums;min-width:28px;color:${bc}">${item.available_quantity}</span>
           <div class="stock-bar-bg"><div class="stock-bar" style="width:${pct}%;background:${bc}"></div></div>
         </div>
       </td>
-      <td class="font-mono text-neutral-400">
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text-3)">
         ${item.sold_quantity || 0}
-        ${(item.sold_quantity || 0) >= VEL_THRESHOLD ? ' <span class="text-purple-400">⚡</span>' : ''}
+        ${(item.sold_quantity || 0) >= VEL_THRESHOLD ? ' <span style="color:#c084fc">⚡</span>' : ''}
       </td>
-      <td class="font-mono text-right text-neutral-200 font-semibold">${FMT(item.price)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;text-align:right;color:var(--text);font-weight:600">${FMT(item.price)}</td>
       <td><span class="badge badge-${item.status}">${BL[item.status] || item.status}</span></td>
     </tr>`;
     ri++;
@@ -543,20 +981,20 @@ function renderTable() {
         const vbc = BC(v.status);
         const vpct = Math.min(100, Math.round(v.available_quantity / Math.max(v.available_quantity + 3, 30) * 100));
         html += `<tr class="variant-row" style="animation-delay:${ri * 0.015}s">
-          <td class="var-indent font-mono text-xs text-neutral-600">└ ${esc(String(v.varId))}</td>
-          <td><span class="var-chip">VAR</span><span class="text-neutral-300">${esc(v.varLabel)}</span></td>
+          <td class="var-indent" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-3)">└ ${esc(String(v.varId))}</td>
+          <td><span class="var-chip">VAR</span><span style="color:var(--text-2)">${esc(v.varLabel)}</span></td>
           <td></td>
           <td>
-            <div class="flex items-center gap-2">
-              <span class="font-mono font-semibold tabular-nums min-w-[28px]" style="color:${vbc}">${v.available_quantity}</span>
+            <div style="display:flex;align-items:center;gap:0.5rem">
+              <span style="font-family:'JetBrains Mono',monospace;font-weight:600;font-variant-numeric:tabular-nums;min-width:28px;color:${vbc}">${v.available_quantity}</span>
               <div class="stock-bar-bg"><div class="stock-bar" style="width:${vpct}%;background:${vbc}"></div></div>
             </div>
           </td>
-          <td class="font-mono text-neutral-500">
+          <td style="font-family:'JetBrains Mono',monospace;color:var(--text-3)">
             ${v.sold_quantity || 0}
-            ${(v.sold_quantity || 0) >= VEL_THRESHOLD ? ' <span class="text-purple-400">⚡</span>' : ''}
+            ${(v.sold_quantity || 0) >= VEL_THRESHOLD ? ' <span style="color:#c084fc">⚡</span>' : ''}
           </td>
-          <td class="font-mono text-right text-neutral-400">${FMT(v.price)}</td>
+          <td style="font-family:'JetBrains Mono',monospace;text-align:right;color:var(--text-2)">${FMT(v.price)}</td>
           <td><span class="badge badge-${v.status}">${BL[v.status] || v.status}</span></td>
         </tr>`;
         ri++;
@@ -565,7 +1003,6 @@ function renderTable() {
   }
   tbody.innerHTML = html;
 
-  // wire expand buttons
   $$('[data-toggle]', tbody).forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.toggle;
@@ -597,7 +1034,7 @@ function renderPagination() {
 
   $('pg-btns').innerHTML = `
     <button class="pbtn" data-page="${S.page - 1}" ${S.page === 1 ? 'disabled' : ''}>‹</button>
-    ${range.map(r => r === '…' ? `<span class="pbtn opacity-40">…</span>` : `<button class="pbtn ${r === S.page ? 'active' : ''}" data-page="${r}">${r}</button>`).join('')}
+    ${range.map(r => r === '…' ? `<span class="pbtn" style="opacity:.4">…</span>` : `<button class="pbtn ${r === S.page ? 'active' : ''}" data-page="${r}">${r}</button>`).join('')}
     <button class="pbtn" data-page="${S.page + 1}" ${S.page === pages ? 'disabled' : ''}>›</button>`;
 
   $$('[data-page]', $('pg-btns')).forEach(b => b.addEventListener('click', () => {
@@ -624,19 +1061,20 @@ function renderTags() {
 }
 
 /* ═════ export CSV ═════ */
+const picCell = url => url ? `=IMAGE("${url}")` : '';
 function exportCSV() {
-  const rows = [['Item ID','Título','Variante','Categoría','Stock','Vendidos','Precio','Estado']];
+  const rows = [['Item ID','Título','Variante','Categoría','Stock','Vendidos','Precio','Estado','Foto']];
   S.filtered.forEach(item => {
     if (item.hasVariations) {
-      rows.push([item.id, item.title, '(total)', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status]);
-      item.variations.forEach(v => rows.push([item.id, item.title, v.varLabel, item.category_name, v.available_quantity, v.sold_quantity||0, v.price, v.status]));
+      rows.push([item.id, item.title, '(total)', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, picCell(item.picture)]);
+      item.variations.forEach(v => rows.push([item.id, item.title, v.varLabel, item.category_name, v.available_quantity, v.sold_quantity||0, v.price, v.status, picCell(v.picture)]));
     } else {
-      rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status]);
+      rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, picCell(item.picture)]);
     }
   });
   const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }));
   a.download = `inventario_meli_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
@@ -663,20 +1101,20 @@ async function ejecutarOrden() {
   const btn      = $('btn-orden-gen');
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner mr-2 align-middle"></span>Generando…';
+  btn.innerHTML = '<span class="spinner" style="margin-right:0.5rem;vertical-align:middle"></span>Generando…';
   setOrdenStatus('⏳ Procesando inventario…', true);
 
-  const rows = [['Item ID','Título','Variante','Categoría','Stock','Vendidos','Precio','Estado']];
+  const rows = [['Item ID','Título','Variante','Categoría','Stock','Vendidos','Precio','Estado','Foto']];
   S.items.forEach(item => {
     if (item.hasVariations) {
-      rows.push([item.id, item.title, '(total)', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status]);
-      item.variations.forEach(v => rows.push([item.id, item.title, v.varLabel, item.category_name, v.available_quantity, v.sold_quantity||0, v.price, v.status]));
+      rows.push([item.id, item.title, '(total)', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, picCell(item.picture)]);
+      item.variations.forEach(v => rows.push([item.id, item.title, v.varLabel, item.category_name, v.available_quantity, v.sold_quantity||0, v.price, v.status, picCell(v.picture)]));
     } else {
-      rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status]);
+      rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, picCell(item.picture)]);
     }
   });
   const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const csvBlob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const csvBlob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
 
   const fd = new FormData();
   fd.append('file', csvBlob, 'inventario.csv');
@@ -704,20 +1142,19 @@ async function ejecutarOrden() {
 
     const r = data.resumen || {};
     if (!r.items) {
-      // Excel generado pero sin items que cumplan criterios — mostrar diagnóstico
       const grupo = r.all_products ? 'productos' : 'fundas';
       setOrdenStatus(
         `⚠ Excel sin items que cumplan los criterios.<br>` +
-        `<span class="text-neutral-400">De ${r.fundas_total ?? '?'} ${grupo}: ` +
+        `<span style="color:var(--text-3)">De ${r.fundas_total ?? '?'} ${grupo}: ` +
         `${r.pass_vendidos ?? '?'} con vendidos ≥ ${r.vendidos_min} · ` +
         `${r.pass_stock ?? '?'} con stock ≤ ${r.stock_max}.</span><br>` +
-        `<span class="text-neutral-400">Probá bajar los umbrales o tildar "todas las publicaciones".</span>`,
+        `<span style="color:var(--text-3)">Probá bajar los umbrales o tildar "todas las publicaciones".</span>`,
         false
       );
       btn.disabled = false;
       btn.textContent = 'Reintentar';
     } else {
-      const relaxedNote = r.relaxed_used ? ' · <span class="text-yellow-400">⚠ umbrales relajados auto</span>' : '';
+      const relaxedNote = r.relaxed_used ? ' · <span style="color:#facc15">⚠ umbrales relajados auto</span>' : '';
       setOrdenStatus(
         `✓ ${r.items} variantes · ${r.total_adj || '?'} u. ajustadas · Inversión: $${(r.inversion_adj || 0).toLocaleString('es-AR')}${relaxedNote}`,
         true
@@ -732,16 +1169,30 @@ async function ejecutarOrden() {
 
 /* ═════ loading states ═════ */
 function setLoading(msg) {
-  $('tbody').innerHTML = `<tr><td colspan="7" class="text-center py-16 text-neutral-400">
-    <div class="spinner mx-auto mb-3"></div>
-    <div class="text-sm">${esc(msg)}</div>
-  </td></tr>`;
+  const tbody = $('tbody');
+  let msgEl = tbody.querySelector('.loading-msg');
+  if (!msgEl) {
+    tbody.innerHTML = `<tr class="loading-row" style="animation:none !important"><td colspan="7" style="text-align:center;padding:4rem 1rem;color:var(--text-3)">
+      <div class="loading-spin" style="display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:#FFE600;border-radius:50%;margin-bottom:0.75rem;will-change:transform"></div>
+      <div class="loading-msg" style="font-size:0.875rem"></div>
+    </td></tr>`;
+    msgEl = tbody.querySelector('.loading-msg');
+    // Animación vía Web Animations API (bypasea CSS / prefers-reduced-motion)
+    const spinEl = tbody.querySelector('.loading-spin');
+    if (spinEl && spinEl.animate) {
+      spinEl.animate(
+        [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+        { duration: 700, iterations: Infinity, easing: 'linear' }
+      );
+    }
+  }
+  msgEl.textContent = msg;
 }
 function setError(msgHtml) {
-  $('tbody').innerHTML = `<tr><td colspan="7" class="text-center py-16">
-    <div class="max-w-md mx-auto bg-red-500/5 border border-red-500/20 rounded-2xl p-6 text-left">
-      <div class="text-red-400 font-semibold mb-2">⚠ Error al cargar publicaciones</div>
-      <div class="text-sm text-neutral-400">${msgHtml}</div>
+  $('tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;padding:4rem 1rem">
+    <div style="max-width:28rem;margin:0 auto;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:1rem;padding:1.5rem;text-align:left">
+      <div style="color:#f87171;font-weight:600;margin-bottom:0.5rem">⚠ Error al cargar publicaciones</div>
+      <div style="font-size:0.875rem;color:var(--text-3)">${msgHtml}</div>
     </div>
   </td></tr>`;
 }
@@ -750,7 +1201,6 @@ function setError(msgHtml) {
 window.clearFilters = clearFilters;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // search
   let st;
   $('search').addEventListener('input', e => {
     clearTimeout(st);
@@ -760,7 +1210,6 @@ document.addEventListener('DOMContentLoaded', () => {
   $('f-cat').addEventListener('change', e => { S.category = e.target.value; applyFilters(); });
   $('f-status').addEventListener('change', e => { S.status = e.target.value; buildAlerts(); applyFilters(); });
 
-  // sortable headers
   $$('th[data-col]').forEach(th => {
     th.addEventListener('click', () => {
       const col = th.dataset.col;
@@ -773,12 +1222,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // KPI filters
   $$('[data-filter]').forEach(btn => {
     btn.addEventListener('click', () => filterByStatus(btn.dataset.filter));
   });
 
-  // expand all
   $('btn-expand').addEventListener('click', () => {
     S.expandAll = !S.expandAll;
     $('btn-expand-label').textContent = S.expandAll ? 'Colapsar variantes' : 'Expandir variantes';
@@ -788,7 +1235,6 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-clear').addEventListener('click', clearFilters);
   $('btn-export').addEventListener('click', exportCSV);
 
-  // orden de compra
   $('btn-orden').addEventListener('click', openOrden);
   $('orden-close').addEventListener('click', closeOrden);
   $('btn-orden-cancel').addEventListener('click', closeOrden);
@@ -797,7 +1243,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOrden(); });
 
-  // read vel_threshold from config
   fetch('/config').then(r => r.json()).then(c => {
     if (c.vel_threshold) VEL_THRESHOLD = c.vel_threshold;
   }).catch(() => {}).finally(loadFromAPI);

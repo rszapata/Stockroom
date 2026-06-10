@@ -3,14 +3,8 @@ flex_cost.py
 ------------
 Lee el Excel de ventas de MercadoLibre y calcula el costo total de los envíos
 Flex del período (filtra por columna "Forma de entrega" = "Mercado Envíos Flex").
-
-Salida: JSON por stdout con breakdown por CP, lista de pendientes (CPs sin
-zona asignada) y costo total.
-
-Uso:
-    python flex_cost.py <archivo_ml.xlsx> [--periodo 1|2|3] [--zones flex_zones.json]
 """
-import sys, os, json, argparse, re
+import sys, os, json, argparse, re, unicodedata
 from pathlib import Path
 from datetime import datetime
 
@@ -21,24 +15,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 TARIFFS = {'caba': 4490, 'gba_cerca': 6490, 'gba_lejos': 8490, 'sin_zona': 0}
 
-# Columnas (1-indexed) — segun análisis del Excel ML 2026
-COL_VENTA   = 1   # # de venta
-COL_FECHA   = 2   # Fecha de venta
-COL_ESTADO  = 3   # Estado
-COL_DESC    = 4   # Descripción del estado
-COL_TITULO  = 26  # Título de la publicación
-COL_CIUDAD  = 38  # Ciudad
-COL_PROV    = 39  # Estado (provincia)
-COL_CP      = 40  # Código postal
-COL_FORMA   = 42  # Forma de entrega
-COL_DOM     = 37  # Domicilio
-
-PERIODOS = {'1': (1,10), '2': (11,20), '3': (21,31)}
-
-# Estados que excluimos (cancelados, no entregados): nos guiamos por la columna
-# "Estado" / "Descripción del estado" — incluimos todo lo que no sea cancelado.
-ESTADOS_EXCLUIR = {'Cancelada', 'Cancelado', 'Reclamo cerrado con reembolso al comprador'}
-
+ESTADOS_EXCLUIR = {'cancelada', 'cancelado', 'reclamo cerrado con reembolso al comprador'}
 
 def auto_zone(cp):
     if not cp: return None
@@ -49,7 +26,6 @@ def auto_zone(cp):
         if 1000 <= n <= 1499: return 'caba'
     return None
 
-
 MESES_ES = {
     'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,
     'julio':7,'agosto':8,'septiembre':9,'setiembre':9,'octubre':10,
@@ -58,9 +34,27 @@ MESES_ES = {
 
 def parse_date(v):
     if v is None: return None
+    # openpyxl devuelve datetime directamente para celdas de fecha bien formateadas
     if isinstance(v, datetime): return v
+    # openpyxl puede devolver date (sin hora) para celdas sin componente de tiempo
+    try:
+        from datetime import date as _date
+        if type(v) is _date:
+            return datetime(v.year, v.month, v.day)
+    except Exception: pass
+    # Número serial de Excel (openpyxl a veces devuelve float si la celda no tiene
+    # formato de fecha reconocido, p.ej. columnas calculadas)
+    if isinstance(v, (int, float)):
+        try:
+            import datetime as _dt
+            # Excel epoch: 1 = 1900-01-01; corrección por bug del año bisiesto 1900
+            n = int(v)
+            if n > 59: n -= 1          # saltar el falso 29/02/1900 de Excel
+            delta = _dt.timedelta(days=n - 1)
+            base  = _dt.datetime(1900, 1, 1)
+            return base + delta
+        except Exception: pass
     s = str(v).strip().lower().replace('hs.', '').replace(' hs', '').strip()
-    # Formato ML 2026: "20 de abril de 2026 23:49"
     m = re.match(r'^(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})(?:\s+(\d{1,2}):(\d{2}))?', s)
     if m:
         d = int(m.group(1)); mes_name = m.group(2); y = int(m.group(3))
@@ -74,21 +68,67 @@ def parse_date(v):
         except: pass
     return None
 
-
 def find_header_row(ws):
-    """Busca la fila que contiene '# de venta' en la columna 1."""
     for r in range(1, 15):
         v = ws.cell(r, 1).value
         if v and '# de venta' in str(v).lower():
             return r
-    return 6  # default
+    return 6
 
+def normalize_str(s):
+    """Quita acentos y pasa a minúsculas para evitar errores si ML cambia una letra."""
+    s = str(s).strip().lower()
+    return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8')
+
+def get_column_mapping(ws, header_row):
+    """
+    Construye un mapa {campo: [col1, col2, ...]} escaneando la fila de headers.
+    Normaliza los nombres (sin acentos, minúsculas) para tolerar diferencias entre
+    el Excel de WZ (tienda oficial) y RZ (vendedor regular), que difieren en posición
+    y a veces en el nombre exacto de las columnas.
+    """
+    col_map = {}
+    header_debug = {}  # col_index → nombre raw (para diagnóstico)
+    for c in range(1, ws.max_column + 1):
+        raw_name = ws.cell(header_row, c).value
+        if not raw_name: continue
+        header_debug[c] = str(raw_name).strip()
+        name = normalize_str(raw_name)
+        if name not in col_map:
+            col_map[name] = []
+        col_map[name].append(c)
+
+    # ── Columnas individuales (primer match o default) ──────────
+    mapping = {
+        'VENTA':  col_map.get('# de venta',           [1])[0],
+        'FECHA':  col_map.get('fecha de venta',        [2])[0],
+        'DESC':   col_map.get('descripcion del estado',[4])[0],
+        'CP':     col_map.get('codigo postal',         [40])[0],
+        'CIUDAD': col_map.get('ciudad',                [38])[0],
+        'DOM':    col_map.get('domicilio',             [37])[0],
+        # ── Columnas múltiples (se busca Flex en todas) ────────
+        # WZ tienda oficial tiene "Forma de entrega" en col ~49; RZ regular en ~42.
+        # Al buscar por nombre no importa la posición; el fallback cubre ambas.
+        'FORMAS':  col_map.get('forma de entrega',     [42, 49]),
+        # Hay dos columnas "Estado": col 3 = status de venta, col ~39 = estado/provincia
+        'ESTADOS': col_map.get('estado',               [3, 39]),
+        # ── Provincia explícita (solo tienda oficial la tiene) ──
+        # Si existe, se usa directamente; si no, se cae al segundo "Estado"
+        'PROV': (col_map.get('provincia') or
+                 col_map.get('estado (provincia)') or
+                 None),
+        # ── Meta ──────────────────────────────────────────────
+        '_headers': header_debug,
+        '_col_map': {k: v for k, v in col_map.items()},
+    }
+    return mapping
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('excel')
-    ap.add_argument('--periodo', default='', choices=['1','2','3',''])
-    ap.add_argument('--zones', default='')
+    ap.add_argument('--desde',  default='', help='Fecha inicio YYYY-MM-DD (inclusive)')
+    ap.add_argument('--hasta',  default='', help='Fecha fin   YYYY-MM-DD (inclusive)')
+    ap.add_argument('--zones',  default='')
     args = ap.parse_args()
 
     zones_map = {}
@@ -99,15 +139,24 @@ def main():
         except Exception as e:
             pass
 
+    # Parsear rango de fechas
+    from datetime import date as date_cls
+    desde_dt = hasta_dt = None
+    if args.desde:
+        try: desde_dt = datetime.strptime(args.desde, '%Y-%m-%d').date()
+        except: pass
+    if args.hasta:
+        try: hasta_dt = datetime.strptime(args.hasta, '%Y-%m-%d').date()
+        except: pass
+
     wb = openpyxl.load_workbook(args.excel, data_only=True)
     ws = wb.active
     header_row = find_header_row(ws)
+    cols = get_column_mapping(ws, header_row)
     data_start = header_row + 1
 
-    pmin, pmax = PERIODOS.get(args.periodo, (1, 31))
-
-    breakdown = {}   # cp → { count, sample_address, zone, sample_venta }
-    unmapped  = {}   # cp → { count, sample_address, sample_venta }
+    breakdown = {}
+    unmapped  = {}
     flex_total = 0
     skipped_period = 0
     skipped_estado = 0
@@ -115,40 +164,68 @@ def main():
     sample_dates = []
 
     for r in range(data_start, ws.max_row + 1):
-        venta = ws.cell(r, COL_VENTA).value
+        venta = ws.cell(r, cols['VENTA']).value
         if not venta: continue
         rows_seen += 1
-        forma = ws.cell(r, COL_FORMA).value or ''
-        if 'Flex' not in str(forma): continue
+        
+        # Busca la palabra 'flex' en cualquiera de las columnas 'Forma de entrega'
+        is_flex = False
+        for f_col in cols['FORMAS']:
+            if 'flex' in str(ws.cell(r, f_col).value or '').lower():
+                is_flex = True
+                break
+        
+        if not is_flex: continue
 
-        # Filtro por estado
-        estado = ws.cell(r, COL_ESTADO).value or ''
-        desc   = ws.cell(r, COL_DESC).value or ''
-        st = str(estado).strip()
-        ds = str(desc).strip()
-        if st in ESTADOS_EXCLUIR or ds in ESTADOS_EXCLUIR:
+        # Status de la venta (primera columna "Estado")
+        estado = ws.cell(r, cols['ESTADOS'][0]).value or ''
+        desc   = ws.cell(r, cols['DESC']).value or ''
+        st_lower = str(estado).strip().lower()
+        ds_lower = str(desc).strip().lower()
+
+        # Filtro de cancelados reales
+        if st_lower in ESTADOS_EXCLUIR or ds_lower in ESTADOS_EXCLUIR:
             skipped_estado += 1
             continue
-        # También saltar si dice "cancel"
-        combined = (st + ' ' + ds).lower()
-        if 'cancel' in combined or 'devuelto' in combined or 'reembolso al comprador' in combined:
+        
+        # Evita el falso positivo de "cancelamos la devolución" asegurándose que solo descarte ventas no entregadas
+        combined = (st_lower + ' ' + ds_lower)
+        if 'venta cancelada' in combined or ('devuelto' in combined and 'entregada' not in combined):
             skipped_estado += 1
             continue
 
-        # Filtro por período (día del mes)
-        if args.periodo:
-            fecha = parse_date(ws.cell(r, COL_FECHA).value)
-            if fecha:
-                sample_dates.append(fecha.strftime('%Y-%m-%d'))
-                if not (pmin <= fecha.day <= pmax):
-                    skipped_period += 1
-                    continue
+        # Parsear fecha siempre (para mostrar el rango real del archivo en el output)
+        fecha = parse_date(ws.cell(r, cols['FECHA']).value)
+        if fecha:
+            sample_dates.append(fecha.strftime('%Y-%m-%d'))
 
-        cp = str(ws.cell(r, COL_CP).value or '').strip()
-        ciudad = ws.cell(r, COL_CIUDAD).value or ''
-        prov = ws.cell(r, COL_PROV).value or ''
-        dom = ws.cell(r, COL_DOM).value or ''
-        addr = ' · '.join(str(x) for x in [dom, ciudad, prov] if x)
+        # Filtro por rango de fechas
+        if desde_dt or hasta_dt:
+            if not fecha:
+                # Sin fecha parseable → excluir cuando hay filtro activo
+                skipped_period += 1
+                continue
+            fd = fecha.date()
+            if desde_dt and fd < desde_dt:
+                skipped_period += 1
+                continue
+            if hasta_dt and fd > hasta_dt:
+                skipped_period += 1
+                continue
+
+        cp = str(ws.cell(r, cols['CP']).value or '').strip()
+        ciudad = ws.cell(r, cols['CIUDAD']).value or ''
+        dom    = ws.cell(r, cols['DOM']).value    or ''
+
+        # Provincia: columna explícita (tienda oficial) > segundo "Estado" (regular) > vacío
+        if cols['PROV']:
+            prov_val = ws.cell(r, cols['PROV'][0]).value or ''
+        elif len(cols['ESTADOS']) > 1:
+            prov_val = ws.cell(r, cols['ESTADOS'][-1]).value or ''
+        else:
+            prov_val = ''
+
+        addr = ' · '.join(str(x) for x in [dom, ciudad, prov_val] if x)
 
         flex_total += 1
         zone = zones_map.get(cp) or auto_zone(cp)
@@ -189,6 +266,20 @@ def main():
 
     total_cost = sum(b['subtotal'] for b in breakdown_arr)
 
+    # Resumen de columnas detectadas (útil para debuggear Excels de distintas cuentas)
+    detected_cols = {
+        'venta':    cols['VENTA'],
+        'fecha':    cols['FECHA'],
+        'desc':     cols['DESC'],
+        'cp':       cols['CP'],
+        'ciudad':   cols['CIUDAD'],
+        'dom':      cols['DOM'],
+        'formas':   cols['FORMAS'],
+        'estados':  cols['ESTADOS'],
+        'prov':     cols['PROV'],
+        'total_headers': len(cols.get('_headers', {})),
+    }
+
     out = {
         'ok': True,
         'flex_shipments': flex_total,
@@ -198,14 +289,20 @@ def main():
         'tariffs': TARIFFS,
         'breakdown': breakdown_arr,
         'unmapped': unmapped_arr,
-        'periodo': args.periodo or 'todo',
+        'periodo': f"{args.desde} → {args.hasta}" if (args.desde or args.hasta) else 'todo',
         'rows_seen': rows_seen,
         'skipped_period': skipped_period,
         'skipped_estado': skipped_estado,
         'date_range': [min(sample_dates), max(sample_dates)] if sample_dates else None,
+        'detected_cols': detected_cols,
+        '_filtro': {
+            'desde_arg': args.desde or None,
+            'hasta_arg':  args.hasta  or None,
+            'desde_dt':  str(desde_dt)  if desde_dt  else None,
+            'hasta_dt':  str(hasta_dt)  if hasta_dt  else None,
+        },
     }
     print('FLEX_JSON:' + json.dumps(out, ensure_ascii=False))
-
 
 if __name__ == '__main__':
     try:

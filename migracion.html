@@ -2,339 +2,224 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0c0c0e">
-<meta name="description" content="Gestión de stock, ventas y cobros — MercadoLibre">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<title>STOCKROOM — Migrar Publicaciones</title>
+<title>Migración — Stockroom</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        fontFamily: {
-          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-          mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-        },
-        colors: {
-          brand: { DEFAULT: '#FFE600', 300: '#FFE82E', 400: '#FFE600', 500: '#E6CF00', 600: '#B8A600' },
-        },
-        boxShadow: { 'pop': '0 10px 30px -10px rgb(0 0 0 / 0.6)' },
-      },
-    },
-  }
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<!-- Anti-FOUC -->
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
-:root {
-  --bg:#0c0c0e; --s1:#141416; --s2:#1c1c20; --s3:#242428;
-  --b1:#2a2a30; --b2:#3a3a42; --b3:#55556a;
-  --tx:#e8e8f0; --t2:#8888a0; --t3:#55556a;
-  --ye:#FFE600; --cy:#47ffe8; --re:#ff4747; --or:#ff9547; --gr:#47ff8a; --pu:#b847ff;
-  --mono:'Space Mono',monospace; --sans:'DM Sans',sans-serif;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;min-height:100vh;overflow-x:hidden}
-body::before{
-  content:'';position:fixed;inset:0;
-  background-image:
-    radial-gradient(circle at 20% 10%, rgba(255,230,0,0.04) 0%, transparent 40%),
-    radial-gradient(circle at 80% 90%, rgba(120,180,255,0.03) 0%, transparent 40%);
-  pointer-events:none;z-index:0;
-}
-.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+
+.pg { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; display: block; color: var(--text); }
+.pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
 
 /* BUTTONS */
-.btn{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.btn:hover{border-color:var(--b2);color:var(--tx)}
-.btn.primary{background:var(--ye);color:#0c0c0e;border-color:var(--ye);font-weight:700}
-.btn.primary:hover{background:#d4eb3a}
-.btn.sm{height:32px;padding:0 12px;font-size:9px}
-.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.pg .btn{height:38px;padding:0 16px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px}
+.pg .btn:hover{border-color:var(--border-2);color:var(--text)}
+.pg .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700}
+.pg .btn.primary:hover{opacity:.9}
+.pg .btn.sm{height:32px;padding:0 12px;font-size:9px;border-radius:8px}
+.pg .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 
-main{padding:24px 28px;flex:1}
+.pg .card{background:var(--surface);border:1px solid var(--border);margin-bottom:14px;border-radius:14px;overflow:hidden}
+.pg .card-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0}
+.pg .card-title{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase}
+.pg .card-body{padding:18px}
 
-.card{background:var(--s1);border:1px solid var(--b1);margin-bottom:14px}
-.card-header{padding:13px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
-.card-title{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase}
-.card-body{padding:18px}
+.pg .field{margin-bottom:14px}
+.pg .field:last-child{margin-bottom:0}
+.pg .field label{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--text-3);text-transform:uppercase;margin-bottom:5px}
+.pg .field select,.pg .field input{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:0 12px;height:38px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none;border-radius:10px}
+.pg .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355556a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
+.pg .field select option{background:var(--surface-2)}
 
-.field{margin-bottom:14px}
-.field:last-child{margin-bottom:0}
-.field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--t3);text-transform:uppercase;margin-bottom:5px}
-.field select,.field input{width:100%;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:12px;padding:0 12px;height:38px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
-.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355556a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
-.field select option{background:#1c1c20}
-
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.hint{font-size:11px;color:var(--t3);margin-top:4px;line-height:1.5}
+.pg .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pg .hint{font-size:11px;color:var(--text-3);margin-top:4px;line-height:1.5}
 
 /* TABLE */
-.items-table{width:100%;border-collapse:collapse;font-size:12px}
-.items-table th{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--t3);padding:10px 10px;text-align:left;border-bottom:1px solid var(--b1);background:var(--s2);position:sticky;top:0}
-.items-table td{padding:7px 10px;border-bottom:1px solid rgba(42,42,48,.5);vertical-align:middle}
-.items-table tr:hover td{background:rgba(232,255,71,.02)}
-.items-table input[type=checkbox]{accent-color:var(--ye);width:14px;height:14px;cursor:pointer}
-.item-thumb{width:40px;height:40px;object-fit:cover;border:1px solid var(--b1);background:var(--s2)}
-.item-title{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.status-badge{font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:2px 6px;border:1px solid}
-.status-active{color:var(--gr);border-color:rgba(71,255,138,.3);background:rgba(71,255,138,.08)}
-.status-paused{color:var(--or);border-color:rgba(255,149,71,.3);background:rgba(255,149,71,.08)}
-.status-closed{color:var(--re);border-color:rgba(255,71,71,.3);background:rgba(255,71,71,.08)}
-.status-under_review{color:var(--pu);border-color:rgba(184,71,255,.3);background:rgba(184,71,255,.08)}
+.pg .items-table{width:100%;border-collapse:collapse;font-size:12px;border-radius:12px;overflow:hidden}
+.pg .items-table th{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--text-3);padding:10px 10px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface-2);position:sticky;top:0}
+.pg .items-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.pg .items-table tr:hover td{background:var(--surface-2)}
+.pg .items-table input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px;cursor:pointer}
+.pg .item-thumb{width:40px;height:40px;object-fit:cover;border:1px solid var(--border);background:var(--surface-2)}
+.pg .item-title{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg .status-badge{font-family:var(--font-mono);font-size:8px;letter-spacing:.08em;padding:2px 6px;border:1px solid;border-radius:6px}
+.pg .status-active{color:var(--green);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
+.pg .status-paused{color:var(--orange);border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.08)}
+.pg .status-closed{color:var(--red);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.pg .status-under_review{color:var(--purple,#9333ea);border-color:rgba(147,51,234,.3);background:rgba(147,51,234,.08)}
 
 /* PROGRESS */
-.prog-bar{width:100%;height:6px;background:var(--s3);margin-top:8px;overflow:hidden}
-.prog-fill{height:100%;background:var(--ye);transition:width .3s}
-.log-wrap{max-height:200px;overflow-y:auto;padding:10px 13px}
-.log-e{font-family:var(--mono);font-size:10px;line-height:1.85}
-.log-e.info{color:var(--t2)}.log-e.ok{color:var(--gr)}.log-e.err{color:var(--re)}.log-e.warn{color:var(--or)}
+.pg .prog-bar{width:100%;height:6px;background:var(--surface-2);margin-top:8px;overflow:hidden;border-radius:3px}
+.pg .prog-fill{height:100%;background:var(--blue);transition:width .3s}
+.pg .log-wrap{max-height:320px;overflow-y:auto;padding:10px 13px;border-radius:14px}
+.pg .log-e{font-family:var(--font-mono);font-size:10px;line-height:1.85}
+.pg .log-e.info{color:var(--text-2)}.pg .log-e.ok{color:var(--green)}.pg .log-e.err{color:var(--red)}.pg .log-e.warn{color:var(--orange)}
 
 /* MERGE GROUPS */
-.merge-group-hd{background:rgba(184,71,255,.08);border-left:3px solid var(--pu)}
-.merge-group-hd td{font-family:var(--mono);font-size:10px;color:var(--pu);padding:8px 10px!important}
-.merge-child td{padding-left:30px!important}
-.merge-child td:first-child{padding-left:10px!important}
-.merge-badge{font-family:var(--mono);font-size:8px;padding:1px 5px;background:rgba(184,71,255,.15);color:var(--pu);border:1px solid rgba(184,71,255,.3);margin-left:6px}
-.btn-unmerge{background:none;border:1px solid rgba(255,71,71,.3);color:var(--re);font-family:var(--mono);font-size:8px;padding:2px 6px;cursor:pointer;margin-left:6px}
-.btn-unmerge:hover{background:rgba(255,71,71,.1)}
+.pg .merge-group-hd{background:rgba(147,51,234,.08);border-left:3px solid var(--purple,#9333ea)}
+.pg .merge-group-hd td{font-family:var(--font-mono);font-size:10px;color:var(--purple,#9333ea);padding:8px 10px!important}
+.pg .merge-child td{padding-left:30px!important}
+.pg .merge-child td:first-child{padding-left:10px!important}
+.pg .merge-badge{font-family:var(--font-mono);font-size:8px;padding:1px 5px;background:rgba(147,51,234,.15);color:var(--purple,#9333ea);border:1px solid rgba(147,51,234,.3);margin-left:6px;border-radius:4px}
+.pg .btn-unmerge{background:none;border:1px solid rgba(239,68,68,.3);color:var(--red);font-family:var(--font-mono);font-size:8px;padding:2px 6px;cursor:pointer;margin-left:6px;border-radius:4px}
+.pg .btn-unmerge:hover{background:rgba(239,68,68,.1)}
 
-.hidden{display:none!important}
-::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.pg ::-webkit-scrollbar{width:4px;height:4px}.pg ::-webkit-scrollbar-track{background:transparent}.pg ::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
 
-/* ───────── SIDEBAR + HEADER (replica vinculaciones/dashboard) ───────── */
-.side-item {
-  position: relative; display: flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; border-radius: 12px; color: #71717a;
-  transition: background .2s, color .2s; text-decoration: none; cursor: pointer;
-  border: none; background: transparent;
-}
-.side-item:hover { background: #171717; color: #e4e4e7; }
-.side-item.active { background: #1a1a1a; color: #FFE600; }
-.side-item.active::before {
-  content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
-  width: 3px; height: 22px; background: #FFE600; border-radius: 2px;
-}
-.side-item .tip {
-  position: absolute; left: 56px; top: 50%; transform: translateY(-50%);
-  background: #171717; color: #e4e4e7; font-size: 11px; font-weight: 500;
-  font-family: 'Inter', sans-serif; padding: 6px 10px; border-radius: 8px;
-  border: 1px solid #262626; white-space: nowrap; opacity: 0; pointer-events: none;
-  transition: opacity .15s, transform .15s; letter-spacing: .02em; z-index: 60;
-}
-.side-item:hover .tip { opacity: 1; transform: translateY(-50%) translateX(4px); }
-.pulse-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
-.pulse-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: #22c55e; opacity: .35; animation: ring 2s ease-out infinite; }
-@keyframes ring { 0% { transform: scale(.6); opacity: .6; } 100% { transform: scale(1.8); opacity: 0; } }
-.drp-panel { transform-origin: top right; animation: pop .18s ease-out both; }
-@keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+.pg .hidden{display:none!important}
 
-.m-bottom-nav, .m-drawer, .m-drawer-overlay, .m-fab { display: none !important; }
+/* inline inputs in table */
+.pg .item-title-input{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:3px 6px;outline:none;border-radius:6px}
+.pg .group-title-input{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:4px 8px;outline:none;border-radius:6px}
 
-html, body, input, select, textarea, button { accent-color: #FFE600; color-scheme: dark; }
-::selection { background: rgba(255,230,0,.35); color: #fff; }
-::-moz-selection { background: rgba(255,230,0,.35); color: #fff; }
-*:focus-visible { outline: 1px solid #FFE600; outline-offset: 2px; }
-
-/* ── Rounded dashboard aesthetic overrides ──────────────────── */
-.card, .side-card, .kpi, .chart-card, .upload-card, .flex-card, .setup-box, .bulk-top, .prog-card, .log-wrap { border-radius: 14px !important; overflow: hidden; }
-.card-header { border-radius: 14px 14px 0 0; }
-.btn { border-radius: 10px !important; }
-.btn.sm { border-radius: 8px !important; }
-.field input, .field select, .field textarea, input[type="text"], input[type="search"], input[type="number"], select, textarea { border-radius: 10px !important; }
-.tab-btn { border-radius: 10px 10px 0 0; }
-.items-table, .var-table, .table-wrap { border-radius: 12px; overflow: hidden; }
-.img-zone, .dropzone, .bulk-zone { border-radius: 12px !important; }
-.cat-pill, .m-drawer-item { border-radius: 10px !important; }
-.status-badge, .badge, .meli-badge { border-radius: 6px; }
-
-/* ═══════════════════════════════════════════════
-   RESPONSIVE / MOBILE
-   ═══════════════════════════════════════════════ */
-
-/* ocultar sidebar y bottom nav en escritorio */
-.btm-nav,.btm-sheet,.btm-overlay{display:none}
+/* inline filter selects / inputs (outside .field) */
+.pg select.inline-sel{height:28px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:9px;padding:0 8px;outline:none;min-width:140px;-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:8px}
+.pg input.inline-inp{height:28px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:0 10px;outline:none;width:220px;border-radius:8px}
 
 @media(max-width:767px){
-  /* sidebar desktop → oculto */
-  aside.fixed{display:none!important}
-  /* quitar padding-left del sidebar */
-  .pl-16{padding-left:0!important}
-  /* espacio inferior para nav bar */
-  body{padding-bottom:72px}
-  /* padding horizontal más angosto */
-  .px-8{padding-left:1rem!important;padding-right:1rem!important}
-  /* header más compacto */
-  header h1{font-size:1rem!important}
-  header .py-4{padding-top:.75rem!important;padding-bottom:.75rem!important}
-  /* kpi pills → 2 columnas */
-  .kpi-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
-  .kpi-pill{min-width:0!important;padding:10px 12px!important}
-  .kpi-pill.ml-auto{grid-column:1/-1}
-  /* anchos máximos */
-  .max-w-5xl,.max-w-4xl{max-width:100%!important}
-  /* tablas: scroll horizontal */
-  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:12px}
-  /* acct-header: columna en móvil */
-  .acct-header{flex-direction:column!important;align-items:flex-start!important}
-  /* quick replies: scroll horizontal */
-  .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-  .quick-btn{flex-shrink:0}
-  /* textarea más chica */
-  .q-textarea{min-height:60px!important}
-  /* btn group en header */
-  header .flex.items-center.gap-2{flex-wrap:wrap;gap:4px!important}
-  /* ocultar botones secundarios en header móvil */
-  .btn-mobile-hide{display:none!important}
-  /* bottom nav visible */
-  .btm-nav{display:flex!important}
+  .pg .grid2{grid-template-columns:1fr}
 }
-
-/* ── BOTTOM NAV ──────────────────────────────── */
-.btm-nav{
-  position:fixed;bottom:0;left:0;right:0;z-index:50;
-  background:#111113;border-top:1px solid #262626;
-  align-items:stretch;
-  padding-bottom:env(safe-area-inset-bottom,0px)
-}
-.btm-item{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;padding:7px 2px 5px;color:#71717a;text-decoration:none;
-  font-size:9px;font-weight:600;letter-spacing:.04em;font-family:'JetBrains Mono',monospace;
-  transition:color .15s;border:none;background:transparent;cursor:pointer;
-  min-width:0;white-space:nowrap;overflow:hidden;
-}
-.btm-item:hover,.btm-item.active{color:#FFE600}
-.btm-item.active svg{stroke:#FFE600}
-.btm-item svg{flex-shrink:0}
-.btm-sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:52;
-  background:#141416;border:1px solid #2a2a30;border-radius:16px 16px 0 0;
-  padding:6px 16px 0;display:flex;flex-direction:column;gap:2px;
-  transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
-  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 72px)
-}
-.btm-sheet.open{transform:translateY(0)}
-.btm-overlay{
-  position:fixed;inset:0;z-index:51;background:rgba(0,0,0,.65);
-  opacity:0;pointer-events:none;transition:opacity .22s
-}
-.btm-overlay.open{opacity:1;pointer-events:all}
-.btm-handle{width:32px;height:3px;background:#3a3a42;border-radius:2px;margin:6px auto 12px}
-.btm-more-link{
-  display:flex;align-items:center;gap:12px;padding:11px 10px;
-  border-radius:10px;color:#a1a1aa;text-decoration:none;font-size:13px;font-weight:500;
-  transition:background .15s,color .15s
-}
-.btm-more-link:hover{background:#1c1c20;color:#e4e4e7}
-.btm-more-link.active{color:#FFE600}
 
 </style>
 </head>
-<body class="bg-neutral-950 text-neutral-200 antialiased min-h-screen">
 
-<!-- ────────────────────────────────────────────────── SIDEBAR ──── -->
-<aside class="fixed left-0 top-0 bottom-0 w-16 bg-neutral-900 border-r border-neutral-800 hidden md:flex flex-col items-center py-4 z-40">
-  <div class="w-10 h-10 rounded-xl bg-brand flex items-center justify-center mb-6 shadow-pop">
-    <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
-    </svg>
-  </div>
-  <nav class="flex flex-col gap-1 flex-1">
-    <a href="/" class="side-item" aria-label="Dashboard">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-      <span class="tip">Dashboard</span>
-    </a>
-    <a href="/analytics.html" class="side-item" aria-label="Analytics">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      <span class="tip">Stock &amp; Analytics</span>
-    </a>
-    <a href="/publicaciones.html" class="side-item" aria-label="Publicaciones">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <span class="tip">Publicar</span>
-    </a>
-    <a href="/vinculaciones.html" class="side-item" aria-label="Vinculaciones">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-      <span class="tip">Vinculaciones</span>
-    </a>
-    <a href="/migracion.html" class="side-item active" aria-label="Migración">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-      <span class="tip">Migración</span>
-    </a>
-    <a href="/cobros.html" class="side-item" aria-label="Cobros">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-      <span class="tip">Cobros</span>
-    </a>
-    <a href="/despachos.html" class="side-item" aria-label="Despachos">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-      <span class="tip">Despachos</span>
-    </a>
-    <a href="/preguntas.html" class="side-item" aria-label="Preguntas">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      <span class="tip">Preguntas</span>
-    </a>
+<body>
+<div class="adm-wrap">
+
+<!-- SIDEBAR -->
+<aside class="adm-sidebar" id="sidebar">
+  <a href="/" class="adm-logo">
+    <div class="adm-logo-mark">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+    </div>
+    <div class="adm-logo-text">
+      <div class="adm-logo-name">Stockroom</div>
+      <div class="adm-logo-tag">Panel Admin</div>
+    </div>
+  </a>
+  <nav class="adm-nav">
+    <div class="adm-group">
+      <div class="adm-group-label">Ventas</div>
+      <a href="/" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="/analytics.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <span>Analytics</span>
+      </a>
+      <a href="/despachos.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        <span>Despachos</span>
+      </a>
+      <a href="/cobros.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        <span>Cobros</span>
+      </a>
+      <a href="/verificar-envios.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>
+        <span>Verificar Logística</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Catálogo</div>
+      <a href="/publicaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Publicaciones</span>
+      </a>
+      <a href="/vinculaciones.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        <span>Vinculaciones</span>
+      </a>
+      <a href="/migracion.html" class="adm-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+        <span>Migración</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Clientes</div>
+      <a href="/preguntas.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Preguntas</span>
+      </a>
+    </div>
+    <div class="adm-group">
+      <div class="adm-group-label">Tienda</div>
+      <a href="/tienda-admin.html" class="adm-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Admin Tienda</span>
+      </a>
+    </div>
+
   </nav>
-  <div class="flex flex-col gap-1 mt-auto">
-    <a href="/oauth/start" class="side-item" aria-label="Nueva cuenta ML">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-      <span class="tip">Conectar cuenta ML</span>
+  <div class="adm-sidebar-foot">
+    <a href="/oauth/start" class="adm-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      <span>Conectar cuenta</span>
     </a>
-    <a href="/logout" class="side-item" aria-label="Cerrar sesión">
-      <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span class="tip">Cerrar sesión</span>
+    <a href="/logout" class="adm-item" style="color:var(--red)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Cerrar sesión</span>
     </a>
   </div>
+  <div class="foot-info" id="foot-clock">—</div>
 </aside>
 
-<!-- ────────────────────────────────────────────────────── MAIN ──── -->
-<div class="md:pl-16 min-h-screen relative z-10">
-
-  <!-- HEADER -->
-  <header class="sticky top-0 z-30 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800">
-    <div class="flex items-center justify-between px-8 py-4 gap-4">
-      <div class="min-w-0">
-        <h1 class="text-xl font-semibold tracking-tight text-neutral-100" style="font-family:'Inter',sans-serif">Migración</h1>
-        <p class="text-xs text-neutral-500 mt-0.5 flex items-center gap-2" style="font-family:'Inter',sans-serif">
-          <span class="pulse-dot"></span>
-          <span>Copiar publicaciones entre cuentas</span>
-        </p>
+<!-- MAIN -->
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Migración</div>
+        <div class="adm-page-sub"><span id="h-subtitle">Migrar publicaciones</span></div>
       </div>
-
-      <div class="flex items-center gap-2">
-        <div class="relative" id="acct-wrap">
-          <button id="acct-btn" onclick="toggleAcctMenu()"
-            class="flex items-center gap-2 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl px-3 py-2 text-sm transition-colors" style="font-family:'Inter',sans-serif">
-            <span class="w-6 h-6 rounded-full bg-gradient-to-br from-brand to-yellow-500 flex items-center justify-center text-[10px] font-bold text-neutral-950">?</span>
-            <span id="acct-label" class="inline text-xs font-medium text-neutral-200 max-w-[140px] truncate">—</span>
-            <svg viewBox="0 0 24 24" fill="none" class="w-3 h-3 text-neutral-500" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <div id="acct-menu" style="display:none"
-            class="absolute right-0 mt-2 w-72 bg-neutral-900 border border-neutral-800 rounded-xl shadow-pop drp-panel overflow-hidden z-50">
-            <div class="p-3 border-b border-neutral-800">
-              <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-medium mb-1" style="font-family:'Inter',sans-serif">Cuenta activa</div>
-              <div id="acct-active" class="text-sm text-neutral-200 font-medium truncate" style="font-family:'Inter',sans-serif">—</div>
-              <div id="acct-active-id" class="text-[11px] font-mono text-neutral-500 mt-0.5">—</div>
-            </div>
-            <div id="acct-list" class="max-h-60 overflow-y-auto py-1"></div>
-            <div class="p-2 border-t border-neutral-800 flex gap-2">
-              <a href="/oauth/start" class="flex-1 text-center text-xs text-neutral-300 hover:text-neutral-100 bg-neutral-800 hover:bg-neutral-700 rounded-lg py-1.5 transition" style="font-family:'Inter',sans-serif">
-                + Nueva cuenta
-              </a>
-            </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <div class="adm-search" style="width:220px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="hdr-search" type="search" placeholder="Buscar…" autocomplete="off">
+      </div>
+      <div class="adm-acct" id="acct-wrap">
+        <button class="adm-acct-btn" id="acc-btn">
+          <div class="adm-avatar" id="acc-initial">?</div>
+          <span class="adm-acct-name" id="acc-label">Cuenta</span>
+          <svg class="adm-acct-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="adm-dropdown hidden" id="acc-panel">
+          <div class="adm-dropdown-head">Cuenta activa</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)" id="acc-active">—</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px" id="acc-active-id">—</div>
+          </div>
+          <div id="acc-list"></div>
+          <div class="adm-dropdown-foot">
+            <a href="/oauth/start" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">+ Nueva cuenta</a>
           </div>
         </div>
       </div>
     </div>
   </header>
 
-<main>
+  <main class="adm-content">
+    <div class="pg">
+
   <!-- CONFIGURACIÓN -->
   <div class="card">
     <div class="card-header">
@@ -373,7 +258,7 @@ html, body, input, select, textarea, button { accent-color: #FFE600; color-schem
         </div>
         <div style="display:flex;gap:8px;align-items:flex-end;padding-top:18px">
           <button class="btn primary" onclick="loadItems()" id="btn-load">CARGAR</button>
-          <span id="load-status" style="font-family:var(--mono);font-size:10px;color:var(--t3)"></span>
+          <span id="load-status" style="font-family:var(--font-mono);font-size:10px;color:var(--text-3)"></span>
         </div>
       </div>
     </div>
@@ -382,18 +267,16 @@ html, body, input, select, textarea, button { accent-color: #FFE600; color-schem
   <!-- LISTA DE ITEMS -->
   <div class="card hidden" id="card-items">
     <div class="card-header">
-      <span class="card-title">02 — PUBLICACIONES <span id="items-total-badge" style="color:var(--ye)"></span></span>
+      <span class="card-title">02 — PUBLICACIONES <span id="items-total-badge" style="color:var(--blue)"></span></span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn sm" onclick="detectDuplicates()" id="btn-merge" title="Detectar publicaciones duplicadas que solo cambian en color/modelo y agruparlas como variantes">🔗 AGRUPAR DUPLICADOS</button>
-        <span id="merge-info" style="font-family:var(--mono);font-size:9px;color:var(--pu);display:none"></span>
-        <select id="filter-cat" onchange="applyFilters()"
-                style="height:28px;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:9px;padding:0 8px;outline:none;min-width:140px;-webkit-appearance:none;appearance:none;cursor:pointer">
+        <span id="merge-info" style="font-family:var(--font-mono);font-size:9px;color:var(--purple,#9333ea);display:none"></span>
+        <select id="filter-cat" onchange="applyFilters()" class="inline-sel">
           <option value="">Todas las categorías</option>
         </select>
         <input type="text" id="filter-input" placeholder="Filtrar por título o ID..."
-               oninput="applyFilters()"
-               style="height:28px;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;padding:0 10px;outline:none;width:220px">
-        <span id="items-count" style="font-family:var(--mono);font-size:9px;color:var(--t3)">0</span>
+               oninput="applyFilters()" class="inline-inp">
+        <span id="items-count" style="font-family:var(--font-mono);font-size:9px;color:var(--text-3)">0</span>
       </div>
     </div>
     <div class="card-body" style="padding:0;max-height:500px;overflow-y:auto">
@@ -420,7 +303,7 @@ html, body, input, select, textarea, button { accent-color: #FFE600; color-schem
     <div class="card-header">
       <span class="card-title">03 — MIGRAR</span>
       <div style="display:flex;gap:8px;align-items:center">
-        <span id="sel-count" style="font-family:var(--mono);font-size:9px;color:var(--t3)">0 seleccionadas</span>
+        <span id="sel-count" style="font-family:var(--font-mono);font-size:9px;color:var(--text-3)">0 seleccionadas</span>
         <button class="btn primary sm" onclick="startMigration()" id="btn-migrate">MIGRAR SELECCIONADAS</button>
       </div>
     </div>
@@ -443,9 +326,9 @@ html, body, input, select, textarea, button { accent-color: #FFE600; color-schem
         </div>
       </div>
       <div id="mig-progress" class="hidden">
-        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-bottom:4px">
           <span><span id="mig-done">0</span> / <span id="mig-total">0</span></span>
-          <span><span style="color:var(--gr)" id="mig-ok">0</span> OK — <span style="color:var(--re)" id="mig-err">0</span> ERR</span>
+          <span><span style="color:var(--green)" id="mig-ok">0</span> OK — <span style="color:var(--red)" id="mig-err">0</span> ERR</span>
         </div>
         <div class="prog-bar"><div class="prog-fill" id="mig-bar" style="width:0%"></div></div>
       </div>
@@ -454,10 +337,112 @@ html, body, input, select, textarea, button { accent-color: #FFE600; color-schem
       </div>
     </div>
   </div>
-</main>
-</div>
+
+    </div>
+  </main>
+</div><!-- adm-main -->
+</div><!-- adm-wrap -->
+
+<!-- Mobile bottom nav -->
+<nav class="adm-btm-nav">
+  <a href="/" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a href="/despachos.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    <span>Despachos</span>
+  </a>
+  <a href="/cobros.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+    <span>Cobros</span>
+  </a>
+  <a href="/publicaciones.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>Publicaciones</span>
+  </a>
+  <a href="/preguntas.html" class="adm-btm-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    <span>Preguntas</span>
+  </a>
+</nav>
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
 
 <script>
+/* ─── Shell helpers ─── */
+const $ = id => document.getElementById(id);
+const $$ = (sel, r=document) => Array.from(r.querySelectorAll(sel));
+const esc = s => String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+$('btn-hamburger').addEventListener('click', () => {
+  $('sidebar').classList.toggle('open');
+  $('sidebar-overlay').classList.toggle('open');
+});
+$('sidebar-overlay').addEventListener('click', () => {
+  $('sidebar').classList.remove('open');
+  $('sidebar-overlay').classList.remove('open');
+});
+
+$('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch(e) {}
+});
+
+$('acc-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const willOpen = $('acc-panel').classList.contains('hidden');
+  $('acc-panel').classList.toggle('hidden', !willOpen);
+  this.classList.toggle('open', willOpen);
+  this.blur();
+});
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#acct-wrap')) {
+    $('acc-panel').classList.add('hidden');
+    $('acc-btn').classList.remove('open');
+  }
+});
+
+async function loadAccounts() {
+  try {
+    const r = await fetch('/accounts');
+    if (!r.ok) return;
+    const d = await r.json();
+    const active = d.accounts.find(a => a.active);
+    if (active) {
+      $('acc-initial').textContent = (active.label || '?').trim().charAt(0).toUpperCase();
+      $('acc-label').textContent   = active.label;
+      $('acc-active').textContent  = active.label;
+      $('acc-active-id').textContent = active.user_id ? 'ID ' + active.user_id : '—';
+    }
+    $('acc-list').innerHTML = d.accounts.map(a => `
+      <button data-id="${esc(a.id)}" class="adm-dropdown-item${a.active ? ' active' : ''}">
+        <div class="adm-avatar" style="width:24px;height:24px;font-size:10px;${a.active ? '' : 'background:var(--text-3)'}">${esc((a.label||'?').trim().charAt(0).toUpperCase())}</div>
+        <div style="flex:1;min-width:0;text-align:left">
+          <div style="font-size:13px;font-weight:${a.active ? 600 : 400}">${esc(a.label)}</div>
+          <div style="font-size:10px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.user_id||'—')}</div>
+        </div>
+        ${a.active ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+        ${!a.has_token ? '<span class="badge badge-red" style="font-size:9px">SIN TOKEN</span>' : ''}
+      </button>`).join('');
+    $$('#acc-list button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await fetch('/accounts/switch', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:btn.dataset.id})});
+        location.reload();
+      });
+    });
+  } catch(e) { console.error('accounts', e); }
+}
+
+function tick() { const el=$('foot-clock'); if(el) el.textContent=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+tick(); setInterval(tick, 1000);
+
+loadAccounts();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+/* ─── Page-specific JS ─── */
 // ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
@@ -623,11 +608,11 @@ function renderItemRow(it, isChild) {
     const lenOk = val.length > 0 && val.length <= 60;
     titleCell = '<td class="item-title" style="max-width:320px" title="ORIGINAL (' + origTitle.length + ' chars): ' + esc(origTitle) + '">' +
       '<div style="display:flex;align-items:center;gap:6px">' +
-      '<span style="color:var(--or);font-size:11px;cursor:help" title="Título original supera 60 caracteres — editá para migrar">⚠</span>' +
+      '<span style="color:var(--orange);font-size:11px;cursor:help" title="Título original supera 60 caracteres — editá para migrar">⚠</span>' +
       '<input type="text" class="item-title-input" data-id="' + esc(it.id) + '" value="' + esc(val) + '" maxlength="60" ' +
         'oninput="updateItemTitle(\'' + esc(it.id) + '\',this.value)" ' +
-        'style="flex:1;min-width:180px;background:var(--s2);border:1px solid var(--b2);color:var(--ye);font-family:var(--mono);font-size:10px;padding:3px 6px;outline:none">' +
-      '<span class="it-len" id="ttl-len-' + esc(it.id) + '" style="font-size:9px;color:' + (lenOk ? 'var(--t3)' : 'var(--re)') + '">' + val.length + '/60</span>' +
+        'style="flex:1;min-width:180px">' +
+      '<span class="it-len" id="ttl-len-' + esc(it.id) + '" style="font-size:9px;color:' + (lenOk ? 'var(--text-3)' : 'var(--red)') + '">' + val.length + '/60</span>' +
       '</div>' +
     '</td>';
   } else {
@@ -637,11 +622,11 @@ function renderItemRow(it, isChild) {
     '<td><input type="checkbox" class="item-chk" data-id="' + it.id + '" onchange="updateSelCount()"></td>' +
     '<td>' + (thumb ? '<img class="item-thumb" src="' + esc(thumb) + '">' : '—') + '</td>' +
     titleCell +
-    '<td style="font-family:var(--mono);font-size:8px;color:var(--t3)" title="' + (it.category_id || '') + '">' + esc(catName.length > 18 ? catName.substring(0,16) + '…' : catName) + '</td>' +
-    '<td style="font-family:var(--mono);font-size:11px">' + (it.currency_id || '$') + ' ' + (it.price || 0).toLocaleString('es') + '</td>' +
-    '<td style="font-family:var(--mono);font-size:11px;text-align:center">' + (it.available_quantity || 0) + '</td>' +
+    '<td style="font-family:var(--font-mono);font-size:8px;color:var(--text-3)" title="' + (it.category_id || '') + '">' + esc(catName.length > 18 ? catName.substring(0,16) + '…' : catName) + '</td>' +
+    '<td style="font-family:var(--font-mono);font-size:11px">' + (it.currency_id || '$') + ' ' + (it.price || 0).toLocaleString('es') + '</td>' +
+    '<td style="font-family:var(--font-mono);font-size:11px;text-align:center">' + (it.available_quantity || 0) + '</td>' +
     '<td><span class="status-badge ' + statusCls + '">' + (it.status || '—').toUpperCase() + '</span></td>' +
-    '<td style="font-family:var(--mono);font-size:9px;color:var(--t3)">' + it.id + '</td>' +
+    '<td style="font-family:var(--font-mono);font-size:9px;color:var(--text-3)">' + it.id + '</td>' +
   '</tr>';
 }
 
@@ -651,7 +636,7 @@ function updateItemTitle(id, val) {
   const lbl = document.getElementById('ttl-len-' + id);
   if (lbl) {
     lbl.textContent = val.length + '/60';
-    lbl.style.color = (val.length > 0 && val.length <= 60) ? 'var(--t3)' : 'var(--re)';
+    lbl.style.color = (val.length > 0 && val.length <= 60) ? 'var(--text-3)' : 'var(--red)';
   }
 }
 
@@ -683,13 +668,13 @@ function renderItems() {
       '<td colspan="8">' +
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
       '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">' +
-      '<input type="checkbox" class="group-chk" data-gid="' + gid + '" onchange="toggleGroup(\'' + gid + '\', this.checked)" style="accent-color:var(--pu);width:14px;height:14px;cursor:pointer">' +
+      '<input type="checkbox" class="group-chk" data-gid="' + gid + '" onchange="toggleGroup(\'' + gid + '\', this.checked)" style="accent-color:var(--blue);width:14px;height:14px;cursor:pointer">' +
       '🔗' +
       '</label>' +
       '<input type="text" class="group-title" data-gid="' + gid + '" value="' + esc(g.customTitle) + '" maxlength="60" ' +
         'oninput="mergeGroups[\'' + gid + '\'].customTitle=this.value" ' +
-        'style="flex:1;min-width:200px;background:var(--s2);border:1px solid var(--b2);color:var(--ye);font-family:var(--mono);font-size:11px;padding:4px 8px;outline:none">' +
-      '<span style="font-size:9px;color:var(--t3)" id="gt-len-' + gid + '">' + g.customTitle.length + '/60</span>' +
+        'style="flex:1;min-width:200px;background:var(--surface-2);border:1px solid var(--border-2);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:4px 8px;outline:none;border-radius:6px">' +
+      '<span style="font-size:9px;color:var(--text-3)" id="gt-len-' + gid + '">' + g.customTitle.length + '/60</span>' +
       '<span class="merge-badge">' + groupItems.length + ' items</span>' +
       '<button class="btn-unmerge" onclick="unmergeGroup(\'' + gid + '\')">✕</button>' +
       '</div>' +
@@ -1123,9 +1108,92 @@ async function migrateOne(itemId, srcId, dstId, dstStatus) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newItem)
     });
-    const created = await createR.json();
+    let created = await createR.json();
     if (!createR.ok) {
-      const err = (created.cause || []).map(c => c.code + ': ' + (c.message || '')).join('; ') || created.message || createR.status;
+      const causes = created.cause || [];
+      const err = causes.map(c => c.code + ': ' + (c.message || '')).join('; ') || created.message || createR.status;
+
+      // ── Categoría requiere modelo nuevo (family_name obligatorio) ──
+      // ML rechaza variations[] cuando la categoría exige el nuevo modelo.
+      // Solución: reintentar sin variations, con family_name = título del item.
+      const needsFamilyName = causes.some(c =>
+        (c.message || '').includes('family_name') || (c.code || '').includes('family_name')
+      );
+      if (needsFamilyName) {
+        // Modelo nuevo: cada variante = publicación separada vinculada por family_id.
+        // Primera variante → POST con family_name → ML devuelve family_id.
+        // Variantes siguientes → POST con family_id.
+        mlog('  → Cat. requiere family_name — creando una pub. por variante...', 'warn');
+
+        const srcVars  = item.variations?.length ? item.variations : [null]; // null = sin variantes
+        const famName  = item.title.substring(0, 60);
+        let firstId    = null;
+        let okCount    = 0;
+
+        for (let vi = 0; vi < srcVars.length; vi++) {
+          const v = srcVars[vi];
+
+          // Payload base (copia shallow — sobreescribimos las claves que cambian)
+          const varItem = Object.assign({}, newItem);
+          delete varItem.variations;
+
+          // Atributos: base sin los que pisa la variante + atributos de la variante
+          const varAttrIds = new Set((v?.attribute_combinations || []).map(ac => ac.id));
+          const baseAttrs  = (newItem.attributes || []).filter(a => !varAttrIds.has(a.id));
+          const varAttrs   = (v?.attribute_combinations || []).map(ac => ({ id: ac.id, value_name: ac.value_name }));
+          varItem.attributes = [...baseAttrs, ...varAttrs];
+
+          // Stock, precio y fotos propios de la variante
+          if (v) {
+            varItem.available_quantity = v.available_quantity || 0;
+            varItem.price              = v.price || item.price;
+            if (v.picture_ids?.length) varItem.pictures = v.picture_ids.map(pid => ({ id: String(pid) }));
+          }
+
+          // Modelo nuevo: title no se envía (lo toma ML del catálogo).
+          // family_name igual en todas las variantes — ML las agrupa automáticamente.
+          delete varItem.title;
+          delete varItem.family_id;
+          varItem.family_name = famName;
+
+          const varR       = await fetch('/api-as/' + dstId + '/items', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(varItem)
+          });
+          const varCreated = await varR.json();
+
+          if (!varR.ok) {
+            const causes = varCreated.cause || [];
+            const varErr = causes.length
+              ? causes.map(c => (c.field ? c.field + ' — ' : '') + (c.message || c.code || '')).join(' | ')
+              : (varCreated.message || varR.status);
+            mlog('  → Var ' + (vi + 1) + '/' + srcVars.length + ' ERROR: ' + esc(varErr), 'err');
+            if (vi === 0) {
+              mlog('  Response: ' + esc(JSON.stringify(varCreated).substring(0, 400)), 'warn');
+              mlog('  Payload:  ' + esc(JSON.stringify(varItem).substring(0, 600)), 'warn');
+            }
+            continue; // intentar con las demás variantes
+          }
+
+          // Primera variante exitosa: guardar id y postear descripción
+          if (firstId === null) {
+            firstId = varCreated.id;
+            if (description && firstId) {
+              try { await fetch('/api-as/' + dstId + '/items/' + firstId + '/description', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plain_text: description }) }); } catch(e) {}
+            }
+          }
+
+          okCount++;
+          const varLabel = v ? (v.attribute_combinations || []).map(ac => ac.value_name).join('/') : '';
+          mlog('  Var ' + (vi + 1) + '/' + srcVars.length + (varLabel ? ' [' + esc(varLabel) + ']' : '') + ' qty:' + varItem.available_quantity + ' → ' + varCreated.id + ' OK', 'ok');
+        }
+
+        if (!firstId) throw new Error('Todas las variantes fallaron al crear con family_name');
+
+        mlog(esc(item.title.substring(0, 45)) + ' → ' + okCount + '/' + srcVars.length + ' vars OK (family_name)', 'ok');
+        return { ok: true, newId: firstId };
+      }
+
       throw new Error(err);
     }
     if (description && created.id) {
@@ -1350,74 +1418,20 @@ async function initAccountLabel() {
     const { accounts: accts } = await fetch('/accounts').then(r => r.json());
     const active = accts.find(a => a.active);
     if (active) {
-      document.getElementById('acct-label').textContent = active.label;
-      const ini = document.querySelector('#acct-btn .w-6');
+      document.getElementById('acc-label').textContent = active.label;
+      const ini = document.getElementById('acc-initial');
       if (ini) ini.textContent = (active.label || '?').trim().charAt(0).toUpperCase();
-      const ac = document.getElementById('acct-active');
-      const aid = document.getElementById('acct-active-id');
+      const ac = document.getElementById('acc-active');
+      const aid = document.getElementById('acc-active-id');
       if (ac) ac.textContent = active.label || '—';
       if (aid) aid.textContent = active.user_id || '—';
     }
   } catch(e) {}
 }
 
-function toggleAcctMenu() {
-  const m = document.getElementById('acct-menu');
-  if (m.style.display === 'none') { loadAcctList(); m.style.display = 'block'; }
-  else m.style.display = 'none';
-}
-
-document.addEventListener('click', ev => {
-  const w = document.getElementById('acct-wrap');
-  if (w && !w.contains(ev.target)) document.getElementById('acct-menu').style.display = 'none';
-});
-
-async function loadAcctList() {
-  const list = document.getElementById('acct-list');
-  list.innerHTML = '<div class="px-3 py-2 text-[11px] text-neutral-500" style="font-family:\'Inter\',sans-serif">Cargando…</div>';
-  try {
-    const { accounts: accts } = await fetch('/accounts').then(r => r.json());
-    const check = '<svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-brand" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-    list.innerHTML = accts.map(a => {
-      const initial = (a.label || '?').trim().charAt(0).toUpperCase();
-      const label = esc(a.label || '');
-      const uid = esc(a.user_id || '—');
-      const labelEsc = label.replace(/'/g,"\\'");
-      return (
-        '<div class="group w-full flex items-center gap-3 px-3 py-2 hover:bg-neutral-800 transition ' + (a.active ? 'bg-neutral-800/50' : '') + '">' +
-          '<button onclick="switchAcct(\'' + a.id + '\')" class="flex items-center gap-3 flex-1 min-w-0 text-left">' +
-            '<span class="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-yellow-600 flex items-center justify-center text-[10px] font-bold text-neutral-950 shrink-0">' + esc(initial) + '</span>' +
-            '<div class="flex-1 min-w-0">' +
-              '<div class="text-xs font-medium text-neutral-100 truncate" style="font-family:\'Inter\',sans-serif">' + label + '</div>' +
-              '<div class="text-[10px] font-mono text-neutral-500 truncate">' + uid + '</div>' +
-            '</div>' +
-          '</button>' +
-          (a.active ? check : '') +
-          (!a.has_token ? '<span class="text-[9px] text-red-400 font-mono shrink-0">SIN TOKEN</span>' : '') +
-          '<button onclick="event.stopPropagation();renameAcct(\'' + a.id + '\',\'' + labelEsc + '\')" title="Renombrar" class="opacity-0 group-hover:opacity-100 text-[9px] text-neutral-400 hover:text-neutral-100 border border-neutral-700 hover:border-neutral-600 rounded px-1.5 py-0.5 font-mono transition shrink-0">REN</button>' +
-        '</div>'
-      );
-    }).join('');
-  } catch(e) { list.innerHTML = '<div class="px-3 py-2 text-[11px] text-red-400">Error</div>'; }
-}
-
-async function switchAcct(id) {
-  await fetch('/accounts/switch', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id}) });
-  location.reload();
-}
-
-async function renameAcct(id, cur) {
-  const n = prompt('Nuevo nombre para la cuenta:', cur);
-  if (!n || n === cur) return;
-  await fetch('/accounts/rename', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, label:n}) });
-  loadAcctList();
-  initAccountLabel();
-}
-
 // ══════════════════════════════════════════════
 //  UTILS
 // ══════════════════════════════════════════════
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ══════════════════════════════════════════════
 //  DUPLICATE DETECTION & MERGING
@@ -1439,7 +1453,7 @@ const STRIP_WORDS = [
 
 // Build a "base key" from a title by removing known variant words
 function titleBaseKey(title) {
-  let t = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let t = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   // Remove content in parentheses at end (often "(Negro)" or "(iPhone 15 Pro)")
   t = t.replace(/\s*\([^)]*\)\s*$/g, '');
   // Split into words and filter out known color/variant words
@@ -1451,7 +1465,7 @@ function titleBaseKey(title) {
 
 // Find the varying word(s) between a title and the group base — that becomes the variant value
 function extractVariantValue(title, baseKey) {
-  const tWords = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s*\([^)]*\)\s*$/g, '').split(/\s+/);
+  const tWords = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s*\([^)]*\)\s*$/g, '').split(/\s+/);
   const bWords = baseKey.split(/\s+/);
   const diff = tWords.filter(w => !bWords.includes(w) || (bWords.indexOf(w) === -1));
   // Better approach: find words in title that were stripped
@@ -1497,14 +1511,14 @@ function detectDuplicates() {
   if (groupCount === 0) {
     info.style.display = 'inline';
     info.textContent = 'No se encontraron duplicados';
-    info.style.color = 'var(--t3)';
+    info.style.color = 'var(--text-3)';
     setTimeout(() => info.style.display = 'none', 3000);
     return;
   }
 
   mergeMode = true;
   info.style.display = 'inline';
-  info.style.color = 'var(--pu)';
+  info.style.color = 'var(--purple,#9333ea)';
   info.textContent = groupCount + ' grupos (' + itemsMerged + ' items) — se migrarán como variantes';
 
   // Auto-select all merged items
@@ -1535,85 +1549,6 @@ function getItemGroup(itemId) {
   }
   return null;
 }
-
 </script>
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
-
-<!-- ── BOTTOM NAV (solo móvil) ───────────────── -->
-<div class="btm-overlay" id="btm-overlay" onclick="closeBtmSheet()"></div>
-<div class="btm-sheet" id="btm-sheet">
-  <div class="btm-handle"></div>
-  <a href="/publicaciones.html" class="btm-more-link" id="bnav-publicaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    Publicar
-  </a>
-  <a href="/vinculaciones.html" class="btm-more-link" id="bnav-vinculaciones">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-    Vinculaciones
-  </a>
-  <a href="/migracion.html" class="btm-more-link" id="bnav-migracion">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-    Migración
-  </a>
-  <a href="/oauth/start" class="btm-more-link">
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-    Conectar cuenta
-  </a>
-</div>
-<nav class="btm-nav" id="btm-nav">
-  <a href="/" class="btm-item" id="bnav-home">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
-    Inicio
-  </a>
-  <a href="/despachos.html" class="btm-item" id="bnav-despachos">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-    Despachos
-  </a>
-  <a href="/preguntas.html" class="btm-item" id="bnav-preguntas">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    Preguntas
-  </a>
-  <a href="/analytics.html" class="btm-item" id="bnav-analytics">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-    Analytics
-  </a>
-  <a href="/cobros.html" class="btm-item" id="bnav-cobros">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-    Cobros
-  </a>
-  <button class="btm-item" id="bnav-more" onclick="openBtmSheet()">
-    <svg viewBox="0 0 24 24" fill="none" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
-    Mas
-  </button>
-</nav>
-<script>
-(function(){
-  var p=location.pathname;
-  var map={
-    '/':'bnav-home','/index.html':'bnav-home',
-    '/despachos.html':'bnav-despachos',
-    '/preguntas.html':'bnav-preguntas',
-    '/analytics.html':'bnav-analytics',
-    '/cobros.html':'bnav-cobros',
-    '/publicaciones.html':'bnav-publicaciones',
-    '/vinculaciones.html':'bnav-vinculaciones',
-    '/migracion.html':'bnav-migracion'
-  };
-  var id=map[p];
-  if(id){var el=document.getElementById(id);if(el)el.classList.add('active');}
-  if(['bnav-publicaciones','bnav-vinculaciones','bnav-migracion'].indexOf(id)>=0){
-    var m=document.getElementById('bnav-more');if(m)m.classList.add('active');
-  }
-})();
-function openBtmSheet(){
-  document.getElementById('btm-sheet').classList.add('open');
-  document.getElementById('btm-overlay').classList.add('open');
-}
-function closeBtmSheet(){
-  document.getElementById('btm-sheet').classList.remove('open');
-  document.getElementById('btm-overlay').classList.remove('open');
-}
-</script>
-
 </body>
 </html>

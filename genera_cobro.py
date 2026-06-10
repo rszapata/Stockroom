@@ -279,9 +279,7 @@ def estimar_neto_funda_en_paquete(titulo_funda, ing_paquete, titulos_sub, indice
     return round(neto_est, 2), round(ing_funda, 2)
 
 # -- Procesamiento principal ------------------------------------
-def procesar(filas, periodo=None, modo="fundas"):
-    dia_min, dia_max = PERIODOS[periodo][:2] if periodo in PERIODOS else (1, 31)
-
+def procesar(filas, modo="fundas", desde_dt=None, hasta_dt=None):
     # Construir índice de tasas usando TODO el archivo (no solo el período)
     indice_tasas = construir_indice_tasas(filas)
     es_modo_fundas = (modo == "fundas")
@@ -298,10 +296,15 @@ def procesar(filas, periodo=None, modo="fundas"):
         dia      = parse_dia(f['fecha_str'])
         fecha_dt = parse_fecha(f['fecha_str'])
 
-        # Filtro de período
-        if dia and not (dia_min <= dia <= dia_max):
-            i += 1
-            continue
+        # Filtro por rango de fechas
+        if (desde_dt or hasta_dt) and fecha_dt:
+            fd = fecha_dt.date() if hasattr(fecha_dt, 'date') else fecha_dt
+            if desde_dt and fd < desde_dt:
+                i += 1
+                continue
+            if hasta_dt and fd > hasta_dt:
+                i += 1
+                continue
 
         # -- PAQUETE PADRE ---------------------------------------
         if es_paquete_padre(f['estado']):
@@ -414,7 +417,8 @@ def _v(f, dia, fecha_dt, tipo, ingresos, cargo, costo_fijo, neto_val,
     }
 
 # -- Generación del Excel ---------------------------------------
-def generar_excel(ventas, periodo, output_path, modo="fundas"):
+def generar_excel(ventas, rango_label, output_path, modo="fundas"):
+    """rango_label: string descriptivo del período, p.ej. '2025-05-01 al 2025-05-15'."""
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Cobro Fundas'
@@ -426,7 +430,7 @@ def generar_excel(ventas, periodo, output_path, modo="fundas"):
         return Border(left=s, right=s, top=s, bottom=s)
     def aln(h='left', w=False): return Alignment(horizontal=h, vertical='center', wrap_text=w)
 
-    p_label = PERIODOS[periodo][2] if periodo in PERIODOS else 'Período completo'
+    p_label = rango_label or 'Período completo'
 
     # -- Títulos -------------------------------------------------
     ws.merge_cells('A1:I1')
@@ -607,32 +611,37 @@ def generar_excel(ventas, periodo, output_path, modo="fundas"):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('archivo')
-    ap.add_argument('--periodo',  default=None, choices=['1','2','3'])
+    ap.add_argument('--desde',    default=None, help='Fecha inicio YYYY-MM-DD (inclusive)')
+    ap.add_argument('--hasta',    default=None, help='Fecha fin   YYYY-MM-DD (inclusive)')
     ap.add_argument('--output',   default=None)
     ap.add_argument('--modo',     default='fundas', choices=['fundas','otros'])
-    # Compatibilidad con llamada posicional antigua: python genera_cobro.py file 2
-    ap.add_argument('periodo_pos', nargs='?', default=None)
     args = ap.parse_args()
 
     archivo = args.archivo
-    periodo = args.periodo or args.periodo_pos
     modo    = args.modo
+
+    # Parsear rango de fechas
+    desde_dt = hasta_dt = None
+    if args.desde:
+        try: desde_dt = datetime.strptime(args.desde, '%Y-%m-%d').date()
+        except ValueError: pass
+    if args.hasta:
+        try: hasta_dt = datetime.strptime(args.hasta, '%Y-%m-%d').date()
+        except ValueError: pass
 
     if not Path(archivo).exists():
         print(f"\n  Error: No se encontró '{archivo}'\n")
         sys.exit(1)
-    if periodo and periodo not in PERIODOS:
-        print(f"\n  Error: período debe ser 1, 2 o 3\n")
-        sys.exit(1)
 
-    print(f"\n  Procesando: {archivo}  [modo={modo}]")
+    rango_label = f"{args.desde or 'inicio'} al {args.hasta or 'fin'}" if (args.desde or args.hasta) else 'Período completo'
+    print(f"\n  Procesando: {archivo}  [modo={modo}]  [{rango_label}]")
 
     filas  = leer_ml(archivo)
-    ventas = procesar(filas, periodo, modo)
+    ventas = procesar(filas, modo=modo, desde_dt=desde_dt, hasta_dt=hasta_dt)
 
     fecha_hoy = datetime.now().strftime('%Y%m%d')
-    p_str     = f'periodo{periodo}' if periodo else 'completo'
+    p_str     = f"{args.desde}_{args.hasta}" if (args.desde or args.hasta) else 'completo'
     prefix    = 'cobro_fundas' if modo == 'fundas' else 'cobro_otros'
     output    = args.output or f'{prefix}_{p_str}_{fecha_hoy}.xlsx'
 
-    generar_excel(ventas, periodo, output, modo)
+    generar_excel(ventas, rango_label, output, modo)
