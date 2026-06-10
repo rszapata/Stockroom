@@ -22,6 +22,7 @@ const { parsePdfRows, parseReceiptRows, parseContractRows } = require('./lib/pdf
 const { extractVariantName, mergeFamilyGroup, consolidateItems } = require('./lib/products');
 const { formatDeliveryEstimate, friendlyShippingName } = require('./lib/shipping');
 const { readBody, readBodyWithLimit } = require('./lib/http-body');
+const { isSecureConnection, cookieSecure, hashPassword, makeSid, timingSafeEqStr, parseCookies, getClientIP } = require('./lib/auth-utils');
 
 // ── Log de auditoría admin ─────────────────────────────────────
 // Registra cambios críticos del panel (precio, stock, alta/baja de
@@ -294,17 +295,6 @@ const TIENDA_SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 días
 // Fallback en memoria para cuando la DB no responde
 const _sessionFallback = new Map(); // wz_sid → { user_id, email, nombre, exp }
 
-// ¿La conexión usa HTTPS? Detectamos por si viene de cloudflared (x-forwarded-proto)
-// o si HTTPS=true está seteado en el entorno. Se evalúa por request, no en startup.
-function isSecureConnection(req) {
-  return process.env.HTTPS === 'true'
-    || (req.headers['x-forwarded-proto'] || '').startsWith('https')
-    || (req.headers['cf-visitor'] || '').includes('https');
-}
-function cookieSecure(req) {
-  return isSecureConnection(req) ? '; Secure' : '';
-}
-
 // JSON fallbacks (por si la DB no está disponible)
 function getTiendaUsers() {
   try { return JSON.parse(fs.readFileSync(TIENDA_USERS_PATH, 'utf8')); }
@@ -312,10 +302,6 @@ function getTiendaUsers() {
 }
 function saveTiendaUsers(users) {
   fs.writeFileSync(TIENDA_USERS_PATH, JSON.stringify(users, null, 2));
-}
-function hashPassword(password, salt) {
-  // pbkdf2Sync: 100k iteraciones, output 64 bytes, SHA-512
-  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
 }
 async function getTiendaUserFromReq(req) {
   const sid = parseCookies(req).wz_sid;
@@ -1714,23 +1700,6 @@ setInterval(() => {
 
 _loadRateLimits(); // cargar al inicio
 
-function makeSid() { return crypto.randomBytes(32).toString('hex'); }
-function timingSafeEqStr(a, b) {
-  const ab = Buffer.from(a || '', 'utf8');
-  const bb = Buffer.from(b || '', 'utf8');
-  if (ab.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ab, bb);
-}
-function parseCookies(req) {
-  const out = {};
-  const h = req.headers.cookie;
-  if (!h) return out;
-  h.split(';').forEach(p => {
-    const i = p.indexOf('=');
-    if (i > -1) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
-  });
-  return out;
-}
 function isAuthed(req) {
   if (!AUTH_ENABLED) return true;
   // Bypass: si la request viene de una IP confiable (red local del usuario)
@@ -1748,16 +1717,6 @@ function isAuthed(req) {
 const TRUSTED_IPS = new Set(
   Array.isArray(AUTH_CFG && AUTH_CFG.trusted_ips) ? AUTH_CFG.trusted_ips : []
 );
-function getClientIP(req) {
-  // cloudflared inyecta CF-Connecting-IP con la IP real del visitante.
-  // Como el server bindea 127.0.0.1, solo cloudflared (o el mismo equipo) puede llegar acá,
-  // así que confiar en este header es seguro.
-  const cf = req.headers['cf-connecting-ip'];
-  if (cf) return String(cf).trim();
-  // Acceso directo (localhost desde el mismo equipo)
-  const ra = req.socket && req.socket.remoteAddress;
-  return ra ? ra.replace(/^::ffff:/, '') : '';
-}
 function isTrustedIP(req) {
   const ip = getClientIP(req);
   if (!ip) return false;
