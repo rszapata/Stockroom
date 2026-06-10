@@ -15,16 +15,9 @@ const zlib     = require('zlib');
 const { spawn } = require('child_process');
 const db       = require('./db/queries');
 const { migrateProductsFromCache } = require('./db/migrate-products-fn');
-
-// ── Escritura atómica de JSON ──────────────────────────────────
-// Escribe a un archivo temporal y hace rename(): evita dejar el archivo
-// truncado/corrupto si el proceso se cae a mitad de la escritura
-// (sessions.json, rate_limits.json, etc).
-function writeJsonAtomic(filePath, data) {
-  const tmp = `${filePath}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data));
-  fs.renameSync(tmp, filePath);
-}
+const { writeJsonAtomic, detectImageExt, detectVideoExt, parseMultipart } = require('./lib/files');
+const { cors, securityHeaders, getFileType, checkCSRF, ALLOWED_PROXY_PATTERNS, isProxyPathAllowed } = require('./lib/http');
+const { commonPrefix } = require('./lib/strings');
 
 // ── Log de auditoría admin ─────────────────────────────────────
 // Registra cambios críticos del panel (precio, stock, alta/baja de
@@ -261,119 +254,7 @@ const MIME = {
   '.m4v':  'video/x-m4v',
 };
 
-function cors(res) {
-  // No CORS headers → same-origin only enforced by browser.
-  // Omitir Access-Control-Allow-Origin es más seguro que poner 'null'
-  // ('null' coincide con peticiones de file:// y iframes sandboxed).
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-}
-
-// Apply security headers on every response
-// fileType: 'html' | 'script' | 'style' | 'image' | 'font' | 'other' | undefined
-function securityHeaders(res, isHtml, fileType, hasVersionQuery) {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-
-  // Cache-Control diferenciado:
-  // - HTML y JSON de API: no cachear (contenido dinámico)
-  // - Scripts/CSS: con `?v=N` el nombre es estable por versión → immutable 1 año.
-  //   Sin `?v=` (poco común) se cachea solo 1 día por las dudas.
-  // - Imágenes/fuentes: 7 días
-  if (fileType === 'script' || fileType === 'style') {
-    res.setHeader('Cache-Control', hasVersionQuery
-      ? 'public, max-age=31536000, immutable'                     // 1 año
-      : 'public, max-age=86400');                                 // 1 día
-    res.setHeader('Vary', 'Accept-Encoding');
-  } else if (fileType === 'image' || fileType === 'font') {
-    res.setHeader('Cache-Control', 'public, max-age=604800');     // 7 días
-    res.setHeader('Vary', 'Accept-Encoding');
-  } else {
-    // HTML, JSON de API, todo lo demás: sin caché
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-  }
-
-  // CSP para HTML es manejado exclusivamente por serveStaticFile (necesita nonce por request).
-  // Aquí sólo se establece para respuestas que NO son HTML (API endpoints, etc.).
-  // Para HTML: ver bloque if (ext === '.html') más abajo.
-}
-
-/** Detecta el tipo de archivo para Cache-Control */
-function getFileType(ext) {
-  if (ext === '.js')  return 'script';
-  if (ext === '.css') return 'style';
-  if (['.png','.jpg','.jpeg','.webp','.gif','.svg','.ico'].includes(ext)) return 'image';
-  if (ext === '.woff' || ext === '.woff2' || ext === '.ttf') return 'font';
-  return 'other';
-}
-
-/**
- * Verifica origen de la request para prevenir CSRF en endpoints de mutación admin.
- * Acepta requests sin Origin (herramientas CLI, Postman desde IP de confianza).
- * Rechaza requests con Origin de dominio ajeno.
- */
-function checkCSRF(req) {
-  const origin  = req.headers['origin']  || '';
-  const referer = req.headers['referer'] || '';
-  if (!origin && !referer) return true; // request desde CLI/Postman/curl — solo IP trusted
-  const source = origin || referer;
-  // Permitir: mismo host, localhost, o IPs del servidor
-  return /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(source)
-    || source.includes(req.headers['host'] || '___none___');
-}
-
-// ── Proxy path whitelist ──────────────────────────────────────
-// Only these ML API paths are allowed through the proxy endpoints.
-// This prevents SSRF and abuse of your OAuth tokens.
-const ALLOWED_PROXY_PATTERNS = [
-  /^\/users\/[^/?]+\/?$/,                            // GET user info
-  /^\/users\/[^/]+\/items\/search(\?|$)/,            // GET list items
-  /^\/items(\/[^/]+)?(\/[^/]+)?(\?|$)/,              // GET/POST/PUT items & subresources
-  /^\/items\/[^/]+\/description(\?|$)/,              // description
-  /^\/items\/[^/]+\/pictures(\?|$)/,                 // pictures
-  /^\/pictures\/items\/upload(\?|$)/,                // upload pics
-  /^\/categories(\/[^/]+)?(\/attributes)?(\?|$)/,    // categories + attributes
-  /^\/category_predictor\/predict(\?|$)/,            // category prediction
-  /^\/sites\/[^/]+(\/.*)?(\?|$)/,                    // site metadata
-  /^\/orders\/search(\?|$)/,                         // orders
-  /^\/orders\/[^/]+(\?|$)/,                          // single order
-  /^\/shipments\/[^/]+(\?|$)/,                       // shipment info
-  /^\/questions\/search(\?|$)/,                      // questions
-  /^\/questions\/[^/]+(\?|$)/,                       // single question / answer
-  /^\/answers(\?|$)/,                                // post answer to question
-  /^\/myfeeds(\?|$)/,                                // feeds
-  /^\/user-products\/[^/]+(\?|$)/,                   // GET user product (modelo nuevo de variantes)
-  /^\/reviews\/item\/[^/]+(\?|$)/,                   // GET reviews de un item
-];
-
-function isProxyPathAllowed(mlPath) {
-  return ALLOWED_PROXY_PATTERNS.some(rx => rx.test(mlPath));
-}
-
 // ── Helpers de consolidación de productos (sync de tienda) ────
-
-/**
- * Common-prefix helper para limpiar títulos de un grupo de variantes.
- * Ej: "X Negro", "X Azul", "X Rojo" → "X"
- */
-function commonPrefix(strs) {
-  if (!strs.length) return '';
-  let prefix = strs[0] || '';
-  for (let i = 1; i < strs.length; i++) {
-    while (strs[i].indexOf(prefix) !== 0) {
-      prefix = prefix.slice(0, -1);
-      if (!prefix) return '';
-    }
-  }
-  return prefix.replace(/[\s\-\.\,\:\;\|]+$/, '').trim();
-}
 
 /** Extrae el nombre de la variante (color o similar) de un item ML */
 function extractVariantName(item, baseTitle) {
@@ -2019,60 +1900,6 @@ async function getCorreoAuth() {
     _caAuth = null;
     return null;
   }
-}
-
-// ── Validación de tipo real de archivo por magic bytes ─────────
-// No confiar en la extensión del nombre de archivo: revisa los primeros
-// bytes para confirmar que el contenido es realmente una imagen/video
-// del tipo esperado (evita subir .html/.php/.svg disfrazados de .jpg).
-function detectImageExt(buf) {
-  if (buf.length >= 3 && buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return '.jpg';
-  if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47
-      && buf[4] === 0x0D && buf[5] === 0x0A && buf[6] === 0x1A && buf[7] === 0x0A) return '.png';
-  if (buf.length >= 6 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return '.gif';
-  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return '.webp';
-  return null;
-}
-
-function detectVideoExt(buf) {
-  // MP4/MOV/M4V: caja "ftyp" en el offset 4
-  if (buf.length >= 12 && buf.toString('ascii', 4, 8) === 'ftyp') {
-    const brand = buf.toString('ascii', 8, 12);
-    return brand.startsWith('qt') ? '.mov' : '.mp4';
-  }
-  // WebM/Matroska: firma EBML
-  if (buf.length >= 4 && buf[0] === 0x1A && buf[1] === 0x45 && buf[2] === 0xDF && buf[3] === 0xA3) return '.webm';
-  return null;
-}
-
-// ── Multipart parser ──────────────────────────────────────────
-function parseMultipart(body, boundary) {
-  const parts = {};
-  const sep   = Buffer.from('--' + boundary);
-  let start   = 0;
-
-  while (true) {
-    const idx  = body.indexOf(sep, start);
-    if (idx === -1) break;
-    const next = body.indexOf(sep, idx + sep.length);
-    if (next === -1) break;
-
-    const part      = body.slice(idx + sep.length, next);
-    const headerEnd = part.indexOf('\r\n\r\n');
-    if (headerEnd === -1) { start = next; continue; }
-
-    const headerStr = part.slice(0, headerEnd).toString();
-    const content   = part.slice(headerEnd + 4, part.length - 2);
-    const nameM     = headerStr.match(/name="([^"]+)"/);
-    const fileM     = headerStr.match(/filename="([^"]+)"/);
-    if (!nameM) { start = next; continue; }
-
-    parts[nameM[1]] = fileM
-      ? { filename: fileM[1], data: content }
-      : content.toString().trim();
-    start = next;
-  }
-  return parts;
 }
 
 // ── Intercambiar código OAuth por tokens ──────────────────────
