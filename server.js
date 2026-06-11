@@ -2240,13 +2240,38 @@ const server = http.createServer((req, res) => {
           }
           // ── Fin validación de precios ──────────────────────────────────────
 
-          // ── Recalcular total server-side (descuento 5% por transferencia) ──
+          // ── Recalcular total server-side (cupón + descuento 5% por transferencia) ──
           const subtotalCalc = orderItems.reduce((acc, it) => acc + (parseFloat(it.price) || 0) * (parseInt(it.qty) || 1), 0);
+
+          let cuponDescuentoCalc = 0;
+          const cuponCode = data.pago?.cupon;
+          if (cuponCode) {
+            const cupon = getCupones().find(c => c.code === cuponCode && c.active !== false);
+            if (cupon && (cupon.type === 'percent' || cupon.type === 'fixed')) {
+              const base = cupon.categoria
+                ? orderItems.reduce((s, i) => (i.categoria || '') === cupon.categoria ? s + (parseFloat(i.price) || 0) * (parseInt(i.qty) || 1) : s, 0)
+                : subtotalCalc;
+              cuponDescuentoCalc = cupon.type === 'percent'
+                ? Math.round(base * cupon.value / 100)
+                : Math.min(cupon.value, base);
+              if (cupon.max_descuento > 0) cuponDescuentoCalc = Math.min(cuponDescuentoCalc, cupon.max_descuento);
+            }
+          }
+
           const envioCalc    = parseFloat(data.envio?.precio) || 0;
           const esTransferencia = data.pago?.metodo === 'transferencia';
-          const descuentoCalc = esTransferencia ? Math.round(subtotalCalc * 0.05) : 0;
-          if (data.pago) data.pago.descuento_transferencia = descuentoCalc;
-          data.total = subtotalCalc - descuentoCalc + envioCalc;
+          const descuentoCalc = esTransferencia ? Math.round((subtotalCalc - cuponDescuentoCalc) * 0.05) : 0;
+          if (data.pago) {
+            data.pago.descuento_transferencia = descuentoCalc;
+            if (cuponDescuentoCalc > 0) {
+              data.pago.cupon = cuponCode;
+              data.pago.descuento_cupon = cuponDescuentoCalc;
+            } else {
+              delete data.pago.cupon;
+              delete data.pago.descuento_cupon;
+            }
+          }
+          data.total = subtotalCalc - cuponDescuentoCalc - descuentoCalc + envioCalc;
           // ── Fin recálculo de total ──────────────────────────────────────────
 
           const orden = await db.createOrden(data);
