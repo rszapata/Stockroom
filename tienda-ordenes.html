@@ -129,8 +129,14 @@
 @media print {
   body * { visibility: hidden; }
   #print-area, #print-area * { visibility: visible; }
-  #print-area { position: fixed; inset: 0; }
+  #print-area { position: fixed; inset: 0; padding: 24px; }
 }
+#print-area { display: none; }
+#print-area h2 { font-size: 18px; margin: 0 0 4px; }
+#print-area .pp-meta { font-size: 13px; color: #444; margin-bottom: 16px; }
+#print-area table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#print-area th, #print-area td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+#print-area .pp-addr { margin-top: 16px; font-size: 13px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -361,6 +367,9 @@
 
 <!-- Toast -->
 <div id="toast"></div>
+
+<!-- Área de impresión (picking list) -->
+<div id="print-area"></div>
 
 <script>
   // ─── Theme toggle ─────────────────────────────────────────
@@ -658,6 +667,10 @@
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button id="btn-save-status" class="btn btn-primary" onclick="saveStatus()">Guardar cambios</button>
+          ${(o.status === 'pendiente_pago' && pago.metodo === 'transferencia')
+            ? `<button class="btn btn-secondary" onclick="confirmarPagoTransferencia('${o.id}')">✓ Confirmar pago recibido</button>`
+            : ''}
+          <button class="btn btn-secondary" onclick="imprimirPicking('${o.id}')">🖨️ Imprimir picking</button>
           ${['despachado','entregado','cancelado','reembolsado'].includes(o.status) ? '' :
             `<button class="btn btn-danger" onclick="confirmCancel('${o.id}')">Cancelar orden</button>`}
         </div>
@@ -720,6 +733,55 @@
       btn.disabled = false;
       btn.textContent = 'Guardar cambios';
     }
+  }
+
+  // ─── Confirmar pago recibido (transferencia) ─────────────────
+  function confirmarPagoTransferencia(id) {
+    if (!confirm('¿Confirmar que recibiste el pago por transferencia de esta orden?')) return;
+    const btn = $('btn-save-status');
+    if (btn) btn.disabled = true;
+    fetch(`/api/tienda/admin/ordenes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status: 'pagado' }),
+    }).then(r => {
+      if (!r.ok) throw new Error();
+      const idx = allOrdenes.findIndex(o => o.id === id);
+      if (idx >= 0) allOrdenes[idx].status = 'pagado';
+      toast('✓ Pago confirmado');
+      applyFilters();
+      if (selectedOrden && selectedOrden.id === id) {
+        selectedOrden.status = 'pagado';
+        openOrden(id);
+      }
+    }).catch(() => toast('Error al confirmar el pago', 'err'))
+      .finally(() => { if (btn) btn.disabled = false; });
+  }
+
+  // ─── Imprimir picking list ────────────────────────────────────
+  function imprimirPicking(id) {
+    const o = allOrdenes.find(x => x.id === id);
+    if (!o) return;
+    const items   = o.items || [];
+    const cliente = o.cliente || {};
+    const rowsHtml = items.map(it => `
+      <tr>
+        <td>${esc(it.title || it.name || 'Producto')}${it.variant ? ' — ' + esc(it.variant) : ''}</td>
+        <td style="text-align:center;">${it.qty || 1}</td>
+      </tr>`).join('');
+    const direccion = [cliente.direccion, cliente.piso, cliente.ciudad, cliente.provincia, cliente.cp].filter(Boolean).map(esc).join(', ') || '— Sin dirección —';
+
+    $('print-area').innerHTML = `
+      <h2>Picking — Orden #${esc(o.id)}</h2>
+      <div class="pp-meta">Cliente: ${esc(cliente.nombre) || '—'} · ${fmtDate(o.fecha)} · ${methodLabel(o.pago?.metodo)}</div>
+      <table>
+        <thead><tr><th>Producto</th><th style="width:80px;text-align:center;">Cantidad</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="pp-addr"><strong>Entregar a:</strong><br>${esc(cliente.nombre) || '—'} · ${esc(cliente.telefono) || '—'}<br>${direccion}${o.tracking_number ? `<br>Tracking: ${esc(o.tracking_number)}` : ''}</div>
+    `;
+    window.print();
   }
 
   function confirmCancel(id) {

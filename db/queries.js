@@ -312,13 +312,31 @@ async function getOrdenById(idOrUuid) {
   return rowsToOrden(o, items);
 }
 
+/** Genera un número de orden legible: WZ-YYMMDD-XXXX (4 caracteres alfanuméricos). */
+function generarOrderNumber() {
+  const d  = new Date();
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `WZ-${yy}${mm}${dd}-${rand}`;
+}
+
 /** Crear nueva orden. Recibe el mismo objeto que antes se guardaba en JSON. */
 async function createOrden(data) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const orderNumber = data.id || (Date.now() + '-' + Math.random().toString(36).slice(2, 7));
+    let orderNumber = data.id;
+    if (!orderNumber) {
+      for (let i = 0; i < 5; i++) {
+        const candidate = generarOrderNumber();
+        const { rows } = await client.query('SELECT 1 FROM orders WHERE order_number = $1', [candidate]);
+        if (!rows.length) { orderNumber = candidate; break; }
+      }
+      if (!orderNumber) orderNumber = generarOrderNumber() + Date.now().toString(36).slice(-2).toUpperCase();
+    }
     const d           = data.datos    || data.cliente || {};
     const envio       = data.envio    || {};
     const pago        = data.pago     || {};
@@ -587,6 +605,9 @@ async function getOrdenesStats() {
       COUNT(*) FILTER (WHERE status::text = 'delivered') AS entregado,
       COUNT(*) FILTER (WHERE status::text = 'cancelled') AS cancelado,
 
+      COUNT(*) FILTER (WHERE status::text = 'pending' AND payment_method = 'transferencia') AS transferencias_sin_confirmar,
+      COUNT(*) FILTER (WHERE status::text = 'paid')                                          AS pagadas_sin_despachar,
+
       COALESCE(SUM(total) FILTER (WHERE status::text IN ('paid','shipped','delivered')), 0)                                                                         AS ingresos_total,
       COALESCE(SUM(total) FILTER (WHERE status::text IN ('paid','shipped','delivered') AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())), 0)       AS ingresos_mes,
       COALESCE(SUM(total) FILTER (WHERE status::text IN ('paid','shipped','delivered') AND created_at >= NOW() - INTERVAL '7 days'), 0)                            AS ingresos_semana,
@@ -607,6 +628,10 @@ async function getOrdenesStats() {
       despachado: parseInt(s.despachado),
       entregado:  parseInt(s.entregado),
       cancelado:  parseInt(s.cancelado),
+    },
+    para_hoy: {
+      transferencias_sin_confirmar: parseInt(s.transferencias_sin_confirmar),
+      pagadas_sin_despachar:        parseInt(s.pagadas_sin_despachar),
     },
     ingresos: {
       total:       parseFloat(s.ingresos_total),
@@ -1109,6 +1134,92 @@ async function countProductosByCategoria() {
   return map;
 }
 
+// ═════════════════════════════════════════════════════════════════
+//  CARRITOS ABANDONADOS (recuperación por email)
+//  Se guarda un snapshot del carrito cuando el usuario completa el
+//  paso 1 del checkout (nombre+email). Si nunca llega a crear una
+//  orden, un cron le manda un email "tu carrito te espera" a las 4hs
+//  (máx. 1 vez por carrito) con un deep-link que restaura el carrito.
+// ═════════════════════════════════════════════════════════════════
+async function ensureCarritosAbandonadosTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tienda_carritos_abandonados (
+      id            SERIAL PRIMARY KEY,
+      email         TEXT NOT NULL,
+      nombre        TEXT NOT NULL DEFAULT '',
+      items         JSONB NOT NULL DEFAULT '[]',
+      total         NUMERIC(12,2) NOT NULL DEFAULT 0,
+      token         TEXT NOT NULL UNIQUE,
+      email_sent_at TIMESTAMPTZ,
+      recovered_at  TIMESTAMPTZ,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_carritos_abandonados_email ON tienda_carritos_abandonados (LOWER(email))`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_carritos_abandonados_pending ON tienda_carritos_abandonados (created_at) WHERE email_sent_at IS NULL AND recovered_at IS NULL`);
+}
+
+// Guarda/actualiza el snapshot del carrito de un email. Si ya había uno
+// pendiente (sin recuperar) para ese email, lo actualiza y resetea el
+// timer de 4hs; si no, crea uno nuevo con un token único para el deep-link.
+async function upsertCarritoAbandonado({ email, nombre, items, total }) {
+  const { rows } = await pool.query(
+    `UPDATE tienda_carritos_abandonados
+        SET nombre = $2, items = $3, total = $4, created_at = NOW(),
+            email_sent_at = NULL, updated_at = NOW()
+      WHERE LOWER(email) = LOWER($1) AND recovered_at IS NULL
+      RETURNING id, token`,
+    [email, nombre || '', JSON.stringify(items || []), total || 0]
+  );
+  if (rows.length) return rows[0];
+  const token = require('crypto').randomBytes(24).toString('hex');
+  const ins = await pool.query(
+    `INSERT INTO tienda_carritos_abandonados (email, nombre, items, total, token)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, token`,
+    [email, nombre || '', JSON.stringify(items || []), total || 0, token]
+  );
+  return ins.rows[0];
+}
+
+// Marca como recuperado el carrito pendiente de un email (no se le manda
+// el email de recordatorio porque ya completó la compra).
+async function marcarCarritoRecuperado(email) {
+  await pool.query(
+    `UPDATE tienda_carritos_abandonados
+        SET recovered_at = NOW(), updated_at = NOW()
+      WHERE LOWER(email) = LOWER($1) AND recovered_at IS NULL`,
+    [email]
+  );
+}
+
+// Carritos abandonados hace más de `minAgeMs` (default 4hs), sin recuperar
+// y sin email de recordatorio enviado todavía.
+async function getCarritosAbandonadosPendientes(minAgeMs = 4 * 60 * 60 * 1000) {
+  const { rows } = await pool.query(
+    `SELECT id, email, nombre, items, total, token
+       FROM tienda_carritos_abandonados
+      WHERE recovered_at IS NULL AND email_sent_at IS NULL
+        AND created_at <= NOW() - ($1 || ' milliseconds')::interval`,
+    [minAgeMs]
+  );
+  return rows.map(r => ({ ...r, items: r.items, total: parseFloat(r.total) }));
+}
+
+async function marcarCarritoEmailEnviado(id) {
+  await pool.query(`UPDATE tienda_carritos_abandonados SET email_sent_at = NOW(), updated_at = NOW() WHERE id = $1`, [id]);
+}
+
+async function getCarritoAbandonadoPorToken(token) {
+  const { rows } = await pool.query(
+    `SELECT id, email, nombre, items, total FROM tienda_carritos_abandonados WHERE token = $1`,
+    [token]
+  );
+  if (!rows.length) return null;
+  return { ...rows[0], total: parseFloat(rows[0].total) };
+}
+
 module.exports = {
   pool,   // expuesto para queries puntuales en server.js
   // Users
@@ -1163,4 +1274,11 @@ module.exports = {
   deleteCategoria,
   reorderCategorias,
   countProductosByCategoria,
+  // Carritos abandonados
+  ensureCarritosAbandonadosTable,
+  upsertCarritoAbandonado,
+  marcarCarritoRecuperado,
+  getCarritosAbandonadosPendientes,
+  marcarCarritoEmailEnviado,
+  getCarritoAbandonadoPorToken,
 };

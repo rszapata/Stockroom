@@ -13,6 +13,7 @@ const url      = require('url');
 const os       = require('os');
 const zlib     = require('zlib');
 const { spawn } = require('child_process');
+const sharp    = require('sharp');
 const db       = require('./db/queries');
 const { migrateProductsFromCache } = require('./db/migrate-products-fn');
 const { writeJsonAtomic, detectImageExt, detectVideoExt, parseMultipart, MIME } = require('./lib/files');
@@ -24,12 +25,12 @@ const { formatDeliveryEstimate, friendlyShippingName } = require('./lib/shipping
 const { readBody, readBodyWithLimit } = require('./lib/http-body');
 const { isSecureConnection, cookieSecure, hashPassword, makeSid, timingSafeEqStr, parseCookies, getClientIP } = require('./lib/auth-utils');
 const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item');
-const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs } = require('./lib/productos-propios');
+const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion } = require('./lib/email-templates');
+const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado } = require('./lib/email-templates');
 const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
-const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig } = require('./lib/json-store');
+const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
@@ -39,7 +40,7 @@ const { HTTP_TIMEOUT_MS, applyHttpTimeout, httpsRequestJson } = require('./lib/h
 const { mlOauthToken, mlGet, mlPut, mlPost } = require('./lib/ml-api');
 const { auditLog } = require('./lib/audit-log');
 const { sendEmail: sendEmailWith } = require('./lib/email-sender');
-const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef } = require('./lib/mercadopago');
+const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef, mpGetInstallments } = require('./lib/mercadopago');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 
 require('./lib/dns-cache');
@@ -101,7 +102,7 @@ function saveConfig() {
     const idx = fullConfig.accounts.findIndex(a => a.id === config.id);
     if (idx !== -1) fullConfig.accounts[idx] = config;
   }
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2));
+  atomicWriteFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2));
 }
 
 loadConfig();
@@ -185,7 +186,7 @@ function getTiendaUsers() {
   catch { return []; }
 }
 function saveTiendaUsers(users) {
-  fs.writeFileSync(TIENDA_USERS_PATH, JSON.stringify(users, null, 2));
+  atomicWriteFileSync(TIENDA_USERS_PATH, JSON.stringify(users, null, 2));
 }
 async function getTiendaUserFromReq(req) {
   const sid = parseCookies(req).wz_sid;
@@ -250,6 +251,41 @@ function getMpToken() {
   return config.mp_access_token || config.access_token || null;
 }
 
+// Variante async: si no hay mp_access_token dedicado, el fallback es el token de ML,
+// que expira cada ~6 h. Refrescarlo ANTES de llamar a MP evita los 401 intermitentes
+// en polling, creación de preferencias y webhooks.
+async function getMpTokenFresh() {
+  if (config.mp_access_token) return config.mp_access_token;
+  try { await refreshAccountToken(config); } catch (e) {}
+  return config.access_token || null;
+}
+
+// ── Tasas de cuotas de MP ─────────────────────────────────────
+// Las tasas de interés por cantidad de cuotas no dependen del monto, así que
+// se cachean en memoria y se refrescan cada 12h. Se consultan con un monto
+// de referencia (100.000) y un medio de pago genérico (master).
+let _cuotasCache = { tasas: [], actualizado: 0 };
+const CUOTAS_CACHE_MS = 12 * 60 * 60 * 1000;
+
+async function getCuotasTasas() {
+  const now = Date.now();
+  if (_cuotasCache.tasas.length && (now - _cuotasCache.actualizado) < CUOTAS_CACHE_MS) {
+    return _cuotasCache.tasas;
+  }
+  try {
+    const accessToken = await getMpTokenFresh();
+    if (!accessToken) return _cuotasCache.tasas;
+    const data = await mpGetInstallments(100000, 'master', accessToken);
+    const payerCosts = (data[0] && data[0].payer_costs) || [];
+    const tasas = payerCosts.map(pc => ({ cuotas: pc.installments, tasa: pc.installment_rate }));
+    if (tasas.length) _cuotasCache = { tasas, actualizado: now };
+    return _cuotasCache.tasas;
+  } catch (e) {
+    console.error('[cuotas] Error obteniendo tasas de MP:', e.message);
+    return _cuotasCache.tasas;
+  }
+}
+
 /**
  * Verifica la firma x-signature de un webhook de MercadoPago.
  * Formato MP: "ts=<timestamp>,v1=<hmac>" + header x-request-id.
@@ -265,17 +301,45 @@ function getStripeConfig() {
   return fullConfig.stripe || {};
 }
 
-// ── Guardar cupón de fidelidad en DB para que sea válido ──────────
+// ── Cupones — almacenados en Stockroom/tienda-cupones.json ────────
+// (el checkout valida los cupones contra este archivo, vía getCupones())
+const CUPONES_PATH = path.join(__dirname, 'tienda-cupones.json');
+
+function getCupones() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(CUPONES_PATH, 'utf8'));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    // Cupones por defecto si no existe el archivo
+    return [
+      { code: 'WEB10',      type: 'percent', value: 10, label: '10% off — cupón web',           active: true },
+      { code: 'WZMALLAS15', type: 'percent', value: 15, label: '15% off — descuento especial',  active: true },
+      { code: 'ENVIO',      type: 'freeship', value: 0, label: 'Envío gratis',                  active: true },
+    ];
+  }
+}
+
+function saveCupones(list) {
+  atomicWriteFileSync(CUPONES_PATH, JSON.stringify(list, null, 2));
+}
+
+// ── Guardar cupón de fidelidad para que sea válido en el checkout ──
 async function guardarCuponFidelidad(ordenId) {
   const codigo = generarCuponFidelidad(ordenId);
   try {
-    // Inserta en la tabla de cupones — si ya existe, no falla
-    await db.pool.query(
-      `INSERT INTO tienda_cupones (codigo, tipo, valor, descripcion, activo, usos_max, valido_hasta)
-       VALUES ($1, 'percent', 10, $2, true, 1, NOW() + INTERVAL '60 days')
-       ON CONFLICT (codigo) DO NOTHING`,
-      [codigo, `Cupón de fidelidad - Orden #${String(ordenId).slice(-8).toUpperCase()}`]
-    );
+    const list = getCupones();
+    if (!list.find(c => c.code === codigo)) {
+      list.push({
+        code:      codigo,
+        type:      'percent',
+        value:     10,
+        label:     `Cupón de fidelidad - Orden #${String(ordenId).slice(-8).toUpperCase()}`,
+        active:    true,
+        expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+      saveCupones(list);
+    }
     return codigo;
   } catch(e) {
     console.error('[mailer] Error guardando cupón fidelidad:', e.message);
@@ -307,7 +371,7 @@ async function pollPendingPayments() {
   _pollingInProgress = true;
 
   try {
-    const accessToken = getMpToken();
+    const accessToken = await getMpTokenFresh();
     if (!accessToken) return { error: 'no_mp_token' };
 
     const pending = await db.getOrdenesPendientesPago();
@@ -374,6 +438,10 @@ async function pollPendingPayments() {
           }
         }
       } catch(e) {
+        // 401 = token inválido para TODAS las órdenes — cortar el loop y dejar
+        // que el circuit breaker de afuera lo maneje (antes se logueaba una vez
+        // por orden cada 30s sin abrir nunca el circuito).
+        if (e.message && (e.message.includes('401') || e.message.toLowerCase().includes('invalid access token'))) throw e;
         console.warn(`  ⚠ [polling] Error orden ${orden.id}: ${e.message}`);
       }
     }
@@ -399,6 +467,7 @@ setInterval(() => {
       if (!_mpCircuitAlerted) {
         _mpCircuitAlerted = true;
         console.error('[polling] ⚠ Token MP inválido — polling pausado 15 min. Regenerarlo en https://www.mercadopago.com.ar/developers/panel/applications');
+        tgSend('⚠️ <b>Token de MercadoPago inválido</b>\nEl polling de pagos está pausado y el checkout puede estar fallando.\nRevisar credenciales en el panel de MP.').catch(()=>{});
       }
     } else {
       console.error('[polling] uncaught:', e.message);
@@ -432,7 +501,7 @@ async function refreshAccountToken(acct) {
         _acctTokenExpiry.set(acct.id, expiry);
         acct.token_expiry = expiry;
         // Persistir en fullConfig.accounts (si el acct viene de ahi, ya lo mutamos por referencia)
-        try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2)); } catch(e) {}
+        try { atomicWriteFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2)); } catch(e) {}
         console.log(`  ✓ Token renovado para cuenta "${acct.label || acct.id}"`);
         return true;
       } else {
@@ -1234,10 +1303,19 @@ const server = http.createServer((req, res) => {
       const total = productos.length;
       const paged = productos.slice((page - 1) * limit, page * limit);
 
-      // Filtrar campos sensibles antes de enviar al cliente público
+      // Filtrar campos sensibles y campos pesados/no usados por el listado
+      // antes de enviar al cliente público. El detalle completo (PDP) usa
+      // /api/tienda/productos/:id, que no pasa por este recorte.
       const STRIP_FIELDS = ['seller_address','seller_contact','geolocation','coverage_areas',
         'seller_id','official_store_id','inventory_id','user_product_id','warnings',
-        'deal_ids','differential_pricing','item_relations','non_mercado_pago_payment_methods'];
+        'deal_ids','differential_pricing','item_relations','non_mercado_pago_payment_methods',
+        'attributes','sale_terms','tags','channels','health','catalog_listing',
+        'seller_custom_field','international_delivery_mode','automatic_relist',
+        'parent_item_id','domain_id','catalog_product_id','sub_status','warranty',
+        'listing_source','start_time','stop_time','end_time','expiration_time',
+        'date_created','last_updated','buying_mode','listing_type_id','site_id',
+        'family_name','condition','location','shipping','descriptions','video_id',
+        'accepts_mercadopago','thumbnail_id','base_price','original_price','currency_id'];
       const safePaged = paged.map(p => {
         const out = { ...p };
         for (const f of STRIP_FIELDS) delete out[f];
@@ -1250,6 +1328,19 @@ const server = http.createServer((req, res) => {
         res.writeHead(500);
         res.end(JSON.stringify({ error: 'internal_error', message: e.message }));
       } })();
+      return;
+    }
+
+    // ── GET /api/tienda/cuotas  (público) ────────────────────
+    // Tasas de interés por cantidad de cuotas, según la cuenta real de MP
+    // (cacheadas ~12h). El frontend las usa para mostrar "X cuotas de $Y"
+    // con el monto real (incluyendo interés), no como referencia falsa.
+    if (pathname === '/api/tienda/cuotas' && req.method === 'GET') {
+      (async () => {
+        const tasas = await getCuotasTasas();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ tasas }));
+      })();
       return;
     }
 
@@ -1636,106 +1727,6 @@ const server = http.createServer((req, res) => {
     // localProductoToItem + merge en /api/tienda/productos).
     // ══════════════════════════════════════════════════════════════
 
-    const _cleanTxt = (s, max) => {
-      const v = String(s == null ? '' : s).replace(/<script[\s\S]*?<\/script>/gi, '').trim().slice(0, max);
-      return v || null;
-    };
-    const _cleanNum = (n) => {
-      if (n === null || n === undefined || n === '') return null;
-      const v = Number(n);
-      return isNaN(v) || v < 0 ? null : v;
-    };
-
-    /** Arma el subconjunto de campos válidos a partir de un body crudo (create/update). */
-    function _buildProductoPropioFields(data, { partial }) {
-      const fields = {};
-      const has = (k) => Object.prototype.hasOwnProperty.call(data, k);
-
-      if (!partial || has('titulo'))      fields.titulo      = _cleanTxt(data.titulo, 200);
-      if (!partial || has('descripcion')) fields.descripcion = _cleanTxt(data.descripcion, 5000);
-      if (!partial || has('marca'))       fields.marca       = _cleanTxt(data.marca, 60);
-      if (!partial || has('categoria')) {
-        const c = String(data.categoria || '').trim().toLowerCase();
-        fields.categoria = CATEGORIAS_PROPIAS.includes(c) ? c : 'otros';
-      }
-      if (!partial || has('condicion')) {
-        const c = String(data.condicion || '').trim().toLowerCase();
-        const CONDS = ['nuevo', 'usado', 'cpo'];
-        fields.condicion = CONDS.includes(c) ? c : 'nuevo';
-      }
-      if (!partial || has('stock_estado')) {
-        const s = String(data.stock_estado || '').trim().toLowerCase();
-        fields.stock_estado = s === 'agotado' ? 'agotado' : 'disponible';
-      }
-      if (!partial || has('imagen_portada_url')) fields.imagen_portada_url = _cleanTxt(data.imagen_portada_url, 1000);
-      if (!partial || has('imagenes')) {
-        const arr = Array.isArray(data.imagenes) ? data.imagenes : [];
-        fields.imagenes = arr.map(u => _cleanTxt(u, 1000)).filter(Boolean).slice(0, 10);
-      }
-      if (!partial || has('video_url'))       fields.video_url       = _cleanTxt(data.video_url, 1000);
-      if (!partial || has('video_fuente'))    fields.video_fuente    = _cleanTxt(data.video_fuente, 30);
-      if (!partial || has('video_thumb_url')) fields.video_thumb_url = _cleanTxt(data.video_thumb_url, 1000);
-      if (!partial || has('notas_admin'))     fields.notas_admin     = _cleanTxt(data.notas_admin, 2000);
-      if (!partial || has('destacado'))       fields.destacado       = !!data.destacado;
-      if (!partial || has('activo'))          fields.activo          = data.activo === undefined ? true : !!data.activo;
-      if (!partial || has('a_pedido'))       fields.a_pedido        = !!data.a_pedido;
-      if (!partial || has('origen')) {
-        const o = String(data.origen || '').trim().toLowerCase();
-        fields.origen = o === 'whatsapp' ? 'whatsapp' : 'manual';
-      }
-      if (!partial || has('variantes')) {
-        const arr = Array.isArray(data.variantes) ? data.variantes : [];
-        const CONDS_V = ['nuevo', 'cpo', 'usado'];
-        fields.variantes = arr.map((v, idx) => ({
-          id: (typeof v.id === 'string' && v.id.startsWith('v_')) ? v.id : `v_${Date.now()}_${idx}`,
-          nombre: String(v.nombre || '').trim().slice(0, 200),
-          precio_usd: v.precio_usd != null ? (parseFloat(v.precio_usd) || null) : null,
-          precio_ars: parseFloat(v.precio_ars) || 0,
-          stock: v.stock === 'agotado' ? 'agotado' : 'disponible',
-          condicion: CONDS_V.includes(v.condicion) ? v.condicion : 'nuevo',
-          colores: Array.isArray(v.colores)
-            ? v.colores.map(c => String(c).trim().slice(0, 60)).filter(Boolean).slice(0, 20)
-            : [],
-        })).filter(v => v.nombre).slice(0, 30);
-      }
-
-      // Precio: USD + margen% + cotización → ARS (todo calculado server-side
-      // para evitar inconsistencias). Si llega precio_ars explícito sin los
-      // tres componentes, se respeta tal cual (carga 100% manual en pesos).
-      const precioUsd     = has('precio_usd')     ? _cleanNum(data.precio_usd)     : undefined;
-      const margenPct     = has('margen_pct')     ? _cleanNum(data.margen_pct)     : undefined;
-      const cotizacionUsd = has('cotizacion_usd') ? _cleanNum(data.cotizacion_usd) : undefined;
-      if (precioUsd     !== undefined) fields.precio_usd     = precioUsd;
-      if (margenPct     !== undefined) fields.margen_pct     = margenPct;
-      if (cotizacionUsd !== undefined) fields.cotizacion_usd = cotizacionUsd;
-      if (precioUsd != null && cotizacionUsd != null) {
-        fields.precio_ars = calcularPrecioArs(precioUsd, margenPct || 0, cotizacionUsd);
-      } else if (has('precio_ars')) {
-        fields.precio_ars = _cleanNum(data.precio_ars) || 0;
-      }
-
-      return fields;
-    }
-
-    function _serializeProductoPropio(lp) {
-      return {
-        id: lp.id, titulo: lp.titulo, descripcion: lp.descripcion || '',
-        marca: lp.marca || '', categoria: lp.categoria, condicion: lp.condicion,
-        precio_usd: lp.precio_usd != null ? Number(lp.precio_usd) : null,
-        margen_pct: lp.margen_pct != null ? Number(lp.margen_pct) : null,
-        cotizacion_usd: lp.cotizacion_usd != null ? Number(lp.cotizacion_usd) : null,
-        precio_ars: Number(lp.precio_ars) || 0,
-        stock_estado: lp.stock_estado,
-        imagen_portada_url: lp.imagen_portada_url || '',
-        imagenes: Array.isArray(lp.imagenes) ? lp.imagenes : [],
-        variantes: Array.isArray(lp.variantes) ? lp.variantes : [],
-        video_url: lp.video_url || '', video_fuente: lp.video_fuente || '', video_thumb_url: lp.video_thumb_url || '',
-        destacado: !!lp.destacado, activo: !!lp.activo, a_pedido: !!lp.a_pedido,
-        notas_admin: lp.notas_admin || '', origen: lp.origen || 'manual',
-        creado_en: lp.creado_en, actualizado_en: lp.actualizado_en,
-      };
-    }
-
     // ══════════════════════════════════════════════════════════
     //  CATEGORÍAS  /api/tienda/admin/categorias
     // ══════════════════════════════════════════════════════════
@@ -1981,7 +1972,19 @@ const server = http.createServer((req, res) => {
           const dir = path.join(__dirname, 'uploads', 'productos-propios');
           fs.mkdirSync(dir, { recursive: true });
           const fname = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
-          fs.writeFileSync(path.join(dir, fname), file.data);
+          // Comprimir/redimensionar (excepto .gif, que puede ser animado y sharp lo aplanaría)
+          let outData = file.data;
+          if (ext !== '.gif') {
+            try {
+              const img = sharp(file.data).rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true });
+              if (ext === '.png')      outData = await img.png({ compressionLevel: 9 }).toBuffer();
+              else if (ext === '.webp') outData = await img.webp({ quality: 82 }).toBuffer();
+              else                      outData = await img.jpeg({ quality: 82, mozjpeg: true }).toBuffer();
+            } catch {
+              outData = file.data; // si falla la compresión, guardamos el original
+            }
+          }
+          fs.writeFileSync(path.join(dir, fname), outData);
           res.writeHead(200);
           res.end(JSON.stringify({ ok: true, url: `/uploads/productos-propios/${fname}` }));
         } catch (e) {
@@ -2166,6 +2169,54 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── POST /api/tienda/carrito-abandonado ───────────────────
+    // Se llama al completar el paso 1 del checkout (nombre+email).
+    // Guarda un snapshot del carrito para poder recordárselo por email
+    // si el usuario abandona sin completar la compra.
+    if (pathname === '/api/tienda/carrito-abandonado' && req.method === 'POST') {
+      readBody(req).then(async (rawBody) => {
+        try {
+          const data  = JSON.parse(rawBody);
+          const email = String(data.email  || '').trim();
+          const nombre = String(data.nombre || '').trim().slice(0, 200);
+          const items  = Array.isArray(data.items) ? data.items.slice(0, 50) : [];
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !items.length) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'email e items son obligatorios' }));
+            return;
+          }
+          const total = items.reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseInt(it.qty) || 1), 0);
+          await db.upsertCarritoAbandonado({ email, nombre, items, total });
+          res.writeHead(200);
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: 'internal_error', message: e.message }));
+        }
+      });
+      return;
+    }
+
+    // ── GET /api/tienda/carrito-abandonado/:token ─────────────
+    // Usado por carrito.html para restaurar el carrito desde el
+    // deep-link del email "tu carrito te espera".
+    if (pathname.startsWith('/api/tienda/carrito-abandonado/') && req.method === 'GET') {
+      const token = pathname.split('/').pop();
+      db.getCarritoAbandonadoPorToken(token).then(carrito => {
+        if (!carrito) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ error: 'No encontrado' }));
+          return;
+        }
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true, items: carrito.items }));
+      }).catch(e => {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'internal_error', message: e.message }));
+      });
+      return;
+    }
+
     // ── POST /api/tienda/orden ───────────────────────────────
     if (pathname === '/api/tienda/orden' && req.method === 'POST') {
       // Rate limit: máx 10 órdenes por IP por hora (anti-spam)
@@ -2241,7 +2292,10 @@ const server = http.createServer((req, res) => {
           // ── Fin validación de precios ──────────────────────────────────────
 
           // ── Recalcular total server-side (cupón + descuento 5% por transferencia) ──
-          const subtotalCalc = orderItems.reduce((acc, it) => acc + (parseFloat(it.price) || 0) * (parseInt(it.qty) || 1), 0);
+          // qty se clampa a [1, 99]: un qty negativo restaría plata del total.
+          const sanQty = it => Math.min(99, Math.max(1, parseInt(it.qty) || 1));
+          for (const it of orderItems) it.qty = sanQty(it);
+          const subtotalCalc = orderItems.reduce((acc, it) => acc + Math.max(0, parseFloat(it.price) || 0) * it.qty, 0);
 
           let cuponDescuentoCalc = 0;
           const cuponCode = data.pago?.cupon;
@@ -2258,7 +2312,12 @@ const server = http.createServer((req, res) => {
             }
           }
 
-          const envioCalc    = parseFloat(data.envio?.precio) || 0;
+          // El precio de envío viene del cliente — clampear a >= 0 (un valor negativo
+          // descontaría del total). Se muta data.envio.precio para que createOrden y
+          // todo lo downstream persistan el valor sano. La validación contra
+          // cotización real queda como mejora pendiente (ver plan 3.1).
+          if (data.envio) data.envio.precio = Math.max(0, parseFloat(data.envio.precio) || 0);
+          const envioCalc    = data.envio?.precio || 0;
           const esTransferencia = data.pago?.metodo === 'transferencia';
           const descuentoCalc = esTransferencia ? Math.round((subtotalCalc - cuponDescuentoCalc) * 0.05) : 0;
           if (data.pago) {
@@ -2277,7 +2336,11 @@ const server = http.createServer((req, res) => {
           const orden = await db.createOrden(data);
           console.log(`  ✓ [tienda] Nueva orden: ${orden.id}`);
 
-          // Guardar cupón de fidelidad en DB (async)
+          // Marcar el carrito abandonado de este email como recuperado
+          // (si había uno pendiente, no se le manda el recordatorio)
+          if (emailVal) db.marcarCarritoRecuperado(emailVal).catch(() => {});
+
+          // Guardar cupón de fidelidad (async)
           guardarCuponFidelidad(orden.id).then(cod =>
             console.log(`  ✓ [fidelidad] Cupón ${cod} generado para orden ${orden.id}`)
           ).catch(() => {});
@@ -2743,7 +2806,7 @@ const server = http.createServer((req, res) => {
         // Si está pendiente_pago, hacer un check rápido con MP
         if (orden.status === 'pendiente_pago' && orden.pago?.metodo === 'mercadopago') {
           try {
-            const accessToken = getMpToken();
+            const accessToken = await getMpTokenFresh();
             if (accessToken) {
               const pago = await mpSearchPaymentByExternalRef(orden.id, accessToken);
               if (pago && pago.status === 'approved') {
@@ -2789,9 +2852,14 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ error: 'Orden no encontrada' }));
             return;
           }
+          if (orden.status === 'pagado') {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Esta orden ya fue pagada' }));
+            return;
+          }
 
           // Token de MP — preferimos config.mp_access_token, fallback al de ML
-          const accessToken = getMpToken();
+          const accessToken = await getMpTokenFresh();
           if (!accessToken) {
             res.writeHead(500);
             res.end(JSON.stringify({ error: 'MP access_token no configurado (poné mp_access_token en config.json)' }));
@@ -2852,7 +2920,7 @@ const server = http.createServer((req, res) => {
           // En este handler NO usamos readBody — leemos directamente.
           // (nota: req ya puede estar en estado "ended" si el body llegó antes del 200)
 
-          const accessToken = getMpToken();
+          const accessToken = await getMpTokenFresh();
           if (!accessToken) return;
 
           let paymentId = qId || '';
@@ -3346,6 +3414,39 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── POST /api/tienda/orden/:id/cancelar ──────────────────
+    // Cancelación pública por el cliente: requiere conocer id + email
+    // (misma seguridad que /seguimiento). Solo permitido si el pago
+    // todavía no se confirmó (pendiente / pendiente_pago / rechazado).
+    if (pathname.match(/^\/api\/tienda\/orden\/[^/]+\/cancelar$/) && req.method === 'POST') {
+      readBody(req).then(async (rawBody) => {
+        try {
+          const orden_id = decodeURIComponent(pathname.split('/')[4]);
+          const data  = JSON.parse(rawBody || '{}');
+          const email = String(data.email || '').trim().toLowerCase();
+          if (!orden_id || !email) {
+            res.writeHead(400); res.end(JSON.stringify({ error: 'Se requiere email' })); return;
+          }
+          const orden = await db.getOrdenById(orden_id);
+          if (!orden || (orden.datos?.email || orden.cliente?.email || '').toLowerCase() !== email) {
+            res.writeHead(404); res.end(JSON.stringify({ error: 'Orden no encontrada' })); return;
+          }
+          if (!['pendiente', 'pendiente_pago', 'rechazado'].includes(orden.status)) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Esta orden ya no se puede cancelar' }));
+            return;
+          }
+          const actualizada = await db.updateOrdenStatus(orden.id, 'cancelado');
+          res.writeHead(200);
+          res.end(JSON.stringify({ ok: true, status: actualizada.status }));
+        } catch (e) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: 'internal_error', message: e.message }));
+        }
+      });
+      return;
+    }
+
     // ══════════════════════════════════════════════════════════
     // ADMIN — Gestión de órdenes (requieren auth — isAuthExempt excluye /admin/)
     // ══════════════════════════════════════════════════════════
@@ -3448,6 +3549,33 @@ const server = http.createServer((req, res) => {
                 html:    emailEnvioTracking(o, tracking),
               }).catch(() => {});
             }
+
+            // Email al cliente si fue entregado
+            if (newStatus === 'entregado' && cliente.email) {
+              sendEmail({
+                to:      cliente.email,
+                subject: `Tu pedido #${String(o.id).slice(-8).toUpperCase()} fue entregado · WZMALLAS`,
+                html:    emailPedidoEntregado(o),
+              }).catch(() => {});
+            }
+
+            // Email al cliente si fue cancelado
+            if (newStatus === 'cancelado' && cliente.email) {
+              sendEmail({
+                to:      cliente.email,
+                subject: `Tu pedido #${String(o.id).slice(-8).toUpperCase()} fue cancelado · WZMALLAS`,
+                html:    emailPedidoCancelado(o),
+              }).catch(() => {});
+            }
+
+            // Email al cliente si fue reembolsado
+            if (newStatus === 'reembolsado' && cliente.email) {
+              sendEmail({
+                to:      cliente.email,
+                subject: `Reembolso procesado · Pedido #${String(o.id).slice(-8).toUpperCase()} · WZMALLAS`,
+                html:    emailPedidoReembolsado(o),
+              }).catch(() => {});
+            }
           }
 
           res.writeHead(200);
@@ -3530,29 +3658,10 @@ const server = http.createServer((req, res) => {
 
     // ── CUPONES — CRUD (público GET, admin POST/DELETE) ──────
     //
-    // Almacena en Stockroom/tienda-cupones.json.
+    // Almacena en Stockroom/tienda-cupones.json (getCupones/saveCupones
+    // y CUPONES_PATH están definidos a nivel de módulo, ver más arriba).
     // El front (carrito.html) hace GET /api/tienda/cupones como fallback.
     // ─────────────────────────────────────────────────────────
-
-    const CUPONES_PATH = path.join(__dirname, 'tienda-cupones.json');
-
-    function getCupones() {
-      try {
-        const raw = JSON.parse(fs.readFileSync(CUPONES_PATH, 'utf8'));
-        return Array.isArray(raw) ? raw : [];
-      } catch {
-        // Cupones por defecto si no existe el archivo
-        return [
-          { code: 'WEB10',      type: 'percent', value: 10, label: '10% off — cupón web',           active: true },
-          { code: 'WZMALLAS15', type: 'percent', value: 15, label: '15% off — descuento especial',  active: true },
-          { code: 'ENVIO',      type: 'freeship', value: 0, label: 'Envío gratis',                  active: true },
-        ];
-      }
-    }
-
-    function saveCupones(list) {
-      fs.writeFileSync(CUPONES_PATH, JSON.stringify(list, null, 2), 'utf8');
-    }
 
     // GET /api/tienda/cupones — público (para carrito.html)
     if (pathname === '/api/tienda/cupones' && req.method === 'GET') {
@@ -4150,7 +4259,7 @@ const server = http.createServer((req, res) => {
             fs.copyFileSync(CONFIG_PATH, backupPath);
           } catch(e) { /* no-op */ }
         }
-        fs.writeFileSync(CONFIG_PATH, JSON.stringify(normalized, null, 2));
+        atomicWriteFileSync(CONFIG_PATH, JSON.stringify(normalized, null, 2));
         loadConfig();
         resetAppToken();
         console.log(`  ✓ config.json importado — ${normalized.accounts.length} cuenta(s), activa: ${normalized.active}`);
@@ -5468,6 +5577,23 @@ const server = http.createServer((req, res) => {
 
         if (!toApply.length) { json(res, 200, { ok: true, applied: 0, msg: 'Sin ajustes pendientes' }); return; }
 
+        // Si el usuario eligió, por variante, qué cuenta tiene el valor correcto,
+        // recalculamos los cambios a aplicar usando ese valor en vez del mínimo automático.
+        if (bodyData.variantChoices && Object.keys(bodyData.variantChoices).length) {
+          for (const adj of toApply) {
+            if (adj.type !== 'variant' || !adj.variantMismatches) continue;
+            const mismatchesWithChoice = adj.variantMismatches.map(mm => {
+              const chosenItemId = bodyData.variantChoices[mm.attrKey];
+              if (!chosenItemId) return mm;
+              const chosen = mm.perItem.find(p => p.itemId === chosenItemId);
+              if (!chosen) return mm;
+              return { ...mm, targetQty: chosen.qty };
+            });
+            adj.changes = buildVariantChangesFromMismatches(mismatchesWithChoice);
+            adj.variantMismatches = mismatchesWithChoice;
+          }
+        }
+
         const allAccounts = fullConfig.accounts || [];
         const results = [];
 
@@ -5520,20 +5646,15 @@ const server = http.createServer((req, res) => {
                       }
                     }
                   } else {
-                    // ── Fallback: distribución proporcional (no hay info de variante) ──
-                    const oldTotal = ch.from || 1;
-                    newVars = vars.map(v => {
-                      const oldQty = v.available_quantity || 0;
-                      const newQty = oldTotal === 0
-                        ? Math.floor(adj.targetStock / vars.length)
-                        : Math.round((oldQty / oldTotal) * adj.targetStock);
-                      return { id: v.id, available_quantity: Math.max(newQty, 0) };
-                    });
-                    const sum = newVars.reduce((s, v) => s + v.available_quantity, 0);
-                    if (sum !== adj.targetStock && newVars.length) {
-                      newVars[0].available_quantity += (adj.targetStock - sum);
-                      if (newVars[0].available_quantity < 0) newVars[0].available_quantity = 0;
-                    }
+                    // Sin info de variante: NO redistribuir proporcionalmente.
+                    // Reescalar todas las variantes matemáticamente para que el
+                    // total cuadre desalinea las cantidades reales de cada una
+                    // (esto fue lo que rompió el stock por variante de RZ-ZETTAI
+                    // el 2026-06-12). Se omite este item — el check por variante
+                    // generará un ajuste preciso si hace falta.
+                    console.log('[vinc] apply', ch.itemId, '— omitido: sin info de variante, evita desalinear stock por variante');
+                    results.push({ adjId: adj.id, itemId: ch.itemId, ok: false, error: 'Sin info de variante para ajustar con precisión — omitido' });
+                    continue;
                   }
                 }
 
@@ -5593,6 +5714,77 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── POST /vinculaciones/revert-adjustment ───────────────────────
+  // Body: { id: "adj_..." } → revierte un ajuste ya aplicado, devolviendo
+  // cada variante/total a su valor "from" original.
+  if (pathname === '/vinculaciones/revert-adjustment' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', async () => {
+      try {
+        let bodyData = {};
+        try { bodyData = body ? JSON.parse(body) : {}; } catch(e) {}
+        const { id } = bodyData;
+        const allAdj = loadPendingAdjustments();
+        const adj = allAdj.find(a => a.id === id);
+        if (!adj) { json(res, 404, { error: 'Ajuste no encontrado' }); return; }
+        if (adj.status !== 'applied') { json(res, 400, { error: 'Sólo se pueden revertir ajustes aplicados (estado actual: ' + adj.status + ')' }); return; }
+
+        const allAccounts = fullConfig.accounts || [];
+        const results = [];
+
+        for (const ch of adj.changes) {
+          const acct = allAccounts.find(a => a.id === ch.accountId);
+          if (!acct) { results.push({ itemId: ch.itemId, ok: false, error: 'cuenta no encontrada' }); continue; }
+          try {
+            await refreshAccountToken(acct);
+            const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
+            const vars = itemData.variations || [];
+            if (vars.length) {
+              const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+              if (adj.type === 'variant' && ch.variantChanges?.length) {
+                for (const vc of ch.variantChanges) {
+                  const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+                  if (matchedVar) {
+                    const t = newVars.find(v => v.id === matchedVar.id);
+                    if (t) t.available_quantity = Math.max(0, vc.from);
+                  }
+                }
+              } else if (ch.sourceVariantDeltas?.length) {
+                for (const sd of ch.sourceVariantDeltas) {
+                  const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === sd.attrKey));
+                  if (matchedVar) {
+                    const t = newVars.find(v => v.id === matchedVar.id);
+                    if (t) t.available_quantity = Math.max(0, t.available_quantity + sd.delta);
+                  }
+                }
+              } else {
+                results.push({ itemId: ch.itemId, ok: false, error: 'sin info de variante para revertir' });
+                continue;
+              }
+              await mlPutAuth(acct, '/items/' + ch.itemId, { variations: newVars });
+            } else {
+              await mlPutAuth(acct, '/items/' + ch.itemId, { available_quantity: ch.from });
+            }
+            results.push({ itemId: ch.itemId, ok: true });
+          } catch(e) {
+            results.push({ itemId: ch.itemId, ok: false, error: e.message });
+          }
+        }
+
+        const allOk = results.length > 0 && results.every(r => r.ok);
+        if (allOk) {
+          adj.status = 'reverted';
+          adj.revertedAt = new Date().toISOString();
+          savePendingAdjustments(allAdj);
+          appendVincLog({ action: 'reverted', source: 'web', adjId: adj.id, groupId: adj.groupId, triggerAcctLabel: adj.trigger?.acctLabel, itemsApplied: results.length });
+        }
+        json(res, 200, { ok: allOk, results });
+      } catch(e) { json(res, 500, { error: e.message }); }
+    });
+    return;
+  }
+
   // ── POST /vinculaciones/dismiss-adjustment ─────────────────────
   // Body: {} → descarta todos | { id: "adj_..." } → descarta uno
   if (pathname === '/vinculaciones/dismiss-adjustment' && req.method === 'POST') {
@@ -5632,18 +5824,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── POST /vinculaciones/check-variants ──────────────────────────
-  // Verifica stock variante por variante (talle/color) entre los items del grupo
-  if (pathname === '/vinculaciones/check-variants' && req.method === 'POST') {
-    (async () => {
-      try {
-        const result = await checkStockChangesByVariant();
-        const list = loadPendingAdjustments().filter(p => p.status === 'pending');
-        json(res, 200, { ok: true, pending: list, lastCheck: lastVincCheck, ...result });
-      } catch(e) { json(res, 500, { error: e.message }); }
-    })();
-    return;
-  }
 
   // ══════════════════════════════════════════════════════════════
   //  MULTI-CUENTA: despachos + etiquetas de TODAS las cuentas
@@ -6737,18 +6917,35 @@ const server = http.createServer((req, res) => {
 
     const resolved = path.resolve(TIENDA_DIR, '.' + subPath);
 
+    // Páginas (sin extensión o .html) que no existen → 404.html personalizada.
+    // Assets (imágenes, JS, CSS, etc.) que no existen → 404 plano, no tiene
+    // sentido devolver una página HTML para un <img src> o <script src> roto.
+    const reqExt    = path.extname(resolved).toLowerCase();
+    const wantsPage = reqExt === '' || reqExt === '.html';
+    const notFound404Page = () => {
+      if (wantsPage) {
+        const custom404 = path.join(TIENDA_DIR, '404.html');
+        if (fs.existsSync(custom404)) {
+          res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+          fs.createReadStream(custom404).pipe(res);
+          return;
+        }
+      }
+      res.writeHead(404); res.end('Not found');
+    };
+
     // Seguridad: no salir de TIENDA_DIR (normalizado para Windows/Linux)
     const tiendaNorm   = path.normalize(TIENDA_DIR);
     const resolvedNorm = path.normalize(resolved);
     if (!resolvedNorm.startsWith(tiendaNorm + path.sep) && resolvedNorm !== tiendaNorm) {
-      res.writeHead(404); res.end('Not found'); return;
+      notFound404Page(); return;
     }
 
     const ext  = path.extname(resolvedNorm).toLowerCase();
     const mime = MIME[ext];
-    if (!mime) { res.writeHead(404); res.end('Not found'); return; }
+    if (!mime) { notFound404Page(); return; }
 
-    if (!fs.existsSync(resolvedNorm)) { res.writeHead(404); res.end('Not found'); return; }
+    if (!fs.existsSync(resolvedNorm)) { notFound404Page(); return; }
 
     const tiendaHeaders = { 'Content-Type': mime };
     // Componentes JS/CSS: cacheables porque se versionan con ?v=N en el HTML
@@ -6892,6 +7089,28 @@ function tgEdit(chatId, messageId, text, keyboard) {
 async function sendTgAdjustmentNotification(adj) {
   const tg = fullConfig.telegram;
   if (!tg?.bot_token || !tg?.chat_id) return;
+
+  // ── Ajustes por variante: no tienen "trigger" (venta puntual) sino N
+  // variantes desbalanceadas entre cuentas, posiblemente repartidas en
+  // varios items. Gestionar esto con botones de Telegram es poco práctico
+  // (1 botón por variante por item), así que mostramos un resumen y
+  // remitimos a la web, donde está el detalle completo y el botón "Aplicar".
+  if (adj.type === 'variant') {
+    const mm = adj.variantMismatches || [];
+    let text = `🔀 <b>Variantes desbalanceadas</b> · ${adj.groupName}\n\n`;
+    for (const m of mm) {
+      const detalle = m.perItem.map(p => `${_shortAcct(p.acctLabel)} x${p.qty}`).join(' vs ');
+      text += `🎨 ${m.label}: ${detalle} → x${m.targetQty}\n`;
+    }
+    text += `\nGestioná esto desde la web (Vinculaciones → Pendientes) — son ${mm.length} variante(s), no se pueden ajustar con botones acá.`;
+
+    const keyboard = [[{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]];
+    const sent = await tgSend(text, keyboard);
+    console.log('[tg] Notificación enviada para ajuste:', adj.id);
+    return (sent && sent.ok && sent.result)
+      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id }
+      : null;
+  }
 
   const hasTrigger = !!adj.trigger;
 
@@ -7474,6 +7693,80 @@ async function checkStockChanges() {
   }
 }
 
+// ── Vinculaciones: detección de mismatches por variante ───────────
+// Compara, para cada atributo de variante compartido entre items del grupo
+// (ej. "color:Gris,modelo:15 Pro"), si las cantidades disponibles coinciden.
+// Se usa tanto en el check por variante manual como en el check periódico,
+// para no dejar pasar por alto desbalances que se "cancelan" a nivel de
+// stock total (ej: se vende una variante en una cuenta y otra variante
+// distinta en la otra cuenta — los totales bajan igual pero las variantes
+// quedan desalineadas).
+function detectVariantMismatches(stocks) {
+  const allHaveVariants = stocks.every(s => s.variantSnap && Object.keys(s.variantSnap).length);
+  if (!allHaveVariants) return [];
+
+  const keyCount = {};
+  for (const s of stocks) {
+    for (const k of Object.keys(s.variantSnap)) keyCount[k] = (keyCount[k] || 0) + 1;
+  }
+  const sharedKeys = Object.keys(keyCount).filter(k => keyCount[k] >= 2);
+
+  const mismatches = [];
+  for (const attrKey of sharedKeys) {
+    const perItem = stocks
+      .filter(s => s.variantSnap[attrKey] != null)
+      .map(s => ({
+        itemId: s.itemId,
+        accountId: s.accountId,
+        acctLabel: s.acctLabel || s.accountId,
+        title: s.title || '',
+        thumb: s.thumb || '',
+        varId: s.variantSnap[attrKey].id,
+        qty: s.variantSnap[attrKey].qty,
+        label: s.variantSnap[attrKey].label || attrKey,
+      }));
+
+    if (perItem.length < 2) continue;
+    const qtys = perItem.map(x => x.qty);
+    const allSame = qtys.every(q => q === qtys[0]);
+    if (!allSame) {
+      const targetQty = Math.min(...qtys);
+      mismatches.push({ attrKey, label: perItem[0].label, perItem, targetQty });
+    }
+  }
+  return mismatches;
+}
+
+// Convierte mismatches por variante en la lista `changes` por item que
+// esperan los ajustes pendientes (mismo formato que usa la UI/Telegram).
+function buildVariantChangesFromMismatches(variantMismatches) {
+  const changesMap = {};
+  for (const mm of variantMismatches) {
+    for (const pi of mm.perItem) {
+      if (pi.qty > mm.targetQty) {
+        if (!changesMap[pi.itemId]) {
+          changesMap[pi.itemId] = {
+            itemId: pi.itemId,
+            accountId: pi.accountId,
+            acctLabel: pi.acctLabel,
+            title: pi.title,
+            thumb: pi.thumb,
+            variantChanges: [],
+          };
+        }
+        changesMap[pi.itemId].variantChanges.push({
+          attrKey: mm.attrKey,
+          varId: pi.varId,
+          label: mm.label,
+          from: pi.qty,
+          to: mm.targetQty,
+        });
+      }
+    }
+  }
+  return Object.values(changesMap);
+}
+
 async function _checkStockChangesImpl() {
   const _checkStartMs = Date.now();
   const fp = path.join(__dirname, 'vinculaciones.json');
@@ -7522,7 +7815,7 @@ async function _checkStockChangesImpl() {
       const variantSnap = {};
       vars.forEach(v => {
         const key = (_varKeysAll(v)[0]) || ('var_' + v.id);
-        variantSnap[key] = { id: v.id, qty: v.available_quantity || 0 };
+        variantSnap[key] = { id: v.id, qty: v.available_quantity || 0, label: _varLabel(v) };
       });
       const thumb = d.thumbnail ||
         (d.pictures && d.pictures[0] && (d.pictures[0].secure_url || d.pictures[0].url)) || '';
@@ -7587,6 +7880,12 @@ async function _checkStockChangesImpl() {
       }
     }
 
+    // Verificación por variante: se calcula siempre, sin importar si los
+    // totales coinciden o no. Comparar sólo totales puede hacer que un
+    // desbalance real quede oculto (los totales pueden "cuadrar" de
+    // casualidad mientras las variantes individuales quedan desalineadas).
+    const variantMismatches = detectVariantMismatches(stocks);
+
     // ── Auto-resolver ajustes pendientes si los stocks ya están igualados ──
     // Ocurre cuando el ajuste fue aplicado desde otra instancia del servidor.
     if (pendingGroupIds.has(g.id)) {
@@ -7608,6 +7907,27 @@ async function _checkStockChangesImpl() {
           }
         });
         pendingGroupIds.delete(g.id); // liberar para que pueda generarse nuevo si vuelve a desbalancearse
+
+        // Si pese a coincidir los totales hay variantes desalineadas
+        // (ej: se vendió una variante distinta en cada cuenta), generar
+        // un ajuste de tipo "variant" para corregirlas.
+        if (variantMismatches.length) {
+          const changes = buildVariantChangesFromMismatches(variantMismatches);
+          if (changes.length) {
+            newAdjustments.push({
+              id: 'adj_var_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+              type: 'variant',
+              createdAt: new Date().toISOString(),
+              groupId: g.id,
+              groupName: g.name,
+              variantMismatches,
+              changes,
+              status: 'pending',
+            });
+            pendingGroupIds.add(g.id);
+            console.log('[vinc]   ⚠ "' + g.name + '" — totales igualados pero ' + variantMismatches.length + ' variante(s) desalineada(s)');
+          }
+        }
       }
     }
 
@@ -7615,7 +7935,27 @@ async function _checkStockChangesImpl() {
     if (!pendingGroupIds.has(g.id)) {
       const nums = stocks.map(s => s.realStock);
       const allSame = nums.every(n => n === nums[0]);
-      if (!allSame && anyChanged) {
+
+      // Verificar siempre por variante primero: si hay desalineación a nivel
+      // de variante, es más precisa que el ajuste por total y la corrige de
+      // entrada, sin importar si los totales ya coinciden o no.
+      if (variantMismatches.length) {
+        const changes = buildVariantChangesFromMismatches(variantMismatches);
+        if (changes.length) {
+          newAdjustments.push({
+            id: 'adj_var_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            type: 'variant',
+            createdAt: new Date().toISOString(),
+            groupId: g.id,
+            groupName: g.name,
+            variantMismatches,
+            changes,
+            status: 'pending',
+          });
+          pendingGroupIds.add(g.id);
+          console.log('[vinc]   ⚠ "' + g.name + '" — ' + variantMismatches.length + ' variante(s) desalineada(s)' + (allSame ? ' (totales iguales)' : ''));
+        }
+      } else if (!allSame && anyChanged) {
         const minStock = Math.min(...nums);
 
         // Detectar el trigger: item con mayor caída
@@ -7713,199 +8053,6 @@ async function _checkStockChangesImpl() {
   );
 }
 
-// ── Vinculaciones: check de stock por variante ────────────────
-// Compara qty de cada variante individual entre los items del grupo
-// (el check normal solo compara totales; este detecta desbalances por talle/color/etc.)
-async function checkStockChangesByVariant() {
-  const fp = path.join(__dirname, 'vinculaciones.json');
-  if (!fs.existsSync(fp)) return { newAdjustments: [], groups: 0 };
-  let vinc;
-  try { vinc = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch(e) { return { newAdjustments: [], groups: 0 }; }
-  if (!vinc.groups || !vinc.groups.length) return { newAdjustments: [], groups: 0 };
-
-  const allAccounts = fullConfig.accounts || [];
-
-  // Refrescar tokens una sola vez por cuenta
-  const refreshedAcctIds = new Set();
-  for (const g of vinc.groups) {
-    for (const it of g.items) {
-      if (!refreshedAcctIds.has(it.accountId)) {
-        const acct = allAccounts.find(a => a.id === it.accountId);
-        if (acct) try { await refreshAccountToken(acct); } catch(e) {}
-        refreshedAcctIds.add(it.accountId);
-      }
-    }
-  }
-
-  console.log('[vinc-var] Verificando stock por variante de ' + vinc.groups.length + ' grupo(s)...');
-
-  const allAdjustments = loadPendingAdjustments();
-  // Guard: no crear pendientes duplicados si ya hay uno pendiente para el grupo.
-  // (Sin esta verificación, llamar al endpoint /vinculaciones/check-variants varias
-  //  veces — manualmente o por concurrencia con checkStockChanges normal — generaba
-  //  N ajustes pendientes para el mismo grupo en lugar de uno.)
-  const existingPendingGroupIds = new Set(
-    allAdjustments.filter(p => p.status === 'pending').map(p => p.groupId)
-  );
-  const newAdjustments = [];
-  let groupsOk = 0;
-  let groupsMismatch = 0;
-  let groupsNoVariants = 0;
-  let groupsAlreadyPending = 0;
-
-  for (const g of vinc.groups) {
-    // Skip si ya hay un ajuste pendiente para este grupo (de cualquier tipo)
-    if (existingPendingGroupIds.has(g.id)) {
-      groupsAlreadyPending++;
-      console.log('[vinc-var]   "' + g.name + '": ya tiene ajuste pendiente, omitiendo');
-      continue;
-    }
-
-    // Leer stock actual de ML para cada item del grupo
-    const stocks = [];
-    for (const it of g.items) {
-      const acct = allAccounts.find(a => a.id === it.accountId);
-      if (!acct || !acct.access_token) continue;
-      try {
-        const d = await mlGetAuth(acct, '/items/' + it.itemId);
-        const vars = d.variations || [];
-        const variantSnap = {};
-        vars.forEach(v => {
-          const keys = _varKeysAll(v);
-          const key = keys[0] || ('var_' + v.id);
-          variantSnap[key] = { id: v.id, qty: v.available_quantity || 0, label: _varLabel(v) };
-        });
-        const realStock = vars.length
-          ? vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0)
-          : (d.available_quantity || 0);
-        stocks.push({
-          ...it,
-          realStock,
-          variantSnap,
-          title: d.title || it.title || '',
-          hasVariants: vars.length > 0,
-        });
-      } catch(e) {
-        console.log('[vinc-var]   Error leyendo ' + it.itemId + ': ' + e.message);
-      }
-    }
-
-    if (stocks.length < 2) continue;
-
-    // Si los items no tienen variantes, comparar totales directamente
-    const allHaveVariants = stocks.every(s => s.hasVariants);
-    if (!allHaveVariants) {
-      groupsNoVariants++;
-      console.log('[vinc-var]   "' + g.name + '": sin variantes, omitiendo (usar check normal)');
-      continue;
-    }
-
-    // Recopilar attrKeys que aparecen en al menos 2 items (son las comparables)
-    const keyCount = {};
-    for (const s of stocks) {
-      for (const k of Object.keys(s.variantSnap)) {
-        keyCount[k] = (keyCount[k] || 0) + 1;
-      }
-    }
-    const sharedKeys = Object.keys(keyCount).filter(k => keyCount[k] >= 2);
-
-    if (!sharedKeys.length) {
-      groupsNoVariants++;
-      console.log('[vinc-var]   "' + g.name + '": variantes sin atributos compartidos, omitiendo');
-      continue;
-    }
-
-    // Detectar mismatches por variante
-    const variantMismatches = [];
-    for (const attrKey of sharedKeys) {
-      const perItem = stocks
-        .filter(s => s.variantSnap[attrKey] != null)
-        .map(s => ({
-          itemId: s.itemId,
-          accountId: s.accountId,
-          acctLabel: s.acctLabel || s.accountId,
-          title: s.title,
-          thumb: s.thumb || '',
-          varId: s.variantSnap[attrKey].id,
-          qty: s.variantSnap[attrKey].qty,
-          label: s.variantSnap[attrKey].label || attrKey,
-        }));
-
-      if (perItem.length < 2) continue;
-      const qtys = perItem.map(x => x.qty);
-      const allSame = qtys.every(q => q === qtys[0]);
-      if (!allSame) {
-        const targetQty = Math.min(...qtys);
-        variantMismatches.push({ attrKey, label: perItem[0].label, perItem, targetQty });
-      }
-    }
-
-    if (!variantMismatches.length) {
-      groupsOk++;
-      console.log('[vinc-var]   "' + g.name + '": variantes OK');
-      continue;
-    }
-
-    groupsMismatch++;
-
-    // Construir cambios: agrupar por item qué variantes necesitan ajuste
-    const changesMap = {};
-    for (const mm of variantMismatches) {
-      for (const pi of mm.perItem) {
-        if (pi.qty > mm.targetQty) {
-          if (!changesMap[pi.itemId]) {
-            changesMap[pi.itemId] = {
-              itemId: pi.itemId,
-              accountId: pi.accountId,
-              acctLabel: pi.acctLabel,
-              title: pi.title,
-              thumb: pi.thumb,
-              variantChanges: [],
-            };
-          }
-          changesMap[pi.itemId].variantChanges.push({
-            attrKey: mm.attrKey,
-            varId: pi.varId,
-            label: mm.label,
-            from: pi.qty,
-            to: mm.targetQty,
-          });
-        }
-      }
-    }
-
-    const changes = Object.values(changesMap);
-    if (!changes.length) continue;
-
-    newAdjustments.push({
-      id: 'adj_var_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      type: 'variant',
-      createdAt: new Date().toISOString(),
-      groupId: g.id,
-      groupName: g.name,
-      variantMismatches,
-      changes,
-      status: 'pending',
-    });
-    console.log('[vinc-var]   ⚠ "' + g.name + '" — ' + variantMismatches.length + ' variante(s) desbalanceada(s)');
-  }
-
-  if (newAdjustments.length) {
-    savePendingAdjustments([...allAdjustments, ...newAdjustments]);
-    for (const adj of newAdjustments) {
-      sendTgAdjustmentNotification(adj).catch(e => console.log('[tg] Error notificando:', e.message));
-    }
-  }
-
-  const totalVarMismatches = newAdjustments.reduce((s, a) => s + (a.variantMismatches?.length || 0), 0);
-  console.log('[vinc-var] Check OK — ' + groupsMismatch + ' grupo(s) con mismatch, ' + groupsOk + ' OK' +
-    (groupsNoVariants ? ', ' + groupsNoVariants + ' sin variantes comparables' : '') +
-    (groupsAlreadyPending ? ', ' + groupsAlreadyPending + ' con pending preexistente' : '') +
-    (newAdjustments.length ? ' | ' + totalVarMismatches + ' variante(s) ajustadas' : ''));
-
-  return { newAdjustments, groupsOk, groupsMismatch, groupsNoVariants, groupsAlreadyPending, groups: vinc.groups.length };
-}
-
 // ── Auto-refresh proactivo — renueva token cada 4 horas ──────
 const TOKEN_REFRESH_INTERVAL = 4 * 60 * 60 * 1000; // 4 horas (tokens ML duran 6h)
 
@@ -7966,6 +8113,32 @@ db.ensureProductOverridesTable().catch(e => console.log('[tienda-overrides] Erro
 
 // ── Inicializar tabla de productos propios (admin Tienda — alta no-ML) ─
 db.ensureProductosPropiosTable().catch(e => console.log('[tienda-productos-propios] Error en init de tabla:', e.message));
+
+// ── Inicializar tabla de carritos abandonados + cron de recordatorio ──
+db.ensureCarritosAbandonadosTable().catch(e => console.log('[carrito-abandonado] Error en init de tabla:', e.message));
+
+// Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado
+// y manda UN email "tu carrito te espera" con deep-link de restauración.
+const CARRITO_ABANDONADO_CHECK_INTERVAL = 15 * 60 * 1000;
+async function checkCarritosAbandonados() {
+  const pendientes = await db.getCarritosAbandonadosPendientes();
+  for (const c of pendientes) {
+    try {
+      await sendEmail({
+        to:      c.email,
+        subject: '🛒 Tu carrito te espera · WZMALLAS',
+        html:    emailCarritoAbandonado({ nombre: c.nombre, items: c.items, total: c.total, token: c.token }),
+      });
+      await db.marcarCarritoEmailEnviado(c.id);
+      console.log(`  ✓ [carrito-abandonado] Email enviado a ${c.email}`);
+    } catch (e) {
+      console.log(`  ⚠ [carrito-abandonado] Error enviando a ${c.email}:`, e.message);
+    }
+  }
+}
+setInterval(() => {
+  checkCarritosAbandonados().catch(e => console.log('[carrito-abandonado] Error en check periódico:', e.message));
+}, CARRITO_ABANDONADO_CHECK_INTERVAL);
 
 // ── Handler global — evita que promesas rechazadas cierren el proceso ──
 process.on('unhandledRejection', (reason, promise) => {
