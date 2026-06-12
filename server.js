@@ -45,6 +45,15 @@ const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProv
 
 require('./lib/dns-cache');
 
+// ── Route modules (Fase 4 — extracted from server.js) ────────────
+const handlePdfResumenes   = require('./routes/pdf-resumenes');
+const _mkHandlePreguntas   = require('./routes/preguntas');
+const _mkHandleBackup      = require('./routes/backup');
+const _mkHandleAlibaba     = require('./routes/alibaba');
+const _mkHandleVinculaciones = require('./routes/vinculaciones');
+const _mkHandleFlex        = require('./routes/flex');
+const _mkHandleDespachos   = require('./routes/despachos');
+
 const PORT    = parseInt(process.env.PORT) || 3000;
 // Bind to 127.0.0.1 by default — only the local machine (and cloudflared) can reach it.
 // To expose on LAN for dev: set BIND=0.0.0.0
@@ -958,6 +967,23 @@ function invalidateProductCache() {
 //  (mismo shape que un item de ML) para reusar listado/detalle/
 //  buscador/orden/paginación sin duplicar lógica.
 // ═════════════════════════════════════════════════════════════════
+// ── Instanciar routers (ctx definido aquí, después de todas las funciones) ──
+// ctx expone las funciones de server.js que los routers necesitan.
+// fullConfig/config/lastVincCheck son getters para capturar el valor actual.
+const _routerCtx = {
+  mlGetAuth, mlPutAuth, mlPostAuth, refreshAccountToken,
+  fullConfig: () => fullConfig, config: () => config,
+  getProductCache, invalidateProductCache,
+  checkStockChanges, buildVariantChangesFromMismatches,
+  getLastVincCheck: () => lastVincCheck,
+};
+const _preguntasRouter    = _mkHandlePreguntas(_routerCtx);
+const _backupRouter       = _mkHandleBackup(_routerCtx);
+const _alibabaRouter      = _mkHandleAlibaba(_routerCtx);
+const _vincRouter         = _mkHandleVinculaciones(_routerCtx);
+const _flexRouter         = _mkHandleFlex(_routerCtx);
+const _despachosRouter    = _mkHandleDespachos(_routerCtx);
+
 // ── Servidor ──────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   const parsed   = url.parse(req.url, true);
@@ -4030,6 +4056,17 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+
+  // ══════════════════════════════════════════════════════════════
+  //  MODULE-BASED ROUTES (Fase 4 — routes/ extracted handlers)
+  // ══════════════════════════════════════════════════════════════
+  if (_vincRouter(req, res, pathname)) return;
+  if (_flexRouter(req, res, pathname, parsed)) return;
+  if (_despachosRouter(req, res, pathname, parsed)) return;
+  if (handlePdfResumenes(req, res, pathname, parsed)) return;
+  if (_preguntasRouter(req, res, pathname)) return;
+  if (_backupRouter(req, res, pathname)) return;
+  if (_alibabaRouter(req, res, pathname)) return;
 
   // ── Resolver redirect URI de la cuenta activa ──────────────
   function getRedirectUri() {
