@@ -274,6 +274,9 @@ async function getOrdenes(filters = {}) {
     where += ` AND LOWER(customer_email) = LOWER($${pidx++})`;
     params.push(filters.email);
   }
+  if (filters.max_age_days) {
+    where += ` AND created_at > NOW() - INTERVAL '${parseInt(filters.max_age_days, 10)} days'`;
+  }
 
   const { rows: orderRows } = await pool.query(
     `SELECT * FROM orders ${where} ORDER BY created_at DESC`,
@@ -514,7 +517,8 @@ async function getOrdenesByEmail(email) {
 
 /** Órdenes pendientes de pago (para polling de MP) */
 async function getOrdenesPendientesPago() {
-  return getOrdenes({ status: 'pendiente_pago' });
+  // Las preferencias MP expiran a los 5 días; no tiene sentido pollear más allá de eso
+  return getOrdenes({ status: 'pendiente_pago', max_age_days: 7 });
 }
 
 /**
@@ -639,6 +643,77 @@ async function getOrdenesStats() {
       esta_semana: parseFloat(s.ingresos_semana),
       hoy:         parseFloat(s.ingresos_hoy),
     },
+  };
+}
+
+/**
+ * Órdenes que llevan más de 24hs en 'pending' (para alertar al admin).
+ * Devuelve lo mínimo para armar el mensaje de Telegram.
+ */
+async function getOrdenesPending24h() {
+  const { rows } = await pool.query(`
+    SELECT id, order_number, customer_email, customer_name, total, created_at
+    FROM orders
+    WHERE status::text = 'pending'
+      AND created_at < NOW() - INTERVAL '24 hours'
+    ORDER BY created_at ASC
+  `);
+  return rows.map(r => ({
+    id:           r.id,
+    order_number: r.order_number,
+    email:        r.customer_email,
+    nombre:       r.customer_name,
+    total:        parseFloat(r.total) || 0,
+    created_at:   r.created_at,
+  }));
+}
+
+/**
+ * Métricas de salud del soft launch (Fase 2):
+ *  - pendientes_24h: órdenes que quedaron en 'pending' hace más de 24hs (acción urgente)
+ *  - tasa_pago: % de checkouts iniciados que terminaron pagados (criterio de apertura >40%)
+ *  - carritos: capturados vs recuperados → tasa de recuperación
+ *  - cupon_soft: usos del cupón trazable del soft launch (alcance de la campaña)
+ * @param {string} [cuponSoftLaunch] código del cupón de soft launch a trazar
+ */
+async function getSoftLaunchStats(cuponSoftLaunch = null) {
+  const { rows: [o] } = await pool.query(`
+    SELECT
+      COUNT(*) FILTER (WHERE status::text = 'pending' AND created_at < NOW() - INTERVAL '24 hours') AS pendientes_24h,
+      COUNT(*) FILTER (WHERE status::text IN ('paid','shipped','delivered','completed'))            AS pagadas,
+      COUNT(*)                                                                                      AS total
+    FROM orders
+  `);
+
+  const { rows: [c] } = await pool.query(`
+    SELECT
+      COUNT(*)                                       AS capturados,
+      COUNT(*) FILTER (WHERE recovered_at IS NOT NULL) AS recuperados
+    FROM tienda_carritos_abandonados
+  `).catch(() => ({ rows: [{ capturados: 0, recuperados: 0 }] }));
+
+  let cuponUsos = 0;
+  if (cuponSoftLaunch) {
+    const { rows: [cu] } = await pool.query(
+      `SELECT COUNT(*) AS usos FROM orders WHERE UPPER(coupon_code) = UPPER($1)`,
+      [cuponSoftLaunch]
+    ).catch(() => ({ rows: [{ usos: 0 }] }));
+    cuponUsos = parseInt(cu.usos);
+  }
+
+  const pagadas    = parseInt(o.pagadas);
+  const total      = parseInt(o.total);
+  const capturados = parseInt(c.capturados);
+  const recuperados = parseInt(c.recuperados);
+
+  return {
+    pendientes_24h:       parseInt(o.pendientes_24h),
+    tasa_pago:            total > 0 ? Math.round((pagadas / total) * 100) : null,
+    carritos_capturados:  capturados,
+    carritos_recuperados: recuperados,
+    tasa_recuperacion:    capturados > 0 ? Math.round((recuperados / capturados) * 100) : null,
+    cupon_soft_code:      cuponSoftLaunch || null,
+    cupon_soft_usos:      cuponUsos,
   };
 }
 
@@ -1237,6 +1312,8 @@ module.exports = {
   getOrdenesPendientesPago,
   getOrdenesFiltered,
   getOrdenesStats,
+  getSoftLaunchStats,
+  getOrdenesPending24h,
   // Sessions
   createSession,
   getSession,

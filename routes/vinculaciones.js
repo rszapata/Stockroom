@@ -363,6 +363,7 @@ module.exports = function(ctx) {
               triggerAcctLabel: adj.trigger?.acctLabel,
               targetStock: adj.targetStock,
               itemsApplied: adjOk, itemsTotal: adj.changes.length,
+              variantDeltas: adj.trigger?.variantDeltas || [],
             });
           }
 

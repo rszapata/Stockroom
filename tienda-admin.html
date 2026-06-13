@@ -274,6 +274,38 @@
       </div>
     </div>
 
+    <!-- SALUD DEL SOFT LAUNCH (Fase 2) -->
+    <div class="adm-card" id="card-soft-launch" style="margin-bottom:16px">
+      <div class="adm-card-head">
+        <div class="adm-card-title">Salud del soft launch</div>
+        <div class="adm-card-sub" style="font-size:12px;color:var(--muted);margin-top:2px">Métricas para decidir la apertura al público</div>
+      </div>
+      <div class="adm-card-body">
+        <div class="adm-kpi-grid">
+          <div class="adm-kpi">
+            <div class="adm-kpi-label">Pending +24 hs</div>
+            <div class="adm-kpi-value" id="sl-pending24">—</div>
+            <div class="adm-kpi-delta" id="sl-pending24-note"></div>
+          </div>
+          <div class="adm-kpi">
+            <div class="adm-kpi-label">Checkouts completados</div>
+            <div class="adm-kpi-value" id="sl-tasapago">—</div>
+            <div class="adm-kpi-delta" id="sl-tasapago-note"></div>
+          </div>
+          <div class="adm-kpi">
+            <div class="adm-kpi-label">Carritos recuperados</div>
+            <div class="adm-kpi-value" id="sl-carritos">—</div>
+            <div class="adm-kpi-delta" id="sl-carritos-note"></div>
+          </div>
+          <div class="adm-kpi">
+            <div class="adm-kpi-label">Cupón BIENVENIDA10</div>
+            <div class="adm-kpi-value yellow" id="sl-cupon">—</div>
+            <div class="adm-kpi-delta">usos del soft launch</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PARA HACER HOY -->
     <div class="adm-card" id="card-para-hoy" style="margin-bottom:16px; display:none">
       <div class="adm-card-head">
@@ -592,7 +624,9 @@ const ORDER_STATUS_CLASS = {
 };
 
 /* ═══════════════ CUPONES ═══════════════════════════════════ */
+let _cuponesCache = [];
 function renderCoupons(list) {
+  _cuponesCache = Array.isArray(list) ? list : [];
   const tbody = document.getElementById('coupon-tbody');
   if (!list.length) {
     tbody.innerHTML = '<tr><td colspan="6"><div class="adm-empty" style="padding:20px">No hay cupones</div></td></tr>';
@@ -611,7 +645,7 @@ function renderCoupons(list) {
       <td><span class="badge ${c.active !== false ? 'badge-green' : 'badge-gray'}">${c.active !== false ? 'Activo' : 'Inactivo'}</span></td>
       <td style="white-space:nowrap">
         <div class="btn-group">
-          <button class="btn btn-ghost btn-sm" onclick="editCoupon(${JSON.stringify(c)})">Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="editCoupon('${esc(c.code)}')">Editar</button>
           <button class="btn btn-ghost btn-sm" onclick="toggleCoupon('${esc(c.code)}', ${c.active !== false})">${c.active !== false ? 'Pausar' : 'Activar'}</button>
           <button class="btn btn-danger btn-sm" onclick="deleteCoupon('${esc(c.code)}', this)">Eliminar</button>
         </div>
@@ -694,6 +728,9 @@ async function loadStats() {
 
       // Para hacer hoy
       renderParaHoy(d.para_hoy || {});
+
+      // Salud del soft launch
+      renderSoftLaunch(d.soft_launch || null);
     }
 
     if (prodRes.ok) {
@@ -747,6 +784,39 @@ function renderParaHoy(paraHoy) {
         <div class="quick-desc">${it.desc}</div>
       </div>
     </a>`).join('');
+}
+
+/* ═══════════════ SALUD DEL SOFT LAUNCH ════════════════════ */
+function renderSoftLaunch(sl) {
+  const card = document.getElementById('card-soft-launch');
+  if (!sl) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  // Pending +24hs — rojo si hay alguna (acción urgente)
+  const p24    = sl.pendientes_24h || 0;
+  const p24El  = document.getElementById('sl-pending24');
+  p24El.textContent = p24;
+  p24El.style.color = p24 > 0 ? 'var(--red)' : 'var(--green)';
+  document.getElementById('sl-pending24-note').textContent =
+    p24 > 0 ? 'revisar pago / contactar' : 'sin pendientes viejos';
+
+  // Tasa de pago (checkouts completados) — verde si ≥40% (criterio de apertura)
+  const tp     = sl.tasa_pago;
+  const tpEl   = document.getElementById('sl-tasapago');
+  tpEl.textContent = (tp == null) ? '—' : tp + '%';
+  tpEl.style.color = (tp == null) ? '' : (tp >= 40 ? 'var(--green)' : 'var(--red)');
+  document.getElementById('sl-tasapago-note').textContent =
+    (tp == null) ? 'sin órdenes aún' : 'meta de apertura: ≥40%';
+
+  // Carritos recuperados
+  const tr     = sl.tasa_recuperacion;
+  document.getElementById('sl-carritos').textContent =
+    (tr == null) ? '—' : tr + '%';
+  document.getElementById('sl-carritos-note').textContent =
+    `${sl.carritos_recuperados || 0} de ${sl.carritos_capturados || 0} carritos`;
+
+  // Usos del cupón trazable
+  document.getElementById('sl-cupon').textContent = sl.cupon_soft_usos || 0;
 }
 
 /* ═══════════════ ÓRDENES RECIENTES ════════════════════════ */
@@ -904,7 +974,9 @@ async function loadCategoriesForCouponForm() {
 }
 
 /* ── Editar cupón existente: pobla el formulario ──────────── */
-function editCoupon(c) {
+function editCoupon(code) {
+  const c = _cuponesCache.find(x => x.code === code);
+  if (!c) { toast('No se encontró el cupón', 'err'); return; }
   document.getElementById('f-edit-code').value  = c.code;
   document.getElementById('f-code').value        = c.code;
   document.getElementById('f-code').readOnly     = true;

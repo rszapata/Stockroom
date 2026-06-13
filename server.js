@@ -314,6 +314,10 @@ function getStripeConfig() {
 // (el checkout valida los cupones contra este archivo, vía getCupones())
 const CUPONES_PATH = path.join(__dirname, 'tienda-cupones.json');
 
+// Cupón trazable del soft launch (Fase 2): se reparte solo a clientes
+// recurrentes de ML. El dashboard cuenta sus usos para medir el alcance.
+const SOFT_LAUNCH_COUPON = 'BIENVENIDA10';
+
 function getCupones() {
   try {
     const raw = JSON.parse(fs.readFileSync(CUPONES_PATH, 'utf8'));
@@ -805,6 +809,7 @@ async function _refreshStatsCache() {
   }
 }
 const _contactRateLimit = new Map(); // ip -> [timestamp1, timestamp2...]
+const _newsletterRL     = new Map(); // ip -> [timestamp1, timestamp2...] — máx 5 altas/hora
 const _ordenRateLimit   = new Map(); // ip -> [timestamp1, timestamp2...] — máx 10 órdenes/hora
 const _tiendaLoginRL    = new Map(); // ip -> { count, since } — rate limit login tienda clientes
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 días
@@ -2493,6 +2498,69 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── POST /api/tienda/newsletter ──────────────────────────
+    // Alta de suscriptor desde el formulario del footer.
+    if (pathname === '/api/tienda/newsletter' && req.method === 'POST') {
+      readBody(req).then(async (rawBody) => {
+        try {
+          const data = JSON.parse(rawBody);
+
+          // Honeypot — campo invisible que solo bots completan
+          if (data.website && String(data.website).trim().length > 0) {
+            res.writeHead(200);
+            res.end(JSON.stringify({ ok: true })); // pretender éxito
+            console.log('[newsletter] honeypot triggered, ignored');
+            return;
+          }
+
+          // Rate limit: 5 altas por IP por hora
+          const ip  = getClientIP(req) || 'unknown';
+          const now = Date.now();
+          if (!_newsletterRL.has(ip)) _newsletterRL.set(ip, []);
+          const recent = _newsletterRL.get(ip).filter(t => now - t < 3600 * 1000);
+          if (recent.length >= 5) {
+            res.writeHead(429);
+            res.end(JSON.stringify({ error: 'Demasiados intentos. Probá en 1 hora.' }));
+            return;
+          }
+          recent.push(now);
+          _newsletterRL.set(ip, recent);
+
+          // Validación de email
+          const email = String(data.email || '').trim().toLowerCase().slice(0, 200);
+          if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Email inválido' }));
+            return;
+          }
+
+          // Upsert: si ya existe y estaba dado de baja, reactivar; si no, ignorar.
+          await db.pool.query(
+            `INSERT INTO newsletter_subscribers (email, source, status)
+             VALUES ($1, 'footer', 'subscribed')
+             ON CONFLICT (email) DO UPDATE
+               SET status     = 'subscribed',
+                   updated_at = NOW()
+               WHERE newsletter_subscribers.status <> 'subscribed'`,
+            [email]
+          );
+
+          console.log(`  ✓ [tienda/newsletter] Alta/reactivación: ${email}`);
+          res.writeHead(201);
+          res.end(JSON.stringify({ ok: true }));
+
+        } catch (e) {
+          console.error('[newsletter] error:', e.message);
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'No se pudo procesar la suscripción' }));
+        }
+      }).catch(e => {
+        res.writeHead(e.status || 400);
+        res.end(JSON.stringify({ error: e.message }));
+      });
+      return;
+    }
+
     // ── POST /api/tienda/arrepentimiento ─────────────────────
     // Formulario público de arrepentimiento de compra (Art. 34 Ley 24.240)
     if (pathname === '/api/tienda/arrepentimiento' && req.method === 'POST') {
@@ -3026,7 +3094,10 @@ const server = http.createServer((req, res) => {
                   to: emailPago,
                   subject: `💳 Pago recibido · Orden #${String(orden.id).slice(-8).toUpperCase()} · WZMALLAS`,
                   html: emailPagoConfirmado({ ...orden, total: pago.transaction_amount || orden.total }),
-                }).catch(() => {});
+                }).then(r => {
+                  if (r.ok) console.log(`  ✓ [email] Pago confirmado enviado a ${emailPago}`);
+                  else if (!r.skipped) console.warn(`  ⚠ [email] Error pago confirmado a ${emailPago}:`, r.error);
+                }).catch(e => console.warn(`  ⚠ [email] Error pago confirmado a ${emailPago}:`, e.message));
               }
             } else if (newStatus === 'rechazado') {
               console.log(`  ✗ [webhook/mp] Orden ${orden.id}: → rechazado (${pago.status_detail})`);
@@ -3618,7 +3689,7 @@ const server = http.createServer((req, res) => {
     // Stats de ventas para dashboard — calculados en SQL. Solo admin.
     if (pathname === '/api/tienda/admin/stats' && req.method === 'GET') {
       (async () => {
-        const [stats, topRows, recentRows] = await Promise.all([
+        const [stats, topRows, recentRows, softLaunch] = await Promise.all([
           db.getOrdenesStats(),
           // Top 10 productos más vendidos (por unidades en order_items)
           db.pool.query(`
@@ -3665,6 +3736,7 @@ const server = http.createServer((req, res) => {
             creado_en:      row.created_at,
             items:          row.items || [],
           }))).catch(() => []),
+          db.getSoftLaunchStats(SOFT_LAUNCH_COUPON).catch(() => null),
         ]);
 
         // Normalizar: exponer pendientes directamente en ordenes
@@ -3673,7 +3745,7 @@ const server = http.createServer((req, res) => {
         }
 
         res.writeHead(200);
-        res.end(JSON.stringify({ ...stats, top_productos: topRows, ordenes_recientes: recentRows }));
+        res.end(JSON.stringify({ ...stats, top_productos: topRows, ordenes_recientes: recentRows, soft_launch: softLaunch }));
       })().catch(e => {
         console.error('[admin/stats] Error:', e?.message, e?.stack?.split('\n')[1]);
         res.writeHead(500);
@@ -5086,6 +5158,7 @@ const server = http.createServer((req, res) => {
     try { stat = fs.statSync(resolved); } catch {
       res.setHeader('Cache-Control', 'no-store'); res.writeHead(404); res.end('Not found'); return;
     }
+    if (!stat.isFile()) { res.setHeader('Cache-Control', 'no-store'); res.writeHead(404); res.end('Not found'); return; }
     const ext  = path.extname(resolved).toLowerCase();
     const mime = MIME[ext] || 'application/octet-stream';
     res.writeHead(200, {
@@ -5111,6 +5184,7 @@ const server = http.createServer((req, res) => {
     }
     let stat;
     try { stat = fs.statSync(resolved); } catch { res.writeHead(404); res.end('Not found'); return; }
+    if (!stat.isFile()) { res.writeHead(404); res.end('Not found'); return; }
     const ext  = path.extname(resolved).toLowerCase();
     const mime = MIME[ext] || 'application/octet-stream';
     const range = req.headers.range;
@@ -5188,7 +5262,9 @@ const server = http.createServer((req, res) => {
     const mime = MIME[ext];
     if (!mime) { notFound404Page(); return; }
 
-    if (!fs.existsSync(resolvedNorm)) { notFound404Page(); return; }
+    let tiendaStat;
+    try { tiendaStat = fs.statSync(resolvedNorm); } catch { tiendaStat = null; }
+    if (!tiendaStat || !tiendaStat.isFile()) { notFound404Page(); return; }
 
     const tiendaHeaders = { 'Content-Type': mime };
     // Componentes JS/CSS: cacheables porque se versionan con ?v=N en el HTML
@@ -5233,6 +5309,7 @@ const server = http.createServer((req, res) => {
   const BLOCKED_FILES = new Set([
     'server.js', 'config.json', 'tokens.json', 'accounts.json', 'vinculaciones.json',
     'vinculaciones-pending.json', 'vinculaciones-log.json', 'telegram-notified-questions.json',
+    'tienda-pending-alerted.json',
     'tienda-cupones.json', 'tienda-users.json', 'tienda-ordenes.json',
     'ordenes.json', 'flex_zones.json',
     'sessions.json', 'auth.json', 'rate_limits.json',
@@ -5245,7 +5322,7 @@ const server = http.createServer((req, res) => {
 
   // Block sensitive directories
   const lowPath = filePath.toLowerCase().replace(/\\/g, '/');
-  const BLOCKED_DIRS = ['/memory/', '/node_modules/', '/.git/', '/data/', '/backup/', '/backups/'];
+  const BLOCKED_DIRS = ['/memory/', '/node_modules/', '/.git/', '/data/', '/backup/', '/backups/', '/routes/', '/lib/'];
   if (BLOCKED_DIRS.some(d => lowPath.includes(d))) {
     res.writeHead(404); res.end('Not found'); return;
   }
@@ -5260,7 +5337,9 @@ const server = http.createServer((req, res) => {
     res.writeHead(404); res.end('Not found'); return;
   }
 
-  if (!fs.existsSync(resolved)) {
+  let resolvedStat;
+  try { resolvedStat = fs.statSync(resolved); } catch { resolvedStat = null; }
+  if (!resolvedStat || !resolvedStat.isFile()) {
     // Si es una ruta de la tienda → 404 amigable
     if (filePath.startsWith('/tienda/')) {
       res.writeHead(404, {'Content-Type':'text/html; charset=utf-8'});
@@ -5345,9 +5424,22 @@ async function sendTgAdjustmentNotification(adj) {
       const detalle = m.perItem.map(p => `${_shortAcct(p.acctLabel)} x${p.qty}`).join(' vs ');
       text += `🎨 ${m.label}: ${detalle} → x${m.targetQty}\n`;
     }
-    text += `\nGestioná esto desde la web (Vinculaciones → Pendientes) — son ${mm.length} variante(s), no se pueden ajustar con botones acá.`;
 
-    const keyboard = [[{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]];
+    let keyboard;
+    if (mm.length === 1) {
+      // Una sola variante desalineada: ofrecer un botón por cada cuenta para
+      // elegir cuál tiene la cantidad correcta (sin tener que ir a la web).
+      const m = mm[0];
+      text += `\nElegí qué cuenta tiene el stock correcto:`;
+      keyboard = m.perItem.map(p =>
+        [{ text: `✅ Usar ${_shortAcct(p.acctLabel)} x${p.qty}`, callback_data: `vc:${adj.id}:0:${p.itemId}` }]
+      );
+      keyboard.push([{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]);
+    } else {
+      text += `\nGestioná esto desde la web (Vinculaciones → Pendientes) — son ${mm.length} variantes, no se pueden ajustar con botones acá.`;
+      keyboard = [[{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]];
+    }
+
     const sent = await tgSend(text, keyboard);
     console.log('[tg] Notificación enviada para ajuste:', adj.id);
     return (sent && sent.ok && sent.result)
@@ -5473,7 +5565,7 @@ async function handleTgCallback(cb) {
 
       adj.status = 'applied'; adj.appliedAt = new Date().toISOString();
       savePendingAdjustments(allAdj);
-      appendVincLog({ action: 'applied', source: 'telegram', adjId: adj.id, groupId: adj.groupId, triggerAcctLabel: adj.trigger?.acctLabel, targetStock: adj.targetStock, itemsApplied: applied });
+      appendVincLog({ action: 'applied', source: 'telegram', adjId: adj.id, groupId: adj.groupId, triggerAcctLabel: adj.trigger?.acctLabel, targetStock: adj.targetStock, itemsApplied: applied, variantDeltas: adj.trigger?.variantDeltas || [] });
       const failMsg = failed ? ` · ${failed} fallido(s)` : '';
       await reply(`✅ <b>${adj.groupName}</b>\nStock sincronizado a ${adj.targetStock} u. en ${applied} publicación(es)${failMsg}.`);
 
@@ -5548,6 +5640,65 @@ async function handleTgCallback(cb) {
       appendVincLog({ action: 'sync-from', source: 'telegram', adjId: adj.id, groupId: adj.groupId, syncFromLabel: srcLabel, syncFromStock: srcTotal, itemsApplied: applied });
       const failMsg = failed ? ` · ${failed} fallido(s)` : '';
       await reply(`✅ <b>${adj.groupName}</b>\nStock sincronizado a ${srcTotal} u. (desde ${_shortAcct(srcLabel)}) en ${applied} publicación(es)${failMsg}.`);
+
+    } else if (action === 'vc') {
+      // Elegir, para la única variante desalineada de un ajuste tipo "variant",
+      // qué cuenta tiene la cantidad correcta (botón generado en
+      // sendTgAdjustmentNotification cuando mm.length === 1).
+      const parts = rest.split(':');
+      const adjId = parts[0];
+      const mmIdx = parseInt(parts[1], 10);
+      const chosenItemId = parts.slice(2).join(':');
+      const allAdj = loadPendingAdjustments();
+      const adj = allAdj.find(a => a.id === adjId);
+      if (!adj || adj.status !== 'pending') { await reply(_adjStaleMsg(adj)); return; }
+
+      const mm = (adj.variantMismatches || [])[mmIdx];
+      if (!mm) { await reply('⚠️ Variante no encontrada.'); return; }
+      const chosen = mm.perItem.find(p => p.itemId === chosenItemId);
+      if (!chosen) { await reply('⚠️ Opción no encontrada.'); return; }
+
+      const updatedMm = { ...mm, targetQty: chosen.qty };
+      adj.variantMismatches = adj.variantMismatches.map((m, i) => i === mmIdx ? updatedMm : m);
+      adj.changes = buildVariantChangesFromMismatches(adj.variantMismatches);
+
+      reply('🔄 Aplicando...').catch(() => {});
+
+      const allAccounts = fullConfig.accounts || [];
+      const results = await Promise.allSettled(adj.changes.map(async ch => {
+        const acct = allAccounts.find(a => a.id === ch.accountId);
+        if (!acct) return { skipped: true };
+        await refreshAccountToken(acct);
+        const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
+        const vars = itemData.variations || [];
+        const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+        for (const vc of ch.variantChanges || []) {
+          const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+          if (matchedVar) {
+            const t = newVars.find(v => v.id === matchedVar.id);
+            if (t) t.available_quantity = Math.max(0, vc.to);
+          }
+        }
+        const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+        await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
+        return { applied: true, itemId: ch.itemId };
+      }));
+
+      let applied = 0, failed = 0;
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled' && r.value?.applied) applied++;
+        else if (r.status === 'rejected') {
+          failed++;
+          console.log('[tg] Error vc', adj.changes[i].itemId, r.reason?.message || r.reason);
+        }
+      });
+
+      adj.status = (applied > 0 && failed === 0) ? 'applied' : 'error';
+      adj.appliedAt = new Date().toISOString();
+      savePendingAdjustments(allAdj);
+      appendVincLog({ action: adj.status, source: 'telegram', adjId: adj.id, groupId: adj.groupId, itemsApplied: applied, itemsTotal: adj.changes.length });
+      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
+      await reply(`✅ <b>${adj.groupName}</b>\n${mm.label}: ajustado a x${chosen.qty} (${_shortAcct(chosen.acctLabel)})${failMsg}.`);
 
     } else if (action === 'dis') {
       const allAdj = loadPendingAdjustments();
@@ -6383,6 +6534,49 @@ setInterval(() => {
   checkCarritosAbandonados().catch(e => console.log('[carrito-abandonado] Error en check periódico:', e.message));
 }, CARRITO_ABANDONADO_CHECK_INTERVAL);
 
+// ── Alerta Telegram: órdenes pending +24hs (Fase 2 — monitoreo) ──────
+// Cada hora busca órdenes que quedaron sin pagar +24hs y avisa al admin.
+// Para no spamear, guarda los IDs ya alertados en un JSON; cada orden se
+// alerta una sola vez (sobrevive reinicios de PM2).
+const PENDING_ALERTED_PATH = path.join(__dirname, 'tienda-pending-alerted.json');
+const PENDING_24H_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hora
+
+function _loadPendingAlerted() {
+  try { return new Set(JSON.parse(fs.readFileSync(PENDING_ALERTED_PATH, 'utf8'))); }
+  catch { return new Set(); }
+}
+function _savePendingAlerted(set) {
+  try { atomicWriteFileSync(PENDING_ALERTED_PATH, JSON.stringify([...set])); } catch {}
+}
+
+async function checkPendientes24h() {
+  const ordenes = await db.getOrdenesPending24h();
+  const alerted = _loadPendingAlerted();
+
+  // Limpiar del set los IDs que ya no están pendientes (se pagaron/cancelaron)
+  const vigentes = new Set(ordenes.map(o => o.id));
+  let changed = false;
+  for (const id of alerted) if (!vigentes.has(id)) { alerted.delete(id); changed = true; }
+
+  for (const o of ordenes) {
+    if (alerted.has(o.id)) continue;
+    const horas = Math.floor((Date.now() - new Date(o.created_at).getTime()) / 3600000);
+    await tgSend(
+      `⏳ <b>Orden sin pagar +24hs</b>\n` +
+      `<b>${o.order_number}</b> · ${o.nombre || o.email}\n` +
+      `Total: $${Math.round(o.total).toLocaleString('es-AR')} · hace ${horas}hs\n` +
+      `Revisá si conviene contactar al cliente o cancelarla.`
+    ).catch(() => {});
+    alerted.add(o.id);
+    changed = true;
+    console.log(`  ⏳ [pending-24h] Alertada orden ${o.order_number} (${horas}hs)`);
+  }
+  if (changed) _savePendingAlerted(alerted);
+}
+setInterval(() => {
+  checkPendientes24h().catch(e => console.log('[pending-24h] Error en check periódico:', e.message));
+}, PENDING_24H_CHECK_INTERVAL);
+
 // ── Handler global — evita que promesas rechazadas cierren el proceso ──
 process.on('unhandledRejection', (reason, promise) => {
   const msg   = reason instanceof Error ? reason.message : String(reason);
@@ -6397,6 +6591,7 @@ process.on('uncaughtException', (err) => {
     ? '\n    ' + err.stack.split('\n').slice(1, 4).join('\n    ')
     : '';
   console.error(`\x1b[31m  ✗ [uncaughtException] ${err.message}${stack}\x1b[0m`);
+  if (err.code === 'EISDIR') console.error('[EISDIR-DEBUG] path:', err.path || '(sin path)', '| syscall:', err.syscall);
   // No rethrow — el servidor sigue corriendo
 });
 
