@@ -85,55 +85,35 @@ Este proyecto resuelve ambos problemas: centraliza la operación de varias cuent
 - **Frontend**: HTML5 + CSS vanilla con design-system propio + JavaScript vanilla — dark mode, PWA instalable
 - **Auth**: OAuth 2.0 multi-cuenta con refresh automático de tokens
 
-## Instalación
+## Decisiones técnicas destacadas
 
-### Requisitos
+> Este repo es, sobre todo, una muestra del proyecto y de cómo está resuelto. Algunos puntos que vale la pena mirar:
 
-- Node.js ≥ 18
-- PostgreSQL ≥ 14
-- Python 3.12 + pip (solo para los scripts de cobros)
+- **Backend sin frameworks.** Servidor HTTP en Node.js puro: enrutado propio, manejo de body/streams, sesiones y middleware de auth escritos a mano. Sin Express ni dependencias de framework — control total sobre el ciclo request/response.
+- **Proxy ML con whitelist anti-SSRF.** El token de MercadoLibre nunca se expone al front; todas las llamadas pasan por un proxy que sólo permite paths explícitamente habilitados.
+- **OAuth 2.0 multi-cuenta** con refresh automático de tokens y *single-flight* (evita refrescar el mismo token en paralelo) — ver [`lib/ml-client.js`](lib/ml-client.js).
+- **Integración de pagos resiliente.** MercadoPago vía Checkout API + webhook **y** un *poller* de respaldo que reconcilia órdenes pendientes si el webhook se pierde — ver [`lib/payment-polling.js`](lib/payment-polling.js).
+- **Sincronización de stock multi-cuenta** con *dry-run* y aprobación humana por Telegram antes de aplicar cambios (nada se modifica automáticamente).
+- **Cálculo de costos reales** parseando los Excel de ventas de ML (envío Flex por código postal del comprador) — lógica de negocio concreta, no un CRUD.
+- **Arquitectura modular.** El servidor se fue extrayendo a ~30 módulos de dominio en `lib/` y routers por sección en `routes/`, usando *factories* con inyección de dependencias para aislar el estado mutable.
+- **SEO server-side** en la tienda: meta description + JSON-LD `schema.org/Product` renderizados en el HTML — ver [`lib/seo.js`](lib/seo.js).
+- **Operación cuidada.** Smoke tests del deploy ([`scripts/smoke.sh`](scripts/smoke.sh)), deploy a *staging* con verificación antes de prod, dark mode en el panel y PWA instalable.
+
+<details>
+<summary>Correr localmente</summary>
+
+Requiere Node.js ≥ 18 y PostgreSQL ≥ 14.
 
 ```bash
 npm install
-pip install openpyxl pandas   # opcional: scripts de cobros
+cp config.example.json config.json   # completar credenciales ML/MP
+npm run migrate                       # crea el esquema en PostgreSQL
+npm start                             # node server.js → http://localhost:3000
 ```
 
-### Configuración
+La app necesita credenciales propias de MercadoLibre/MercadoPago (registrando una app en [ML Developers](https://developers.mercadolibre.com.ar/) con redirect `http://localhost:3000/oauth/callback`). Sin ellas, el panel levanta pero las integraciones externas no operan.
 
-1. Clonar el repositorio.
-2. Copiar `config.example.json` → `config.json` y completar con tus credenciales ML:
-
-```json
-{
-  "active": "cuenta1",
-  "accounts": [
-    {
-      "id": "cuenta1",
-      "label": "Mi cuenta",
-      "client_id": "TU_APP_ID",
-      "client_secret": "TU_SECRET",
-      "user_id": "",
-      "access_token": "",
-      "refresh_token": ""
-    }
-  ]
-}
-```
-
-3. Registrar la app en [MercadoLibre Developers](https://developers.mercadolibre.com.ar/) con redirect URI `http://localhost:3000/oauth/callback`.
-4. Crear la base PostgreSQL y correr las migraciones:
-
-```bash
-npm run migrate
-```
-
-### Ejecutar
-
-```bash
-npm start          # node server.js
-```
-
-Abrir [http://localhost:3000](http://localhost:3000). Para autorizar una cuenta ML: `http://localhost:3000/oauth/start`.
+</details>
 
 ## Seguridad
 
