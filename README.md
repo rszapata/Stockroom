@@ -7,6 +7,20 @@ Plataforma web **self-hosted** que combina dos sistemas en un mismo backend Node
 
 Todo corre sobre un servidor Node.js puro (sin frameworks) con PostgreSQL, notificaciones por Telegram y emails transaccionales.
 
+🌐 **Demo en vivo (tienda real, en producción):** **[wzmallas.com](https://wzmallas.com)**
+
+[![Demo en vivo](https://img.shields.io/badge/Demo_en_vivo-wzmallas.com-FFE600?style=flat&logo=googlechrome&logoColor=black)](https://wzmallas.com)
+![Node.js](https://img.shields.io/badge/Node.js-sin_frameworks-339933?style=flat&logo=nodedotjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)
+![MercadoPago](https://img.shields.io/badge/MercadoPago-00B1EA?style=flat&logo=mercadopago&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram_bot-26A5E4?style=flat&logo=telegram&logoColor=white)
+
+## ¿Qué resuelve?
+
+MercadoLibre no ofrece panel multi-cuenta ni forma de sincronizar stock entre publicaciones idénticas en distintas cuentas. Y depender 100 % de ML implica comisiones altas y nula relación directa con el cliente.
+
+Este proyecto resuelve ambos problemas: centraliza la operación de varias cuentas ML (reemplazando el flujo manual de Excel + paneles separados) **y** suma una tienda propia con cobro directo por MercadoPago, todo administrado desde el mismo lugar.
+
 ## Capturas
 
 ### Tienda web (e-commerce)
@@ -49,31 +63,33 @@ La tienda es totalmente responsive: navegación con menú, grilla adaptada y bar
 
 ### Back-office (Stockroom)
 
+> Interfaz con modo oscuro. (En *Migración* se difuminaron los datos de cuentas reales por privacidad.)
+
 #### Dashboard
+KPIs del día, pedidos para despachar (por estado real de envío) y ventas por hora.
 ![Dashboard](assets/Stockroom-Dashboard.png)
 
 #### Stock & Analytics
+Inventario consolidado (433 publicaciones · 2.100 variantes), stock bajo/crítico y rotación.
 ![Stock & Analytics](assets/Stockroom-Analytics.png)
 
 #### Vinculaciones
+Grupos de publicaciones equivalentes e historial de cambios — sincronización de stock multi-cuenta (explicada en detalle más abajo).
 ![Vinculaciones](assets/Stockroom-Vinculaciones.png)
 
 #### Publicaciones
+Alta y edición de publicaciones con autocompletado de categorías de MercadoLibre.
 ![Publicaciones](assets/Stockroom-Publicaciones.png)
 
 #### Migración
+Duplicación de publicaciones entre cuentas con mapeo de variantes.
 ![Migración](assets/Stockroom-Migracion.png)
 
 #### Cobros
+Liquidaciones por período y cálculo de costo de envío Flex por código postal del comprador.
 ![Cobros](assets/Stockroom-Cobros.png)
 
 ---
-
-## ¿Qué resuelve?
-
-MercadoLibre no ofrece panel multi-cuenta ni forma de sincronizar stock entre publicaciones idénticas en distintas cuentas. Y depender 100 % de ML implica comisiones altas y nula relación directa con el cliente.
-
-Este proyecto resuelve ambos problemas: centraliza la operación de varias cuentas ML (reemplazando el flujo manual de Excel + paneles separados) **y** suma una tienda propia con cobro directo por MercadoPago, todo administrado desde el mismo lugar.
 
 ## Funcionalidades
 
@@ -93,11 +109,40 @@ Este proyecto resuelve ambos problemas: centraliza la operación de varias cuent
 |---|---|
 | **Dashboard** | KPIs del día, pedidos para despachar (filtrados por estado real de envío) |
 | **Stock & Analytics** | Inventario consolidado, gráficos de rotación, generador de órdenes de compra |
-| **Vinculaciones** | Sincronización automática de stock entre publicaciones equivalentes en distintas cuentas (dry-run + aprobación manual vía Telegram) |
+| **Vinculaciones** | Mantiene el stock alineado entre publicaciones equivalentes en distintas cuentas, con aprobación manual vía Telegram (ver sección dedicada abajo) |
 | **Publicaciones** | Creación y gestión con autocompletado de categorías ML |
 | **Migración** | Duplicación de publicaciones entre cuentas con mapeo de variantes |
 | **Cobros** | Liquidación cada 10 días. Cálculo de **costo Flex** parseando el Excel de ML por CP del comprador |
 | **Preguntas / Despachos** | Gestión de preguntas ML y verificación de envíos |
+
+## 🔗 Vinculaciones — sincronización de stock multi-cuenta
+
+El mismo producto físico suele estar publicado en **varias cuentas de MercadoLibre** a la vez (para ganar visibilidad). El problema: cuando se vende en una cuenta, las otras **no se enteran** y siguen ofreciendo stock que ya no existe → sobreventa, cancelaciones y caída de reputación.
+
+Vinculaciones agrupa esas publicaciones equivalentes y mantiene su stock alineado, **sin aplicar nada automáticamente**: toda corrección pasa por una aprobación humana en Telegram.
+
+```mermaid
+flowchart LR
+  A[Venta o cambio de stock<br/>en una cuenta] --> B[Check periódico<br/>checkStockChanges]
+  B --> C{¿Stock desalineado<br/>en el grupo?}
+  C -- No --> Z[Sin acción]
+  C -- Sí --> D[Objetivo = menor<br/>stock disponible]
+  D --> E[Aviso por Telegram<br/>con foto + botones]
+  E --> F{¿Aprobás?}
+  F -- No --> Z
+  F -- Sí --> G[Actualiza las otras<br/>cuentas vía API de ML]
+  G --> H[✅ Stock sincronizado]
+```
+
+**Cómo funciona, paso a paso:**
+
+1. **Detección dirigida por ventas** — un chequeo periódico (`detectLinkedSales`) busca ventas y cancelaciones nuevas en cualquier cuenta del grupo.
+2. **Detección por variante** — `detectVariantMismatches` compara la cantidad disponible de cada variante compartida (ej. `color:Gris, modelo:15 Pro`) entre todas las publicaciones del grupo. Detecta desbalances aunque el stock total "se cancele" (se vendió una variante en una cuenta y otra distinta en la otra: los totales bajan igual, pero las variantes quedan desalineadas).
+3. **Cálculo seguro** — el objetivo siempre es el **menor stock disponible** del grupo: el stock físico real nunca puede ser mayor que el más bajo.
+4. **Aprobación humana** — se envía un mensaje de Telegram con la foto del producto y botones de acción; **nada se modifica solo**, así un error puntual de lectura de la API no rompe el stock real.
+5. **Aplicación** — al aprobar, se actualiza el stock de las demás publicaciones vía API de ML (`mlPutAuth`) y el mensaje se edita in-place con el resultado, sin dejar botones tocables (evita doble aplicación).
+
+Código: [`routes/vinculaciones.js`](routes/vinculaciones.js) · lógica de detección y sync en `server.js` (`checkStockChanges`, `detectVariantMismatches`, `detectLinkedSales`).
 
 ## Stack
 

@@ -7,8 +7,6 @@ accounts.json
 auth.json
 auth*.json
 *.key
-.env
-.env.*
 
 # ── Datos personales / operativos ─────────────────────────────
 # Contienen IDs de artículos, cuentas, CPs, direcciones, pedidos y clientes reales
@@ -55,3 +53,4 @@ test_flex_preview.pdf
 test_*.pdf
 *.tmp.xlsx
 *.tmp.csv
+config.bat
