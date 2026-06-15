@@ -371,7 +371,8 @@ async function createOrden(data) {
          payment_method,
          subtotal, total, items_count, items_quantity,
          status, payment_status,
-         created_at, metadata
+         created_at, metadata,
+         coupon_code, coupon_discount
        ) VALUES (
          $1, $2, $3, $4, $5, $6,
          $7, $8, $9, $10, $11,
@@ -379,7 +380,8 @@ async function createOrden(data) {
          $15,
          $16, $17, $18, $19,
          'pending', 'pending',
-         NOW(), $20
+         NOW(), $20,
+         $21, $22
        ) RETURNING *`,
       [
         orderNumber,
@@ -402,6 +404,8 @@ async function createOrden(data) {
         items.length,
         items.reduce((s, i) => s + (i.qty || 1), 0),
         JSON.stringify({ raw: data, es_status: esStatus }),
+        pago.cupon || null,
+        Number(pago.descuento_cupon || pago.descuento_envio || 0),
       ]
     );
 

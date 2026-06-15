@@ -5,6 +5,7 @@ const { json } = require('../lib/http');
 const {
   loadPendingAdjustments, savePendingAdjustments,
   loadVincLog, appendVincLog,
+  loadVentasLedger, saveVentasLedger,
 } = require('../lib/json-store');
 const { _varKeysAll } = require('../lib/variant-helpers');
 
@@ -294,8 +295,18 @@ module.exports = function(ctx) {
 
           const allAccounts = fullConfig().accounts || [];
           const results = [];
+          // Captura de totales nuevos por item (para actualizar lastStock con el
+          // valor real escrito, no con adj.targetStock — que es undefined para
+          // ajustes por variante/venta/cancelación y corrompía lastStock,
+          // causando que el grupo se "desbalanceara otra vez" en el próximo check).
+          const newTotalByItem = {};
+          // Deltas reales por variante por ajuste, para el historial.
+          const deltasByAdj = {};
 
           for (const adj of toApply) {
+            deltasByAdj[adj.id] = [];
+            const isDeltaType = adj.type === 'sale' || adj.type === 'cancel';
+            const isCancel    = adj.type === 'cancel';
             for (const ch of adj.changes) {
               const acct = allAccounts.find(a => a.id === ch.accountId);
               if (!acct) { results.push({ adjId: adj.id, itemId: ch.itemId, ok: false, error: 'cuenta no encontrada' }); continue; }
@@ -307,13 +318,26 @@ module.exports = function(ctx) {
                   let newVars;
                   let applyMethod = 'proportional';
 
-                  if (adj.type === 'variant' && ch.variantChanges?.length) {
+                  if (isDeltaType && ch.variantChanges?.length) {
+                    // Venta/cancelación: ajuste por delta (±qty) sobre la variante.
+                    newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+                    for (const vc of ch.variantChanges) {
+                      const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+                      const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
+                      if (t) {
+                        const from = t.available_quantity;
+                        t.available_quantity = Math.max(0, from + (isCancel ? vc.delta : -vc.delta));
+                        deltasByAdj[adj.id].push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity });
+                        applyMethod = isCancel ? 'cancel-restore' : 'sale-sync';
+                      }
+                    }
+                  } else if (adj.type === 'variant' && ch.variantChanges?.length) {
                     newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
                     for (const vc of ch.variantChanges) {
                       const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
                       if (matchedVar) {
                         const t = newVars.find(v => v.id === matchedVar.id);
-                        if (t) { t.available_quantity = Math.max(0, vc.to); applyMethod = 'variant-exact'; }
+                        if (t) { const from = t.available_quantity; t.available_quantity = Math.max(0, vc.to); deltasByAdj[adj.id].push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity }); applyMethod = 'variant-exact'; }
                       }
                     }
                   } else {
@@ -324,10 +348,10 @@ module.exports = function(ctx) {
                         const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === srcDelta.attrKey));
                         if (matchedVar) {
                           const t = newVars.find(v => v.id === matchedVar.id);
-                          if (t) { t.available_quantity = Math.max(0, t.available_quantity - srcDelta.delta); applyMethod = 'variant-match'; }
+                          if (t) { const from = t.available_quantity; t.available_quantity = Math.max(0, from - srcDelta.delta); deltasByAdj[adj.id].push({ attrKey: srcDelta.attrKey, label: srcDelta.label, from, to: t.available_quantity, delta: from - t.available_quantity }); applyMethod = 'variant-match'; }
                         } else {
                           const maxVar = newVars.reduce((m, v) => v.available_quantity > m.available_quantity ? v : m, newVars[0]);
-                          if (maxVar) { maxVar.available_quantity = Math.max(0, maxVar.available_quantity - srcDelta.delta); applyMethod = 'max-variant-fallback'; }
+                          if (maxVar) { const from = maxVar.available_quantity; maxVar.available_quantity = Math.max(0, from - srcDelta.delta); deltasByAdj[adj.id].push({ attrKey: srcDelta.attrKey, label: srcDelta.label, from, to: maxVar.available_quantity, delta: from - maxVar.available_quantity }); applyMethod = 'max-variant-fallback'; }
                         }
                       }
                     } else {
@@ -338,11 +362,13 @@ module.exports = function(ctx) {
                   }
                   console.log('[vinc] apply', ch.itemId, 'method:', applyMethod);
                   await mlPutAuth(acct, '/items/' + ch.itemId, { variations: newVars });
+                  newTotalByItem[ch.itemId] = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
                 } else {
                   await mlPutAuth(acct, '/items/' + ch.itemId, { available_quantity: adj.targetStock });
+                  newTotalByItem[ch.itemId] = adj.targetStock;
                 }
-                const fromQty = adj.type === 'variant' ? (ch.variantChanges?.reduce((s, v) => s + v.from, 0) || ch.from) : ch.from;
-                const toQty   = adj.type === 'variant' ? (ch.variantChanges?.reduce((s, v) => s + v.to,   0) || adj.targetStock) : adj.targetStock;
+                const fromQty = (adj.type === 'variant' || isDeltaType) ? (ch.variantChanges?.reduce((s, v) => s + (v.from ?? 0), 0) || ch.from) : ch.from;
+                const toQty   = newTotalByItem[ch.itemId];
                 results.push({ adjId: adj.id, itemId: ch.itemId, ok: true, from: fromQty, to: toQty });
               } catch(e) {
                 results.push({ adjId: adj.id, itemId: ch.itemId, ok: false, error: e.message });
@@ -351,30 +377,53 @@ module.exports = function(ctx) {
             const adjResults = results.filter(r => r.adjId === adj.id);
             adj.status    = (adjResults.length > 0 && adjResults.every(r => r.ok)) ? 'applied' : 'error';
             adj.appliedAt = new Date().toISOString();
+
+            // Marcar el ledger de ventas para tipos sale/cancel (evita re-sugerir)
+            if (isDeltaType && adj.status === 'applied' && adj.saleKeys?.length) {
+              const ledger = loadVentasLedger();
+              for (const saleKey of adj.saleKeys) {
+                const entry = ledger.find(e => e.saleKey === saleKey);
+                if (entry) { if (isCancel) entry.cancelSynced = true; else entry.synced = true; }
+              }
+              saveVentasLedger(ledger);
+            }
           }
 
           savePendingAdjustments(allAdj);
 
           for (const adj of toApply) {
             const adjOk = results.filter(r => r.adjId === adj.id && r.ok).length;
+            // Deltas reales aplicados (no más adj.trigger?.variantDeltas que era
+            // siempre [] para ajustes por variante/venta) → el historial ahora
+            // muestra qué variante se subió/bajó (ej "Marrón 14→13 −1").
+            const realDeltas = deltasByAdj[adj.id] || [];
+            const actionLabel = adj.status !== 'applied' ? 'error'
+              : adj.type === 'sale'   ? 'sale-sync'
+              : adj.type === 'cancel' ? 'cancel-restore'
+              : 'applied';
             appendVincLog({
-              action: adj.status === 'applied' ? 'applied' : 'error',
-              source: 'web', adjId: adj.id, groupId: adj.groupId,
+              action: actionLabel,
+              source: 'web', adjId: adj.id, groupId: adj.groupId, groupName: adj.groupName,
               triggerAcctLabel: adj.trigger?.acctLabel,
               targetStock: adj.targetStock,
               itemsApplied: adjOk, itemsTotal: adj.changes.length,
-              variantDeltas: adj.trigger?.variantDeltas || [],
+              variantDeltas: realDeltas.length ? realDeltas : (adj.trigger?.variantDeltas || []),
             });
           }
 
-          // Actualizar lastStock en vinculaciones.json
+          // Actualizar lastStock en vinculaciones.json con el total REAL escrito
           try {
             const vinc = JSON.parse(fs.readFileSync(VINC_PATH, 'utf8'));
             for (const adj of toApply) {
               if (adj.status !== 'applied') continue;
               const g = vinc.groups.find(x => x.id === adj.groupId);
               if (!g) continue;
-              for (const it of g.items) it.lastStock = adj.targetStock;
+              for (const it of g.items) {
+                if (newTotalByItem[it.itemId] != null) it.lastStock = newTotalByItem[it.itemId];
+                else if (typeof adj.targetStock === 'number') it.lastStock = adj.targetStock;
+                // si no hay total nuevo ni targetStock (item fuente no tocado),
+                // se deja el lastStock previo — el próximo check lo refresca.
+              }
               g.lastSync = new Date().toISOString();
             }
             fs.writeFileSync(VINC_PATH, JSON.stringify(vinc, null, 2));
@@ -471,6 +520,19 @@ module.exports = function(ctx) {
             if (!id || p.id === id) { p.status = 'dismissed'; toDismiss.push(p); }
           }
           savePendingAdjustments(list);
+          // Marcar ledger para ventas/cancelaciones descartadas (no re-sugerir)
+          const dismissedSaleAdjs = toDismiss.filter(p => (p.type === 'sale' || p.type === 'cancel') && p.saleKeys?.length);
+          if (dismissedSaleAdjs.length) {
+            const ledger = loadVentasLedger();
+            for (const p of dismissedSaleAdjs) {
+              const isCancel = p.type === 'cancel';
+              for (const saleKey of p.saleKeys) {
+                const entry = ledger.find(e => e.saleKey === saleKey);
+                if (entry) { if (isCancel) entry.cancelSynced = true; else entry.synced = true; }
+              }
+            }
+            saveVentasLedger(ledger);
+          }
           for (const p of toDismiss)
             appendVincLog({ action: 'dismissed', source: 'web', adjId: p.id, groupId: p.groupId, triggerAcctLabel: p.trigger?.acctLabel, bulk: !id });
           json(res, 200, { ok: true });

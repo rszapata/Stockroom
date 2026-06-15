@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Clientes — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=6">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Cat list ───────────────────────────────────────────────────── */
+.cat-list { display: flex; flex-direction: column; gap: 6px; }
+
+.cat-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  transition: box-shadow .15s, border-color .15s;
+  position: relative;
+}
+.cat-row:hover { box-shadow: var(--shadow-lg); }
+.cat-row.dragging { opacity: .35; box-shadow: var(--shadow-lg); }
+.cat-row.drag-over { border-color: var(--blue); border-top: 3px solid var(--blue); }
+.cat-row.inactive { opacity: .5; }
+
+.cat-handle {
+  color: var(--text-3); cursor: grab; font-size: 18px;
+  padding: 4px 2px; flex-shrink: 0; user-select: none; line-height: 1;
+}
+.cat-handle:active { cursor: grabbing; }
+
+
+.cat-info { flex: 1; min-width: 0; }
+.cat-label { font-weight: 600; font-size: 14px; color: var(--text); line-height: 1.3; }
+.cat-meta  {
+  font-size: 11px; color: var(--text-3);
+  font-family: var(--font-mono); margin-top: 2px;
+}
+
+.cat-badge {
+  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+  padding: 2px 9px; border-radius: 20px; flex-shrink: 0;
+  border: 1px solid var(--border); color: var(--text-3); background: var(--bg);
+}
+.cat-badge.has-products {
+  color: var(--blue); border-color: var(--blue); background: var(--blue-light);
+}
+
+.cat-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* ── New / Edit modal ───────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 440px; overflow: hidden;
+}
+.modal-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--text);
+}
+.modal-head-icon { font-size: 16px; }
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal-foot {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 18px; border-top: 1px solid var(--border);
+}
+.modal-row { display: flex; gap: 10px; align-items: flex-start; }
+
+/* ── Delete confirm pill ───────────────────────────────────────── */
+.del-confirm-wrap {
+  display: none; align-items: center; gap: 6px;
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: var(--bg-card); border: 1px solid var(--red);
+  border-radius: var(--r); padding: 6px 10px; z-index: 10;
+  font-size: 12px; color: var(--red); white-space: nowrap;
+  box-shadow: var(--shadow-lg);
+}
+.del-confirm-wrap.show { display: flex; }
+
+/* ── Empty state ───────────────────────────────────────────────── */
+.cat-empty {
+  text-align: center; padding: 48px 20px;
+  color: var(--text-3); font-size: 14px;
+}
+.cat-empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+/* ── Hint ──────────────────────────────────────────────────────── */
+.page-hint {
+  font-size: 12px; color: var(--text-3);
+  display: flex; align-items: center; gap: 6px; margin-bottom: 14px;
+}
+
+/* ── Sección ML (read-only) ─────────────────────────────────────── */
+.ml-section-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-3);
+  margin: 22px 0 10px;
+}
+.ml-section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.cat-row.ml-readonly {
+  opacity: .75; cursor: default;
+}
+.cat-row.ml-readonly:hover { box-shadow: none; }
+.badge-ml {
+  font-size: 10px; font-weight: 700; font-family: var(--font-mono);
+  padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+  background: #FFF7ED; color: #C2570A; border: 1px solid #FDBA74;
+  letter-spacing: .03em;
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ════════════════════════ SIDEBAR ═════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/admin-sidebar.js?v=2"></script>
+
+<!-- ═══════════════════════ MAIN ══════════════════════════════ -->
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Clientes</div>
+        <div class="adm-page-sub">
+          <span class="pulse-dot"></span>
+          <span id="page-sub">Clientes recurrentes de Mercado Libre</span>
+        </div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <!-- CLIENTES RECURRENTES ML (Fase 2 — difusión soft launch) -->
+    <div class="adm-card" id="card-recurrentes" style="margin-bottom:16px">
+      <div class="adm-card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div>
+          <div class="adm-card-title">Clientes recurrentes en ML</div>
+          <div class="adm-card-sub" style="font-size:12px;color:var(--muted);margin-top:2px">Compradores con 2+ compras — candidatos para invitar a la web con <b id="rec-coupon">BIENVENIDA10</b></div>
+        </div>
+        <button id="rec-load-btn" class="btn btn-ghost btn-sm" onclick="loadRecurrentes()" style="flex-shrink:0">Cargar lista</button>
+      </div>
+      <div class="adm-card-body">
+        <div id="rec-status" style="font-size:13px;color:var(--muted)">Tocá “Cargar lista” para analizar las últimas compras pagadas de ML y detectar clientes que repitieron.</div>
+        <div id="rec-summary" style="display:none;font-size:13px;margin-bottom:10px"></div>
+        <div id="rec-msg-tpl" style="display:none;margin-bottom:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+            <span>Mensaje sugerido (post-venta ML / insert) — copialo y enviáselo a cada cliente</span>
+            <button class="btn btn-ghost btn-sm" onclick="copyRecMsg(event)" style="font-size:11px">Copiar</button>
+          </div>
+          <textarea id="rec-msg" readonly style="width:100%;min-height:64px;resize:vertical;font-size:12px;font-family:inherit;border:none;background:transparent;color:var(--text)"></textarea>
+        </div>
+        <div id="rec-table-wrap" style="display:none;overflow-x:auto">
+          <table class="adm-table" style="width:100%">
+            <thead><tr>
+              <th>Cliente ML</th>
+              <th class="right">Compras</th>
+              <th>Última</th>
+              <th class="right">Total gastado</th>
+              <th>Qué compró</th>
+            </tr></thead>
+            <tbody id="rec-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /adm-main -->
+</div><!-- /adm-wrap -->
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+<div id="toast"></div>
+
+<script>
+/* ─── Theme / Sidebar ─────────────────────────────────────── */
+document.getElementById('btn-theme').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch {}
+});
+const hamburger = document.getElementById('btn-hamburger');
+const sidebar   = document.getElementById('sidebar');
+const sidebarOv = document.getElementById('sidebar-overlay');
+hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); sidebarOv.classList.toggle('open'); });
+sidebarOv.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOv.classList.remove('open'); });
+
+/* ─── Toast ───────────────────────────────────────────────── */
+let _toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/* ─── Helpers ─────────────────────────────────────────────── */
+const fmtARS = n => '$ ' + Math.round(n || 0).toLocaleString('es-AR');
+
+/* ═══════════════ CLIENTES RECURRENTES ML ══════════════════ */
+async function loadRecurrentes() {
+  const btn    = document.getElementById('rec-load-btn');
+  const status = document.getElementById('rec-status');
+  btn.disabled = true; btn.textContent = 'Analizando…';
+  status.style.display = '';
+  status.textContent = 'Leyendo compras pagadas de ML (puede tardar unos segundos)…';
+  try {
+    const r = await fetch('/api/tienda/admin/clientes-recurrentes?min=2');
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.error || ('HTTP ' + r.status));
+    }
+    const d = await r.json();
+    const recs = d.recurrentes || [];
+
+    const sum = document.getElementById('rec-summary');
+    sum.style.display = '';
+    sum.innerHTML = 'Analicé <b>' + d.analizadas + '</b> compras pagadas (' + d.compradores_unicos + ' compradores únicos)'
+      + (d.total_ventas_cuenta ? ' de ' + d.total_ventas_cuenta + ' totales en la cuenta' : '')
+      + '. <b style="color:var(--green)">' + recs.length + '</b> cliente' + (recs.length !== 1 ? 's' : '') + ' con 2+ compras.';
+
+    document.getElementById('rec-coupon').textContent = d.coupon || 'BIENVENIDA10';
+
+    const tpl = document.getElementById('rec-msg-tpl');
+    const msg = document.getElementById('rec-msg');
+    msg.value = '¡Hola! Gracias por elegirnos en Mercado Libre 🙌\n'
+      + 'Lanzamos nuestra tienda web WZMALLAS con toda la variedad de mallas y accesorios. '
+      + 'Por ser cliente nuestro tenés 10% OFF con el cupón ' + (d.coupon || 'BIENVENIDA10') + ' en https://wzmallas.com\n'
+      + '¡Te esperamos! ⌚📱';
+    tpl.style.display = recs.length ? '' : 'none';
+
+    const wrap  = document.getElementById('rec-table-wrap');
+    const tbody = document.getElementById('rec-tbody');
+    if (!recs.length) {
+      wrap.style.display = 'none';
+      status.textContent = 'No se encontraron clientes con 2+ compras en el rango analizado.';
+    } else {
+      status.style.display = 'none';
+      wrap.style.display = '';
+      tbody.innerHTML = recs.map(function(b) {
+        const fecha = b.last_date ? new Date(b.last_date).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
+        const titles = (b.titles || []).join(' · ');
+        return '<tr>'
+          + '<td class="mono">' + esc(b.nickname) + '</td>'
+          + '<td class="right"><b>' + b.count + '</b></td>'
+          + '<td class="mono">' + fecha + '</td>'
+          + '<td class="right mono">' + fmtARS(b.total) + '</td>'
+          + '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(titles) + '">' + esc(titles) + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+  } catch(e) {
+    status.style.display = '';
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Recargar';
+  }
+}
+
+function copyRecMsg(ev) {
+  const msg = document.getElementById('rec-msg');
+  msg.select();
+  const b = ev && ev.target;
+  navigator.clipboard.writeText(msg.value).then(function() {
+    if (b) { const t = b.textContent; b.textContent = '✓ Copiado'; setTimeout(function(){ b.textContent = t; }, 1500); }
+  }).catch(function(){ try { document.execCommand('copy'); } catch(_) {} });
+}
+</script>
+</body>
+</html>

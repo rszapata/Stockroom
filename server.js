@@ -28,9 +28,10 @@ const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item')
 const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, generarCuponFidelidad, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado } = require('./lib/email-templates');
-const { _normalizeStr, _varKeysAll, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
-const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
+const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado } = require('./lib/email-templates');
+const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
+const { _normalizeStr, _varKeysAll, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
+const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
@@ -38,9 +39,11 @@ const { stripeApiCall } = require('./lib/stripe');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
 const { HTTP_TIMEOUT_MS, applyHttpTimeout, httpsRequestJson } = require('./lib/http-client');
 const { mlOauthToken, mlGet, mlPut, mlPost } = require('./lib/ml-api');
+const { createMlClient } = require('./lib/ml-client');
 const { auditLog } = require('./lib/audit-log');
 const { sendEmail: sendEmailWith } = require('./lib/email-sender');
 const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef, mpGetInstallments } = require('./lib/mercadopago');
+const { createMpHelpers } = require('./lib/mp-helpers');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 
 require('./lib/dns-cache');
@@ -248,52 +251,12 @@ function sendEmail(opts) {
 
 // ── MercadoPago Checkout — crear preferencia de pago ─────────
 
-/**
- * Resuelve qué token de MP usar:
- *  1. config.mp_access_token  (recomendado: específico para checkout)
- *  2. config.access_token     (fallback: el de ML — solo funciona si la app tiene scope checkout)
- *
- * Modo sandbox vs producción: se controla con el flag explícito `config.mp_sandbox`.
- * (Antes detectábamos por prefijo "TEST-", pero MP unificó el formato y ya no es confiable.)
- */
-function getMpToken() {
-  return config.mp_access_token || config.access_token || null;
-}
-
-// Variante async: si no hay mp_access_token dedicado, el fallback es el token de ML,
-// que expira cada ~6 h. Refrescarlo ANTES de llamar a MP evita los 401 intermitentes
-// en polling, creación de preferencias y webhooks.
-async function getMpTokenFresh() {
-  if (config.mp_access_token) return config.mp_access_token;
-  try { await refreshAccountToken(config); } catch (e) {}
-  return config.access_token || null;
-}
-
-// ── Tasas de cuotas de MP ─────────────────────────────────────
-// Las tasas de interés por cantidad de cuotas no dependen del monto, así que
-// se cachean en memoria y se refrescan cada 12h. Se consultan con un monto
-// de referencia (100.000) y un medio de pago genérico (master).
-let _cuotasCache = { tasas: [], actualizado: 0 };
-const CUOTAS_CACHE_MS = 12 * 60 * 60 * 1000;
-
-async function getCuotasTasas() {
-  const now = Date.now();
-  if (_cuotasCache.tasas.length && (now - _cuotasCache.actualizado) < CUOTAS_CACHE_MS) {
-    return _cuotasCache.tasas;
-  }
-  try {
-    const accessToken = await getMpTokenFresh();
-    if (!accessToken) return _cuotasCache.tasas;
-    const data = await mpGetInstallments(100000, 'master', accessToken);
-    const payerCosts = (data[0] && data[0].payer_costs) || [];
-    const tasas = payerCosts.map(pc => ({ cuotas: pc.installments, tasa: pc.installment_rate }));
-    if (tasas.length) _cuotasCache = { tasas, actualizado: now };
-    return _cuotasCache.tasas;
-  } catch (e) {
-    console.error('[cuotas] Error obteniendo tasas de MP:', e.message);
-    return _cuotasCache.tasas;
-  }
-}
+// getMpTokenFresh/getCuotasTasas/isMpSandbox → extraídos a lib/mp-helpers.js
+// (factory inyectada con getConfig/refreshAccountToken porque dependen de la cuenta activa).
+const { getMpTokenFresh, getCuotasTasas, isMpSandbox } = createMpHelpers({
+  getConfig: () => config,
+  refreshAccountToken: acct => refreshAccountToken(acct),
+});
 
 /**
  * Verifica la firma x-signature de un webhook de MercadoPago.
@@ -310,59 +273,8 @@ function getStripeConfig() {
   return fullConfig.stripe || {};
 }
 
-// ── Cupones — almacenados en Stockroom/tienda-cupones.json ────────
-// (el checkout valida los cupones contra este archivo, vía getCupones())
-const CUPONES_PATH = path.join(__dirname, 'tienda-cupones.json');
-
-// Cupón trazable del soft launch (Fase 2): se reparte solo a clientes
-// recurrentes de ML. El dashboard cuenta sus usos para medir el alcance.
-const SOFT_LAUNCH_COUPON = 'BIENVENIDA10';
-
-function getCupones() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(CUPONES_PATH, 'utf8'));
-    return Array.isArray(raw) ? raw : [];
-  } catch {
-    // Cupones por defecto si no existe el archivo
-    return [
-      { code: 'WEB10',      type: 'percent', value: 10, label: '10% off — cupón web',           active: true },
-      { code: 'WZMALLAS15', type: 'percent', value: 15, label: '15% off — descuento especial',  active: true },
-      { code: 'ENVIO',      type: 'freeship', value: 0, label: 'Envío gratis',                  active: true },
-    ];
-  }
-}
-
-function saveCupones(list) {
-  atomicWriteFileSync(CUPONES_PATH, JSON.stringify(list, null, 2));
-}
-
-// ── Guardar cupón de fidelidad para que sea válido en el checkout ──
-async function guardarCuponFidelidad(ordenId) {
-  const codigo = generarCuponFidelidad(ordenId);
-  try {
-    const list = getCupones();
-    if (!list.find(c => c.code === codigo)) {
-      list.push({
-        code:      codigo,
-        type:      'percent',
-        value:     10,
-        label:     `Cupón de fidelidad - Orden #${String(ordenId).slice(-8).toUpperCase()}`,
-        active:    true,
-        expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date().toISOString(),
-      });
-      saveCupones(list);
-    }
-    return codigo;
-  } catch(e) {
-    console.error('[mailer] Error guardando cupón fidelidad:', e.message);
-    return codigo; // lo devolvemos igual aunque falle el guardado
-  }
-}
-
-function isMpSandbox() {
-  return config.mp_sandbox === true;
-}
+// Cupones → extraídos a lib/cupones.js (getCupones/saveCupones/
+// guardarCuponFidelidad/SOFT_LAUNCH_COUPON se importan arriba).
 
 /** Resuelve la URL base de la tienda (para back_urls de MP). Respeta proxies (cloudflared). */
 function getPublicBaseUrl(req) {
@@ -489,159 +401,14 @@ setInterval(() => {
 }, POLLING_INTERVAL_MS);
 console.log(`✓ [MP] Polling de pagos pendientes activo (cada ${POLLING_INTERVAL_MS / 1000}s)`);
 
-// ── Refresh de token por cuenta ──────────────────────────────
-// Evita refrescos concurrentes para la misma cuenta
-const _refreshInFlight = new Map();
-// Caché en memoria de expiración por cuenta (se inicializa con token_expiry del config al arrancar)
-const _acctTokenExpiry = new Map();
-async function refreshAccountToken(acct) {
-  if (!acct) return false;
-  // Saltar si el token sigue vigente (verificar memoria primero, luego config persistido)
-  const knownExpiry = _acctTokenExpiry.get(acct.id) || acct.token_expiry || 0;
-  if (Date.now() < knownExpiry) return true;
-  if (_refreshInFlight.has(acct.id)) return _refreshInFlight.get(acct.id);
-  const client_id = acct.client_id || config.client_id;
-  const client_secret = acct.client_secret || config.client_secret;
-  const refresh_token = acct.refresh_token;
-  if (!client_id || !client_secret || !refresh_token) return false;
-  const p = mlOauthToken({ grant_type: 'refresh_token', client_id, client_secret, refresh_token })
-    .then(tok => {
-      if (tok.access_token) {
-        acct.access_token = tok.access_token;
-        if (tok.refresh_token) acct.refresh_token = tok.refresh_token;
-        // Guardar expiración en memoria y en config para evitar renovaciones innecesarias
-        const expiry = Date.now() + ((tok.expires_in || 21600) - 300) * 1000;
-        _acctTokenExpiry.set(acct.id, expiry);
-        acct.token_expiry = expiry;
-        // Persistir en fullConfig.accounts (si el acct viene de ahi, ya lo mutamos por referencia)
-        try { atomicWriteFileSync(CONFIG_PATH, JSON.stringify(fullConfig, null, 2)); } catch(e) {}
-        console.log(`  ✓ Token renovado para cuenta "${acct.label || acct.id}"`);
-        return true;
-      } else {
-        console.log(`  ✗ No se pudo renovar token de "${acct.label || acct.id}":`, JSON.stringify(tok));
-        return false;
-      }
-    })
-    .catch(() => false);
-  _refreshInFlight.set(acct.id, p);
-  try { return await p; }
-  finally { _refreshInFlight.delete(acct.id); }
-}
-
-// Wrappers que auto-refrescan y reintentan una vez ante 401
-async function mlGetAuth(acct, mlPath) {
-  try {
-    return await mlGet(mlPath, acct.access_token);
-  } catch(e) {
-    // ML a veces devuelve 400 con "Oops! Something went wrong" en vez de 401
-    // cuando el token está vencido — forzar refresh igual
-    const isOops = typeof e.message === 'string' &&
-      (e.message.includes('Oops') || e.message.toLowerCase().includes('invalid_token'));
-    if (e.status === 401 || e.status === 403 || (e.status === 400 && isOops)) {
-      const ok = await refreshAccountToken(acct);
-      if (ok) return await mlGet(mlPath, acct.access_token);
-    }
-    throw e;
-  }
-}
-async function mlPutAuth(acct, mlPath, body) {
-  try {
-    return await mlPut(mlPath, body, acct.access_token);
-  } catch(e) {
-    if (e.status === 401 || e.status === 403) {
-      const ok = await refreshAccountToken(acct);
-      if (ok) return await mlPut(mlPath, body, acct.access_token);
-    }
-    throw e;
-  }
-}
-
-// PUT con verificación: si el PUT falla por timeout/red/5xx (NO por 4xx),
-// ML muy probablemente igual aplicó el cambio aunque la respuesta tardó y el
-// socket expiró. Reconsulta el item con un GET y, si el stock total coincide
-// con lo esperado, lo da por aplicado. Evita el "hizo el cambio pero figura
-// como fallido". Devuelve { applied:true, recovered:bool }.
-async function mlPutVerified(acct, itemId, putBody, expectedTotal) {
-  try {
-    await mlPutAuth(acct, '/items/' + itemId, putBody);
-    return { applied: true, recovered: false };
-  } catch(e) {
-    // 4xx = rechazo real de ML (datos inválidos, permisos) → no es recuperable
-    if (e.status && e.status >= 400 && e.status < 500) throw e;
-    // timeout / 5xx / error de red → verificar si igual se aplicó
-    if (expectedTotal == null) throw e;
-    try {
-      const data = await mlGetAuth(acct, '/items/' + itemId);
-      const vars = data.variations || [];
-      const total = vars.length
-        ? vars.reduce((s, v) => s + (v.available_quantity || 0), 0)
-        : (data.available_quantity || 0);
-      if (total === expectedTotal) {
-        console.log(`  ↻ [tg] PUT de ${itemId} expiró pero el cambio SÍ se aplicó (verificado: ${total} u.)`);
-        return { applied: true, recovered: true };
-      }
-    } catch(_) { /* la verificación también falló → propagar el error original */ }
-    throw e;
-  }
-}
-
-async function mlPostAuth(acct, mlPath, body) {
-  try {
-    return await mlPost(mlPath, body, acct.access_token);
-  } catch(e) {
-    if (e.status === 401 || e.status === 403) {
-      const ok = await refreshAccountToken(acct);
-      if (ok) return await mlPost(mlPath, body, acct.access_token);
-    }
-    throw e;
-  }
-}
-
-// ── Correo Argentino — cache de autenticación ────────────────
-let _caAuth = null; // { token, customerId, base, expiry }
-
-async function getCorreoAuth() {
-  if (_caAuth && Date.now() < _caAuth.expiry) return _caAuth;
-  const ca = fullConfig.correo_argentino || {};
-  // Credenciales: primero config.json, luego variables de entorno (.env)
-  const email    = ca.email    || process.env.CA_EMAIL    || null;
-  const password = ca.password || process.env.CA_PASSWORD || null;
-  if (!email || !password) return null;
-
-  const base = (ca.production
-    ? 'https://api.correoargentino.com.ar'
-    : 'https://apitest.correoargentino.com.ar') + '/micorreo/v1';
-
-  try {
-    // Paso 1: Bearer token via Basic Auth — POST /token sin body
-    const basicCred = Buffer.from(`${email}:${password}`).toString('base64');
-    console.log(`[correo] Auth intent: URL ${base}/token, email="${email}", credential="${basicCred.slice(0, 20)}..."`);
-    const tokenRes  = await httpsRequestJson(`${base}/token`, 'POST', null, {
-      'Authorization': `Basic ${basicCred}`,
-    });
-    const token = tokenRes.token || tokenRes.access_token || tokenRes.accessToken;
-    if (!token) throw new Error('No se obtuvo token de Correo Argentino');
-
-    // Paso 2: customerId — usar el de config/env o buscar vía /users/validate
-    let customerId = ca.customer_id || process.env.CA_CUSTOMER_ID || null;
-    if (!customerId) {
-      const vRes = await httpsRequestJson(`${base}/users/validate`, 'POST',
-        { email, password },
-        { 'Authorization': `Bearer ${token}` }
-      );
-      customerId = vRes.customerId || vRes.customer_id || vRes.id || null;
-    }
-
-    // El token de MiCorreo dura varias horas; caché de 50 min es seguro
-    _caAuth = { token, customerId, base, expiry: Date.now() + 50 * 60 * 1000 };
-    console.log('[correo] Auth OK — customerId:', customerId);
-    return _caAuth;
-  } catch(e) {
-    console.error('[correo] Auth error:', e.message, e.status || '');
-    _caAuth = null;
-    return null;
-  }
-}
+// ── Cliente ML autenticado (refresh de token + wrappers GET/PUT/POST) ──
+// → extraído a lib/ml-client.js (factory inyectada con getConfig/getFullConfig
+// porque dependen de la cuenta activa y de config.json).
+const { refreshAccountToken, mlGetAuth, mlPutAuth, mlPutVerified, mlPostAuth } = createMlClient({
+  mlGet, mlPut, mlPost, mlOauthToken, atomicWriteFileSync, CONFIG_PATH,
+  getConfig: () => config,
+  getFullConfig: () => fullConfig,
+});
 
 // ── Intercambiar código OAuth por tokens ──────────────────────
 function exchangeCode(code, res, asJson = false) {
@@ -764,7 +531,6 @@ function _saveSessions() {
 }
 
 const _loginAttempts = new Map(); // ip -> { count, since } — rate limiting login
-const _reviewsCache = new Map(); // `${itemId}_${offset}_${limit}` -> { data, expiry }
 let _statsCache = null;          // { data, expiry } — global stats agregadas
 let _statsRefreshRunning = false;
 async function _refreshStatsCache() {
@@ -957,6 +723,157 @@ function getProductCache() {
   return items;
 }
 
+// Cotiza el envío de un item para un CP: caché persistente (6h) y, si no hay,
+// ML en vivo (probando cada cuenta hasta la dueña de la publicación). Devuelve
+// { zip_code, options:[{id,name,cost,free,type,estimate}] } o null si no se
+// pudo cotizar. Reutilizado por GET /api/tienda/envio y por la validación
+// server-side del precio de envío en POST /api/tienda/orden.
+async function quoteShipping(itemId, cp) {
+  if (!/^ML[A-Z]\d+$/.test(itemId) || !/^\d{4}$/.test(cp)) return null;
+  try { const cached = await db.getShippingCache(itemId, cp); if (cached) return cached; } catch {}
+  const allAccts = (fullConfig.accounts && fullConfig.accounts.length) ? fullConfig.accounts : [config];
+  let raw, lastErr;
+  for (const acct of allAccts) {
+    try {
+      raw = await mlGetAuth(acct, `/items/${encodeURIComponent(itemId)}/shipping_options?zip_code=${cp}`);
+      break;
+    } catch (e) {
+      lastErr = e;
+      if (e.status === 403 || e.status === 404) continue;
+      throw e;
+    }
+  }
+  if (!raw) return null;
+  const result = {
+    zip_code: cp,
+    options: (raw.options || []).map(opt => ({
+      id:       opt.id,
+      name:     friendlyShippingName(opt),
+      cost:     typeof opt.cost === 'number' ? opt.cost : null,
+      free:     opt.cost === 0,
+      type:     opt.shipping_option_type || '',
+      estimate: formatDeliveryEstimate(opt.estimated_delivery_time),
+    })).filter(o => o.cost !== null),
+  };
+  try { await db.setShippingCache(itemId, cp, result); } catch {}
+  return result;
+}
+
+// Valida (server-side) el precio de envío que envía el cliente — antes se
+// confiaba en él (sólo clampeado ≥0), permitiendo pagar menos envío.
+// Acepta: retiro=0; precio==0 sólo si ML cotiza envío gratis; y precios >0
+// que no estén por debajo del mínimo razonable (la tabla fija del checkout o
+// el costo real de ML cacheado). Nunca rechaza un precio legítimo (la tabla
+// fija y las cotizaciones reales siempre pasan); bloquea ceros/undercuts en
+// métodos pagos. Devuelve el precio saneado o lanza Error('shipping_invalido').
+const SHIP_FIXED = [5000, 6500, 8500];   // tabla del checkout (flex/correo)
+const SHIP_MAX   = 20000;
+async function resolveShippingPrice(envio, cp, orderItems) {
+  let precio = Math.max(0, Math.min(SHIP_MAX, parseFloat(envio?.precio) || 0));
+  const tag = String(envio?.empresa || envio?.nombre || envio?.metodo || '').toLowerCase();
+  const isRetiro = tag.includes('retiro') || tag.includes('sucursal');
+  if (isRetiro) {
+    if (precio !== 0) throw new Error('shipping_invalido');
+    return 0;
+  }
+  const cpClean = String(cp || '').replace(/\D/g, '');
+  const realCosts = [];
+  let hasFree = false;
+  const mlItems = [...new Set(orderItems.map(i => i.id).filter(id => /^ML[A-Z]\d+$/.test(id)))];
+  if (/^\d{4}$/.test(cpClean)) {
+    for (const id of mlItems) {
+      let q = null;
+      try { q = await db.getShippingCache(id, cpClean); } catch {}
+      if (q && Array.isArray(q.options)) {
+        for (const o of q.options) {
+          if (typeof o.cost === 'number' && o.cost > 0) realCosts.push(Math.round(o.cost));
+          if (o.free || o.cost === 0) hasFree = true;
+        }
+      }
+    }
+  }
+  if (precio === 0) {
+    // Envío gratis: confirmar contra cotización real. Si la caché no lo prueba,
+    // re-cotizar en vivo una vez (item de referencia) antes de rechazar.
+    if (hasFree) return 0;
+    if (mlItems.length && /^\d{4}$/.test(cpClean)) {
+      const q = await quoteShipping(mlItems[0], cpClean);
+      if (q && q.options.some(o => o.free || o.cost === 0)) return 0;
+    }
+    throw new Error('shipping_invalido');
+  }
+  // precio > 0: mínimo razonable = el más barato entre la tabla fija y los
+  // costos reales conocidos. Bloquea valores claramente por debajo.
+  const minAllowed = Math.min(SHIP_FIXED[0], ...(realCosts.length ? realCosts : [Infinity]));
+  if (precio >= minAllowed * 0.95) return precio;
+  throw new Error('shipping_invalido');
+}
+
+// JSON-LD del producto para inyección SERVER-SIDE en producto.html.
+// El schema client-side (en producto.html) no siempre lo detectan los
+// crawlers (depende de ejecutar JS + un fetch async). Sirviéndolo en el
+// HTML inicial, Google lo lee sin renderizar. El JS del cliente reusa el
+// mismo id="product-schema" y lo sobreescribe enriqueciéndolo con
+// aggregateRating/review reales cuando cargan las reseñas.
+// Descripción del producto para SEO / structured data (Merchant listings exige
+// el campo "description"). Usa la del producto propio / caché si existe; si no,
+// genera una específica a partir del título (única por producto, no genérica).
+function buildProductMetaDescription(p) {
+  const clean = s => String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const d = clean(p.wz_descripcion || p.plain_text || p.descripcion || '');
+  if (d.length >= 50) return d.slice(0, 500);
+  const title = (clean(p.title) || 'Producto').replace(/[.\s]+$/, ''); // sin punto/espacio final
+  return `${title}. Comprá en WZMALLAS, tienda oficial: envío a todo el país, garantía y devolución en 10 días. Pagá con Mercado Pago en cuotas o por transferencia.`.slice(0, 500);
+}
+
+function buildProductJsonLd(p, id, host, description) {
+  const pics = Array.isArray(p.pictures) ? p.pictures : [];
+  let img = (pics[0] && (pics[0].secure_url || pics[0].url)) || p.thumbnail || '';
+  img = String(img).replace(/^http:\/\//, 'https://');
+  // Dominio canónico fijo: el sitio público siempre es wzmallas.com (el host del
+  // request puede ser localhost/IP en acceso directo y no debe filtrarse al schema).
+  const url = 'https://wzmallas.com/tienda/producto.html?id=' + encodeURIComponent(id);
+  const inStock = (p.available_quantity || 0) > 0;
+  return {
+    '@context': 'https://schema.org',
+    '@type':    'Product',
+    name:        p.title || '',
+    description: description || buildProductMetaDescription(p),
+    image:       img,
+    sku:         id,
+    brand:       { '@type': 'Brand', name: 'WZMALLAS' },
+    offers: {
+      '@type':        'Offer',
+      url,
+      priceCurrency:  'ARS',
+      price:          p.price || 0,
+      itemCondition:  'https://schema.org/NewCondition',
+      availability:   inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      seller:         { '@type': 'Organization', name: 'WZMALLAS' },
+      // Devolución: 10 días, AR, flete de regreso a cargo de WZMALLAS (Art. 34 Ley 24.240).
+      hasMerchantReturnPolicy: {
+        '@type':              'MerchantReturnPolicy',
+        applicableCountry:    'AR',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+        merchantReturnDays:   10,
+        returnMethod:         'https://schema.org/ReturnByMail',
+        returnFees:           'https://schema.org/FreeReturn'
+      },
+      // Envío gratis (oferta destacada >$33.000), 0-1 día prep + 2-7 días tránsito.
+      shippingDetails: {
+        '@type':             'OfferShippingDetails',
+        shippingRate:        { '@type': 'MonetaryAmount', value: 0, currency: 'ARS' },
+        shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'AR' },
+        deliveryTime: {
+          '@type':      'ShippingDeliveryTime',
+          handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY' },
+          transitTime:  { '@type': 'QuantitativeValue', minValue: 2, maxValue: 7, unitCode: 'DAY' }
+        }
+      }
+    }
+  };
+}
+
 // Invalidar cache de productos al hacer sync
 function invalidateProductCache() {
   _productCache     = null;
@@ -979,7 +896,7 @@ const _routerCtx = {
   mlGetAuth, mlPutAuth, mlPostAuth, refreshAccountToken,
   fullConfig: () => fullConfig, config: () => config,
   getProductCache, invalidateProductCache,
-  checkStockChanges, buildVariantChangesFromMismatches,
+  checkStockChanges, buildVariantChangesFromMismatches, buildVariantChangesFromSource,
   getLastVincCheck: () => lastVincCheck,
 };
 const _preguntasRouter    = _mkHandlePreguntas(_routerCtx);
@@ -1010,9 +927,14 @@ const server = http.createServer((req, res) => {
   //     split-DNS local: el celular en la misma red que ve wzmallas.com → local IP
   //     pero sigue usando el Host: wzmallas.com, por eso se lo atrapa aquí).
   // El panel de stockroom sólo es accesible usando la IP local directamente (ej: 192.168.0.57:3000).
+  // `tailscale serve` proxotea con x-forwarded-for de una IP de la tailnet
+  // (rango CGNAT 100.64.0.0/10) — eso NO es tráfico público de internet y NO
+  // debe activar el aislamiento (si no, el admin queda inaccesible vía Tailscale).
+  const _xff = req.headers['x-forwarded-for'] || '';
+  const _xffIsTailscale = /(^|[,\s])100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(_xff);
   const viaCloudflare = !!(
     req.headers['cf-connecting-ip'] ||
-    req.headers['x-forwarded-for']  ||
+    (_xff && !_xffIsTailscale) ||
     /wzmallas\.com/i.test(req.headers['host'] || '')
   );
   if (viaCloudflare) {
@@ -2269,9 +2191,10 @@ const server = http.createServer((req, res) => {
           const data  = JSON.parse(rawBody);
 
           // ── Validación de precios (server-side) ───────────────────────────
-          // Compara los precios del carrito contra los precios reales en DB.
-          // Tolerancia: 1% para absorber diferencias de redondeo.
-          // Si un producto no está en DB se omite (graceful — productos nuevos).
+          // Compara los precios del carrito contra los precios reales (DB de ML,
+          // catálogo en caché y productos propios). Tolerancia 1% por redondeo.
+          // Un producto que no se puede identificar en NINGUNA fuente se rechaza
+          // (antes se omitía → permitía mandar un precio arbitrario).
           const orderItems = Array.isArray(data.items) ? data.items : [];
 
           // Sanitizar primero, validar después
@@ -2296,31 +2219,100 @@ const server = http.createServer((req, res) => {
             return;
           }
 
-          const mlIds      = [...new Set(orderItems.map(i => i.id).filter(Boolean))];
-          if (mlIds.length > 0) {
-            const priceMap = await db.getProductPricesForOrder(mlIds);
-            for (const item of orderItems) {
-              const prod = priceMap[item.id];
-              if (!prod || !prod.all_prices.length) continue; // no en DB → skip
-              const submittedPrice = parseFloat(item.price) || 0;
-              // Verificar que el precio enviado coincide con alguno de los precios válidos (±1%)
-              const isValid = prod.all_prices.some(validPrice => {
-                if (validPrice <= 0) return false;
-                return Math.abs(submittedPrice - validPrice) / validPrice <= 0.01;
-              });
-              if (!isValid) {
-                const validList = prod.all_prices.map(p => `$${Math.round(p).toLocaleString('es-AR')}`).join(', ');
-                console.warn(`  ✗ [precio] ${item.id}: enviado $${submittedPrice}, válidos: ${validList}`);
-                res.writeHead(400);
-                res.end(JSON.stringify({
-                  error: 'precio_invalido',
-                  message: `El precio del producto "${item.title || item.id}" no es válido. Actualizá la página e intentá de nuevo.`,
-                }));
-                return;
+          // Fuentes de precios válidos: DB de ML (products+variants), catálogo
+          // en caché (productos de ML aún no sincronizados en DB) y productos
+          // propios (tabla tienda_productos_propios + sus variantes).
+          const mlIds = [...new Set(orderItems.map(i => i.id).filter(id => /^ML[A-Z]\d+$/.test(id)))];
+          const priceMap = mlIds.length ? await db.getProductPricesForOrder(mlIds) : {};
+
+          const cacheById = {};
+          try { for (const p of getProductCache()) cacheById[p.id] = p; } catch {}
+
+          const propioMap = {};
+          if (orderItems.some(i => esIdProductoPropio(i.id))) {
+            try { for (const lp of await db.getProductosPropios({ soloActivos: true })) propioMap[lp.id] = lp; } catch {}
+          }
+
+          // Devuelve la lista de precios válidos para un item, o null si el
+          // producto no se puede identificar en ninguna fuente.
+          const validPricesFor = (item) => {
+            const id = item.id;
+            if (/^ML[A-Z]\d+$/.test(id)) {
+              const prod = priceMap[id];
+              if (prod && prod.all_prices.length) return prod.all_prices;
+              const c = cacheById[id];                       // fallback: catálogo en caché
+              if (c) {
+                const ps = [Number(c.price) || 0, ...((c.variations || []).map(v => Number(v.price) || 0))].filter(p => p > 0);
+                if (ps.length) return ps;
               }
+              return null;
+            }
+            if (esIdProductoPropio(id)) {
+              const lp = propioMap[id];
+              if (!lp) return null;
+              const ps = [Number(lp.precio_ars) || 0, ...((lp.variantes || []).map(v => Number(v.precio_ars) || 0))].filter(p => p > 0);
+              return ps.length ? ps : null;
+            }
+            // Otros ids: sólo válidos si están en el catálogo en caché (ej.
+            // WZ-TEST-PAGO cuando TEST_PRODUCT=true). Si no, desconocido.
+            const c = cacheById[id];
+            if (c) { const ps = [Number(c.price) || 0].filter(p => p > 0); if (ps.length) return ps; }
+            return null;
+          };
+
+          for (const item of orderItems) {
+            const valid = validPricesFor(item);
+            if (!valid) {
+              console.warn(`  ✗ [precio] producto no identificable: ${item.id}`);
+              res.writeHead(400);
+              res.end(JSON.stringify({
+                error: 'producto_invalido',
+                message: `El producto "${item.title || item.id}" no está disponible. Actualizá la página e intentá de nuevo.`,
+              }));
+              return;
+            }
+            const submittedPrice = parseFloat(item.price) || 0;
+            const isValid = valid.some(vp => vp > 0 && Math.abs(submittedPrice - vp) / vp <= 0.01);
+            if (!isValid) {
+              const validList = valid.map(p => `$${Math.round(p).toLocaleString('es-AR')}`).join(', ');
+              console.warn(`  ✗ [precio] ${item.id}: enviado $${submittedPrice}, válidos: ${validList}`);
+              res.writeHead(400);
+              res.end(JSON.stringify({
+                error: 'precio_invalido',
+                message: `El precio del producto "${item.title || item.id}" no es válido. Actualizá la página e intentá de nuevo.`,
+              }));
+              return;
+            }
+
+            // ── Guard de stock (solo lectura — NO descuenta/toca stock de ML) ──
+            // Rechaza ítems sin stock que NO sean "a pedido". Usa la misma fuente
+            // que el frontend (caché de ML / productos propios) → no agrega
+            // llamadas a ML. Es best-effort (sin datos → no bloquea): no resuelve
+            // la concurrencia exacta del último ítem, eso queda al despacho manual.
+            const reqQty = Math.max(1, parseInt(item.qty) || 1);
+            let sinStock = false;
+            if (esIdProductoPropio(item.id)) {
+              const lp = propioMap[item.id];
+              if (lp && !lp.a_pedido) {
+                const vs = Array.isArray(lp.variantes) ? lp.variantes : [];
+                const v  = (vs.length && item.variant) ? vs.find(x => x.id === item.variant || x.nombre === item.variant) : null;
+                sinStock = v ? (v.stock === 'agotado') : (lp.stock_estado === 'agotado');
+              }
+            } else {
+              const c = cacheById[item.id];
+              if (c && typeof c.available_quantity === 'number') sinStock = c.available_quantity < reqQty;
+            }
+            if (sinStock) {
+              console.warn(`  ✗ [stock] ${item.id}: sin stock para ${reqQty}u`);
+              res.writeHead(409);
+              res.end(JSON.stringify({
+                error: 'sin_stock',
+                message: `"${item.title || item.id}" se quedó sin stock suficiente. Actualizá la página e intentá de nuevo.`,
+              }));
+              return;
             }
           }
-          // ── Fin validación de precios ──────────────────────────────────────
+          // ── Fin validación de precios + stock ───────────────────────────────
 
           // ── Recalcular total server-side (cupón + descuento 5% por transferencia) ──
           // qty se clampa a [1, 99]: un qty negativo restaría plata del total.
@@ -2329,6 +2321,7 @@ const server = http.createServer((req, res) => {
           const subtotalCalc = orderItems.reduce((acc, it) => acc + Math.max(0, parseFloat(it.price) || 0) * it.qty, 0);
 
           let cuponDescuentoCalc = 0;
+          let envioGratisCupon   = false;   // cupón type:'freeship' → envío bonificado
           const cuponCode = data.pago?.cupon;
           if (cuponCode) {
             const cupon = getCupones().find(c => c.code === cuponCode && c.active !== false);
@@ -2340,28 +2333,52 @@ const server = http.createServer((req, res) => {
                 ? Math.round(base * cupon.value / 100)
                 : Math.min(cupon.value, base);
               if (cupon.max_descuento > 0) cuponDescuentoCalc = Math.min(cuponDescuentoCalc, cupon.max_descuento);
+            } else if (cupon && cupon.type === 'freeship') {
+              envioGratisCupon = true;
             }
           }
 
-          // El precio de envío viene del cliente — clampear a >= 0 (un valor negativo
-          // descontaría del total). Se muta data.envio.precio para que createOrden y
-          // todo lo downstream persistan el valor sano. La validación contra
-          // cotización real queda como mejora pendiente (ver plan 3.1).
-          if (data.envio) data.envio.precio = Math.max(0, parseFloat(data.envio.precio) || 0);
-          const envioCalc    = data.envio?.precio || 0;
+          // El precio de envío viene del cliente — validar server-side contra la
+          // tabla fija del checkout y la cotización real de ML (ver
+          // resolveShippingPrice). Antes sólo se clampeaba a ≥0, permitiendo
+          // pagar menos envío. Se muta data.envio.precio con el valor saneado.
+          let envioCalc = 0;
+          if (data.envio) {
+            try {
+              envioCalc = await resolveShippingPrice(data.envio, data.datos?.cp, orderItems);
+              data.envio.precio = envioCalc;
+            } catch (e) {
+              console.warn(`  ✗ [envio] precio inválido: $${data.envio.precio} (cp ${data.datos?.cp || '—'})`);
+              res.writeHead(400);
+              res.end(JSON.stringify({
+                error: 'envio_invalido',
+                message: 'El costo de envío no es válido. Actualizá la página e intentá de nuevo.',
+              }));
+              return;
+            }
+          }
           const esTransferencia = data.pago?.metodo === 'transferencia';
           const descuentoCalc = esTransferencia ? Math.round((subtotalCalc - cuponDescuentoCalc) * 0.05) : 0;
+          // Cupón de envío gratis: se valida el precio real (arriba) y acá se
+          // bonifica → el cliente paga 0 de envío. envioCalc real se guarda como
+          // descuento_envio (lo que absorbe el negocio) y data.envio.precio=0.
+          const envioCobrado = envioGratisCupon ? 0 : envioCalc;
+          if (data.envio) data.envio.precio = envioCobrado;
           if (data.pago) {
             data.pago.descuento_transferencia = descuentoCalc;
-            if (cuponDescuentoCalc > 0) {
+            if (cuponDescuentoCalc > 0 || envioGratisCupon) {
               data.pago.cupon = cuponCode;
-              data.pago.descuento_cupon = cuponDescuentoCalc;
+              if (cuponDescuentoCalc > 0) data.pago.descuento_cupon = cuponDescuentoCalc;
+              else delete data.pago.descuento_cupon;
+              if (envioGratisCupon) data.pago.descuento_envio = envioCalc;
+              else delete data.pago.descuento_envio;
             } else {
               delete data.pago.cupon;
               delete data.pago.descuento_cupon;
+              delete data.pago.descuento_envio;
             }
           }
-          data.total = subtotalCalc - cuponDescuentoCalc - descuentoCalc + envioCalc;
+          data.total = subtotalCalc - cuponDescuentoCalc - descuentoCalc + envioCobrado;
           // ── Fin recálculo de total ──────────────────────────────────────────
 
           const orden = await db.createOrden(data);
@@ -2575,10 +2592,18 @@ const server = http.createServer((req, res) => {
           console.log(`[arrepentimiento] ${ticket} — ${email} — pedido ${pedido} — tipo: ${tipo}`);
 
           // Notificar por email si está configurado
+          const escAdm = s => String(s ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           sendEmail({
-            to: fullConfig.email_admin || fullConfig.gmail_user,
+            to: fullConfig.email?.admin_email,
             subject: `⚠️ Arrepentimiento ${ticket} — Pedido ${pedido}`,
-            text: `Ticket: ${ticket}\nFecha: ${ts}\nNombre: ${nombre}\nEmail: ${email}\nTeléfono: ${telefono || '-'}\nPedido: ${pedido}\nTipo: ${tipo}\nMotivo: ${motivo || '-'}`,
+            html: `<p>Ticket: <b>${escAdm(ticket)}</b><br>`
+              + `Fecha: ${escAdm(ts)}<br>`
+              + `Nombre: ${escAdm(nombre)}<br>`
+              + `Email: ${escAdm(email)}<br>`
+              + `Teléfono: ${escAdm(telefono)}<br>`
+              + `Pedido: ${escAdm(pedido)}<br>`
+              + `Tipo: ${escAdm(tipo)}<br>`
+              + `Motivo: ${escAdm(motivo)}</p>`,
           }).catch(() => {});
 
           // Confirmación al comprador
@@ -2984,6 +3009,9 @@ const server = http.createServer((req, res) => {
           }));
         } catch(e) {
           console.error('[MP] Error creando preferencia:', e.message);
+          // Alerta operativa: si falla la creación de preferencia, el cliente
+          // NO puede pagar → checkout roto. Throttle 30' para no spamear.
+          tgAlert('mp_pref_error', `🛑 <b>Falla al crear preferencia MP</b>\nOrden: <code>${orden_id || '—'}</code>\nError: ${e.message}\n<i>El checkout puede estar caído — revisar credenciales/config de MP.</i>`);
           res.writeHead(e.status || 500);
           res.end(JSON.stringify({ error: e.message, details: e.body || null }));
         }
@@ -3045,6 +3073,9 @@ const server = http.createServer((req, res) => {
           const dataIdParam = url.searchParams.get('data.id') || paymentId;
           if (!mpVerifyWebhookSignature(req, dataIdParam, config.mp_webhook_secret || null)) {
             console.warn(`[webhook/mp] ✗ Firma inválida — notificación descartada (payment ${paymentId})`);
+            // Alerta operativa: firma inválida = posible mala config del secret
+            // o intento de spoofing. Throttle 60' para no spamear.
+            tgAlert('mp_webhook_badsig', `⚠️ <b>Webhook MP con firma inválida</b>\nPayment: <code>${paymentId}</code>\n<i>Notificación descartada. Si pasa seguido, revisar mp_webhook_secret o posible spoofing.</i>`, 60);
             return;
           }
 
@@ -3754,10 +3785,95 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── GET /api/tienda/admin/clientes-recurrentes ────────────
+    // Soft launch (Fase 2): identifica compradores recurrentes de ML
+    // (2+ compras) para invitarlos a la web con el cupón BIENVENIDA10.
+    // Es ON-DEMAND (no parte de /stats) porque hace varias llamadas a ML.
+    // Solo LEE — la difusión la hace el dueño a mano (la API de ML no expone
+    // el contacto del comprador y desviar tráfico en la plataforma está
+    // penalizado; el canal correcto es el mensaje post-venta o el insert físico).
+    if (pathname === '/api/tienda/admin/clientes-recurrentes' && req.method === 'GET') {
+      (async () => {
+        const userId = config.user_id;
+        if (!userId || !config.access_token) {
+          res.writeHead(400); res.end(JSON.stringify({ error: 'Cuenta ML no configurada' })); return;
+        }
+        const min = Math.max(2, Math.min(parseInt(parsed.query.min || '2', 10) || 2, 10));
+        // ML limita offset+limit a ~1000; cap defensivo. Default 600 (12 páginas).
+        const maxOrders = Math.max(50, Math.min(parseInt(parsed.query.max || '600', 10) || 600, 1000));
+        const PAGE = 50;
+
+        const byBuyer = new Map();
+        let fetched = 0, total = null, pagesRead = 0;
+        for (let offset = 0; offset < maxOrders; offset += PAGE) {
+          const mlPath = `/orders/search?seller=${userId}&order.status=paid&sort=date_desc`
+            + `&offset=${offset}&limit=${PAGE}`;
+          let data;
+          try { data = await mlGetAuth(config, mlPath); }
+          catch (e) {
+            // Si ya leímos algo, devolvemos lo que haya con un aviso; si no, error.
+            if (fetched === 0) { res.writeHead(502); res.end(JSON.stringify({ error: 'ML API: ' + e.message })); return; }
+            break;
+          }
+          pagesRead++;
+          if (total == null) total = data.paging?.total ?? null;
+          const results = data.results || [];
+          if (!results.length) break;
+          for (const o of results) {
+            const bid = o.buyer?.id;
+            if (!bid) continue;
+            let agg = byBuyer.get(bid);
+            if (!agg) {
+              agg = { buyer_id: bid, nickname: o.buyer?.nickname || String(bid),
+                      total: 0, last_date: null, first_date: null, titles: [], _packs: new Set() };
+              byBuyer.set(bid, agg);
+            }
+            // Ocasión de compra = pack_id (carrito) con fallback al id de orden.
+            // ML divide un carrito multi-ítem en varias órdenes con el mismo
+            // pack_id; contarlas por separado infla el "recurrente" (sería una
+            // sola compra grande, no alguien que volvió).
+            agg._packs.add(o.pack_id || o.id);
+            agg.total += o.total_amount || 0;
+            const d = o.date_created || null;
+            if (d) {
+              if (!agg.last_date || d > agg.last_date) agg.last_date = d;
+              if (!agg.first_date || d < agg.first_date) agg.first_date = d;
+            }
+            for (const it of (o.order_items || [])) {
+              const t = it.item?.title;
+              if (t && agg.titles.length < 6 && !agg.titles.includes(t)) agg.titles.push(t);
+            }
+          }
+          fetched += results.length;
+          if (total != null && offset + PAGE >= total) break;
+        }
+
+        const recurrentes = [...byBuyer.values()]
+          .map(b => { b.count = b._packs.size; delete b._packs; return b; })
+          .filter(b => b.count >= min)
+          .sort((a, b) => b.count - a.count || (b.last_date || '').localeCompare(a.last_date || ''));
+
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          ok: true,
+          min,
+          coupon: SOFT_LAUNCH_COUPON,
+          analizadas: fetched,
+          total_ventas_cuenta: total,
+          compradores_unicos: byBuyer.size,
+          recurrentes,
+        }));
+      })().catch(e => {
+        console.error('[clientes-recurrentes] Error:', e?.message);
+        res.writeHead(500); res.end(JSON.stringify({ error: e?.message || 'Error desconocido' }));
+      });
+      return;
+    }
+
     // ── CUPONES — CRUD (público GET, admin POST/DELETE) ──────
     //
     // Almacena en Stockroom/tienda-cupones.json (getCupones/saveCupones
-    // y CUPONES_PATH están definidos a nivel de módulo, ver más arriba).
+    // viven en lib/cupones.js, importados arriba).
     // El front (carrito.html) hace GET /api/tienda/cupones como fallback.
     // ─────────────────────────────────────────────────────────
 
@@ -3769,9 +3885,35 @@ const server = http.createServer((req, res) => {
     }
 
     // GET /api/tienda/admin/cupones — admin
+    // Incluye uso por cupón (órdenes pagadas + ingresos) para trazabilidad
+    // por canal: WEB10 (web), BIENVENIDA10 (recurrentes ML), GRACIAS10
+    // (paquetes), IG10 (Instagram), etc.
     if (pathname === '/api/tienda/admin/cupones' && req.method === 'GET') {
-      res.writeHead(200);
-      res.end(JSON.stringify(getCupones()));
+      (async () => {
+        const list = getCupones();
+        let usage = {};
+        try {
+          const { rows } = await db.pool.query(`
+            SELECT UPPER(coupon_code) AS code,
+                   COUNT(*)                AS usos,
+                   COALESCE(SUM(total), 0) AS ingresos
+            FROM orders
+            WHERE coupon_code IS NOT NULL AND coupon_code <> ''
+              AND status::text IN ('paid','shipped','delivered','completed')
+            GROUP BY UPPER(coupon_code)
+          `);
+          for (const r of rows) usage[r.code] = { usos: parseInt(r.usos), ingresos: parseFloat(r.ingresos) };
+        } catch (e) { /* sin DB → cupones sin métricas de uso */ }
+        const enriched = list.map(c => {
+          const u = usage[(c.code || '').toUpperCase()] || { usos: 0, ingresos: 0 };
+          return { ...c, usos: u.usos, ingresos: u.ingresos };
+        });
+        res.writeHead(200);
+        res.end(JSON.stringify(enriched));
+      })().catch(e => {
+        res.writeHead(200);
+        res.end(JSON.stringify(getCupones()));  // fallback: sin métricas
+      });
       return;
     }
 
@@ -3874,34 +4016,6 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ── POST /api/tienda/correo/rates ───────────────────────
-    // Retorna costo fijo de envío por Correo Argentino: $10.000
-    // Body: { cpDestino: "1043", items: [{ qty: 1 }, ...] }
-    // Respuesta: { configured: true, rates: 10000 }
-    if (pathname === '/api/tienda/correo/rates' && req.method === 'POST') {
-      (async () => {
-        let rawBody = '';
-        req.on('data', c => rawBody += c);
-        req.on('end', async () => {
-          try {
-            const { cpDestino = '' } = JSON.parse(rawBody);
-            const cpClean = cpDestino.replace(/\D/g, '');
-            if (!cpClean) {
-              return json(res, 400, { error: 'cpDestino requerido' });
-            }
-
-            // Costo fijo de envío por Correo Argentino
-            const fixedRate = 10000;
-            return json(res, 200, { configured: true, rates: fixedRate });
-          } catch(e) {
-            console.error('[correo/rates] Parse error:', e.message);
-            return json(res, 400, { error: 'Request inválido' });
-          }
-        });
-      })();
-      return;
-    }
-
     // ── GET /api/tienda/envio?id=MLA...&cp=#### ──────────────
     // Cotización real de Mercado Envíos para la ficha de producto:
     // costo y tiempo estimado de entrega según el código postal del
@@ -3923,39 +4037,12 @@ const server = http.createServer((req, res) => {
             return json(res, 400, { error: 'Código postal inválido (debe tener 4 dígitos)' });
           }
 
-          // 1) Caché persistente (6 horas)
-          const cached = await db.getShippingCache(itemId, cp);
-          if (cached) return json(res, 200, cached);
-
-          // 2) Probar con cada cuenta hasta encontrar la dueña de la publicación
-          //    (igual patrón que /reviews — 403/404 → seguir con la próxima)
-          const allAccts = (fullConfig.accounts && fullConfig.accounts.length) ? fullConfig.accounts : [config];
-          let raw, lastErr;
-          for (const acct of allAccts) {
-            try {
-              raw = await mlGetAuth(acct, `/items/${encodeURIComponent(itemId)}/shipping_options?zip_code=${cp}`);
-              break;
-            } catch (e2) {
-              lastErr = e2;
-              if (e2.status === 403 || e2.status === 404) continue;
-              throw e2;
-            }
+          // Cotización (caché 6h + ML en vivo) — misma lógica que usa la
+          // validación de envío en POST /api/tienda/orden (helper compartido).
+          const result = await quoteShipping(itemId, cp);
+          if (!result) {
+            return json(res, 200, { configured: false, error: 'No se pudo calcular el envío para ese código postal' });
           }
-          if (!raw) throw (lastErr || new Error('No se pudo cotizar el envío'));
-
-          const result = {
-            zip_code: cp,
-            options: (raw.options || []).map(opt => ({
-              id:       opt.id,
-              name:     friendlyShippingName(opt),
-              cost:     typeof opt.cost === 'number' ? opt.cost : null,
-              free:     opt.cost === 0,
-              type:     opt.shipping_option_type || '',
-              estimate: formatDeliveryEstimate(opt.estimated_delivery_time),
-            })).filter(o => o.cost !== null),
-          };
-
-          await db.setShippingCache(itemId, cp, result);
           return json(res, 200, result);
         } catch (e) {
           const status = (e && e.status === 404) ? 404 : 200;
@@ -5296,6 +5383,38 @@ const server = http.createServer((req, res) => {
         "media-src 'self' blob:; " +
         "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
     }
+    // producto.html?id=… → inyectar JSON-LD server-side (SEO). Si falla algo,
+    // cae al stream normal (el schema client-side sigue funcionando).
+    if (ext === '.html'
+        && path.basename(resolvedNorm).toLowerCase() === 'producto.html'
+        && parsed.query.id) {
+      try {
+        const prod = getProductCache().find(it => it.id === parsed.query.id);
+        if (prod) {
+          const host = (req.headers['host'] || 'wzmallas.com').split(':')[0];
+          const desc = buildProductMetaDescription(prod);
+          const ld   = buildProductJsonLd(prod, parsed.query.id, host, desc);
+          const tag  = '<script type="application/ld+json" id="product-schema">'
+                     + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
+          // Canónica server-side: URL limpia (solo ?id=), dominio fijo wzmallas.com.
+          // Antes la canónica se seteaba sólo por JS (a location.href, con params
+          // de tracking) → Google elegía otra canónica y marcaba "Duplicada".
+          const canonical = 'https://wzmallas.com/tienda/producto.html?id=' + encodeURIComponent(parsed.query.id);
+          const escAttr   = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+          const headTags  = '<link rel="canonical" href="' + escAttr(canonical) + '">\n' + tag;
+          let html = fs.readFileSync(resolvedNorm, 'utf8');
+          // Reemplazar la meta description genérica por una específica del producto
+          html = html.replace(/<meta\s+name="description"[^>]*>/i,
+            '<meta name="description" content="' + escAttr(desc) + '">');
+          html = html.replace('</head>', headTags + '\n</head>');
+          const buf  = Buffer.from(html, 'utf8');
+          res.writeHead(200, { ...tiendaHeaders, 'Content-Length': Buffer.byteLength(buf) });
+          res.end(buf);
+          return;
+        }
+      } catch (e) { /* fallback al stream normal */ }
+    }
+
     res.writeHead(200, tiendaHeaders);
     fs.createReadStream(resolvedNorm).pipe(res);
     return;
@@ -5316,7 +5435,21 @@ const server = http.createServer((req, res) => {
     'package.json', 'package-lock.json', '.env', '.env.local', '.env.production',
     'readme.md', 'security_setup.md', 'alibaba-mapping.json',
   ]);
-  if (BLOCKED_FILES.has(basename) || basename.startsWith('.') || basename.endsWith('.env')) {
+  // Defensa en profundidad: además de la lista exacta, bloquear por patrón
+  // los formatos que nunca deben servirse (backups, logs, copias, fuentes,
+  // y variantes de archivos sensibles tipo "auth - Copy.json" o
+  // "config.json.bak-pre-email"). Hoy muchos ya caen por MIME desconocido,
+  // pero esto los cierra explícitamente aunque el mapa MIME cambie.
+  const SENSITIVE_PATTERNS = [
+    /\.bak\b/, /\.bak-/, /\.log$/, /\.old$/, /\.orig$/, /\.save$/, /~$/, /\.swp$/,
+    /\bcopy\b/,                                   // "auth - Copy.json", "flex_cost copy.py"
+    /\.py$/, /\.sh$/, /\.(pem|key|crt|p12|pfx)$/, // fuentes y material criptográfico
+    /^(auth|config|tokens?|accounts|sessions|vinculaciones|ordenes|tienda-)[^/]*\.json/, // variantes de JSON sensibles
+  ];
+  if (BLOCKED_FILES.has(basename)
+      || basename.startsWith('.')
+      || basename.endsWith('.env')
+      || SENSITIVE_PATTERNS.some(re => re.test(basename))) {
     res.writeHead(404); res.end('Not found'); return;
   }
 
@@ -5386,12 +5519,58 @@ let lastVincCheck = null;
 //    "telegram": { "bot_token": "123:ABC...", "chat_id": "-100..." }
 // ══════════════════════════════════════════════════════════════
 
+// DISABLE_TELEGRAM=true (en el .env de staging) desactiva TODO el bot: no
+// arranca el long-polling (clave: si staging hiciera getUpdates le robaría los
+// mensajes a producción, que comparte el mismo bot) ni envía notificaciones.
+// Así staging puede correr en paralelo a prod sin duplicar mensajes.
+const TELEGRAM_DISABLED = process.env.DISABLE_TELEGRAM === 'true';
+
 function tgSend(text, keyboard) {
+  if (TELEGRAM_DISABLED) return Promise.resolve();
   const tg = fullConfig.telegram;
   if (!tg?.bot_token || !tg?.chat_id) return Promise.resolve();
   const params = { chat_id: tg.chat_id, text, parse_mode: 'HTML' };
   if (keyboard) params.reply_markup = { inline_keyboard: keyboard };
   return tgRequest(tg.bot_token, 'sendMessage', params);
+}
+
+// Envía una foto (por URL de ML) con caption + botones. Si falla el envío de
+// la foto (URL caída, etc.), cae a un sendMessage de texto para no perder el
+// aviso. El caption de Telegram admite hasta 1024 caracteres (suficiente acá).
+async function tgSendPhoto(photoUrl, caption, keyboard) {
+  if (TELEGRAM_DISABLED) return Promise.resolve();
+  const tg = fullConfig.telegram;
+  if (!tg?.bot_token || !tg?.chat_id) return Promise.resolve();
+  const params = { chat_id: tg.chat_id, photo: photoUrl, caption, parse_mode: 'HTML' };
+  if (keyboard) params.reply_markup = { inline_keyboard: keyboard };
+  const r = await tgRequest(tg.bot_token, 'sendPhoto', params);
+  if (r && r.ok) return r;
+  // Fallback a texto si la foto falló
+  return tgSend(caption, keyboard);
+}
+
+// Edita el caption de un mensaje-foto in-place (equivalente a tgEdit pero para
+// mensajes enviados con sendPhoto, que no se pueden editar con editMessageText).
+function tgEditCaption(chatId, messageId, caption, keyboard) {
+  const tg = fullConfig.telegram;
+  if (!tg?.bot_token || !chatId || !messageId) return Promise.resolve();
+  const params = {
+    chat_id: chatId, message_id: messageId, caption, parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: keyboard || [] },
+  };
+  return tgRequest(tg.bot_token, 'editMessageCaption', params).catch(() => {});
+}
+
+// Alerta operativa con throttle: envía `text` por Telegram pero no repite la
+// misma `key` antes de `minutes` minutos. Evita inundar el chat cuando un
+// error se dispara en cada request (ej: MP mal configurado, webhooks inválidos).
+const _tgAlertLast = new Map();
+function tgAlert(key, text, minutes = 30) {
+  const now = Date.now();
+  const last = _tgAlertLast.get(key) || 0;
+  if (now - last < minutes * 60 * 1000) return Promise.resolve();
+  _tgAlertLast.set(key, now);
+  return tgSend(text).catch(() => {});
 }
 
 // Edita un mensaje existente (in-place). Se usa al tocar un botón para
@@ -5419,27 +5598,65 @@ async function sendTgAdjustmentNotification(adj) {
   // remitimos a la web, donde está el detalle completo y el botón "Aplicar".
   if (adj.type === 'variant') {
     const mm = adj.variantMismatches || [];
-    let text = `🔀 <b>Variantes desbalanceadas</b> · ${adj.groupName}\n\n`;
+    let text = `📦 <b>Diferencia de stock</b> · ${adj.groupName}\n\n`;
     for (const m of mm) {
       const detalle = m.perItem.map(p => `${_shortAcct(p.acctLabel)} x${p.qty}`).join(' vs ');
-      text += `🎨 ${m.label}: ${detalle} → x${m.targetQty}\n`;
+      text += `🎨 ${m.label}: ${detalle}\n`;
     }
+    text += `\nElegí qué cuenta tiene el stock correcto (se copia a las demás):`;
 
-    let keyboard;
-    if (mm.length === 1) {
-      // Una sola variante desalineada: ofrecer un botón por cada cuenta para
-      // elegir cuál tiene la cantidad correcta (sin tener que ir a la web).
-      const m = mm[0];
-      text += `\nElegí qué cuenta tiene el stock correcto:`;
-      keyboard = m.perItem.map(p =>
-        [{ text: `✅ Usar ${_shortAcct(p.acctLabel)} x${p.qty}`, callback_data: `vc:${adj.id}:0:${p.itemId}` }]
-      );
-      keyboard.push([{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]);
-    } else {
-      text += `\nGestioná esto desde la web (Vinculaciones → Pendientes) — son ${mm.length} variantes, no se pueden ajustar con botones acá.`;
-      keyboard = [[{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]];
+    // Un botón por cuenta del grupo (fuente de verdad), sin importar cuántas
+    // variantes estén desbalanceadas. Al elegir una, su cantidad de cada
+    // variante se copia al resto (sube o baja). Reemplaza el viejo "gestioná
+    // desde la web" cuando había 2+ variantes.
+    const srcMap = {};
+    for (const m of mm) for (const p of m.perItem) {
+      if (!srcMap[p.itemId]) srcMap[p.itemId] = { acctLabel: p.acctLabel, qtys: [] };
+      srcMap[p.itemId].qtys.push(p.qty);
     }
+    const keyboard = Object.entries(srcMap).map(([itemId, info]) => {
+      // Mostrar la cantidad resultante sólo cuando hay una sola variante
+      // (con 2+ variantes una misma cuenta tiene cantidades distintas y no hay
+      // un único número que mostrar — el detalle va en el cuerpo del mensaje).
+      const qtyTxt = info.qtys.length === 1 ? ` x${info.qtys[0]}` : '';
+      return [{ text: `✅ Usar ${_shortAcct(info.acctLabel)}${qtyTxt}`, callback_data: `vsrc:${adj.id}:${itemId}` }];
+    });
+    keyboard.push([{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]);
 
+    // Imagen de la variante: si hay UNA sola variante en juego, usamos su foto
+    // específica (el color exacto). Con varias, la primera disponible.
+    const photoUrl = mm.flatMap(m => m.perItem).map(p => p.pic).find(Boolean) || null;
+    const sent = photoUrl
+      ? await tgSendPhoto(photoUrl, text, keyboard)
+      : await tgSend(text, keyboard);
+    console.log('[tg] Notificación enviada para ajuste:', adj.id, photoUrl ? '(con foto)' : '');
+    return (sent && sent.ok && sent.result)
+      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id, isPhoto: !!(photoUrl && sent.result.photo) }
+      : null;
+  }
+
+  // Ajustes dirigidos por ventas/cancelaciones (fase 2): un solo botón
+  // "Aplicar" sin importar cuántas variantes/items estén involucrados.
+  if (adj.type === 'sale' || adj.type === 'cancel') {
+    const isCancel = adj.type === 'cancel';
+    const icon  = isCancel ? '↩️' : '🔻';
+    const title = isCancel ? 'Venta cancelada' : 'Venta detectada';
+    let text = `${icon} <b>${title}</b> · ${adj.groupName}\n\n`;
+    for (const ch of adj.changes) {
+      for (const vc of (ch.variantChanges || [])) {
+        const signo = isCancel ? '+' : '−';
+        const verbo = isCancel ? 'subir' : 'bajar';
+        text += `🎨 ${vc.label} (${signo}${vc.delta}) → ${verbo} en ${_shortAcct(ch.acctLabel)}\n`;
+      }
+    }
+    text += isCancel
+      ? `\nSe sugiere subir el stock vinculado de vuelta.`
+      : `\nSe sugiere bajar el stock vinculado.`;
+
+    const keyboard = [
+      [{ text: '✅ Aplicar', callback_data: `apsync:${adj.id}` }],
+      [{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }],
+    ];
     const sent = await tgSend(text, keyboard);
     console.log('[tg] Notificación enviada para ajuste:', adj.id);
     return (sent && sent.ok && sent.result)
@@ -5501,9 +5718,13 @@ async function handleTgCallback(cb) {
   // Contexto del mensaje que tiene el botón → permite editarlo in-place
   const _chatId = cb.message?.chat?.id;
   const _msgId  = cb.message?.message_id;
+  // Si el mensaje original es una foto (sendPhoto), hay que editar el CAPTION
+  // (editMessageText falla en mensajes-foto). Telegram nos lo indica con
+  // cb.message.photo.
+  const _isPhoto = !!cb.message?.photo;
   // Edita el mensaje original (quita botones); si no hay contexto, manda uno nuevo
   const reply = (text, keyboard) => (_chatId && _msgId)
-    ? tgEdit(_chatId, _msgId, text, keyboard)
+    ? (_isPhoto ? tgEditCaption(_chatId, _msgId, text, keyboard) : tgEdit(_chatId, _msgId, text, keyboard))
     : tgSend(text, keyboard);
 
   try {
@@ -5700,12 +5921,149 @@ async function handleTgCallback(cb) {
       const failMsg = failed ? ` · ${failed} fallido(s)` : '';
       await reply(`✅ <b>${adj.groupName}</b>\n${mm.label}: ajustado a x${chosen.qty} (${_shortAcct(chosen.acctLabel)})${failMsg}.`);
 
+    } else if (action === 'vsrc') {
+      // Elegir una cuenta (su item) como fuente de verdad para TODAS las
+      // variantes desbalanceadas del grupo. Copia sus cantidades al resto
+      // (sube o baja). Soporta reposición manual (subir el stock de la otra
+      // cuenta), no sólo bajar al mínimo.
+      const c2 = rest.indexOf(':');
+      const adjId = rest.slice(0, c2);
+      const srcItemId = rest.slice(c2 + 1);
+      const allAdj = loadPendingAdjustments();
+      const adj = allAdj.find(a => a.id === adjId);
+      if (!adj || adj.status !== 'pending') { await reply(_adjStaleMsg(adj)); return; }
+
+      adj.changes = buildVariantChangesFromSource(adj.variantMismatches || [], srcItemId);
+      const srcLabel = (adj.variantMismatches || []).flatMap(m => m.perItem).find(p => p.itemId === srcItemId)?.acctLabel || srcItemId;
+      if (!adj.changes.length) {
+        adj.status = 'applied'; adj.appliedAt = new Date().toISOString();
+        savePendingAdjustments(allAdj);
+        await reply(`✅ <b>${adj.groupName}</b>\nYa estaba alineado con ${_shortAcct(srcLabel)}.`);
+        return;
+      }
+
+      reply(`🔄 Copiando stock de ${_shortAcct(srcLabel)}...`).catch(() => {});
+
+      const allAccounts = fullConfig.accounts || [];
+      const results = await Promise.allSettled(adj.changes.map(async ch => {
+        const acct = allAccounts.find(a => a.id === ch.accountId);
+        if (!acct) return { skipped: true };
+        await refreshAccountToken(acct);
+        const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
+        const vars = itemData.variations || [];
+        const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+        const itemDeltas = [];
+        for (const vc of ch.variantChanges || []) {
+          const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+          const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
+          if (t) { const from = t.available_quantity; t.available_quantity = Math.max(0, vc.to); itemDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity }); }
+        }
+        const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+        await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
+        return { applied: true, itemId: ch.itemId, deltas: itemDeltas };
+      }));
+
+      let applied = 0, failed = 0;
+      const variantDeltas = [];
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled' && r.value?.applied) { applied++; variantDeltas.push(...(r.value.deltas || [])); }
+        else if (r.status === 'rejected') { failed++; console.log('[tg] Error vsrc', adj.changes[i].itemId, r.reason?.message || r.reason); }
+      });
+
+      adj.status = (applied > 0) ? 'applied' : 'error';
+      adj.appliedAt = new Date().toISOString();
+      savePendingAdjustments(allAdj);
+      appendVincLog({ action: 'sync-from', source: 'telegram', adjId: adj.id, groupId: adj.groupId, groupName: adj.groupName, syncFromLabel: srcLabel, itemsApplied: applied, variantDeltas });
+      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
+      await reply(`✅ <b>${adj.groupName}</b>\nStock copiado desde ${_shortAcct(srcLabel)} en ${applied} publicación(es)${failMsg}.`);
+
+    } else if (action === 'apsync') {
+      // Aplica un ajuste "sale" (bajar stock vinculado) o "cancel" (restaurar
+      // stock vinculado tras una cancelación) — un solo botón sin importar
+      // cuántas variantes/items estén involucrados.
+      const allAdj = loadPendingAdjustments();
+      const adj = allAdj.find(a => a.id === rest);
+      if (!adj || adj.status !== 'pending') { await reply(_adjStaleMsg(adj)); return; }
+      const isCancel = adj.type === 'cancel';
+      const allAccounts = fullConfig.accounts || [];
+
+      reply(`🔄 Aplicando ajuste de ${isCancel ? 'cancelación' : 'venta'}...`).catch(() => {});
+
+      const results = await Promise.allSettled(adj.changes.map(async ch => {
+        const acct = allAccounts.find(a => a.id === ch.accountId);
+        if (!acct) return { skipped: true };
+        await refreshAccountToken(acct);
+        const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
+        const vars = itemData.variations || [];
+        const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+        const itemDeltas = [];
+        for (const vc of (ch.variantChanges || [])) {
+          const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+          const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
+          if (t) {
+            const from = t.available_quantity;
+            const to = Math.max(0, from + (isCancel ? vc.delta : -vc.delta));
+            t.available_quantity = to;
+            itemDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to, delta: to - from });
+          }
+        }
+        const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+        await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
+        return { applied: true, itemId: ch.itemId, acctLabel: ch.acctLabel, deltas: itemDeltas };
+      }));
+
+      let applied = 0, failed = 0;
+      const allDeltas = [];
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled' && r.value?.applied) { applied++; allDeltas.push(r.value); }
+        else if (r.status === 'rejected') {
+          failed++;
+          console.log('[tg] Error apsync', adj.changes[i].itemId, r.reason?.message || r.reason);
+        }
+      });
+
+      // Marcar ventas/cancelaciones como sincronizadas en el ledger
+      const ledger = loadVentasLedger();
+      for (const saleKey of (adj.saleKeys || [])) {
+        const entry = ledger.find(e => e.saleKey === saleKey);
+        if (entry) { if (isCancel) entry.cancelSynced = true; else entry.synced = true; }
+      }
+      saveVentasLedger(ledger);
+
+      adj.status = (applied > 0) ? 'applied' : 'error';
+      adj.appliedAt = new Date().toISOString();
+      savePendingAdjustments(allAdj);
+
+      // Log de cambios reales por variante (una sola entrada con todos los
+      // deltas, en la convención from-to del historial: delta>0 = bajó).
+      const variantDeltas = allDeltas.flatMap(d =>
+        d.deltas.map(vd => ({ attrKey: vd.attrKey, label: vd.label, from: vd.from, to: vd.to, delta: vd.from - vd.to }))
+      );
+      appendVincLog({
+        action: isCancel ? 'cancel-restore' : 'sale-sync',
+        source: 'telegram', adjId: adj.id, groupId: adj.groupId, groupName: adj.groupName,
+        itemsApplied: applied, variantDeltas,
+      });
+
+      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
+      const verbo = isCancel ? 'Repuesto' : 'Sincronizado';
+      await reply(`✅ <b>${adj.groupName}</b>\n${verbo} stock vinculado en ${applied} publicación(es)${failMsg}.`);
+
     } else if (action === 'dis') {
       const allAdj = loadPendingAdjustments();
       const adj = allAdj.find(a => a.id === rest);
       if (adj && adj.status === 'pending') {
         adj.status = 'dismissed'; adj.dismissedAt = new Date().toISOString();
         savePendingAdjustments(allAdj);
+        if (adj.saleKeys?.length) {
+          const ledger = loadVentasLedger();
+          const isCancel = adj.type === 'cancel';
+          for (const saleKey of adj.saleKeys) {
+            const entry = ledger.find(e => e.saleKey === saleKey);
+            if (entry) { if (isCancel) entry.cancelSynced = true; else entry.synced = true; }
+          }
+          saveVentasLedger(ledger);
+        }
         appendVincLog({ action: 'dismissed', source: 'telegram', adjId: adj.id, groupId: adj.groupId, triggerAcctLabel: adj.trigger?.acctLabel });
         await reply(`✕ Descartado · <b>${adj.groupName}</b>\n<i>El stock no se modificó.</i>`);
       } else {
@@ -6081,6 +6439,17 @@ async function checkStockChanges() {
   }
   _vincCheckInProgress = true;
   try {
+    // Detección dirigida por ventas (fase 2: detecta + genera sugerencias +
+    // notifica por Telegram con aprobación manual). Corre antes del check por
+    // stock (que queda como red de seguridad para casos no cubiertos, ej:
+    // reposición manual de stock).
+    const { newSales, cancellations } = await detectLinkedSales().catch(e => {
+      console.log('[vinc-ventas] Error: ' + (e.message || e));
+      return { newSales: [], cancellations: [] };
+    });
+    if (newSales.length || cancellations.length) {
+      await notifySaleAdjustments(newSales, cancellations).catch(e => console.log('[vinc-ventas] Error notificando: ' + (e.message || e)));
+    }
     await _checkStockChangesImpl();
   } finally {
     _vincCheckInProgress = false;
@@ -6118,6 +6487,7 @@ function detectVariantMismatches(stocks) {
         varId: s.variantSnap[attrKey].id,
         qty: s.variantSnap[attrKey].qty,
         label: s.variantSnap[attrKey].label || attrKey,
+        pic: s.variantSnap[attrKey].pic || s.thumb || '',
       }));
 
     if (perItem.length < 2) continue;
@@ -6131,13 +6501,240 @@ function detectVariantMismatches(stocks) {
   return mismatches;
 }
 
+// ── Vinculaciones dirigidas por VENTAS (sale-driven) ──────────────
+// Modelo nuevo: en vez de comparar stock entre cuentas y bajar al mínimo
+// (frágil: si se vende la misma variante en ambas cuentas el mínimo no lo
+// detecta), se consulta la API de órdenes de ML para saber QUÉ se vendió en
+// cada cuenta y sugerir bajar esa misma cantidad en la variante equivalente de
+// la cuenta vinculada. También detecta cancelaciones (orden que estaba pagada
+// y pasó a cancelada) para sugerir SUBIR el stock de vuelta.
+//
+// FASE 1: sólo detecta y registra en el ledger (vinculaciones-ventas.json) +
+// loguea. No crea ajustes ni toca stock todavía (eso es la fase 2).
+const SALE_OK_STATES = new Set(['paid', 'shipped', 'delivered', 'completed']);
+
+async function detectLinkedSales() {
+  const fp = path.join(__dirname, 'vinculaciones.json');
+  if (!fs.existsSync(fp)) return { newSales: [], cancellations: [] };
+  let vinc;
+  try { vinc = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch(e) { return { newSales: [], cancellations: [] }; }
+  if (!vinc.groups || !vinc.groups.length) return { newSales: [], cancellations: [] };
+
+  const allAccounts = fullConfig.accounts || [];
+
+  // 1. Mapa itemId → { grupo, cuenta, items vinculados (otras cuentas del grupo) }
+  const linkedByItem = {};         // itemId → { groupId, groupName, accountId, targets:[{itemId,accountId,acctLabel}] }
+  const acctItems    = {};         // accountId → Set(itemId) (items vinculados de esa cuenta)
+  for (const g of vinc.groups) {
+    for (const it of g.items) {
+      const targets = g.items
+        .filter(x => x.accountId !== it.accountId)
+        .map(x => ({ itemId: x.itemId, accountId: x.accountId, acctLabel: x.acctLabel || x.accountId }));
+      if (!targets.length) continue;
+      linkedByItem[it.itemId] = { groupId: g.id, groupName: g.name, accountId: it.accountId, acctLabel: it.acctLabel || it.accountId, targets };
+      (acctItems[it.accountId] = acctItems[it.accountId] || new Set()).add(it.itemId);
+    }
+  }
+
+  // Primera corrida: el ledger todavía no existe → las ventas históricas se
+  // marcan como "backfill" (ya contabilizadas) para NO sugerir descuentos por
+  // ventas viejas. Sólo las ventas detectadas DESPUÉS de esta primera corrida
+  // generan sugerencias.
+  const isFirstRun = !fs.existsSync(VENTAS_PATH);
+  const ledger    = loadVentasLedger();
+  const ledgerIdx = new Map(ledger.map(e => [e.saleKey, e]));
+  const newSales = [], cancellations = [];
+  let backfilled = 0;
+
+  // Ventana: últimos 30 días (cubre el lapso venta→despacho donde puede cancelarse)
+  const fromStr = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+
+  // 2. Por cada cuenta con items vinculados, leer órdenes recientes
+  for (const accountId of Object.keys(acctItems)) {
+    const acct = allAccounts.find(a => a.id === accountId);
+    if (!acct?.user_id) continue;
+    const itemSet = acctItems[accountId];
+
+    let orders = [];
+    try {
+      // Hasta 3 páginas (150 órdenes) de las más recientes pagadas/canceladas
+      for (let offset = 0; offset < 150; offset += 50) {
+        const path_ = `/orders/search?seller=${acct.user_id}&sort=date_desc&offset=${offset}&limit=50`
+          + `&order.date_created.from=${encodeURIComponent(fromStr)}`;
+        const data = await mlGetAuth(acct, path_);
+        const res = data.results || [];
+        orders.push(...res);
+        if (res.length < 50) break;
+      }
+    } catch(e) {
+      console.log('[vinc-ventas] Error leyendo órdenes de ' + accountId + ': ' + (e.message || e));
+      continue;
+    }
+
+    for (const o of orders) {
+      const status = o.status;
+      for (const oi of (o.order_items || [])) {
+        const itemId = oi.item?.id;
+        if (!itemId || !itemSet.has(itemId)) continue;   // no es un item vinculado
+        const varId   = oi.item?.variation_id || null;
+        const attrs   = oi.item?.variation_attributes || [];
+        const attrKey = _varKeyFromOrderAttrs(attrs);
+        const label   = _varLabelFromOrderAttrs(attrs) || (oi.item?.title || '');
+        const qty     = oi.quantity || 0;
+        const saleKey = `${o.id}|${itemId}|${varId || 'novar'}`;
+        const link    = linkedByItem[itemId];
+        if (!qty || !link) continue;
+
+        const existing = ledgerIdx.get(saleKey);
+
+        if (SALE_OK_STATES.has(status)) {
+          if (!existing) {
+            // Venta NUEVA de un item vinculado → registrar (sugerir bajar en la vinculada)
+            const entry = {
+              saleKey, orderId: o.id, accountId, acctLabel: link.acctLabel,
+              itemId, varId, attrKey, label, qty,
+              groupId: link.groupId, groupName: link.groupName,
+              targets: link.targets,            // dónde bajar el stock
+              saleStatus: 'paid',
+              // backfill (ventas previas al arranque) = ya contabilizadas → no sugerir
+              synced: isFirstRun, backfilled: isFirstRun, cancelSynced: false,
+              detectedAt: new Date().toISOString(), orderDate: o.date_created || null,
+            };
+            ledger.push(entry); ledgerIdx.set(saleKey, entry);
+            if (isFirstRun) backfilled++;
+            else newSales.push(entry);
+          }
+        } else if (status === 'cancelled') {
+          if (existing && existing.saleStatus !== 'cancelled') {
+            existing.saleStatus = 'cancelled';
+            existing.cancelledAt = new Date().toISOString();
+            cancellations.push(existing);
+          }
+        }
+      }
+    }
+  }
+
+  // Limpieza: descartar ventas viejas ya resueltas (>30 días) para no inflar el ledger
+  const cutoff = Date.now() - 35 * 24 * 3600 * 1000;
+  const pruned = ledger.filter(e => new Date(e.detectedAt).getTime() > cutoff);
+  saveVentasLedger(pruned);
+
+  if (isFirstRun) {
+    console.log(`[vinc-ventas] Primera corrida: ${backfilled} venta(s) histórica(s) registrada(s) como backfill (no generan sugerencias).`);
+    // Muestra para validar el matcheo (variante/grupo/cuenta destino)
+    for (const e of ledger.filter(x => x.backfilled).slice(0, 8)) {
+      const tgt = e.targets.map(t => _shortAcct(t.acctLabel)).join(',');
+      console.log(`[vinc-ventas]   · ${_shortAcct(e.acctLabel)} vendió ${e.label} ×${e.qty} (${e.groupName}) → bajaría en ${tgt}  [order ${e.orderId}]`);
+    }
+  }
+  if (newSales.length || cancellations.length) {
+    console.log(`[vinc-ventas] Detección: ${newSales.length} venta(s) nueva(s), ${cancellations.length} cancelación(es)`);
+    for (const s of newSales) {
+      const tgt = s.targets.map(t => _shortAcct(t.acctLabel)).join(',');
+      console.log(`[vinc-ventas]   🔻 Venta en ${_shortAcct(s.acctLabel)}: ${s.label} ×${s.qty} (${s.groupName}) → sugeriría bajar ${s.qty} en ${tgt}`);
+    }
+    for (const c of cancellations) {
+      console.log(`[vinc-ventas]   ↩️ CANCELADA en ${_shortAcct(c.acctLabel)}: ${c.label} ×${c.qty} (${c.groupName}) → ${c.synced ? 'sugeriría SUBIR ' + c.qty + ' de vuelta' : 'venta no sincronizada, sin acción'}`);
+    }
+  }
+  return { newSales, cancellations };
+}
+
+// Agrupa ventas nuevas/cancelaciones en ajustes pendientes "sale"/"cancel".
+// Una venta (o cancelación) puede impactar varios items vinculados (grupos
+// con 3+ cuentas) y un mismo ciclo puede traer varias ventas del mismo grupo
+// — todo se agrupa en UN solo ajuste por grupo (y por tipo) para que en
+// Telegram aparezca un único botón "Aplicar" sin importar cuántas variantes
+// o ventas estén involucradas.
+function buildSaleAdjustments(newSales, cancellations) {
+  const adjustments = [];
+
+  const groupByGroupId = (entries) => {
+    const byGroup = {};
+    for (const e of entries) {
+      if (!byGroup[e.groupId]) byGroup[e.groupId] = { groupName: e.groupName, saleKeys: [], itemsMap: {} };
+      const g = byGroup[e.groupId];
+      g.saleKeys.push(e.saleKey);
+      for (const t of e.targets) {
+        if (!g.itemsMap[t.itemId]) {
+          g.itemsMap[t.itemId] = { itemId: t.itemId, accountId: t.accountId, acctLabel: t.acctLabel, variantChanges: {} };
+        }
+        const im = g.itemsMap[t.itemId];
+        if (!im.variantChanges[e.attrKey]) im.variantChanges[e.attrKey] = { attrKey: e.attrKey, label: e.label, delta: 0 };
+        im.variantChanges[e.attrKey].delta += e.qty;
+      }
+    }
+    return byGroup;
+  };
+
+  const bySaleGroup = groupByGroupId(newSales);
+  for (const [groupId, g] of Object.entries(bySaleGroup)) {
+    const changes = Object.values(g.itemsMap).map(im => ({ ...im, variantChanges: Object.values(im.variantChanges) }));
+    if (!changes.length) continue;
+    adjustments.push({
+      id: 'adj_sale_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      type: 'sale', createdAt: new Date().toISOString(),
+      groupId, groupName: g.groupName, saleKeys: g.saleKeys, changes, status: 'pending',
+    });
+  }
+
+  // Cancelaciones: sólo importa restaurar stock si la venta original ya se
+  // había sincronizado (synced === true), porque eso significa que el stock
+  // vinculado ya fue bajado y ahora hay que devolverlo.
+  const cancelEntries = cancellations.filter(c => c.synced && !c.cancelSynced);
+  const byCancelGroup = groupByGroupId(cancelEntries);
+  for (const [groupId, g] of Object.entries(byCancelGroup)) {
+    const changes = Object.values(g.itemsMap).map(im => ({ ...im, variantChanges: Object.values(im.variantChanges) }));
+    if (!changes.length) continue;
+    adjustments.push({
+      id: 'adj_cancel_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      type: 'cancel', createdAt: new Date().toISOString(),
+      groupId, groupName: g.groupName, saleKeys: g.saleKeys, changes, status: 'pending',
+    });
+  }
+
+  return adjustments;
+}
+
+// Genera los ajustes "sale"/"cancel" a partir de lo detectado por
+// detectLinkedSales(), los persiste como pendientes y notifica por Telegram
+// (un solo botón "Aplicar" por grupo, sin importar la cantidad de variantes).
+async function notifySaleAdjustments(newSales, cancellations) {
+  const newAdjustments = buildSaleAdjustments(newSales, cancellations);
+  if (!newAdjustments.length) return;
+
+  const all = loadPendingAdjustments();
+  savePendingAdjustments([...all, ...newAdjustments]);
+
+  let refsChanged = false;
+  for (const adj of newAdjustments) {
+    try {
+      const ref = await sendTgAdjustmentNotification(adj);
+      if (ref?.msgId) { adj.tgChatId = ref.chatId; adj.tgMsgId = ref.msgId; refsChanged = true; }
+    } catch(e) { console.log('[tg] Error notificando ajuste de venta:', _errMsg(e)); }
+  }
+  if (refsChanged) {
+    const allNow = loadPendingAdjustments();
+    for (const adj of newAdjustments) {
+      const a = allNow.find(x => x.id === adj.id);
+      if (a && adj.tgMsgId) { a.tgChatId = adj.tgChatId; a.tgMsgId = adj.tgMsgId; }
+    }
+    savePendingAdjustments(allNow);
+  }
+}
+
 // Convierte mismatches por variante en la lista `changes` por item que
 // esperan los ajustes pendientes (mismo formato que usa la UI/Telegram).
 function buildVariantChangesFromMismatches(variantMismatches) {
   const changesMap = {};
   for (const mm of variantMismatches) {
     for (const pi of mm.perItem) {
-      if (pi.qty > mm.targetQty) {
+      // Bidireccional: genera un cambio cuando la cantidad difiere del target,
+      // tanto para BAJAR (venta) como para SUBIR (reposición manual). Antes sólo
+      // bajaba (pi.qty > targetQty), por lo que "elegir la cuenta con más stock"
+      // como fuente nunca subía las demás.
+      if (pi.qty !== mm.targetQty) {
         if (!changesMap[pi.itemId]) {
           changesMap[pi.itemId] = {
             itemId: pi.itemId,
@@ -6156,6 +6753,33 @@ function buildVariantChangesFromMismatches(variantMismatches) {
           to: mm.targetQty,
         });
       }
+    }
+  }
+  return Object.values(changesMap);
+}
+
+// Como buildVariantChangesFromMismatches pero usando una CUENTA fuente elegida
+// (su item) como "verdad": copia su cantidad de cada variante desbalanceada al
+// resto de los items del grupo (subiendo o bajando según corresponda). Es lo que
+// se usa cuando el usuario elige "Usar RZ" / "Usar WZ" — soporta reposición
+// manual (subir el stock de la otra cuenta), no sólo bajar al mínimo.
+function buildVariantChangesFromSource(variantMismatches, sourceItemId) {
+  const changesMap = {};
+  for (const mm of variantMismatches) {
+    const src = mm.perItem.find(p => p.itemId === sourceItemId);
+    if (!src) continue; // la cuenta fuente no tiene esta variante → no se toca
+    for (const pi of mm.perItem) {
+      if (pi.itemId === sourceItemId) continue;
+      if (pi.qty === src.qty) continue;
+      if (!changesMap[pi.itemId]) {
+        changesMap[pi.itemId] = {
+          itemId: pi.itemId, accountId: pi.accountId, acctLabel: pi.acctLabel,
+          title: pi.title, thumb: pi.thumb, variantChanges: [],
+        };
+      }
+      changesMap[pi.itemId].variantChanges.push({
+        attrKey: mm.attrKey, varId: pi.varId, label: mm.label, from: pi.qty, to: src.qty,
+      });
     }
   }
   return Object.values(changesMap);
@@ -6206,10 +6830,17 @@ async function _checkStockChangesImpl() {
       const realStock = vars.length
         ? vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0)
         : (d.available_quantity || 0);
+      // Mapa picture_id → URL para resolver la foto específica de cada variante
+      const picsById = {};
+      (d.pictures || []).forEach(p => { if (p.id) picsById[p.id] = p.secure_url || p.url; });
       const variantSnap = {};
       vars.forEach(v => {
         const key = (_varKeysAll(v)[0]) || ('var_' + v.id);
-        variantSnap[key] = { id: v.id, qty: v.available_quantity || 0, label: _varLabel(v) };
+        const picId = (v.picture_ids && v.picture_ids[0]) || null;
+        variantSnap[key] = {
+          id: v.id, qty: v.available_quantity || 0, label: _varLabel(v),
+          pic: (picId && picsById[picId]) || null,
+        };
       });
       const thumb = d.thumbnail ||
         (d.pictures && d.pictures[0] && (d.pictures[0].secure_url || d.pictures[0].url)) || '';
@@ -6293,9 +6924,8 @@ async function _checkStockChangesImpl() {
             // Editar el mensaje de Telegram para quitar los botones zombi:
             // la venta se canceló o el stock se reequilibró solo.
             if (a.tgChatId && a.tgMsgId) {
-              tgEdit(a.tgChatId, a.tgMsgId,
-                `↩️ <b>${a.groupName}</b>\nLa venta se canceló o el stock se reequilibró solo (${nums[0]} u.) — no hay nada que ajustar.`
-              ).catch(() => {});
+              const txt = `↩️ <b>${a.groupName}</b>\nLa venta se canceló o el stock se reequilibró solo (${nums[0]} u.) — no hay nada que ajustar.`;
+              (a.tgIsPhoto ? tgEditCaption(a.tgChatId, a.tgMsgId, txt) : tgEdit(a.tgChatId, a.tgMsgId, txt)).catch(() => {});
             }
             console.log('[vinc]   ✅ Auto-resuelto: "' + g.name + '" — stocks igualados (' + nums[0] + ')');
           }
@@ -6419,14 +7049,14 @@ async function _checkStockChangesImpl() {
         for (const adj of newAdjustments) {
           try {
             const ref = await sendTgAdjustmentNotification(adj);
-            if (ref?.msgId) { adj.tgChatId = ref.chatId; adj.tgMsgId = ref.msgId; refsChanged = true; }
+            if (ref?.msgId) { adj.tgChatId = ref.chatId; adj.tgMsgId = ref.msgId; adj.tgIsPhoto = !!ref.isPhoto; refsChanged = true; }
           } catch(e) { console.log('[tg] Error notificando:', _errMsg(e)); }
         }
         if (refsChanged) {
           const all = loadPendingAdjustments();
           for (const adj of newAdjustments) {
             const a = all.find(x => x.id === adj.id);
-            if (a && adj.tgMsgId) { a.tgChatId = adj.tgChatId; a.tgMsgId = adj.tgMsgId; }
+            if (a && adj.tgMsgId) { a.tgChatId = adj.tgChatId; a.tgMsgId = adj.tgMsgId; a.tgIsPhoto = adj.tgIsPhoto; }
           }
           savePendingAdjustments(all);
         }
@@ -6475,16 +7105,22 @@ setTimeout(() => {
 setInterval(proactiveRefresh, TOKEN_REFRESH_INTERVAL);
 
 // ── Telegram: arrancar long-polling + check de preguntas ─────
-tgPollingLoop().catch(e => console.log('[tg] Error iniciando polling:', e.message));
+// Si DISABLE_TELEGRAM=true (staging), NO arrancar nada del bot: evita que
+// staging consuma los getUpdates del bot compartido y duplique respuestas.
+if (TELEGRAM_DISABLED) {
+  console.log('[tg] ⏸ Telegram DESACTIVADO (DISABLE_TELEGRAM=true) — sin polling ni notificaciones');
+} else {
+  tgPollingLoop().catch(e => console.log('[tg] Error iniciando polling:', e.message));
 
-// Primer check de preguntas a los 60s del arranque (después del refresh de tokens)
-setTimeout(() => {
-  checkNewQuestions().catch(e => console.log('[tg] Error check preguntas inicial:', e.message));
-}, 60000);
-// Check periódico cada 10 minutos
-setInterval(() => {
-  checkNewQuestions().catch(e => console.log('[tg] Error check preguntas:', e.message));
-}, 10 * 60 * 1000);
+  // Primer check de preguntas a los 60s del arranque (después del refresh de tokens)
+  setTimeout(() => {
+    checkNewQuestions().catch(e => console.log('[tg] Error check preguntas inicial:', e.message));
+  }, 60000);
+  // Check periódico cada 10 minutos
+  setInterval(() => {
+    checkNewQuestions().catch(e => console.log('[tg] Error check preguntas:', e.message));
+  }, 10 * 60 * 1000);
+}
 
 // ── Vinculaciones: check de stock cada 10 minutos ─────────────
 const VINC_CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutos
@@ -6535,44 +7171,23 @@ setInterval(() => {
 }, CARRITO_ABANDONADO_CHECK_INTERVAL);
 
 // ── Alerta Telegram: órdenes pending +24hs (Fase 2 — monitoreo) ──────
-// Cada hora busca órdenes que quedaron sin pagar +24hs y avisa al admin.
-// Para no spamear, guarda los IDs ya alertados en un JSON; cada orden se
-// alerta una sola vez (sobrevive reinicios de PM2).
-const PENDING_ALERTED_PATH = path.join(__dirname, 'tienda-pending-alerted.json');
-const PENDING_24H_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hora
-
-function _loadPendingAlerted() {
-  try { return new Set(JSON.parse(fs.readFileSync(PENDING_ALERTED_PATH, 'utf8'))); }
-  catch { return new Set(); }
-}
-function _savePendingAlerted(set) {
-  try { atomicWriteFileSync(PENDING_ALERTED_PATH, JSON.stringify([...set])); } catch {}
-}
+// Una vez por día manda UN solo mensaje resumen con la cantidad de órdenes
+// que quedaron sin pagar +24hs (antes mandaba un mensaje por orden → spam).
+const PENDING_24H_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 horas
 
 async function checkPendientes24h() {
   const ordenes = await db.getOrdenesPending24h();
-  const alerted = _loadPendingAlerted();
+  if (!ordenes.length) return; // sin pendientes → no molestar
 
-  // Limpiar del set los IDs que ya no están pendientes (se pagaron/cancelaron)
-  const vigentes = new Set(ordenes.map(o => o.id));
-  let changed = false;
-  for (const id of alerted) if (!vigentes.has(id)) { alerted.delete(id); changed = true; }
-
-  for (const o of ordenes) {
-    if (alerted.has(o.id)) continue;
-    const horas = Math.floor((Date.now() - new Date(o.created_at).getTime()) / 3600000);
-    await tgSend(
-      `⏳ <b>Orden sin pagar +24hs</b>\n` +
-      `<b>${o.order_number}</b> · ${o.nombre || o.email}\n` +
-      `Total: $${Math.round(o.total).toLocaleString('es-AR')} · hace ${horas}hs\n` +
-      `Revisá si conviene contactar al cliente o cancelarla.`
-    ).catch(() => {});
-    alerted.add(o.id);
-    changed = true;
-    console.log(`  ⏳ [pending-24h] Alertada orden ${o.order_number} (${horas}hs)`);
-  }
-  if (changed) _savePendingAlerted(alerted);
+  const total = ordenes.reduce((s, o) => s + (o.total || 0), 0);
+  await tgSend(
+    `⏳ <b>${ordenes.length} orden(es) sin pagar +24hs</b>\n` +
+    `Total: $${Math.round(total).toLocaleString('es-AR')}\n` +
+    `Revisalas en el panel — conviene contactar a los clientes o cancelarlas.`
+  ).catch(() => {});
+  console.log(`  ⏳ [pending-24h] Resumen enviado: ${ordenes.length} orden(es) sin pagar`);
 }
+// Sólo cada 24h (sin chequeo al arrancar, para no repetir en cada reinicio).
 setInterval(() => {
   checkPendientes24h().catch(e => console.log('[pending-24h] Error en check periódico:', e.message));
 }, PENDING_24H_CHECK_INTERVAL);
