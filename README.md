@@ -12,16 +12,28 @@ Todo corre sobre un servidor Node.js puro (sin frameworks) con PostgreSQL, notif
 ### Tienda web (e-commerce)
 
 #### Home
+Primera impresión: hero, accesos por categoría, barra de confianza y cupón activo.
 ![Tienda — Home](assets/Tienda-Home.png)
 
 #### Catálogo
+363 productos reales (sincronizados desde MercadoLibre) con filtros por categoría, precio y orden.
 ![Tienda — Catálogo](assets/Tienda-Catalogo.png)
 
 #### Página de producto
+Galería, selector de variantes, cuotas, calculadora de envío por código postal y badges de confianza.
 ![Tienda — Producto](assets/Tienda-Producto.png)
 
-#### Cuenta de cliente
-![Tienda — Mi cuenta](assets/Tienda-Cuenta.png)
+#### Reseñas importadas de MercadoLibre
+Las opiniones de compradores verificados de ML se traen a la tienda propia (promedio, texto y fotos reales) — prueba social que normalmente se pierde al vender fuera del marketplace.
+![Tienda — Reseñas ML](assets/Tienda-Resenas.png)
+
+#### Opiniones de clientes con fotos (home)
+Carrusel de reseñas con fotos reales de clientes, destacado en la home.
+![Tienda — Opiniones home](assets/Tienda-HomeResenas.png)
+
+#### Carrito
+Cupones de descuento, barra de progreso hacia el envío gratis y estimación de envío por CP con fechas de entrega.
+![Tienda — Carrito](assets/Tienda-Carrito.png)
 
 ### Back-office (Stockroom)
 
