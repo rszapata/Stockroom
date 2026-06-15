@@ -48,6 +48,7 @@ const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef, mpGe
 const { createMpHelpers } = require('./lib/mp-helpers');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 const { buildProductMetaDescription, buildProductJsonLd } = require('./lib/seo');
+const { createSystemStatus, formatStatusForTelegram } = require('./lib/system-status');
 
 require('./lib/dns-cache');
 
@@ -338,10 +339,18 @@ console.log(`✓ [MP] Polling de pagos pendientes activo (cada ${POLLING_INTERVA
 // ── Cliente ML autenticado (refresh de token + wrappers GET/PUT/POST) ──
 // → extraído a lib/ml-client.js (factory inyectada con getConfig/getFullConfig
 // porque dependen de la cuenta activa y de config.json).
-const { refreshAccountToken, mlGetAuth, mlPutAuth, mlPutVerified, mlPostAuth } = createMlClient({
+const { refreshAccountToken, mlGetAuth, mlPutAuth, mlPutVerified, mlPostAuth, getTokenExpiry } = createMlClient({
   mlGet, mlPut, mlPost, mlOauthToken, atomicWriteFileSync, CONFIG_PATH,
   getConfig: () => config,
   getFullConfig: () => fullConfig,
+});
+
+// ── Estado del sistema (recursos + salud) → /api/stockroom/system, /estado (TG)
+const { getSystemStatus } = createSystemStatus({
+  pool: require('./db/pool'),
+  getFullConfig: () => fullConfig,
+  getLastVincCheck: () => lastVincCheck,
+  getTokenExpiry,
 });
 
 // ── Intercambiar código OAuth por tokens ──────────────────────
@@ -4060,6 +4069,16 @@ const server = http.createServer((req, res) => {
 
   // ── /api/* → proxy ML ──────────────────────────────────────
   // /api/stockroom/ y /api/tienda/ son rutas internas — no tocar con el proxy ML
+  // ── GET /api/stockroom/system → estado del sistema (recursos + salud) ──
+  // Detrás del auth gate del admin. Alimenta el panel "Estado del sistema"
+  // (dashboard de Stockroom y admin de tienda) y el comando /estado de Telegram.
+  if (pathname === '/api/stockroom/system' && req.method === 'GET') {
+    getSystemStatus()
+      .then(status => json(res, 200, status))
+      .catch(e => json(res, 500, { error: 'system_status_failed', detail: e.message }));
+    return;
+  }
+
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/stockroom/') && !pathname.startsWith('/api/tienda/')) {
     const mlPath = pathname.replace('/api/', '/') + (parsed.search || '');
     if (!isProxyPathAllowed(mlPath)) { json(res, 403, { error: 'path_not_allowed', path: mlPath }); return; }
@@ -6132,6 +6151,17 @@ async function handleTgMessage(msg) {
         tgSend('✅ Servidor reiniciado con pm2 correctamente.').catch(() => {});
       }
     });
+    return;
+  }
+
+  // ── Comando /estado — salud del sistema (recursos + servicios) ──
+  if (txt === '/estado' || txt === '/status') {
+    try {
+      const status = await getSystemStatus();
+      await tgSend(formatStatusForTelegram(status));
+    } catch (e) {
+      await tgSend('❌ Error al obtener el estado: ' + e.message);
+    }
     return;
   }
 
