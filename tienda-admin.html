@@ -484,6 +484,63 @@
       </div>
     </div>
 
+    <!-- ESTADO DEL SISTEMA -->
+    <div class="adm-card" style="margin-top:16px">
+      <div class="adm-card-head">
+        <div class="adm-card-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          Estado del sistema
+        </div>
+        <span class="adm-status" id="sys-updated">—</span>
+      </div>
+      <div class="adm-card-body">
+        <div id="sys-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+          <div style="color:var(--text-3);font-size:13px">Cargando estado…</div>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function(){
+      var GRID = document.getElementById('sys-grid');
+      var UPD  = document.getElementById('sys-updated');
+      function fmtBytes(n){ if(n==null)return '—'; var u=['B','KB','MB','GB','TB'],i=0,v=n; while(v>=1024&&i<u.length-1){v/=1024;i++;} return v.toFixed(v<10&&i>0?1:0)+' '+u[i]; }
+      function fmtUp(s){ if(s==null)return '—'; var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return [d&&d+'d',h&&h+'h',m+'m'].filter(Boolean).join(' '); }
+      function dot(ok,warn){ var c=ok?'#16a34a':(warn?'#f59e0b':'#ef4444'); return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+c+';margin-right:7px;flex-shrink:0"></span>'; }
+      function tile(label, dotHtml, value){
+        return '<div style="border:1px solid rgba(128,128,128,.22);border-radius:10px;padding:11px 13px">'
+          + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:5px">'+label+'</div>'
+          + '<div style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center">'+(dotHtml||'')+'<span>'+value+'</span></div></div>';
+      }
+      function render(s){
+        var t=[];
+        t.push(tile('Uptime', '', fmtUp(s.uptime_s)+'  ·  Node '+s.node));
+        var lp = s.cpu.cores ? Math.round((s.cpu.loadavg[0]/s.cpu.cores)*100) : 0;
+        t.push(tile('CPU', dot(lp<80,lp<95), 'load '+s.cpu.loadavg[0]+'  ('+lp+'% · '+s.cpu.cores+' cores)'));
+        t.push(tile('RAM', dot(s.mem.used_pct<85,s.mem.used_pct<95), s.mem.used_pct+'%  ('+fmtBytes(s.mem.used)+' / '+fmtBytes(s.mem.total)+')'));
+        if(s.disk) t.push(tile('Disco', dot(s.disk.used_pct<85,s.disk.used_pct<95), s.disk.used_pct+'%  ('+fmtBytes(s.disk.avail_bytes)+' libres)'));
+        t.push(tile('Proceso', '', 'RSS '+fmtBytes(s.proc.rss)+'  ·  heap '+fmtBytes(s.proc.heap_used)));
+        if(s.db) t.push(tile('PostgreSQL', dot(s.db.ok), s.db.ok ? ('OK · '+s.db.latency_ms+'ms · pool '+s.db.pool.idle+'/'+s.db.pool.max) : 'SIN CONEXIÓN'));
+        (s.ml&&s.ml.accounts||[]).forEach(function(a){
+          var ok=a.status==='fresco', warn=a.status==='por_vencer'||a.status==='sin_refrescar';
+          var det=a.expires_in_min!=null ? (a.expires_in_min>0?('vence en '+a.expires_in_min+'m'):'vencido') : a.status;
+          t.push(tile('Token '+a.label, dot(ok,warn), det));
+        });
+        if(s.last_stock_check){ var min=Math.round((Date.now()-new Date(s.last_stock_check).getTime())/60000); t.push(tile('Último check stock','',fmtUp(min*60))); }
+        (s.pm2||[]).forEach(function(p){ t.push(tile('pm2 · '+p.name, dot(p.status==='online'), p.status+'  ·  '+p.restarts+'↻  ·  '+fmtBytes(p.mem_bytes))); });
+        GRID.innerHTML = t.join('');
+        UPD.textContent = 'Actualizado ' + new Date(s.ts).toLocaleTimeString('es-AR');
+      }
+      function load(){
+        fetch('/api/stockroom/system', { credentials:'same-origin' })
+          .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+          .then(render)
+          .catch(function(e){ UPD.textContent='error'; GRID.innerHTML='<div style="color:#ef4444;font-size:13px">No se pudo cargar el estado ('+e+')</div>'; });
+      }
+      load();
+      setInterval(load, 30000);
+    })();
+    </script>
+
   </main>
 </div><!-- /adm-main -->
 </div><!-- /adm-wrap -->
