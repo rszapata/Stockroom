@@ -25,25 +25,23 @@ Todo corre sobre un servidor Node.js puro (sin frameworks) con PostgreSQL, notif
 
 ### Back-office (Stockroom)
 
-### Dashboard
-![Dashboard](assets/Dashboard.png)
+#### Dashboard
+![Dashboard](assets/Stockroom-Dashboard.png)
 
-### Stock & Analytics
-![Stock & Analytics](assets/Stock%20&%20Analytics.jpeg)
+#### Stock & Analytics
+![Stock & Analytics](assets/Stockroom-Analytics.png)
 
-### Vinculaciones
-![Vinculaciones](assets/Vinculaciones.png)
+#### Vinculaciones
+![Vinculaciones](assets/Stockroom-Vinculaciones.png)
 
-### Publicaciones
-![Publicaciones](assets/Publicaciones.png)
+#### Publicaciones
+![Publicaciones](assets/Stockroom-Publicaciones.png)
 
-### Migración
-![Migración](assets/Migracion.jpeg)
+#### Migración
+![Migración](assets/Stockroom-Migracion.png)
 
-### Cobros
-![Cobros - Generador](assets/Cobros-1.jpeg)
-![Cobros - Costo Flex](assets/Cobros-2.png)
-![Cobros - Resumen](assets/Cobros-3.png)
+#### Cobros
+![Cobros](assets/Stockroom-Cobros.png)
 
 ---
 
