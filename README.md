@@ -27,6 +27,10 @@ Galería, selector de variantes, cuotas, calculadora de envío por código posta
 Las opiniones de compradores verificados de ML se traen a la tienda propia (promedio, texto y fotos reales) — prueba social que normalmente se pierde al vender fuera del marketplace.
 ![Tienda — Reseñas ML](assets/Tienda-Resenas.png)
 
+#### Visor de fotos de reseñas
+Lightbox estilo "publicaciones de clientes" de ML: foto del comprador a un lado y su reseña al otro, navegable con flechas y teclado.
+![Tienda — Lightbox de reseñas](assets/Tienda-Lightbox.png)
+
 #### Opiniones de clientes con fotos (home)
 Carrusel de reseñas con fotos reales de clientes, destacado en la home.
 ![Tienda — Opiniones home](assets/Tienda-HomeResenas.png)
@@ -34,6 +38,14 @@ Carrusel de reseñas con fotos reales de clientes, destacado en la home.
 #### Carrito
 Cupones de descuento, barra de progreso hacia el envío gratis y estimación de envío por CP con fechas de entrega.
 ![Tienda — Carrito](assets/Tienda-Carrito.png)
+
+#### Checkout
+Checkout propio en pasos (datos → envío → pago) con resumen del pedido, cupón aplicado y pago vía MercadoPago.
+![Tienda — Checkout](assets/Tienda-Checkout.png)
+
+#### Diseño responsive
+La tienda es totalmente responsive: navegación con menú, grilla adaptada y barra de compra fija en mobile.
+![Tienda — Mobile](assets/Tienda-Mobile.png)
 
 ### Back-office (Stockroom)
 
