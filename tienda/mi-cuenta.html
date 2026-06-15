@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Mi cuenta — WZMALLAS</title>
+  <meta name="description" content="Iniciá sesión o creá tu cuenta en WZMALLAS para ver tus pedidos y gestionar tus datos.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+
+    /* ── Contenedores ── */
+    .page-outer { max-width: 980px; margin: 0 auto; padding: 32px 24px 80px; }
+    .auth-center { max-width: 480px; margin: 0 auto; }
+
+    /* ── Auth card ── */
+    .auth-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .auth-tab {
+      flex: 1; padding: 14px; text-align: center;
+      font-family: var(--font-accent); font-size: 13px; font-weight: 600;
+      color: var(--text-3); cursor: pointer; transition: all .15s;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .auth-tab.active { color: var(--blue); border-color: var(--blue); background: rgba(52,131,250,.04); }
+    .auth-tab:hover:not(.active) { color: var(--text-2); background: var(--bg); }
+
+    .auth-form { padding: 28px; }
+    .form-field { margin-bottom: 16px; }
+    .form-field label {
+      display: block; font-family: var(--font-accent); font-size: 12px;
+      font-weight: 600; color: var(--text-2); margin-bottom: 6px; letter-spacing: .02em;
+    }
+    .form-field input {
+      width: 100%; padding: 11px 14px; border: 1.5px solid var(--border-2);
+      border-radius: var(--radius); font-family: var(--font-body); font-size: 14px;
+      color: var(--text); background: var(--white);
+      transition: border-color .15s, box-shadow .15s; box-sizing: border-box;
+    }
+    .form-field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(52,131,250,.12); }
+    .form-field.error input { border-color: var(--red); }
+    .field-error { font-size: 12px; color: var(--red); margin-top: 4px; display: none; }
+    .form-field.error .field-error { display: block; }
+
+    .submit-btn {
+      width: 100%; padding: 12px; background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius); font-family: var(--font-accent);
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; margin-top: 4px;
+    }
+    .submit-btn:hover:not(:disabled) { background: var(--blue-dark); }
+    .submit-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    .form-feedback {
+      margin-top: 14px; padding: 10px 14px; border-radius: var(--radius); font-size: 13px; display: none;
+    }
+    .form-feedback.success { display: block; background: rgba(0,166,80,.1); color: var(--green); border: 1px solid rgba(0,166,80,.25); }
+    .form-feedback.error   { display: block; background: rgba(242,61,79,.08); color: var(--red); border: 1px solid rgba(242,61,79,.25); }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .aux-link { font-size: 13px; color: var(--text-3); text-align: center; }
+    .aux-link a { color: var(--blue); text-decoration: none; }
+    .aux-link a:hover { text-decoration: underline; }
+
+    /* ── Dashboard — layout 2 columnas ── */
+    .dashboard { display: none; }
+
+    /* Layout principal: sidebar + contenido */
+    .dash-layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+
+    /* ── Sidebar ── */
+    .dash-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 24px;
+    }
+    .dash-sidebar-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    /* Perfil dentro del sidebar */
+    .dash-profile {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .user-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--blue); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-accent); font-size: 22px; font-weight: 700;
+      margin: 0 auto 10px;
+    }
+    .user-name { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .user-email { font-size: 12px; color: var(--text-3); margin-top: 3px; word-break: break-all; }
+
+    /* Nav items del sidebar */
+    .dash-nav { padding: 8px; }
+    .dash-tab {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: var(--radius);
+      font-family: var(--font-accent); font-size: 13px; font-weight: 600;
+      color: var(--text-2); cursor: pointer; transition: all .15s;
+      margin-bottom: 2px; text-decoration: none;
+    }
+    .dash-tab svg { flex-shrink: 0; opacity: .6; transition: opacity .15s; }
+    .dash-tab:hover:not(.active) { background: var(--bg); color: var(--text); }
+    .dash-tab:hover:not(.active) svg { opacity: .85; }
+    .dash-tab.active { background: var(--blue-light); color: var(--blue); }
+    .dash-tab.active svg { opacity: 1; }
+
+    /* Logout dentro del sidebar */
+    .dash-logout-wrap { padding: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+    .logout-btn {
+      width: 100%; display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px; border: none; border-radius: var(--radius);
+      font-family: var(--font-accent); font-size: 12px; font-weight: 600; color: var(--text-3);
+      background: none; cursor: pointer; transition: all .15s; text-align: left;
+    }
+    .logout-btn svg { opacity: .5; transition: opacity .15s; }
+    .logout-btn:hover { background: rgba(242,61,79,.07); color: var(--red); }
+    .logout-btn:hover svg { opacity: 1; color: var(--red); }
+
+    /* ── Contenido principal ── */
+    .dash-main { flex: 1; min-width: 0; }
+    .dash-panel-title {
+      font-family: var(--font-accent); font-size: 18px; font-weight: 700;
+      color: var(--text); margin-bottom: 16px;
+    }
+
+    /* Mis pedidos */
+    .order-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 18px 20px; margin-bottom: 12px; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+    }
+    .order-card:hover { border-color: var(--blue); box-shadow: 0 2px 8px rgba(52,131,250,.08); }
+    .order-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .order-id { font-family: var(--font-accent); font-size: 12px; font-weight: 600; color: var(--text-3); }
+    .order-date { font-size: 12px; color: var(--text-3); }
+    .order-items-preview { font-size: 13px; color: var(--text-2); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .order-footer { display: flex; align-items: center; justify-content: space-between; }
+    .order-total { font-size: 15px; font-weight: 700; color: var(--text); }
+    .order-empty { text-align: center; padding: 60px 24px; color: var(--text-3); }
+    .order-empty svg { margin: 0 auto 12px; display: block; opacity: .35; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .s-pendiente      { background: rgba(107,114,128,.12); color: #6B7280; }
+    .s-pendiente_pago { background: rgba(245,158,11,.12); color: #D97706; }
+    .s-pagado         { background: rgba(0,166,80,.12); color: var(--green); }
+    .s-despachado     { background: rgba(52,131,250,.12); color: var(--blue); }
+    .s-entregado      { background: rgba(0,166,80,.15); color: var(--green); }
+    .s-rechazado      { background: rgba(242,61,79,.12); color: var(--red); }
+    .s-cancelado      { background: rgba(107,114,128,.12); color: #6B7280; }
+
+    /* Tracking inline */
+    .tracking-row {
+      background: rgba(52,131,250,.06); border-radius: var(--radius); padding: 8px 12px;
+      margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 12px;
+    }
+    .tracking-row svg { color: var(--blue); flex-shrink: 0; }
+    .tracking-code { font-family: monospace; font-weight: 700; color: var(--blue); font-size: 13px; }
+    .tracking-link { color: var(--blue); text-decoration: none; font-size: 12px; margin-left: auto; }
+    .tracking-link:hover { text-decoration: underline; }
+
+    /* ── Mis datos ── */
+    .datos-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
+    .datos-card h3 {
+      font-family: var(--font-accent); font-size: 14px; font-weight: 700;
+      color: var(--text); margin-bottom: 16px;
+    }
+    .datos-divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* Select */
+    .form-field select {
+      width: 100%; padding: 11px 14px; border: 1.5px solid var(--border-2);
+      border-radius: var(--radius); font-family: var(--font-body); font-size: 14px;
+      color: var(--text); background: var(--white);
+      transition: border-color .15s, box-shadow .15s; box-sizing: border-box;
+      appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px;
+      cursor: pointer;
+    }
+    .form-field select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(52,131,250,.12); }
+
+    /* Grillas de campos */
+    .field-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field-row-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+    .field-row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+    /* Separador de sección */
+    .section-label {
+      font-family: var(--font-accent); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em; color: var(--text-3);
+      margin: 20px 0 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Skeleton */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .order-skel {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+      background-size: 400px 100%; height: 88px; border-radius: var(--radius-lg);
+      margin-bottom: 12px; animation: shimmer 1.5s infinite linear;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      .dash-layout { flex-direction: column; gap: 16px; }
+      .dash-sidebar { width: 100%; position: static; }
+      .dash-profile { display: flex; align-items: center; gap: 14px; text-align: left; }
+      .dash-profile .user-avatar { width: 42px; height: 42px; font-size: 18px; margin: 0; flex-shrink: 0; }
+      .dash-nav { display: flex; gap: 4px; padding: 6px; flex-wrap: wrap; }
+      .dash-tab { flex: 1; justify-content: center; min-width: 120px; }
+      .dash-tab svg { display: none; }
+      .dash-logout-wrap { padding: 6px 8px; margin-top: 0; }
+      .logout-btn { padding: 8px 12px; }
+      .datos-card { padding: 20px; }
+      .field-row-4 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 480px) {
+      .page-outer { padding: 20px 16px 60px; }
+      .field-row, .field-row-3, .field-row-4 { grid-template-columns: 1fr; }
+      .auth-form { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+<div id="header-root"></div>
+
+<main class="page-outer">
+
+  <!-- Breadcrumb -->
+  <nav style="font-size:13px;color:var(--text-3);margin-bottom:24px;">
+    <a href="./index.html" style="color:var(--text-3);text-decoration:none;">Inicio</a> · Mi cuenta
+  </nav>
+
+  <!-- ── Panel sin sesión ── -->
+  <div id="auth-panel">
+    <div class="auth-center">
+    <h1 style="font-family:var(--font-accent);font-size:26px;font-weight:700;color:var(--text);margin-bottom:24px;text-align:center;">Mi cuenta</h1>
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" role="button" tabindex="0" onclick="switchTab('login')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">Iniciar sesión</div>
+        <div class="auth-tab" id="tab-register" role="button" tabindex="0" onclick="switchTab('register')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">Crear cuenta</div>
+      </div>
+
+      <!-- Login -->
+      <div id="form-login" class="auth-form">
+        <form id="login-form" novalidate>
+          <div class="form-field" id="fl-email">
+            <label for="l-email">Email</label>
+            <input type="email" id="l-email" autocomplete="email" placeholder="tu@email.com" required>
+            <p class="field-error">Ingresá un email válido.</p>
+          </div>
+          <div class="form-field" id="fl-pass">
+            <label for="l-pass">Contraseña</label>
+            <input type="password" id="l-pass" autocomplete="current-password" placeholder="••••••••" required>
+            <p class="field-error">Ingresá tu contraseña.</p>
+          </div>
+          <button type="submit" class="submit-btn" id="btn-login">Iniciar sesión</button>
+          <div class="form-feedback" id="login-feedback"></div>
+        </form>
+        <hr class="divider">
+        <p class="aux-link">¿No tenés cuenta? <a role="button" tabindex="0" onclick="switchTab('register')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" style="cursor:pointer;">Crear una gratis →</a></p>
+        <p class="aux-link" style="margin-top:8px;">¿Compraste sin cuenta? <a href="./seguimiento.html">Ver estado de tu pedido</a></p>
+      </div>
+
+      <!-- Register -->
+      <div id="form-register" class="auth-form" style="display:none;">
+        <form id="register-form" novalidate>
+          <div class="form-field" id="fr-nombre">
+            <label for="r-nombre">Nombre completo</label>
+            <input type="text" id="r-nombre" autocomplete="name" placeholder="Tu nombre" required>
+            <p class="field-error">Ingresá tu nombre.</p>
+          </div>
+          <div class="form-field" id="fr-email">
+            <label for="r-email">Email</label>
+            <input type="email" id="r-email" autocomplete="email" placeholder="tu@email.com" required>
+            <p class="field-error">Ingresá un email válido.</p>
+          </div>
+          <div class="form-field" id="fr-pass">
+            <label for="r-pass">Contraseña <span style="font-weight:400;color:var(--text-3);">(mín. 6 caracteres)</span></label>
+            <input type="password" id="r-pass" autocomplete="new-password" placeholder="••••••••" required minlength="6">
+            <p class="field-error">La contraseña debe tener al menos 6 caracteres.</p>
+          </div>
+          <button type="submit" class="submit-btn" id="btn-register">Crear cuenta</button>
+          <div class="form-feedback" id="register-feedback"></div>
+        </form>
+        <hr class="divider">
+        <p class="aux-link">¿Ya tenés cuenta? <a role="button" tabindex="0" onclick="switchTab('login')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" style="cursor:pointer;">Iniciar sesión →</a></p>
+      </div>
+    </div>
+    </div><!-- /auth-center -->
+  </div><!-- /auth-panel -->
+
+  <!-- ── Dashboard (usuario logueado) ── -->
+  <div id="dashboard" class="dashboard">
+    <div class="dash-layout">
+
+      <!-- Sidebar -->
+      <aside class="dash-sidebar">
+        <div class="dash-sidebar-card">
+
+          <!-- Perfil -->
+          <div class="dash-profile">
+            <div class="user-avatar" id="user-avatar">?</div>
+            <div>
+              <div class="user-name" id="user-nombre">—</div>
+              <div class="user-email" id="user-email">—</div>
+            </div>
+          </div>
+
+          <!-- Nav -->
+          <nav class="dash-nav">
+            <div class="dash-tab active" id="dtab-pedidos" role="button" tabindex="0" onclick="switchDashTab('pedidos')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 01-8 0"/>
+              </svg>
+              Mis pedidos
+            </div>
+            <div class="dash-tab" id="dtab-datos" role="button" tabindex="0" onclick="switchDashTab('datos')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Mis datos
+            </div>
+          </nav>
+
+          <!-- Cerrar sesión -->
+          <div class="dash-logout-wrap">
+            <button class="logout-btn" onclick="logout()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Cerrar sesión
+            </button>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- Contenido principal -->
+      <div class="dash-main">
+
+        <!-- Panel mis pedidos -->
+        <div id="panel-pedidos">
+          <h2 class="dash-panel-title">Mis pedidos</h2>
+          <div id="pedidos-loading">
+            <div class="order-skel"></div>
+            <div class="order-skel"></div>
+            <div class="order-skel"></div>
+          </div>
+          <div id="pedidos-list" style="display:none;"></div>
+          <div id="pedidos-empty" class="order-empty" style="display:none;">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 01-8 0"/>
+            </svg>
+            <p style="font-size:15px;color:var(--text-2);margin-bottom:8px;">Todavía no hiciste ningún pedido</p>
+            <a href="./catalogo.html" class="btn-primary" style="display:inline-block;text-decoration:none;padding:10px 20px;border-radius:var(--radius);font-size:13px;">Ver productos</a>
+          </div>
+        </div>
+
+        <!-- Panel mis datos -->
+        <div id="panel-datos" style="display:none;">
+          <h2 class="dash-panel-title">Mis datos</h2>
+          <div class="datos-card">
+
+            <form id="datos-form">
+              <!-- Datos personales -->
+              <h3>Datos personales</h3>
+              <div class="field-row">
+                <div class="form-field">
+                  <label for="d-nombre">Nombre completo</label>
+                  <input type="text" id="d-nombre" autocomplete="name" placeholder="Tu nombre" required>
+                </div>
+                <div class="form-field">
+                  <label for="d-telefono">Teléfono / WhatsApp</label>
+                  <input type="tel" id="d-telefono" autocomplete="tel" placeholder="+54 9 11 1234-5678">
+                </div>
+              </div>
+              <div class="form-field">
+                <label>Email</label>
+                <input type="email" id="d-email-readonly" disabled style="opacity:.5;cursor:not-allowed;">
+              </div>
+
+              <!-- Dirección de envío -->
+              <p class="section-label">Dirección de envío</p>
+              <div class="field-row-3">
+                <div class="form-field">
+                  <label for="d-direccion">Calle</label>
+                  <input type="text" id="d-direccion" autocomplete="address-line1" placeholder="Av. Corrientes">
+                </div>
+                <div class="form-field">
+                  <label for="d-altura">Altura</label>
+                  <input type="text" id="d-altura" inputmode="numeric" placeholder="1234">
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="form-field">
+                  <label for="d-piso">Piso / Dpto <span style="font-weight:400;color:var(--text-3);">(opcional)</span></label>
+                  <input type="text" id="d-piso" placeholder="3° B">
+                </div>
+                <div class="form-field">
+                  <label for="d-provincia">Provincia</label>
+                  <select id="d-provincia" autocomplete="address-level1">
+                    <option value="">Seleccioná una provincia</option>
+                    <option>Buenos Aires</option>
+                    <option>Ciudad Autónoma de Buenos Aires</option>
+                    <option>Catamarca</option>
+                    <option>Chaco</option>
+                    <option>Chubut</option>
+                    <option>Córdoba</option>
+                    <option>Corrientes</option>
+                    <option>Entre Ríos</option>
+                    <option>Formosa</option>
+                    <option>Jujuy</option>
+                    <option>La Pampa</option>
+                    <option>La Rioja</option>
+                    <option>Mendoza</option>
+                    <option>Misiones</option>
+                    <option>Neuquén</option>
+                    <option>Río Negro</option>
+                    <option>Salta</option>
+                    <option>San Juan</option>
+                    <option>San Luis</option>
+                    <option>Santa Cruz</option>
+                    <option>Santa Fe</option>
+                    <option>Santiago del Estero</option>
+                    <option>Tierra del Fuego</option>
+                    <option>Tucumán</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="form-field">
+                  <label for="d-ciudad">Ciudad / Localidad</label>
+                  <input type="text" id="d-ciudad" autocomplete="address-level2" placeholder="Buenos Aires">
+                </div>
+                <div class="form-field">
+                  <label for="d-cp">Código Postal</label>
+                  <input type="text" id="d-cp" autocomplete="postal-code" inputmode="numeric" placeholder="1000">
+                </div>
+              </div>
+
+              <button type="submit" class="submit-btn" style="width:auto;padding:10px 24px;margin-top:4px;" id="btn-save-datos">Guardar cambios</button>
+              <div class="form-feedback" id="datos-feedback"></div>
+            </form>
+
+            <hr class="datos-divider">
+            <h3>Cambiar contraseña</h3>
+            <form id="pass-form">
+              <div class="field-row">
+                <div class="form-field">
+                  <label for="d-pass-current">Contraseña actual</label>
+                  <input type="password" id="d-pass-current" autocomplete="current-password" placeholder="••••••••">
+                </div>
+                <div class="form-field">
+                  <label for="d-pass-new">Nueva contraseña <span style="font-weight:400;color:var(--text-3);">(mín. 6 caracteres)</span></label>
+                  <input type="password" id="d-pass-new" autocomplete="new-password" placeholder="••••••••">
+                </div>
+              </div>
+              <button type="submit" class="submit-btn" style="width:auto;padding:10px 24px;" id="btn-save-pass">Cambiar contraseña</button>
+              <div class="form-feedback" id="pass-feedback"></div>
+            </form>
+          </div>
+        </div>
+
+      </div><!-- /dash-main -->
+    </div><!-- /dash-layout -->
+  </div><!-- /dashboard -->
+
+</main>
+
+<div id="footer-root"></div>
+
+<script src="./components/cart.js?v=8"></script>
+<script src="./components/header.js?v=9"></script>
+<script src="./components/footer.js?v=4"></script>
+<script>
+  initPage('mi-cuenta');
+
+  // ─── Helpers ────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const fmt = n => '$' + Number(n||0).toLocaleString('es-AR', { minimumFractionDigits: 0 });
+  const fmtDate = iso => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+  /* Escapa texto para uso seguro dentro de innerHTML */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  const statusLabels = {
+    pendiente: 'Pendiente', pendiente_pago: 'Esperando pago', pagado: 'Pagado',
+    despachado: '🚚 En camino', entregado: '✅ Entregado', rechazado: 'Rechazado', cancelado: 'Cancelado',
+  };
+
+  // ─── Tabs auth ───────────────────────────────────────────────
+  function switchTab(tab) {
+    if (tab === 'login') {
+      $('tab-login').classList.add('active'); $('tab-register').classList.remove('active');
+      $('form-login').style.display = 'block'; $('form-register').style.display = 'none';
+    } else {
+      $('tab-register').classList.add('active'); $('tab-login').classList.remove('active');
+      $('form-register').style.display = 'block'; $('form-login').style.display = 'none';
+    }
+  }
+
+  // ─── Tabs dashboard ──────────────────────────────────────────
+  function switchDashTab(tab) {
+    ['pedidos', 'datos'].forEach(t => {
+      $('dtab-' + t).classList.toggle('active', t === tab);
+      $('panel-' + t).style.display = t === tab ? 'block' : 'none';
+    });
+  }
+
+  // ─── Mostrar dashboard ───────────────────────────────────────
+  function showDashboard(user) {
+    $('auth-panel').style.display = 'none';
+    $('dashboard').style.display  = 'block';
+    $('user-nombre').textContent  = user.nombre || '';
+    $('user-email').textContent   = user.email  || '';
+    $('user-avatar').textContent  = (user.nombre || 'U')[0].toUpperCase();
+    // Datos personales
+    $('d-nombre').value         = user.nombre   || '';
+    $('d-email-readonly').value = user.email    || '';
+    $('d-telefono').value       = user.telefono || '';
+    // Dirección
+    $('d-direccion').value      = user.direccion || '';
+    $('d-altura').value         = user.altura    || '';
+    $('d-piso').value           = user.piso      || '';
+    $('d-ciudad').value         = user.ciudad    || '';
+    $('d-cp').value             = user.cp        || '';
+    // Provincia: seleccionar la opción que coincida (por value o por texto)
+    if (user.provincia) {
+      const sel = $('d-provincia');
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === user.provincia || sel.options[i].text === user.provincia) {
+          sel.selectedIndex = i; break;
+        }
+      }
+    }
+    loadPedidos();
+  }
+
+  // ─── Check sesión al cargar ──────────────────────────────────
+  (async () => {
+    try {
+      const r = await fetch('/api/tienda/me', { credentials: 'include' });
+      if (r.ok) {
+        const user = await r.json();
+        showDashboard(user);
+      } else {
+        // No hay sesión — verificar si viene con ?tab=register
+        const urlTab = new URLSearchParams(location.search).get('tab');
+        if (urlTab === 'register') switchTab('register');
+        // Si viene con ?redirect, guardarlo para redirigir después del login
+      }
+    } catch(e) {
+      console.warn('[mi-cuenta] fetch me error:', e.message);
+    }
+  })();
+
+  // ─── Logout ──────────────────────────────────────────────────
+  async function logout() {
+    await fetch('/api/tienda/auth/logout', { method: 'POST', credentials: 'include' });
+    location.reload();
+  }
+
+  // ─── Login form ──────────────────────────────────────────────
+  $('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = $('l-email').value.trim();
+    const pass  = $('l-pass').value;
+    const fb    = $('login-feedback');
+
+    // Validación
+    let ok = true;
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      $('fl-email').classList.add('error'); ok = false;
+    } else { $('fl-email').classList.remove('error'); }
+    if (!pass) { $('fl-pass').classList.add('error'); ok = false; }
+    else { $('fl-pass').classList.remove('error'); }
+    if (!ok) return;
+
+    const btn = $('btn-login');
+    btn.disabled = true; btn.textContent = 'Ingresando…';
+    fb.className = 'form-feedback'; fb.textContent = '';
+
+    try {
+      const r = await fetch('/api/tienda/auth/login', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      const json = await r.json();
+      if (r.ok) {
+        showDashboard(json.user);
+        // Notificar al header de la sesión nueva
+        if (typeof window.wz_onLogin === 'function') window.wz_onLogin(json.user);
+        const redirect = new URLSearchParams(location.search).get('redirect');
+        if (redirect) { location.href = redirect; return; }
+      } else {
+        fb.className = 'form-feedback error';
+        fb.textContent = json.error || 'Error al iniciar sesión.';
+      }
+    } catch(e) {
+      fb.className = 'form-feedback error';
+      fb.textContent = 'Error de red. Probá de nuevo.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Iniciar sesión';
+    }
+  });
+
+  // ─── Register form ───────────────────────────────────────────
+  $('register-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nombre = $('r-nombre').value.trim();
+    const email  = $('r-email').value.trim();
+    const pass   = $('r-pass').value;
+    const fb     = $('register-feedback');
+
+    let ok = true;
+    if (!nombre) { $('fr-nombre').classList.add('error'); ok = false; } else $('fr-nombre').classList.remove('error');
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('fr-email').classList.add('error'); ok = false; } else $('fr-email').classList.remove('error');
+    if (!pass || pass.length < 6) { $('fr-pass').classList.add('error'); ok = false; } else $('fr-pass').classList.remove('error');
+    if (!ok) return;
+
+    const btn = $('btn-register');
+    btn.disabled = true; btn.textContent = 'Creando cuenta…';
+    fb.className = 'form-feedback'; fb.textContent = '';
+
+    try {
+      const r = await fetch('/api/tienda/auth/register', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, email, password: pass }),
+      });
+      const json = await r.json();
+      if (r.ok) {
+        showDashboard(json.user);
+        if (typeof window.wz_onLogin === 'function') window.wz_onLogin(json.user);
+      } else {
+        fb.className = 'form-feedback error';
+        fb.textContent = json.error || 'Error al crear la cuenta.';
+      }
+    } catch(e) {
+      fb.className = 'form-feedback error';
+      fb.textContent = 'Error de red. Probá de nuevo.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Crear cuenta';
+    }
+  });
+
+  // ─── Cargar pedidos ──────────────────────────────────────────
+  async function loadPedidos() {
+    $('pedidos-loading').style.display = 'block';
+    $('pedidos-list').style.display    = 'none';
+    $('pedidos-empty').style.display   = 'none';
+    try {
+      const r = await fetch('/api/tienda/me/pedidos', { credentials: 'include' });
+      if (!r.ok) throw new Error();
+      const { pedidos } = await r.json();
+      $('pedidos-loading').style.display = 'none';
+      if (!pedidos || !pedidos.length) {
+        $('pedidos-empty').style.display = 'block'; return;
+      }
+      $('pedidos-list').style.display = 'block';
+      $('pedidos-list').innerHTML = pedidos.map(o => {
+        const statusClass = 's-' + (o.status || 'pendiente');
+        const label = statusLabels[o.status] || o.status;
+        const titles = esc((o.items||[]).slice(0,2).map(i => i.title||'Producto').join(' · ') + (o.items_count > 2 ? ` +${o.items_count-2}` : ''));
+        const trackHtml = o.tracking_number ? `
+          <div class="tracking-row">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Tracking: </span>
+            <span class="tracking-code">${esc(o.tracking_number)}</span>
+            <a class="tracking-link" href="https://correoargentino.com.ar/MiCorreo/public/index#seguimiento?piezas=${encodeURIComponent(o.tracking_number)}" target="_blank" rel="noopener">Ver envío →</a>
+          </div>` : '';
+        return `
+          <div class="order-card" role="button" tabindex="0" data-order-id="${o.id}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+            <div class="order-header">
+              <span class="order-id">Orden #${o.id.slice(-8)}</span>
+              <span class="order-date">${fmtDate(o.fecha)}</span>
+            </div>
+            <div class="order-items-preview">${titles || '—'}</div>
+            <div class="order-footer">
+              <span class="order-total">${fmt(o.total)}</span>
+              <span class="status-badge ${statusClass}">${label}</span>
+            </div>
+            ${trackHtml}
+          </div>`;
+      }).join('');
+    } catch(e) {
+      $('pedidos-loading').style.display = 'none';
+      $('pedidos-empty').style.display   = 'block';
+    }
+  }
+
+  // Click en una order-card → ir directo al detalle de ESE pedido
+  // (una sola navegación, con el id completo y el email real de la sesión —
+  // antes había un doble redirect que generaba un parpadeo poco prolijo).
+  function goToSeguimiento(orderId) {
+    const email = $('user-email')?.textContent.trim() || '';
+    location.href = `./seguimiento.html?id=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}&from=cuenta`;
+  }
+
+  document.addEventListener('click', e => {
+    const card = e.target.closest('.order-card');
+    if (!card) return;
+    const id = card.dataset.orderId;
+    if (id) goToSeguimiento(id);
+  });
+
+  // ─── Guardar datos personales + dirección ────────────────────
+  $('datos-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nombre    = $('d-nombre').value.trim();
+    const telefono  = $('d-telefono').value.trim();
+    const direccion = $('d-direccion').value.trim();
+    const altura    = $('d-altura').value.trim();
+    const piso      = $('d-piso').value.trim();
+    const provincia = $('d-provincia').value;
+    const ciudad    = $('d-ciudad').value.trim();
+    const cp        = $('d-cp').value.trim();
+    const fb        = $('datos-feedback');
+    const btn       = $('btn-save-datos');
+    if (!nombre) { fb.className = 'form-feedback error'; fb.textContent = 'El nombre es obligatorio.'; return; }
+
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    fb.className = 'form-feedback'; fb.textContent = '';
+
+    try {
+      const r = await fetch('/api/tienda/me', {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, telefono, direccion, altura, piso, provincia, ciudad, cp }),
+      });
+      const json = await r.json();
+      if (r.ok) {
+        $('user-nombre').textContent = json.user.nombre;
+        $('user-avatar').textContent = (json.user.nombre || 'U')[0].toUpperCase();
+        fb.className = 'form-feedback success';
+        fb.textContent = '✓ Datos actualizados correctamente.';
+        if (typeof window.wz_onLogin === 'function') window.wz_onLogin(json.user);
+        // Auto-ocultar el mensaje tras 3 segundos
+        setTimeout(() => { if (fb.classList.contains('success')) fb.className = 'form-feedback'; }, 3000);
+      } else {
+        fb.className = 'form-feedback error'; fb.textContent = json.error || 'Error al guardar.';
+      }
+    } catch(e) {
+      fb.className = 'form-feedback error'; fb.textContent = 'Error de red.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar cambios';
+    }
+  });
+
+  // ─── Cambiar contraseña ──────────────────────────────────────
+  $('pass-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const current = $('d-pass-current').value;
+    const newPass  = $('d-pass-new').value;
+    const fb       = $('pass-feedback');
+    const btn      = $('btn-save-pass');
+
+    if (!current || !newPass || newPass.length < 6) {
+      fb.className = 'form-feedback error';
+      fb.textContent = 'Completá ambos campos. La nueva contraseña debe tener al menos 6 caracteres.';
+      return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Cambiando…';
+    fb.className = 'form-feedback'; fb.textContent = '';
+
+    try {
+      const r = await fetch('/api/tienda/me', {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: current, new_password: newPass }),
+      });
+      const json = await r.json();
+      if (r.ok) {
+        $('pass-form').reset();
+        fb.className = 'form-feedback success'; fb.textContent = '✓ Contraseña actualizada.';
+      } else {
+        fb.className = 'form-feedback error'; fb.textContent = json.error || 'Error al cambiar contraseña.';
+      }
+    } catch(e) {
+      fb.className = 'form-feedback error'; fb.textContent = 'Error de red.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Cambiar contraseña';
+    }
+  });
+</script>
+</body>
+</html>

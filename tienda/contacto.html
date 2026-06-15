@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contacto — WZMALLAS</title>
+  <meta name="description" content="Contactanos. Atención al cliente, WhatsApp, retiro en sucursal Iparraguirre 169, Presidente Derqui (Pilar), Buenos Aires.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+
+    .page-container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+    .page-breadcrumb {
+      font-size: 13px;
+      color: var(--text-3);
+      margin-bottom: 16px;
+    }
+    .page-breadcrumb a { color: var(--text-3); text-decoration: none; }
+    .page-breadcrumb a:hover { color: var(--blue); }
+    .page-title {
+      font-family: var(--font-accent);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .page-subtitle { color: var(--text-2); font-size: 15px; margin-bottom: 32px; }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 32px;
+    }
+    @media (max-width: 800px) {
+      .contact-grid { grid-template-columns: 1fr; }
+    }
+
+    .contact-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+    }
+
+    .form-field { margin-bottom: 16px; }
+    .form-field label {
+      display: block;
+      font-family: var(--font-accent);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+    .form-field input,
+    .form-field textarea,
+    .form-field select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border-2);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--white);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      box-sizing: border-box;
+    }
+    .form-field textarea {
+      min-height: 130px;
+      resize: vertical;
+      font-family: var(--font-body);
+    }
+    .form-field input:focus,
+    .form-field textarea:focus,
+    .form-field select:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(52,131,250,0.12);
+    }
+    .form-field.error input,
+    .form-field.error textarea {
+      border-color: var(--red);
+    }
+    .form-field-error-msg {
+      font-size: 12px;
+      color: var(--red);
+      margin-top: 4px;
+      display: none;
+    }
+    .form-field.error .form-field-error-msg { display: block; }
+
+    /* Honeypot — invisible para humanos, visible para bots */
+    .honeypot {
+      position: absolute !important;
+      left: -10000px !important;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px 20px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-accent);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 8px;
+    }
+    .submit-btn:hover:not(:disabled) { background: var(--blue-dark); }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .form-feedback {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      display: none;
+    }
+    .form-feedback.success {
+      display: block;
+      background: rgba(0,166,80,0.12);
+      color: var(--green);
+      border: 1px solid rgba(0,166,80,0.3);
+    }
+    .form-feedback.error {
+      display: block;
+      background: rgba(242,61,79,0.1);
+      color: var(--red);
+      border: 1px solid rgba(242,61,79,0.3);
+    }
+
+    /* Sidebar info */
+    .info-block {
+      margin-bottom: 24px;
+    }
+    .info-block:last-child { margin-bottom: 0; }
+    .info-block h3 {
+      font-family: var(--font-accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 10px;
+    }
+    .info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-2);
+      margin-bottom: 8px;
+    }
+    .info-row svg {
+      color: var(--blue);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .info-row a { color: var(--text); text-decoration: none; }
+    .info-row a:hover { color: var(--blue); }
+    .info-row strong { color: var(--text); font-weight: 600; }
+
+    .wa-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #25D366;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-family: var(--font-accent);
+      font-size: 13px;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .wa-btn:hover { opacity: 0.9; }
+
+    .map-embed {
+      width: 100%;
+      height: 220px;
+      border: 0;
+      border-radius: var(--radius);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+<div id="header-root"></div>
+
+<main class="page-container">
+
+  <nav class="page-breadcrumb">
+    <a href="./index.html">Inicio</a> · Contacto
+  </nav>
+
+  <h1 class="page-title">Contacto</h1>
+  <p class="page-subtitle">¿Tenés una consulta? Escribinos y te respondemos en menos de 24 horas hábiles.</p>
+
+  <div class="contact-grid">
+
+    <!-- Formulario -->
+    <section class="contact-card">
+      <form id="contact-form" novalidate>
+
+        <!-- Honeypot — los bots completan este campo, los humanos no lo ven -->
+        <div class="honeypot" aria-hidden="true">
+          <label>No completar este campo</label>
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div class="form-field" id="field-nombre">
+          <label for="nombre">Nombre completo *</label>
+          <input type="text" id="nombre" name="nombre" required maxlength="120" autocomplete="name">
+          <p class="form-field-error-msg">Ingresá tu nombre.</p>
+        </div>
+
+        <div class="form-field" id="field-email">
+          <label for="email">Email *</label>
+          <input type="email" id="email" name="email" required maxlength="200" autocomplete="email">
+          <p class="form-field-error-msg">Ingresá un email válido.</p>
+        </div>
+
+        <div class="form-field" id="field-asunto">
+          <label for="asunto">Asunto</label>
+          <select id="asunto" name="asunto">
+            <option value="">Elegí una opción…</option>
+            <option value="Consulta sobre un producto">Consulta sobre un producto</option>
+            <option value="Estado de mi pedido">Estado de mi pedido</option>
+            <option value="Cambio o devolución">Cambio o devolución</option>
+            <option value="Compra mayorista">Compra mayorista</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <div class="form-field" id="field-mensaje">
+          <label for="mensaje">Mensaje *</label>
+          <textarea id="mensaje" name="mensaje" required maxlength="4000" placeholder="Contanos en qué podemos ayudarte…"></textarea>
+          <p class="form-field-error-msg">Escribí tu mensaje.</p>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">Enviar mensaje</button>
+
+        <div class="form-feedback" id="form-feedback"></div>
+      </form>
+    </section>
+
+    <!-- Sidebar info -->
+    <aside class="contact-card">
+
+      <div class="info-block">
+        <h3>WhatsApp Business</h3>
+        <p class="info-row" style="margin-bottom:12px;">
+          Atención rápida de lunes a sábados.
+        </p>
+        <a class="wa-btn" href="https://wa.me/5492304216009?text=Hola%2C%20te%20escribo%20desde%20la%20web%20de%20WZMALLAS" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+          +54 9 2304 21-6009
+        </a>
+      </div>
+
+      <div class="info-block">
+        <h3>Email</h3>
+        <div class="info-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+          <a href="mailto:hola@wzmallas.com">hola@wzmallas.com</a>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <h3>Retiro en sucursal</h3>
+        <div class="info-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span><strong>Iparraguirre 169</strong><br>Presidente Derqui (Pilar)<br>Buenos Aires, Argentina</span>
+        </div>
+        <iframe
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3288.3274919347587!2d-58.84238622426457!3d-34.4945808729935!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bc9bdb48218af1%3A0x892513489d001c88!2sIparraguirre%20169%2C%20B1635%20Pres.%20Derqui%2C%20Provincia%20de%20Buenos%20Aires!5e0!3m2!1ses!2sar!4v1780720415412!5m2!1ses!2sar"
+          class="map-embed" loading="lazy" allowfullscreen
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Iparraguirre 169, Presidente Derqui, Pilar"></iframe>
+      </div>
+
+      <div class="info-block">
+        <h3>Horarios</h3>
+        <div class="info-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>
+            Lun a Vie: 9 a 18 hs<br>
+            Sáb: 10 a 14 hs<br>
+            Dom: cerrado
+          </span>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+</main>
+
+<div id="footer-root"></div>
+
+<script src="./components/cart.js?v=8"></script>
+<script src="./components/header.js?v=9"></script>
+<script src="./components/footer.js?v=4"></script>
+<script>
+  initPage('contacto');
+
+  const form     = document.getElementById('contact-form');
+  const btn      = document.getElementById('submit-btn');
+  const feedback = document.getElementById('form-feedback');
+
+  function showError(fieldId, msg) {
+    const f = document.getElementById('field-' + fieldId);
+    if (msg) {
+      f.classList.add('error');
+      if (msg !== true) f.querySelector('.form-field-error-msg').textContent = msg;
+    } else {
+      f.classList.remove('error');
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+      nombre:  document.getElementById('nombre').value.trim(),
+      email:   document.getElementById('email').value.trim(),
+      asunto:  document.getElementById('asunto').value,
+      mensaje: document.getElementById('mensaje').value.trim(),
+      website: form.querySelector('[name=website]').value, // honeypot
+    };
+
+    // Validación
+    let ok = true;
+    if (!data.nombre)  { showError('nombre', true); ok = false; } else showError('nombre');
+    if (!data.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) { showError('email', true); ok = false; } else showError('email');
+    if (!data.mensaje) { showError('mensaje', true); ok = false; } else showError('mensaje');
+    if (!ok) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    feedback.className = 'form-feedback';
+    feedback.textContent = '';
+
+    try {
+      const res = await fetch('/api/tienda/contacto', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(data),
+      });
+      const json = await res.json();
+
+      if (res.ok) {
+        feedback.className = 'form-feedback success';
+        feedback.textContent = '✓ Mensaje enviado. Te responderemos a la brevedad.';
+        form.reset();
+      } else {
+        feedback.className = 'form-feedback error';
+        feedback.textContent = json.error || 'No se pudo enviar el mensaje. Probá de nuevo.';
+      }
+    } catch (err) {
+      feedback.className = 'form-feedback error';
+      feedback.textContent = 'Error de red. Probá de nuevo en unos segundos.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar mensaje';
+    }
+  });
+</script>
+</body>
+</html>

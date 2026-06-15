@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Botón de Arrepentimiento — WZMALLAS</title>
+  <meta name="description" content="Ejercé tu derecho de arrepentimiento. Podés cancelar o devolver tu compra dentro de los 10 días corridos sin costo y sin necesidad de dar explicaciones.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+    .page-container { max-width: 680px; margin: 0 auto; padding: 32px 24px 80px; }
+    .page-breadcrumb { font-size: 13px; color: var(--text-3); margin-bottom: 20px; }
+    .page-breadcrumb a { color: var(--text-3); text-decoration: none; }
+    .page-breadcrumb a:hover { color: var(--blue); }
+
+    .legal-banner {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      display: flex; align-items: flex-start; gap: 20px;
+      margin-bottom: 32px;
+    }
+    .legal-banner-icon {
+      width: 48px; height: 48px; flex-shrink: 0;
+      background: rgba(37,99,235,0.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .legal-banner h1 { font-family: var(--font-accent); font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .legal-banner p { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.6; margin: 0; }
+    .legal-banner strong { color: #fff; }
+
+    .info-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 32px; }
+    .info-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+    }
+    .info-card-num { font-family: var(--font-accent); font-size: 28px; font-weight: 700; color: var(--blue); line-height: 1; margin-bottom: 4px; }
+    .info-card-label { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+
+    .form-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+    }
+    .form-card h2 { font-family: var(--font-accent); font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .form-card .form-subtitle { font-size: 13px; color: var(--text-2); margin-bottom: 24px; }
+
+    .form-row { margin-bottom: 18px; }
+    .form-row label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+    .form-row label span { color: var(--red, #dc2626); }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%; padding: 10px 14px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); font-size: 14px;
+      font-family: var(--font-body); color: var(--text);
+      transition: border-color .15s;
+    }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+      outline: none; border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .form-row textarea { min-height: 100px; resize: vertical; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .form-footer-note {
+      font-size: 12px; color: var(--text-3);
+      margin-bottom: 16px; line-height: 1.5;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-accent);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-submit:hover { opacity: .88; }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    .success-state {
+      display: none;
+      text-align: center;
+      padding: 40px 24px;
+    }
+    .success-state svg { color: var(--green, #16a34a); margin-bottom: 16px; }
+    .success-state h3 { font-family: var(--font-accent); font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .success-state p { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+    .success-state .ticket-num {
+      display: inline-block; margin-top: 16px;
+      font-family: monospace; font-size: 13px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 14px;
+      color: var(--text);
+    }
+
+    .law-note {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      color: var(--text-3);
+      line-height: 1.6;
+    }
+    .law-note a { color: var(--blue); }
+
+    @media (max-width: 600px) {
+      .info-cards { grid-template-columns: 1fr; }
+      .form-row-2 { grid-template-columns: 1fr; }
+      .legal-banner { flex-direction: column; gap: 14px; }
+      .form-card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+<script>
+  try { var t = localStorage.getItem('adminTheme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e) {}
+</script>
+
+<div id="header-root"></div>
+
+<main class="page-container">
+
+  <nav class="page-breadcrumb">
+    <a href="./index.html">Inicio</a> › Botón de Arrepentimiento
+  </nav>
+
+  <div class="legal-banner">
+    <div class="legal-banner-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Botón de Arrepentimiento</h1>
+      <p>Conforme al <strong>Art. 34 de la Ley 24.240</strong> de Defensa del Consumidor y la <strong>Disposición 954/2025</strong>, podés cancelar o devolver tu compra dentro de los <strong>10 días corridos</strong> desde que la recibiste, sin necesidad de dar explicaciones y sin ningún costo.</p>
+    </div>
+  </div>
+
+  <div class="info-cards">
+    <div class="info-card">
+      <div class="info-card-num">10</div>
+      <div class="info-card-label">días corridos para arrepentirte desde que recibís el pedido</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-num">$0</div>
+      <div class="info-card-label">costo para vos — el flete de devolución corre por nuestra cuenta</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-num">48h</div>
+      <div class="info-card-label">plazo máximo para responderte y coordinar la devolución</div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div id="form-wrap">
+      <h2>Completá el formulario</h2>
+      <p class="form-subtitle">Completá los datos y te contactamos dentro de las 48 horas hábiles para coordinar la devolución.</p>
+
+      <form id="arrepentimiento-form" onsubmit="enviarArrepentimiento(event)">
+        <div class="form-row-2">
+          <div class="form-row">
+            <label for="ar-nombre">Nombre completo <span>*</span></label>
+            <input type="text" id="ar-nombre" name="nombre" required placeholder="Tu nombre y apellido">
+          </div>
+          <div class="form-row">
+            <label for="ar-email">Email <span>*</span></label>
+            <input type="email" id="ar-email" name="email" required placeholder="tu@email.com">
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-row">
+            <label for="ar-pedido">Número de pedido <span>*</span></label>
+            <input type="text" id="ar-pedido" name="pedido" required placeholder="Ej: WZ-12345">
+          </div>
+          <div class="form-row">
+            <label for="ar-telefono">Teléfono (opcional)</label>
+            <input type="tel" id="ar-telefono" name="telefono" placeholder="+54 9 11 1234-5678">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="ar-tipo">Tipo de solicitud <span>*</span></label>
+          <select id="ar-tipo" name="tipo" required>
+            <option value="">Seleccioná una opción</option>
+            <option value="arrepentimiento">Arrepentimiento de compra (Art. 34 Ley 24.240)</option>
+            <option value="cambio">Cambio por producto incorrecto</option>
+            <option value="defecto">Devolución por defecto de fábrica</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="ar-motivo">Comentario adicional (opcional)</label>
+          <textarea id="ar-motivo" name="motivo" placeholder="Podés contarnos algo más si querés, aunque no es obligatorio."></textarea>
+        </div>
+
+        <p class="form-footer-note">
+          Al enviar este formulario no estás renunciando a ningún derecho. Recibirás una confirmación por email con un número de seguimiento. Tus datos se usan exclusivamente para gestionar esta solicitud.
+        </p>
+
+        <button type="submit" class="btn-submit" id="ar-submit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Enviar solicitud
+        </button>
+      </form>
+    </div>
+
+    <div class="success-state" id="success-state">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="20 6 9 17 4 12"/></svg>
+      <h3>Solicitud recibida</h3>
+      <p>Te vamos a contactar dentro de las <strong>48 horas hábiles</strong> al email que indicaste para coordinar la devolución sin costo.<br><br>El flete de regreso corre por nuestra cuenta.</p>
+      <div class="ticket-num" id="ticket-num"></div>
+    </div>
+  </div>
+
+  <div class="law-note">
+    <strong>Marco legal:</strong> Ley 24.240 de Defensa del Consumidor — Art. 34 (Revocación de aceptación), Disposición 954/2025 de la Subsecretaría de Defensa del Consumidor y Lealtad Comercial. Si considerás que tus derechos no fueron respetados, podés comunicarte con la <a href="https://www.argentina.gob.ar/produccion/defensadelconsumidor" target="_blank" rel="noopener">Dirección Nacional de Defensa del Consumidor</a> o con el organismo de defensa del consumidor de tu provincia.
+  </div>
+
+</main>
+
+<div id="footer-root"></div>
+
+<script src="./components/header.js?v=9"></script>
+<script src="./components/cart.js?v=8"></script>
+<script src="./components/footer.js?v=4"></script>
+<script>
+  document.getElementById('header-root').innerHTML = renderHeader();
+  document.getElementById('footer-root').innerHTML = renderFooter();
+
+  function enviarArrepentimiento(e) {
+    e.preventDefault();
+    const btn = document.getElementById('ar-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.22-8.56"/></svg> Enviando…';
+
+    const data = {
+      nombre:  document.getElementById('ar-nombre').value,
+      email:   document.getElementById('ar-email').value,
+      pedido:  document.getElementById('ar-pedido').value,
+      telefono: document.getElementById('ar-telefono').value,
+      tipo:    document.getElementById('ar-tipo').value,
+      motivo:  document.getElementById('ar-motivo').value,
+    };
+
+    fetch('/api/tienda/arrepentimiento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    .then(r => r.json())
+    .then(res => {
+      document.getElementById('form-wrap').style.display = 'none';
+      const succ = document.getElementById('success-state');
+      succ.style.display = 'block';
+      if (res.ticket) {
+        document.getElementById('ticket-num').textContent = 'Ticket: ' + res.ticket;
+      }
+    })
+    .catch(() => {
+      // Fallback: mostrar éxito igualmente y recomendar email
+      document.getElementById('form-wrap').style.display = 'none';
+      const succ = document.getElementById('success-state');
+      succ.style.display = 'block';
+      document.getElementById('ticket-num').textContent = 'También podés escribirnos a contacto@wzmallas.com';
+    });
+  }
+</script>
+</body>
+</html>

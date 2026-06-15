@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design System Preview — WZMALLAS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css">
+  <style>
+    body { padding: 40px 0 80px; background: var(--bg); }
+    .preview-section { margin-bottom: 48px; }
+    .preview-label {
+      font-family: var(--font-accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+    .preview-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+    .color-swatch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .color-swatch-box {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .color-swatch span {
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: center;
+    }
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .skeleton-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .sk-img  { aspect-ratio: 1/1; }
+    .sk-line { height: 14px; margin: 12px 14px 0; }
+    .sk-line.short { width: 60%; }
+    .sk-line.price { height: 20px; width: 50%; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1 style="font-size:22px;font-weight:700;margin-bottom:8px;color:var(--text)">Design System — WZMALLAS</h1>
+  <p style="font-size:14px;color:var(--text-3);margin-bottom:48px">Referencia visual: MercadoLibre · Azul #3483FA · Verde #00A650</p>
+
+  <!-- PALETA -->
+  <div class="preview-section">
+    <div class="preview-label">Paleta de colores</div>
+    <div class="preview-row">
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#3483FA"></div>
+        <span>--blue<br>#3483FA</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#2968C8"></div>
+        <span>--blue-dark<br>#2968C8</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#EBF2FF"></div>
+        <span>--blue-light<br>#EBF2FF</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#00A650"></div>
+        <span>--green<br>#00A650</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#E6F5EE"></div>
+        <span>--green-light<br>#E6F5EE</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#F23D4F"></div>
+        <span>--red<br>#F23D4F</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#F5F5F5;"></div>
+        <span>--bg<br>#F5F5F5</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#E6E6E6"></div>
+        <span>--border<br>#E6E6E6</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#333333"></div>
+        <span>--text<br>#333333</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#666666"></div>
+        <span>--text-2<br>#666666</span>
+      </div>
+      <div class="color-swatch">
+        <div class="color-swatch-box" style="background:#999999"></div>
+        <span>--text-3<br>#999999</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIPOGRAFÍA -->
+  <div class="preview-section">
+    <div class="preview-label">Tipografía</div>
+    <p style="font-family:var(--font-body);font-size:28px;font-weight:700;margin-bottom:8px">Inter 700 — Título de página</p>
+    <p style="font-family:var(--font-body);font-size:20px;font-weight:600;margin-bottom:8px">Inter 600 — Precio / Sección</p>
+    <p style="font-family:var(--font-body);font-size:16px;font-weight:400;margin-bottom:8px">Inter 400 — Cuerpo de texto, descripción del producto</p>
+    <p style="font-family:var(--font-body);font-size:14px;font-weight:400;color:var(--text-2);margin-bottom:8px">Inter 400 secundario — Variante, metadata</p>
+    <p style="font-family:var(--font-body);font-size:12px;color:var(--text-3);margin-bottom:16px">Inter 400 terciario — Etiquetas, 128 vendidos</p>
+    <p style="font-family:var(--font-accent);font-size:14px;font-weight:700;margin-bottom:8px">MONTSERRAT 700 — BOTONES Y LABELS</p>
+    <p style="font-family:var(--font-accent);font-size:12px;font-weight:600;color:var(--text-2)">MONTSERRAT 600 — CATEGORÍAS, EYEBROW</p>
+  </div>
+
+  <!-- BOTONES -->
+  <div class="preview-section">
+    <div class="preview-label">Botones</div>
+    <div class="preview-row">
+      <button class="btn-primary">Comprar ahora</button>
+      <button class="btn-primary btn-sm">Agregar al carrito</button>
+      <button class="btn-primary" disabled>Sin stock</button>
+    </div>
+    <div class="preview-row" style="margin-top:12px">
+      <button class="btn-secondary">Ver catálogo</button>
+      <button class="btn-secondary btn-sm">Ver más</button>
+    </div>
+    <div class="preview-row" style="margin-top:12px">
+      <button class="btn-ghost">← Volver</button>
+      <button class="btn-ghost btn-sm">Limpiar filtros</button>
+    </div>
+    <div class="preview-row" style="margin-top:12px">
+      <button class="btn-carousel">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="10 4 6 8 10 12"/></svg>
+      </button>
+      <button class="btn-carousel">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 4 10 8 6 12"/></svg>
+      </button>
+      <button class="btn-carousel" disabled>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="10 4 6 8 10 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- BADGES -->
+  <div class="preview-section">
+    <div class="preview-label">Badges</div>
+    <div class="preview-row">
+      <span class="badge badge-green">Envío gratis</span>
+      <span class="badge badge-green">Stock disponible</span>
+      <span class="badge badge-blue">Nuevo</span>
+      <span class="badge badge-blue">Destacado</span>
+      <span class="badge badge-red">Oferta</span>
+      <span class="badge badge-gray">Samsung Watch</span>
+      <span class="badge badge-gray">Apple Watch</span>
+    </div>
+    <div class="preview-row" style="margin-top:12px;align-items:center">
+      <span style="font-size:13px;color:var(--text-2)">Cart badge:</span>
+      <div style="position:relative;display:inline-flex">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span class="cart-count" style="position:absolute;top:-6px;right:-8px">3</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTO TAGS -->
+  <div class="preview-section">
+    <div class="preview-label">Etiquetas de producto</div>
+    <div class="preview-row">
+      <span class="product-tag">Bestseller</span>
+      <span class="product-tag tag-new">Nuevo</span>
+      <span class="product-tag tag-sale">Oferta</span>
+    </div>
+  </div>
+
+  <!-- TARJETAS DE PRODUCTO -->
+  <div class="preview-section">
+    <div class="preview-label">Tarjetas de producto</div>
+    <div class="product-grid">
+
+      <a href="#" class="product-card">
+        <div class="product-image-wrap">
+          <img src="https://http2.mlstatic.com/D_629655-MLA89668587536_082025-I.jpg" alt="Protector Samsung Watch 4">
+          <span class="product-tag">Bestseller</span>
+        </div>
+        <div class="product-info">
+          <p class="product-name">Protector Samsung Watch 4 — Cubre pantalla y bordes</p>
+          <p class="product-meta">493 vendidos · 10 variantes</p>
+          <p class="product-price">$21.500</p>
+          <p class="product-shipping">Envío gratis</p>
+          <button class="btn-primary btn-sm btn-add">Agregar al carrito</button>
+        </div>
+      </a>
+
+      <a href="#" class="product-card">
+        <div class="product-image-wrap">
+          <img src="https://http2.mlstatic.com/D_984624-MLA78002696023_072024-I.jpg" alt="Protector Diamantes AW">
+          <span class="product-tag tag-new">Nuevo</span>
+        </div>
+        <div class="product-info">
+          <p class="product-name">Protector Diamantes Apple Watch — Exclusivo</p>
+          <p class="product-meta">153 vendidos · 27 variantes</p>
+          <p class="product-price-old">$25.000</p>
+          <p class="product-price">$22.550</p>
+          <p class="product-shipping">Envío gratis</p>
+          <button class="btn-primary btn-sm btn-add">Agregar al carrito</button>
+        </div>
+      </a>
+
+      <a href="#" class="product-card">
+        <div class="product-image-wrap">
+          <img src="https://http2.mlstatic.com/D_610409-MLA91351614724_092025-I.jpg" alt="Protector Silicona SW 7">
+        </div>
+        <div class="product-info">
+          <p class="product-name">Protector Silicona Samsung Watch 7 — 40mm / 44mm</p>
+          <p class="product-meta">270 vendidos · 16 variantes</p>
+          <p class="product-price">$22.500</p>
+          <p class="product-shipping">Envío gratis</p>
+          <button class="btn-primary btn-sm btn-add">Agregar al carrito</button>
+        </div>
+      </a>
+
+      <!-- Skeleton loading -->
+      <div class="skeleton-card">
+        <div class="shimmer sk-img"></div>
+        <div class="shimmer sk-line"></div>
+        <div class="shimmer sk-line short"></div>
+        <div class="shimmer sk-line price"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DOTS CARRUSEL -->
+  <div class="preview-section">
+    <div class="preview-label">Dots de carrusel</div>
+    <div class="preview-row">
+      <button class="carousel-dot active"></button>
+      <button class="carousel-dot"></button>
+      <button class="carousel-dot"></button>
+      <button class="carousel-dot"></button>
+    </div>
+  </div>
+
+  <!-- ESTADOS DE STOCK -->
+  <div class="preview-section">
+    <div class="preview-label">Estados de stock</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <p class="stock-ok">✓ Stock disponible</p>
+      <p class="stock-low">⚠ Últimas 3 unidades</p>
+      <p class="stock-none">✗ Sin stock</p>
+    </div>
+  </div>
+
+  <!-- INPUTS -->
+  <div class="preview-section">
+    <div class="preview-label">Inputs y formularios</div>
+    <div style="max-width:400px;display:flex;flex-direction:column;gap:16px">
+      <div>
+        <label>Nombre completo *</label>
+        <input type="text" placeholder="Juan Rodríguez">
+      </div>
+      <div>
+        <label>Email *</label>
+        <input type="email" placeholder="juan@email.com">
+      </div>
+      <div>
+        <label>Provincia</label>
+        <select>
+          <option>Seleccioná tu provincia</option>
+          <option>Buenos Aires</option>
+          <option>Córdoba</option>
+        </select>
+      </div>
+      <div>
+        <label>Campo con error</label>
+        <input type="text" class="error" placeholder="Campo requerido">
+        <p class="field-error">Este campo es obligatorio</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BREADCRUMB -->
+  <div class="preview-section">
+    <div class="preview-label">Breadcrumb</div>
+    <nav class="breadcrumb">
+      <a href="#">Inicio</a>
+      <span class="sep">/</span>
+      <a href="#">Catálogo</a>
+      <span class="sep">/</span>
+      <span class="current">Protector Samsung Watch 4</span>
+    </nav>
+  </div>
+
+  <!-- PANEL / CARD CONTENEDOR -->
+  <div class="preview-section">
+    <div class="preview-label">Panel contenedor</div>
+    <div class="panel" style="max-width:320px">
+      <p style="font-family:var(--font-accent);font-size:12px;font-weight:600;text-transform:uppercase;color:var(--text-3);letter-spacing:0.05em;margin-bottom:16px">Resumen del pedido</p>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:14px;color:var(--text-2)">Subtotal</span>
+        <span style="font-size:14px;font-weight:500">$44.050</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:14px;color:var(--text-2)">Envío</span>
+        <span style="font-size:14px;color:var(--green);font-weight:500">Gratis</span>
+      </div>
+      <hr class="divider" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <span style="font-size:16px;font-weight:600">Total</span>
+        <span style="font-size:20px;font-weight:700">$44.050</span>
+      </div>
+      <button class="btn-primary" style="width:100%">Continuar con la compra</button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,698 @@
+/* ============================================================
+   WZMALLAS — Design System
+   Dirección visual: Premium tech minimal (Apple-store-like)
+   Negro premium para acciones + acento azul eléctrico,
+   tipografía con carácter, sombras suaves y aire amplio.
+   ============================================================ */
+/* Las fuentes se cargan con <link rel="stylesheet"> directo en el <head> de
+   cada página (no con @import) para evitar la cadena render-blocking:
+   HTML → CSS → @import → CSS de fuentes → fuentes. */
+
+/* ---- Variables -------------------------------------------- */
+
+:root {
+  /* Acción — negro premium para CTAs, azul eléctrico como acento */
+  --ink:         #0A0A0A;   /* acción principal: botones, énfasis */
+  --ink-soft:    #1C1C1E;   /* hover/active del negro */
+  --blue:        #3D5AFE;   /* acento: links, foco, destacados */
+  --blue-dark:   #2E45D8;
+  --blue-light:  #EEF1FF;
+
+  /* Ventajas */
+  --green:       #0E9F6E;
+  --green-light: #E7F6EF;
+
+  /* Alertas */
+  --red:         #E5484D;
+  --red-light:   #FDECEC;
+  --yellow:      #F5A623;
+
+  /* Fondos */
+  --white:       #FFFFFF;
+  --bg:          #FAFAFA;   /* fondo de página, casi blanco */
+  --bg-card:     #FFFFFF;
+  --bg-2:        #F2F2F3;   /* superficies sutiles (stage de producto, chips) */
+
+  /* Bordes — visibles pero suaves. Suben de contraste para que las tarjetas
+     se distingan del fondo (#FAFAFA) sin verse pesadas. */
+  --border:      #E2E2E2;   /* borde por defecto de tarjetas/paneles */
+  --border-2:    #D4D4D4;   /* énfasis: inputs, divisores, contornos marcados */
+
+  /* Texto */
+  --text:        #111111;
+  --text-2:      #54545A;   /* secundario — un poco más oscuro para mejor lectura */
+  --text-3:      #5C5C62;   /* terciario/labels chicos — sube de ~4.6:1 a ~6.4:1 AA */
+
+  /* Tipografía — con carácter, no las default de siempre */
+  --font-body:   'Manrope', system-ui, -apple-system, sans-serif;
+  --font-accent: 'Space Grotesk', system-ui, sans-serif;
+
+  /* Radios generosos (estilo premium) */
+  --radius-sm: 8px;    /* badges, chips */
+  --radius:    12px;   /* botones, inputs */
+  --radius-lg: 18px;   /* tarjetas, contenedores */
+
+  /* Sombras suaves (profundidad sin bordes duros) */
+  --shadow-sm: 0 1px 2px rgba(17,17,17,0.04), 0 1px 3px rgba(17,17,17,0.06);
+  --shadow:    0 6px 24px rgba(17,17,17,0.08);
+  --shadow-lg: 0 18px 48px rgba(17,17,17,0.12);
+}
+
+/* ---- Reset ------------------------------------------------- */
+
+*,
+*::before,
+*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+}
+
+a    { text-decoration: none; color: inherit; }
+img  { display: block; max-width: 100%; }
+button { cursor: pointer; font-family: var(--font-body); border: none; touch-action: manipulation; }
+input, select, textarea { font-family: var(--font-body); }
+
+/* ---- Header root — reserva espacio antes de que JS inyecte el header
+   para evitar Cumulative Layout Shift (CLS).
+   Desktop: promo bar (~32px) + nav (60px) = 92px
+   Mobile ≤768px: sin promo bar, nav (60px) + cat-strip (~40px) = 100px  */
+#header-root {
+  display: block;
+  min-height: 93px;  /* promo (32px) + nav (60px) + border (1px) */
+  contain: layout;
+  /* contain:layout crea un stacking context propio que atrapa el z-index
+     del header. Sin esto, el dropdown del buscador queda detrás del catálogo. */
+  position: relative;
+  z-index: 1000;
+}
+@media (max-width: 768px) {
+  #header-root { min-height: 106px; } /* nav (61px) + cat-strip (45px) */
+}
+
+/* ---- Layout ----------------------------------------------- */
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 768px)  { .container { padding: 0 24px; } }
+@media (min-width: 1024px) { .container { padding: 0 32px; } }
+
+/* ---- Botones ---------------------------------------------- */
+
+/* Primario: azul sólido */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--ink);
+  color: #FFFFFF;
+  border: none;
+  padding: 13px 26px;
+  font-family: var(--font-accent);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary:hover  { background: var(--ink-soft); transform: translateY(-1px); box-shadow: var(--shadow); }
+.btn-primary:active { background: #000; transform: translateY(0); box-shadow: var(--shadow-sm); }
+.btn-primary:disabled {
+  background: var(--border-2);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+/* Secundario: outline azul */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  padding: 11px 24px;
+  font-family: var(--font-accent);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  transition: background 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-secondary:hover  { background: var(--blue-light); }
+.btn-secondary:active { background: #d5e6ff; }
+
+/* Ghost: outline neutro */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border-2);
+  padding: 11px 24px;
+  font-family: var(--font-accent);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius);
+  transition: border-color 0.15s, color 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-ghost:hover { border-color: var(--text-2); color: var(--text); }
+
+/* Tamaño pequeño (modificador) */
+.btn-sm { padding: 8px 16px; font-size: 12px; }
+
+/* ---- Tarjetas de producto --------------------------------- */
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+/* Los efectos de :hover (elevar la card, agrandar la imagen, revelar los
+   swatches de variantes) sólo se activan en dispositivos con hover real
+   (mouse). En touch, ":hover" se dispara con el primer toque y "consume"
+   ese toque — obligando al usuario a tocar 2 veces para entrar a la
+   publicación. Por eso en touch el toque navega directo (ver bloque
+   "@media (hover: none)" más abajo, que deja los swatches siempre visibles). */
+@media (hover: hover) {
+  .product-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-3px);
+    border-color: transparent;
+  }
+}
+
+/* Imagen */
+.product-image-wrap {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.product-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 12px;
+  transition: transform 0.3s ease;
+}
+@media (hover: hover) {
+  .product-card:hover .product-image-wrap img {
+    transform: scale(1.05);
+  }
+}
+
+/* Etiqueta sobre imagen */
+.product-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--green);
+  color: #FFFFFF;
+  font-family: var(--font-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+.product-tag.tag-new  { background: var(--blue); }
+.product-tag.tag-sale { background: var(--red); }
+
+/* Badge "Venta directa WZ" — esquina superior derecha, neutral (no demerita ML) */
+.product-tag-wz {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #FFFFFF;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  font-family: var(--font-accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+/* Preview de variantes — thumbnails que aparecen al hacer hover sobre la card */
+.variant-previews {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+@media (hover: hover) {
+  .product-card:hover .variant-previews {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}
+@media (hover: none) {
+  /* En touch no hay ":hover" real — dejamos los swatches de variantes
+     siempre visibles sobre la foto (así se pueden tocar directamente para
+     previsualizar) y el resto de la card navega a la publicación con un
+     solo toque, sin el "toque fantasma" que antes obligaba a tocar 2 veces. */
+  .product-card .variant-previews {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+.variant-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  flex-shrink: 0;
+}
+.variant-thumb:hover,
+.variant-thumb.active {
+  transform: scale(1.12);
+  border-color: var(--blue);
+}
+.variant-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 1px;
+  transition: none;     /* anular transform del .product-image-wrap img */
+}
+.variant-thumb-more {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  flex-shrink: 0;
+}
+
+/* Tarjeta en vista lista (catálogo) — los swatches van bajo el título */
+.product-list-item .variant-previews {
+  position: static;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  justify-content: flex-start;
+  margin-top: 6px;
+}
+.product-list-item .variant-thumb { box-shadow: none; border-color: var(--border); }
+
+/* Info textual */
+.product-info {
+  padding: 12px 14px 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-meta {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.product-price {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.product-price-old {
+  font-size: 13px;
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+.product-sold {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.product-shipping {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+}
+
+.product-cuotas {
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: help;
+}
+
+.product-urgency {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #B45309;
+  background: #FEF3C7;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-top: 2px;
+}
+
+/* Botón dentro de tarjeta (aparece en hover o siempre) */
+.product-card .btn-add {
+  margin-top: 8px;
+  width: 100%;
+  padding: 9px 16px;
+  font-size: 13px;
+}
+
+/* ---- Badges ----------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.badge-green  { background: var(--green-light);  color: var(--green); }
+.badge-blue   { background: var(--blue-light);   color: var(--blue); }
+.badge-red    { background: var(--red-light);    color: var(--red); }
+.badge-gray   {
+  background: var(--bg);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+/* ---- Inputs y formularios --------------------------------- */
+
+input,
+select,
+textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--white);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(52, 131, 250, 0.12);
+}
+
+/* Skip link (WCAG 2.4.1) — oculto fuera de pantalla hasta recibir foco por teclado */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -56px;
+  z-index: 2000;
+  background: var(--blue);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-family: var(--font-accent);
+  font-weight: 600;
+  font-size: 14px;
+  transition: top 0.15s ease;
+}
+.skip-link:focus { top: 8px; outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Foco visible por teclado (WCAG 2.4.7 Focus Visible).
+   :focus-visible solo se activa al navegar con teclado/Tab, no al hacer
+   click con mouse — por eso no cambia nada para usuarios de mouse.
+   Cubre botones, links y elementos interactivos custom (role/tabindex). */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[tabindex]:focus-visible,
+.product-card:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* ── Medios de pago — logos reales en chips uniformes ── */
+.pay-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pay-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 11px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+.pay-chip img { height: 20px; width: auto; display: block; }
+.pay-chip.is-text {
+  font-family: var(--font-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-2);
+}
+
+input::placeholder,
+textarea::placeholder { color: var(--text-3); }
+
+input.error,
+select.error { border-color: var(--red); }
+
+.field-error {
+  font-size: 12px;
+  color: var(--red);
+  margin-top: 4px;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+/* ---- Skeleton / shimmer ----------------------------------- */
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg)     25%,
+    var(--border) 50%,
+    var(--bg)     75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: var(--radius);
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .shimmer { animation: none; background: var(--border); }
+}
+
+/* ---- Carrusel --------------------------------------------- */
+
+/* Dots — SIEMPRE 50%: convención universal de paginación circular */
+.carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-2);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+.carousel-dot.active {
+  background: var(--blue);
+  transform: scale(1.5);
+}
+
+/* Botones prev/next */
+.btn-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--white);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  color: var(--text-2);
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.btn-carousel:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  box-shadow: 0 2px 6px rgba(52,131,250,0.15);
+}
+.btn-carousel:disabled { opacity: 0.35; pointer-events: none; }
+
+/* ---- Badge del carrito ------------------------------------ */
+
+/* SIEMPRE 50%: convención de notificación circular */
+.cart-count {
+  border-radius: 50% !important;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: var(--blue);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ---- Utilidades generales --------------------------------- */
+
+/* Separador */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* Sección genérica */
+.section { padding: 40px 0; }
+.section-sm { padding: 24px 0; }
+
+/* Título de sección */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.section-link {
+  font-size: 14px;
+  color: var(--blue);
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.section-link:hover { color: var(--blue-dark); }
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-3);
+  flex-wrap: wrap;
+}
+.breadcrumb a       { color: var(--blue); }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb .sep    { color: var(--border-2); }
+.breadcrumb .current { color: var(--text); }
+
+/* Panel / card contenedor */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+/* Texto de estado de stock */
+.stock-ok       { font-size: 13px; font-weight: 500; color: var(--green); }
+.stock-low      { font-size: 13px; font-weight: 500; color: var(--yellow); }
+.stock-none     { font-size: 13px; font-weight: 500; color: var(--red); }

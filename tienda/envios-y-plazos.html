@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Envíos y plazos — WZMALLAS</title>
+  <meta name="description" content="Métodos de envío, costos y plazos de entrega en toda la Argentina. Flex en CABA, Correo Argentino al interior y retiro en Pilar.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+    .page-container { max-width: 880px; margin: 0 auto; padding: 32px 24px 64px; }
+    .page-breadcrumb { font-size: 13px; color: var(--text-3); margin-bottom: 16px; }
+    .page-breadcrumb a { color: var(--text-3); text-decoration: none; }
+    .page-breadcrumb a:hover { color: var(--blue); }
+    .page-title { font-family: var(--font-accent); font-size: 32px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .page-subtitle { color: var(--text-2); font-size: 15px; margin-bottom: 32px; }
+
+    .ship-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    @media (max-width: 768px) { .ship-grid { grid-template-columns: 1fr; } }
+
+    .ship-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ship-card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      background: var(--blue-light);
+      color: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 6px;
+    }
+    .ship-card-icon.green { background: rgba(0,166,80,0.12); color: var(--green); }
+    .ship-card-name { font-family: var(--font-accent); font-size: 16px; font-weight: 700; color: var(--text); }
+    .ship-card-meta { font-size: 13px; color: var(--text-3); }
+    .ship-card-price {
+      font-family: var(--font-accent);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--blue);
+      margin-top: 4px;
+    }
+    .ship-card-desc { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-top: 4px; }
+
+    .info-block {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .info-block h2 {
+      font-family: var(--font-accent);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .info-block p { font-size: 14px; line-height: 1.7; color: var(--text-2); margin-bottom: 12px; }
+    .info-block ul { margin: 0 0 12px 0; padding-left: 22px; }
+    .info-block ul li { font-size: 14px; line-height: 1.7; color: var(--text-2); margin-bottom: 6px; }
+    .info-block strong { color: var(--text); font-weight: 600; }
+    .info-block a { color: var(--blue); }
+
+    .ship-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .ship-table th, .ship-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .ship-table th {
+      font-family: var(--font-accent);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: var(--bg);
+    }
+    .ship-table td.price { font-family: var(--font-accent); font-weight: 600; color: var(--text); }
+
+    .free-banner {
+      background: linear-gradient(135deg, #00A650 0%, #008f44 100%);
+      color: #fff;
+      padding: 22px 28px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .free-banner svg { flex-shrink: 0; }
+    .free-banner-text strong { display: block; font-family: var(--font-accent); font-size: 17px; margin-bottom: 4px; }
+    .free-banner-text { font-size: 14px; opacity: 0.95; }
+
+    @media (max-width: 600px) {
+      .info-block { padding: 22px 22px; }
+      .page-title { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+<div id="header-root"></div>
+
+<main class="page-container">
+
+  <nav class="page-breadcrumb">
+    <a href="./index.html">Inicio</a> · Envíos y plazos
+  </nav>
+
+  <h1 class="page-title">Envíos y plazos</h1>
+  <p class="page-subtitle">Despachamos a toda la Argentina. Elegí el método que mejor se ajuste a tu zona y tiempo.</p>
+
+  <!-- Banner envío gratis -->
+  <div class="free-banner">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+      <rect x="1" y="3" width="15" height="13" rx="1"/>
+      <path d="M16 8h4l3 3v5h-7V8z"/>
+      <circle cx="5.5" cy="18.5" r="2.5"/>
+      <circle cx="18.5" cy="18.5" r="2.5"/>
+    </svg>
+    <div class="free-banner-text">
+      <strong>Envío gratis en compras superiores a $33.000</strong>
+      Aplica a cualquier método y zona del país.
+    </div>
+  </div>
+
+  <!-- Métodos de envío -->
+  <div class="ship-grid">
+
+    <div class="ship-card">
+      <div class="ship-card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div class="ship-card-name">Mercado Envíos Flex</div>
+      <div class="ship-card-meta">Solo CABA y GBA</div>
+      <div class="ship-card-price">$5.000 — $8.500</div>
+      <p class="ship-card-desc">Entrega en el día o al día siguiente. CABA $5.000 · GBA, zonas cercanas $6.500 y zonas lejanas $8500.</p>
+    </div>
+
+    <div class="ship-card">
+      <div class="ship-card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div class="ship-card-name">Correo Argentino</div>
+      <div class="ship-card-meta">Todo el país</div>
+      <div class="ship-card-price">$8.500</div>
+      <p class="ship-card-desc">Sucursal o domicilio. Plazo estimado 4 a 7 días hábiles según zona del país.</p>
+    </div>
+
+    <div class="ship-card">
+      <div class="ship-card-icon green">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div class="ship-card-name">Retiro en sucursal</div>
+      <div class="ship-card-meta">Pilar, Buenos Aires</div>
+      <div class="ship-card-price">Gratis</div>
+      <p class="ship-card-desc">Iparraguirre 169, Presidente Derqui. Lun a Vie 9-18 hs · Sáb 10-14 hs.</p>
+    </div>
+
+  </div>
+
+  <!-- Plazos detallados -->
+  <div class="info-block">
+    <h2>Plazos estimados de entrega</h2>
+    <p>Los plazos se cuentan desde la <strong>acreditación del pago</strong>, no desde el momento de la compra. Para Mercado Pago, suele ser inmediato; para transferencias, se acredita el día hábil siguiente.</p>
+    <table class="ship-table">
+      <thead>
+        <tr><th>Zona</th><th>Flex</th><th>Correo Argentino</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CABA</td><td class="price">Mismo día / 24 hs</td><td class="price">2-3 días hábiles</td></tr>
+        <tr><td>GBA</td><td class="price">Mismo día / 24 hs</td><td class="price">3-5 días hábiles</td></tr>
+        <tr><td>Buenos Aires (interior)</td><td>—</td><td class="price">3-5 días hábiles</td></tr>
+        <tr><td>Resto del país</td><td>—</td><td class="price">5-7 días hábiles</td></tr>
+        <tr><td>Patagonia y norte extremo</td><td>—</td><td class="price">7-10 días hábiles</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:12px;font-size:13px;color:var(--text-3)">Los plazos son estimados y pueden variar según la operatoria de la transportista. WZMALLAS no se responsabiliza por demoras del correo, pero hacemos seguimiento de cada envío.</p>
+  </div>
+
+  <!-- Seguimiento -->
+  <div class="info-block">
+    <h2>Seguimiento del envío</h2>
+    <p>Una vez despachado tu pedido, te enviamos por <strong>email y WhatsApp</strong> el número de seguimiento para que puedas rastrearlo en tiempo real desde la web del correo elegido.</p>
+    <p>Si después de 48 hs del despacho no podés ver actualizaciones, escribinos a <a href="mailto:hola@wzmallas.com">hola@wzmallas.com</a> o por <a href="https://wa.me/5492304216009" target="_blank" rel="noopener">WhatsApp</a>.</p>
+  </div>
+
+  <!-- Empaque -->
+  <div class="info-block">
+    <h2>Empaque y cuidado</h2>
+    <p>Todos los productos viajan en su caja original con un sobre acolchado o caja resistente para evitar daños en el traslado.</p>
+    <ul>
+      <li>Empaque discreto, sin referencias al contenido por fuera.</li>
+      <li>Etiquetado clarificado para evitar pérdidas.</li>
+      <li>Si recibís el paquete dañado, <strong>fotografialo antes de abrirlo</strong> y avisanos.</li>
+    </ul>
+  </div>
+
+  <!-- Notas legales -->
+  <div class="info-block">
+    <h2>Información importante</h2>
+    <ul>
+      <li>El pedido se prepara en un plazo de <strong>24-48 hs hábiles</strong> tras la acreditación del pago.</li>
+      <li>No hay envíos los sábados, domingos ni feriados.</li>
+      <li>Los costos de envío al exterior se cotizan caso por caso. Escribinos para consultar.</li>
+      <li>Si el destinatario no se encuentra al momento de la entrega, el correo intentará una segunda visita o lo retendrá en sucursal.</li>
+      <li>Para más detalles consultá los <a href="./terminos-condiciones.html">términos y condiciones</a>.</li>
+    </ul>
+  </div>
+
+</main>
+
+<div id="footer-root"></div>
+
+<script src="./components/cart.js?v=8"></script>
+<script src="./components/header.js?v=9"></script>
+<script src="./components/footer.js?v=4"></script>
+<script>initPage('envios');</script>
+</body>
+</html>

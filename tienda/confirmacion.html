@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>¡Pedido confirmado! — WZMALLAS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body {
+      background: var(--bg);
+      font-family: var(--font-body);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---- Header mínimo ---- */
+    .checkout-header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .checkout-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .checkout-logo img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .checkout-logo span {
+      font-family: var(--font-accent);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    /* ---- Check animado ---- */
+    @keyframes scaleIn {
+      0%   { transform: scale(0); opacity: 0; }
+      70%  { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes checkDraw {
+      from { stroke-dashoffset: 100; }
+      to   { stroke-dashoffset: 0; }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .confirm-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 60px);
+      padding: 32px 16px;
+    }
+
+    .confirm-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 56px 48px;
+      max-width: 540px;
+      width: 100%;
+      text-align: center;
+      animation: fadeUp 0.5s ease 0.1s both;
+    }
+
+    .check-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--green-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 28px;
+      animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    .check-circle svg {
+      color: var(--green);
+    }
+    .check-circle svg path {
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: checkDraw 0.4s ease 0.4s forwards;
+    }
+
+    .confirm-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 12px;
+      line-height: 1.2;
+    }
+
+    .confirm-subtitle {
+      font-size: 16px;
+      color: var(--text-2);
+      margin: 0 0 32px;
+      line-height: 1.5;
+    }
+
+    /* Número de orden */
+    .order-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--blue-light);
+      border: 1px solid rgba(52,131,250,0.2);
+      border-radius: var(--radius-lg);
+      padding: 12px 20px;
+      margin-bottom: 32px;
+    }
+    .order-badge .order-label {
+      font-size: 12px;
+      font-family: var(--font-accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--blue);
+    }
+    .order-badge .order-id {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--blue);
+      font-family: monospace;
+      letter-spacing: 0.04em;
+    }
+
+    /* Steps de qué pasa ahora */
+    .next-steps {
+      background: var(--bg);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+    .next-steps-title {
+      font-family: var(--font-accent);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-3);
+      margin-bottom: 14px;
+    }
+    .next-step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .next-step-item:last-child { margin-bottom: 0; }
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .next-step-text {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .next-step-text strong { color: var(--text); font-weight: 500; }
+
+    .confirm-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 600px) {
+      .confirm-card { padding: 40px 24px; }
+      .confirm-title { font-size: 24px; }
+      .confirm-actions { flex-direction: column; }
+      .confirm-actions a { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <!-- Header mínimo -->
+  <header class="checkout-header">
+    <a href="./index.html" class="checkout-logo">
+      <img src="./img/logo-header.png" alt="WZ" width="36" height="36" loading="eager" decoding="async" onerror="this.style.display='none'">
+      <span>WZMALLAS</span>
+    </a>
+  </header>
+
+  <div class="confirm-wrap">
+    <div class="confirm-card">
+
+      <!-- Check / icono dinámico según status -->
+      <div class="check-circle" id="status-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+
+      <h1 class="confirm-title" id="confirm-title">¡Pedido confirmado!</h1>
+      <p class="confirm-subtitle" id="confirm-subtitle">
+        Tu pedido fue recibido correctamente.
+      </p>
+
+      <!-- Número de orden -->
+      <div class="order-badge">
+        <span class="order-label">Nº de orden</span>
+        <span class="order-id" id="order-id-display">—</span>
+      </div>
+
+      <!-- Qué pasa ahora -->
+      <div class="next-steps">
+        <div class="next-steps-title">¿Qué pasa ahora?</div>
+        <div class="next-step-item">
+          <div class="step-num">1</div>
+          <div class="next-step-text"><strong>Revisamos tu pedido</strong> y te contactamos para coordinar el pago si aún no lo realizaste.</div>
+        </div>
+        <div class="next-step-item">
+          <div class="step-num">2</div>
+          <div class="next-step-text"><strong>Preparamos tu envío</strong> y lo despachamos en 1-2 días hábiles una vez confirmado el pago.</div>
+        </div>
+        <div class="next-step-item">
+          <div class="step-num">3</div>
+          <div class="next-step-text"><strong>Recibís un seguimiento</strong> con el número de tracking para rastrear tu paquete en tiempo real.</div>
+        </div>
+      </div>
+
+      <!-- Seguimiento + Crear cuenta -->
+      <div id="post-purchase-links" style="margin-bottom:20px;"></div>
+
+      <!-- Acciones -->
+      <div class="confirm-actions">
+        <a href="./index.html" class="btn-primary" style="border-radius:var(--radius);text-decoration:none;">
+          Seguir comprando
+        </a>
+        <a href="./catalogo.html" class="btn-ghost" style="border-radius:var(--radius);text-decoration:none;">
+          Ver catálogo
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="./components/cart.js?v=8"></script>
+  <script>
+    /* Leer params de URL */
+    const params  = new URLSearchParams(window.location.search);
+    const orderId = params.get('id') || ('WZ-' + Date.now());
+    const email   = params.get('email') || '';
+    const status  = params.get('status') || '';
+
+    /* Escapa texto para uso seguro dentro de innerHTML */
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /* Mostrar número de orden */
+    document.getElementById('order-id-display').textContent = orderId;
+
+    /* Personalizar UI según el status devuelto por MercadoPago */
+    const titleEl    = document.getElementById('confirm-title');
+    const subtitleEl = document.getElementById('confirm-subtitle');
+    const iconEl     = document.getElementById('status-icon');
+
+    if (status === 'approved') {
+      titleEl.textContent = '¡Pago confirmado!';
+      subtitleEl.innerHTML = `Tu pago fue procesado correctamente.${email ? `<br>Te enviamos los detalles a <strong>${esc(email)}</strong>.` : ''}`;
+
+      // GA4 — purchase. Para MercadoPago/Stripe el evento se guardó en
+      // checkout.html pero solo se dispara aquí, una vez confirmado el pago
+      // (evita contar pedidos abandonados). Dedup por orderId con sessionStorage
+      // para que un refresh de esta página no lo dispare dos veces.
+      if (orderId) {
+        try {
+          const firedKey = 'wz_ga4_purchase_fired_' + orderId;
+          const pending  = sessionStorage.getItem('wz_pending_purchase');
+          if (pending && !sessionStorage.getItem(firedKey)) {
+            const ecom = JSON.parse(pending);
+            if (String(ecom.transaction_id) === String(orderId)) {
+              window.dataLayer = window.dataLayer || [];
+              window.dataLayer.push({ ecommerce: null });
+              window.dataLayer.push({ event: 'purchase', ecommerce: ecom });
+              sessionStorage.setItem(firedKey, '1');
+              sessionStorage.removeItem('wz_pending_purchase');
+            }
+          }
+        } catch {}
+      }
+    }
+    else if (status === 'pending') {
+      titleEl.textContent = 'Pago pendiente';
+      iconEl.style.background = 'rgba(245, 158, 11, 0.15)';
+      iconEl.querySelector('svg').style.color = '#f59e0b';
+      iconEl.querySelector('svg path').setAttribute('d', 'M12 8v4M12 16h.01M12 22a10 10 0 100-20 10 10 0 000 20z');
+      iconEl.querySelector('svg').setAttribute('stroke-width', '2');
+      subtitleEl.innerHTML = `Tu pago está siendo procesado. Te avisaremos por email cuando se acredite.${email ? `<br>Recibirás novedades en <strong>${esc(email)}</strong>.` : ''}`;
+    }
+    else if (status === 'rejected' || status === 'error') {
+      titleEl.textContent = 'Pago rechazado';
+      iconEl.style.background = 'rgba(242, 61, 79, 0.15)';
+      iconEl.querySelector('svg').style.color = 'var(--red)';
+      iconEl.querySelector('svg path').setAttribute('d', 'M18 6L6 18M6 6l12 12');
+      subtitleEl.innerHTML = 'No pudimos procesar tu pago. Podés reintentarlo o probar con otro método.';
+      if (orderId && !orderId.startsWith('WZ-')) {
+        const retryWrap = document.createElement('div');
+        retryWrap.style.marginTop = '16px';
+        retryWrap.innerHTML = `
+          <button id="retry-pago-btn" style="display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;">Reintentar pago</button>
+          <div style="margin-top:10px;"><a href="./checkout.html" style="color:var(--blue);font-weight:600;text-decoration:none;font-size:13px;">o volver al checkout →</a></div>`;
+        subtitleEl.insertAdjacentElement('afterend', retryWrap);
+        document.getElementById('retry-pago-btn').addEventListener('click', () => {
+          const btn = document.getElementById('retry-pago-btn');
+          btn.disabled = true;
+          btn.textContent = 'Generando link de pago…';
+          fetch('/api/tienda/pago/mercadopago/crear-preferencia', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orden_id: orderId }),
+          })
+            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+            .then(({ ok, data }) => {
+              if (!ok || !data.init_point) throw new Error(data.error || 'No se pudo generar el link de pago');
+              window.location.href = data.init_point;
+            })
+            .catch(err => {
+              btn.disabled = false;
+              btn.textContent = 'Reintentar pago';
+              alert('No pudimos generar el link de pago: ' + err.message + '\nProbá de nuevo o contactanos por WhatsApp.');
+            });
+        });
+      }
+    }
+    else if (email) {
+      subtitleEl.innerHTML = `Tu pedido fue recibido correctamente.<br>Te enviamos los detalles a <strong>${esc(email)}</strong>.`;
+    }
+
+    /* Limpiar el carrito (excepto si el pago fue rechazado y queremos reintentar) */
+    if (status !== 'rejected' && status !== 'error') {
+      Cart.clear();
+    }
+
+    /* Mostrar links post-compra */
+    const postLinks = document.getElementById('post-purchase-links');
+    if (postLinks && orderId && status !== 'rejected' && status !== 'error') {
+      // Verificar si el usuario ya tiene sesión
+      fetch('/api/tienda/me', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(user => {
+          if (user) {
+            // Ya está logueado — mostrar link a sus pedidos
+            postLinks.innerHTML = `
+              <div style="background:rgba(52,131,250,.06);border:1px solid rgba(52,131,250,.15);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;">
+                <span style="color:var(--text-2);">Podés ver el estado de todos tus pedidos en <strong>Mi cuenta</strong>.</span>
+                <a href="./mi-cuenta.html" style="color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap;">Ver mis pedidos →</a>
+              </div>`;
+          } else if (email) {
+            // No tiene cuenta — ofrecer crear una
+            postLinks.innerHTML = `
+              <div style="background:rgba(0,166,80,.06);border:1px solid rgba(0,166,80,.2);border-radius:var(--radius-lg);padding:16px 18px;">
+                <p style="margin:0 0 6px;font-size:14px;font-weight:600;color:var(--green);">💡 Guardá tu historial de pedidos</p>
+                <p style="margin:0 0 12px;font-size:13px;color:var(--text-2);">Creá una cuenta gratis con tu email <strong>${esc(email)}</strong> para ver el estado de tus pedidos en cualquier momento.</p>
+                <a href="./mi-cuenta.html?tab=register&email=${encodeURIComponent(email)}" style="display:inline-block;background:var(--green);color:#fff;padding:8px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;text-decoration:none;">Crear cuenta gratis →</a>
+              </div>
+              <div style="text-align:center;margin-top:10px;">
+                <a href="./seguimiento.html?id=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}" style="font-size:13px;color:var(--blue);text-decoration:none;">Ver estado de este pedido →</a>
+              </div>`;
+          }
+        })
+        .catch(() => {
+          if (email) {
+            postLinks.innerHTML = `<div style="text-align:center;"><a href="./seguimiento.html?id=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}" style="font-size:13px;color:var(--blue);text-decoration:none;">Seguimiento de pedido →</a></div>`;
+          }
+        });
+    }
+
+    /* Verificar estado real del servidor para detectar inconsistencias:
+       - URL manipulada (alguien borra ?status=rejected de la barra)
+       - Pago aprobado por webhook/polling después de que MP redirigió como pending
+       Solo verificar si la orden tiene ID válido (no el fallback WZ-xxx generado en client). */
+    if (orderId && !orderId.startsWith('WZ-')) {
+      fetch('/api/tienda/pago/status/' + encodeURIComponent(orderId))
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          const realStatus = data.status;
+
+          if (realStatus === 'pagado' && status !== 'approved') {
+            // Polling/webhook confirmó pago — actualizar a UI aprobada
+            location.search = '?id=' + encodeURIComponent(orderId) + '&status=approved&email=' + encodeURIComponent(email);
+          } else if (realStatus === 'rechazado' && status !== 'rejected' && status !== 'error') {
+            // El pago realmente fue rechazado, sin importar lo que diga la URL
+            titleEl.textContent = 'Pago rechazado';
+            iconEl.style.background = 'rgba(242, 61, 79, 0.15)';
+            iconEl.querySelector('svg').style.color = 'var(--red, #f23d4f)';
+            iconEl.querySelector('svg path').setAttribute('d', 'M18 6L6 18M6 6l12 12');
+            subtitleEl.innerHTML = 'No pudimos procesar tu pago. Volvé a intentarlo o elegí otro método.<br><a href="./checkout.html" style="color:var(--blue);font-weight:600">Volver al checkout →</a>';
+          }
+          // pendiente_pago → la UI de pending ya está mostrada, no hace falta cambiar
+        })
+        .catch(() => { /* silent — no bloquear UX */ });
+    }
+  </script>
+</body>
+</html>

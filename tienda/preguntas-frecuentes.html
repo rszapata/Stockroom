@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preguntas frecuentes — WZMALLAS</title>
+  <meta name="description" content="Preguntas frecuentes sobre WZMALLAS. Envíos, pagos, garantía, instalación y todo lo que necesitás saber para comprar.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+    .page-container { max-width: 820px; margin: 0 auto; padding: 32px 24px 64px; }
+    .page-breadcrumb { font-size: 13px; color: var(--text-3); margin-bottom: 16px; }
+    .page-breadcrumb a { color: var(--text-3); text-decoration: none; }
+    .page-breadcrumb a:hover { color: var(--blue); }
+    .page-title { font-family: var(--font-accent); font-size: 32px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .page-subtitle { color: var(--text-2); font-size: 15px; margin-bottom: 32px; }
+
+    /* Tabs por categoría */
+    .faq-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .faq-tab {
+      padding: 8px 16px;
+      border: 1.5px solid var(--border);
+      background: var(--white);
+      border-radius: var(--radius);
+      font-family: var(--font-accent);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .faq-tab:hover { border-color: var(--blue); color: var(--blue); }
+    .faq-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    /* Acordeón */
+    .faq-list { display: flex; flex-direction: column; gap: 10px; }
+    .faq-cat { display: none; flex-direction: column; gap: 10px; }
+    .faq-cat.active { display: flex; }
+
+    .faq-item {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .faq-item.open { border-color: var(--blue); box-shadow: 0 2px 8px rgba(52,131,250,0.08); }
+
+    .faq-q {
+      width: 100%;
+      padding: 18px 22px;
+      background: transparent;
+      border: none;
+      text-align: left;
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .faq-q:hover { color: var(--blue); }
+    .faq-q-icon {
+      flex-shrink: 0;
+      transition: transform 0.2s;
+      color: var(--text-3);
+    }
+    .faq-item.open .faq-q-icon { transform: rotate(180deg); color: var(--blue); }
+
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.25s ease;
+    }
+    .faq-item.open .faq-a { max-height: 600px; }
+
+    .faq-a-inner {
+      padding: 0 22px 20px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-2);
+    }
+    .faq-a-inner p { margin-bottom: 10px; }
+    .faq-a-inner p:last-child { margin-bottom: 0; }
+    .faq-a-inner a { color: var(--blue); }
+    .faq-a-inner strong { color: var(--text); font-weight: 600; }
+    .faq-a-inner ul { margin: 8px 0; padding-left: 20px; }
+    .faq-a-inner ul li { margin-bottom: 4px; }
+
+    /* CTA al final */
+    .help-cta {
+      margin-top: 32px;
+      padding: 28px 32px;
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      text-align: center;
+    }
+    .help-cta h3 { font-family: var(--font-accent); font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .help-cta p { font-size: 14px; color: var(--text-2); margin-bottom: 16px; }
+    .help-cta-btns {
+      display: inline-flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .help-cta-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-family: var(--font-accent);
+      font-size: 13px;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .help-cta-btn.wa { background: #25D366; color: #fff; }
+    .help-cta-btn.email { background: var(--blue); color: #fff; }
+    .help-cta-btn:hover { opacity: 0.9; }
+
+    @media (max-width: 600px) {
+      .page-title { font-size: 26px; }
+      .help-cta { padding: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+<div id="header-root"></div>
+
+<main class="page-container">
+
+  <nav class="page-breadcrumb">
+    <a href="./index.html">Inicio</a> · Preguntas frecuentes
+  </nav>
+
+  <h1 class="page-title">Preguntas frecuentes</h1>
+  <p class="page-subtitle">Encontrá respuestas rápidas a las consultas más habituales. Si no está acá, escribinos por WhatsApp.</p>
+
+  <!-- Tabs -->
+  <div class="faq-tabs">
+    <button class="faq-tab active" data-cat="todas">Todas</button>
+    <button class="faq-tab" data-cat="compra">Compra</button>
+    <button class="faq-tab" data-cat="envio">Envíos</button>
+    <button class="faq-tab" data-cat="producto">Productos</button>
+    <button class="faq-tab" data-cat="cambios">Cambios y garantía</button>
+  </div>
+
+  <!-- Lista de FAQs -->
+  <div class="faq-list" id="faq-list"></div>
+
+  <!-- CTA contacto -->
+  <div class="help-cta">
+    <h3>¿No encontraste lo que buscabas?</h3>
+    <p>Escribinos por WhatsApp y te respondemos en menos de 24 horas hábiles.</p>
+    <div class="help-cta-btns">
+      <a href="https://wa.me/5492304216009?text=Hola%2C%20tengo%20una%20consulta" target="_blank" rel="noopener" class="help-cta-btn wa">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+        WhatsApp
+      </a>
+      <a href="./contacto.html" class="help-cta-btn email">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+        Formulario
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<div id="footer-root"></div>
+
+<script src="./components/cart.js?v=8"></script>
+<script src="./components/header.js?v=9"></script>
+<script src="./components/footer.js?v=4"></script>
+<script>
+  initPage('faq');
+
+  const FAQS = [
+    // ── COMPRA ───────────────────────────────────────────────
+    { cat: 'compra', q: '¿Cómo realizo una compra?',
+      a: '<p>Es muy simple:</p><ul><li>Elegí el producto y agregalo al carrito.</li><li>Si tiene variantes (talle, color), seleccioná una antes.</li><li>Ingresá tus datos y dirección de envío.</li><li>Elegí el método de envío y de pago.</li><li>Confirmás y listo. Te enviamos un email con el detalle.</li></ul>' },
+    { cat: 'compra', q: '¿Qué métodos de pago aceptan?',
+      a: '<p>Aceptamos:</p><ul><li><strong>Mercado Pago:</strong> tarjetas de crédito, débito, dinero en cuenta y demás opciones disponibles.</li><li><strong>Transferencia bancaria:</strong> te enviamos el CBU/alias después de confirmar.</li></ul>' },
+    { cat: 'compra', q: '¿Mis datos de tarjeta están seguros?',
+      a: '<p>Sí. Los datos sensibles de tarjetas <strong>nunca pasan por nuestros servidores</strong> — son procesados directamente por Mercado Pago, que cumple con los estándares PCI-DSS de la industria.</p>' },
+    { cat: 'compra', q: '¿Hago factura A?',
+      a: '<p>Sí, hacemos factura A para responsables inscriptos. Indicalo en el campo de observaciones del checkout o escribinos antes de la compra con tu CUIT y razón social.</p>' },
+    { cat: 'compra', q: '¿Hay descuentos por compras mayoristas?',
+      a: '<p>Sí, para compras de 10 o más unidades hacemos precios especiales. Contactanos por <a href="https://wa.me/5492304216009" target="_blank" rel="noopener">WhatsApp</a> con el detalle de productos y cantidades.</p>' },
+
+    // ── ENVÍOS ───────────────────────────────────────────────
+    { cat: 'envio', q: '¿Hacen envíos a todo el país?',
+      a: '<p>Sí, despachamos a toda la Argentina. Tenemos tres opciones:</p><ul><li><strong>Mercado Envíos Flex:</strong> CABA y GBA, en el día.</li><li><strong>Correo Argentino:</strong> todo el país, 4-7 días hábiles.</li><li><strong>Retiro en sucursal:</strong> gratis, en Pilar (Buenos Aires).</li></ul><p>Más detalles en <a href="./envios-y-plazos.html">Envíos y plazos</a>.</p>' },
+    { cat: 'envio', q: '¿Cuánto tarda en llegar mi pedido?',
+      a: '<p>Los plazos son estimados desde la <strong>acreditación del pago</strong>:</p><ul><li>CABA: mismo día con Flex, 2-3 días con Correo.</li><li>GBA: 24-48 hs con Flex, 3-5 días con Correo.</li><li>Resto del país: 5-7 días hábiles.</li></ul>' },
+    { cat: 'envio', q: '¿Cuánto cuesta el envío?',
+      a: '<p>Depende del método:</p><ul><li>Flex CABA: <strong>$5.000</strong></li><li>Flex GBA: <strong>$6.500</strong></li><li>Correo Argentino: <strong>$8.500</strong></li><li>Retiro en sucursal: <strong>gratis</strong></li></ul><p><strong>Envío gratis</strong> en compras superiores a $33.000.</p>' },
+    { cat: 'envio', q: '¿Cómo sigo el estado del envío?',
+      a: '<p>Una vez despachado, te enviamos por <strong>email y WhatsApp</strong> el número de seguimiento para que lo rastrees en la web del correo.</p>' },
+    { cat: 'envio', q: '¿Puedo retirar en sucursal?',
+      a: '<p>Sí. Estamos en <strong>Iparraguirre 169, Presidente Derqui (Pilar), Buenos Aires</strong>. Horario: Lun a Vie 9 a 18 hs · Sáb 10 a 14 hs · Dom cerrado.</p>' },
+
+    // ── PRODUCTOS ────────────────────────────────────────────
+    { cat: 'producto', q: '¿Cómo sé si un producto es compatible con mi reloj?',
+      a: '<p>En el título y descripción de cada producto figura el modelo de reloj compatible. Si tenés dudas, escribinos por <a href="https://wa.me/5492304216009" target="_blank" rel="noopener">WhatsApp</a> con el modelo exacto y te confirmamos.</p>' },
+    { cat: 'producto', q: '¿Los productos son originales o réplicas?',
+      a: '<p>Trabajamos con accesorios <strong>compatibles</strong> de alta calidad. No vendemos productos oficiales de Apple, Samsung ni Xiaomi, pero los nuestros tienen el mismo nivel de terminación y garantía que cualquier accesorio premium.</p>' },
+    { cat: 'producto', q: '¿Tienen stock real?',
+      a: '<p>Sí, todo el stock que ves en la web es real y se actualiza automáticamente con nuestro inventario. Si el producto figura como disponible, lo despachamos en 24-48 hs hábiles.</p>' },
+    { cat: 'producto', q: '¿Cómo instalo el producto?',
+      a: '<p>Cada producto incluye instrucciones básicas. Para protectores y mallas la instalación es muy sencilla y no requiere herramientas. Si tenés dudas, podés consultarnos por WhatsApp.</p>' },
+
+    // ── CAMBIOS Y GARANTÍA ───────────────────────────────────
+    { cat: 'cambios', q: '¿Puedo devolver el producto si no me gusta?',
+      a: '<p>Sí. Tenés <strong>10 días corridos</strong> desde la recepción para devolverlo (Ley 24.240, art. 34). Debe estar sin uso, en su embalaje original. Más detalles en <a href="./cambios-y-devoluciones.html">Cambios y devoluciones</a>.</p>' },
+    { cat: 'cambios', q: '¿Cuánto demora el reembolso?',
+      a: '<p>Una vez recibido y verificado el producto, el reembolso se acredita en <strong>5 a 10 días hábiles</strong> por el mismo medio de pago.</p>' },
+    { cat: 'cambios', q: '¿Tienen garantía los productos?',
+      a: '<p>Sí, todos cuentan con la <strong>garantía legal de 6 meses</strong> contra defectos de fabricación (Ley 24.240). No cubre daños por mal uso o accidentes.</p>' },
+    { cat: 'cambios', q: '¿Qué hago si recibo un producto defectuoso?',
+      a: '<p>Contactanos en las primeras 48 hs por <a href="https://wa.me/5492304216009" target="_blank" rel="noopener">WhatsApp</a> con fotos del defecto y tu número de orden. El cambio es <strong>sin costo</strong> y el envío de regreso lo cubrimos nosotros.</p>' },
+  ];
+
+  // Renderizar acordeón
+  const list = document.getElementById('faq-list');
+  function render(filterCat) {
+    list.innerHTML = '';
+    const items = filterCat === 'todas' ? FAQS : FAQS.filter(f => f.cat === filterCat);
+    items.forEach((f, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'faq-item';
+      wrap.dataset.cat = f.cat;
+      wrap.innerHTML = `
+        <button class="faq-q" type="button">
+          ${f.q}
+          <svg class="faq-q-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          <div class="faq-a-inner">${f.a}</div>
+        </div>
+      `;
+      wrap.querySelector('.faq-q').addEventListener('click', () => {
+        wrap.classList.toggle('open');
+      });
+      list.appendChild(wrap);
+    });
+  }
+
+  // Tabs
+  document.querySelectorAll('.faq-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.faq-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      render(t.dataset.cat);
+    });
+  });
+
+  // Init
+  render('todas');
+</script>
+</body>
+</html>

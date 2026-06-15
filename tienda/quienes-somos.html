@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiénes somos — WZMALLAS</title>
+  <meta name="description" content="Conocé WZMALLAS. Una tienda especializada en accesorios premium para smartwatches y celulares, con base en Pilar, Buenos Aires.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+
+    /* Hero superior */
+    .qs-hero {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+      color: #fff;
+      padding: 64px 24px 56px;
+      text-align: center;
+    }
+    .qs-hero-eyebrow {
+      display: inline-block;
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      font-family: var(--font-accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 12px;
+    }
+    .qs-hero h1 {
+      font-family: var(--font-accent);
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+    .qs-hero p {
+      font-size: 16px;
+      line-height: 1.6;
+      max-width: 640px;
+      margin: 0 auto;
+      opacity: 0.92;
+    }
+    .qs-hero-badges {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .qs-hero-badge {
+      display: inline-flex; align-items: center;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      font-size: 12.5px; font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+    }
+
+    /* ── Reseñas con fotos reales de clientes ─────────────────── */
+    .qs-reviews-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 18px;
+    }
+    @media (max-width: 900px) { .qs-reviews-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .qs-reviews-grid { grid-template-columns: 1fr; } }
+    .qs-review-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .qs-review-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -8px rgba(0,0,0,0.08);
+      border-color: var(--border-2);
+    }
+    .qs-review-photo {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      display: block;
+      background: var(--bg);
+    }
+    .qs-review-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px 16px 16px;
+      flex: 1;
+    }
+    .qs-review-stars { color: var(--yellow); font-size: 13px; letter-spacing: 1.5px; }
+    .qs-review-content {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .qs-review-product {
+      display: flex; align-items: center;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .qs-review-product img {
+      width: 28px; height: 28px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .qs-review-product-name {
+      font-size: 12px; font-weight: 700;
+      color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1; min-width: 0;
+    }
+
+    /* Container general */
+    .page-container { max-width: 980px; margin: 0 auto; padding: 32px 24px 64px; }
+    .page-breadcrumb {
+      max-width: 980px;
+      margin: 16px auto 0;
+      padding: 0 24px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+    }
+    .page-breadcrumb a { color: rgba(255,255,255,0.85); text-decoration: none; }
+    .page-breadcrumb a:hover { color: #fff; }
+
+    /* Bloque de texto */
+    .qs-block {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px 40px;
+      margin-bottom: 20px;
+    }
+    .qs-block h2 {
+      font-family: var(--font-accent);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .qs-block p {
+      font-size: 15px;
+      line-height: 1.75;
+      color: var(--text-2);
+      margin-bottom: 14px;
+    }
+    .qs-block p:last-child { margin-bottom: 0; }
+    .qs-block strong { color: var(--text); font-weight: 600; }
+
+    /* Stats */
+    .qs-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin: 36px 0;
+    }
+    @media (max-width: 600px) { .qs-stats { grid-template-columns: repeat(2, 1fr); } }
+
+    .qs-stat-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px 20px;
+      text-align: center;
+    }
+    .qs-stat-num {
+      font-family: var(--font-accent);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--blue);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .qs-stat-lbl {
+      font-size: 13px;
+      color: var(--text-2);
+      letter-spacing: 0.02em;
+    }
+
+    /* Valores */
+    .qs-values {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 768px) { .qs-values { grid-template-columns: 1fr; } }
+
+    .qs-value-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+    }
+    .qs-value-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      background: var(--blue-light);
+      color: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .qs-value-card h3 {
+      font-family: var(--font-accent);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .qs-value-card p {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-2);
+    }
+
+    /* CTA al final */
+    .qs-cta {
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      text-align: center;
+      margin-top: 28px;
+    }
+    .qs-cta h3 {
+      font-family: var(--font-accent);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .qs-cta p { font-size: 14px; color: var(--text-2); margin-bottom: 18px; }
+    .qs-cta-btns {
+      display: inline-flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .qs-cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 11px 22px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-family: var(--font-accent);
+      font-size: 13px;
+      font-weight: 600;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .qs-cta-btn.primary { background: var(--blue); color: #fff; }
+    .qs-cta-btn.ghost { border: 1.5px solid var(--border-2); color: var(--text-2); background: var(--white); }
+    .qs-cta-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    @media (max-width: 600px) {
+      .qs-block { padding: 24px 22px; }
+      .qs-cta { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+<div id="header-root"></div>
+
+<!-- HERO -->
+<section class="qs-hero">
+  <nav class="page-breadcrumb" style="margin-bottom: 32px; text-align: left;">
+    <a href="./index.html">Inicio</a> · Quiénes somos
+  </nav>
+  <span class="qs-hero-eyebrow">Sobre nosotros</span>
+  <h1>WZMALLAS</h1>
+  <p>Somos una tienda argentina especializada en protectores, mallas y fundas para Apple Watch, Samsung Galaxy Watch, Xiaomi y celulares. Atendemos desde Pilar a todo el país.</p>
+  <div class="qs-hero-badges">
+    <span class="qs-hero-badge">✓ Marca registrada</span>
+    <span class="qs-hero-badge">✓ Tienda oficial en MercadoLibre</span>
+  </div>
+</section>
+
+<main class="page-container">
+
+  <!-- Stats -->
+  <div class="qs-stats">
+    <div class="qs-stat-card">
+      <div class="qs-stat-num">+2.300</div>
+      <div class="qs-stat-lbl">clientes felices</div>
+    </div>
+    <div class="qs-stat-card">
+      <div class="qs-stat-num">+460</div>
+      <div class="qs-stat-lbl">productos en stock</div>
+    </div>
+    <div class="qs-stat-card">
+      <div class="qs-stat-num">4.8★</div>
+      <div class="qs-stat-lbl">calificación promedio</div>
+    </div>
+    <div class="qs-stat-card">
+      <div class="qs-stat-num">10+</div>
+      <div class="qs-stat-lbl">años en el rubro</div>
+    </div>
+  </div>
+
+  <!-- Nuestra historia -->
+  <div class="qs-block">
+    <h2>Nuestra historia</h2>
+    <p>WZMALLAS nació en <strong>Pilar, Buenos Aires</strong>, con una idea simple: que cualquier persona pudiera proteger y personalizar su smartwatch sin pagar de más por un accesorio original. Empezamos vendiendo en MercadoLibre y, con el tiempo, construimos una comunidad de más de <strong>2.300 clientes en todo el país</strong>.</p>
+    <p>Hoy contamos con un catálogo de más de 460 productos cuidadosamente seleccionados: protectores de pantalla, mallas de silicona, acero y cuero, fundas para celulares y combos especiales. Cada producto pasa por un control de calidad antes de llegar a tu casa.</p>
+    <p>Actualmente somos <strong>marca registrada</strong> y contamos con el estatus de <strong>Tienda Oficial en MercadoLibre</strong> — un respaldo que confirma que somos un negocio real, verificado y con buena reputación dentro de la plataforma.</p>
+  </div>
+
+  <!-- Misión -->
+  <div class="qs-block">
+    <h2>Nuestra misión</h2>
+    <p>Que cuidar tu smartwatch o celular sea fácil, rápido y económico. Buscamos los mejores productos al mejor precio, los traemos al país y los hacemos llegar a tu domicilio en pocos días.</p>
+    <p>Apostamos a la <strong>relación directa con el cliente</strong>: respondemos personalmente cada consulta por WhatsApp, hacemos seguimiento de cada envío y nos hacemos cargo si algo no sale bien.</p>
+  </div>
+
+  <!-- Valores -->
+  <h2 style="font-family:var(--font-accent);font-size:22px;font-weight:700;color:var(--text);margin:28px 0 16px;">¿Qué nos diferencia?</h2>
+  <div class="qs-values">
+
+    <div class="qs-value-card">
+      <div class="qs-value-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3z" transform="translate(-9, 0)"/><circle cx="12" cy="12" r="10"/></svg>
+      </div>
+      <h3>Productos seleccionados</h3>
+      <p>Cada referencia de nuestro catálogo está testeada. No vendemos lo que no usaríamos nosotros.</p>
+    </div>
+
+    <div class="qs-value-card">
+      <div class="qs-value-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <h3>Despacho rápido</h3>
+      <p>Tu pedido se prepara en 24-48 hs. Trabajamos con logística contratada para que llegue rápido y en buen estado a cualquier punto del país.</p>
+    </div>
+
+    <div class="qs-value-card">
+      <div class="qs-value-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      </div>
+      <h3>Atención cercana</h3>
+      <p>Te contestamos por WhatsApp, no chatbots. Si tenés un problema, lo solucionamos.</p>
+    </div>
+
+    <div class="qs-value-card">
+      <div class="qs-value-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      </div>
+      <h3>Pago seguro</h3>
+      <p>Mercado Pago y transferencia. Tus datos viajan cifrados, nunca pasan por nuestros servidores.</p>
+    </div>
+
+    <div class="qs-value-card">
+      <div class="qs-value-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+      </div>
+      <h3>Garantía y devolución</h3>
+      <p>10 días para arrepentirte y 6 meses de garantía contra defectos de fábrica.</p>
+    </div>
+
+    <div class="qs-value-card">
+      <div class="qs-value-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <h3>Tienda física</h3>
+      <p>Si estás en la zona, podés retirar tu pedido o conocer los productos en Iparraguirre 169, Pilar.</p>
+    </div>
+
+  </div>
+
+  <!-- Reseñas con fotos reales de clientes -->
+  <div class="qs-block" id="qs-reviews-block" style="display:none;">
+    <h2>Lo que dicen nuestros clientes</h2>
+    <p>Reseñas verificadas de compradores reales, con fotos de los productos en sus manos — nada de imágenes de catálogo.</p>
+    <div class="qs-reviews-grid" id="qs-reviews-grid"></div>
+  </div>
+
+  <!-- Ubicación -->
+  <div class="qs-block">
+    <h2>Dónde estamos</h2>
+    <p>Nuestro depósito y sucursal de retiro está en <strong>Iparraguirre 169, Presidente Derqui, Pilar, Buenos Aires</strong>. Atendemos de lunes a viernes de 9 a 18 hs y sábados de 10 a 14 hs.</p>
+    <p>Si querés retirar tu pedido o conocer el local, pasá cuando quieras (te recomendamos avisar antes por WhatsApp para tenerlo listo).</p>
+  </div>
+
+  <!-- CTA -->
+  <div class="qs-cta">
+    <h3>¿Listo para encontrar tu accesorio?</h3>
+    <p>Más de 460 productos disponibles para Apple Watch, Samsung, Xiaomi y celulares.</p>
+    <div class="qs-cta-btns">
+      <a href="./catalogo.html" class="qs-cta-btn primary">
+        Ver catálogo completo
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 12 19 12"/><polyline points="13 6 19 12 13 18"/></svg>
+      </a>
+      <a href="./contacto.html" class="qs-cta-btn ghost">Contactanos</a>
+    </div>
+  </div>
+
+</main>
+
+<div id="footer-root"></div>
+
+<script src="./components/cart.js?v=8"></script>
+<script src="./components/header.js?v=9"></script>
+<script src="./components/footer.js?v=4"></script>
+<script>
+  initPage('quienes-somos');
+
+  // ── Reseñas con fotos reales de clientes (UGC) ──────────────────
+  // Buscamos entre los productos más vendidos aquellos que tengan
+  // reseñas de 4★/5★ con fotos de compradores reales (no de catálogo)
+  // y armamos una pequeña vidriera de confianza para "Quiénes somos".
+  async function loadGoodReviewsWithPhotos() {
+    try {
+      const res = await fetch('/api/tienda/productos?limit=9999');
+      if (!res.ok) return;
+      const data = await res.json();
+      const products = data.productos || [];
+      if (!products.length) return;
+
+      const candidates = [...products]
+        .sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0))
+        .slice(0, 18);
+
+      // Nunca devolver string vacío: <img src=""> dispara un request a la URL actual del documento
+      // (bug clásico de HTML) — usamos un placeholder neutro en data-URI para productos sin foto.
+      const NO_IMG = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#eef0f2"/></svg>');
+      const getImg = p => (p.thumbnail || (p.pictures && p.pictures[0] && (p.pictures[0].secure_url || p.pictures[0].url)) || NO_IMG);
+
+      const results = await Promise.all(candidates.map(p =>
+        fetch(`/api/tienda/reviews/${encodeURIComponent(p.id)}?offset=0&limit=12`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => (d && d.reviews ? d.reviews : [])
+            .filter(r => (r.photos || []).length > 0)
+            .map(r => ({ ...r, productId: p.id, productTitle: p.title, productImg: getImg(p) })))
+          .catch(() => [])
+      ));
+
+      let pool = results.flat().filter(r =>
+        (r.rate || 0) >= 4 &&
+        (r.content || '').trim().length >= 25
+      );
+      pool.sort((a, b) => (b.rate || 0) - (a.rate || 0));
+
+      // No repetir producto — buscamos variedad entre varios productos
+      const seen = new Set();
+      const unique = [];
+      for (const r of pool) {
+        if (seen.has(r.productId)) continue;
+        seen.add(r.productId);
+        unique.push(r);
+        if (unique.length === 6) break;
+      }
+      if (unique.length < 3) return; // si no hay suficientes, dejamos la sección oculta
+
+      const esc   = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const stars = n => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
+
+      document.getElementById('qs-reviews-grid').innerHTML = unique.map(r => {
+        const photo = r.photos[0].full || r.photos[0].thumb;
+        return `
+          <a href="./producto.html?id=${esc(r.productId)}" class="qs-review-card">
+            <img class="qs-review-photo" src="${esc(photo)}" alt="Foto real de un cliente con su producto" loading="lazy" decoding="async">
+            <div class="qs-review-body">
+              <div class="qs-review-stars">${stars(r.rate)}</div>
+              <p class="qs-review-content">${esc(r.content)}</p>
+              <div class="qs-review-product">
+                <img src="${esc(r.productImg)}" alt="" loading="lazy" decoding="async">
+                <span class="qs-review-product-name">${esc(r.productTitle)}</span>
+              </div>
+            </div>
+          </a>`;
+      }).join('');
+
+      document.getElementById('qs-reviews-block').style.display = 'block';
+    } catch (e) {
+      // Silencioso: si falla, la sección queda oculta
+    }
+  }
+
+  loadGoodReviewsWithPhotos();
+</script>
+</body>
+</html>

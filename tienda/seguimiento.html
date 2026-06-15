@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Seguimiento de pedido — WZMALLAS</title>
+  <meta name="description" content="Consultá el estado de tu pedido en WZMALLAS. Ingresá tu número de orden y email.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+    .page-container { max-width: 600px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* ── Buscador ── */
+    .search-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 28px; margin-bottom: 24px;
+    }
+    .search-card h2 {
+      font-family: var(--font-accent); font-size: 18px; font-weight: 700; color: var(--text);
+      margin-bottom: 6px;
+    }
+    .search-card p { font-size: 14px; color: var(--text-2); margin-bottom: 20px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) {
+      .form-row { grid-template-columns: 1fr; }
+      .page-container { padding: 28px 16px 64px; }
+      .tracking-number { font-size: 18px; }
+      .tracking-card, .help-card { padding: 16px; }
+      .item-row { padding: 12px 16px; gap: 10px; }
+      .totals-card { padding: 14px 16px; }
+    }
+    .form-field { margin-bottom: 0; }
+    .form-field label { display: block; font-family: var(--font-accent); font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; letter-spacing: .02em; }
+    .form-field input {
+      width: 100%; padding: 11px 14px; border: 1.5px solid var(--border-2);
+      border-radius: var(--radius); font-family: var(--font-body); font-size: 14px;
+      color: var(--text); background: var(--white); box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(52,131,250,.12); }
+    .search-btn {
+      width: 100%; margin-top: 16px; padding: 12px; background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius); font-family: var(--font-accent); font-size: 14px;
+      font-weight: 600; cursor: pointer; transition: background .15s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .search-btn:hover:not(:disabled) { background: var(--blue-dark); }
+    .search-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    .form-feedback {
+      margin-top: 12px; padding: 10px 14px; border-radius: var(--radius); font-size: 13px; display: none;
+    }
+    .form-feedback.error { display: block; background: rgba(242,61,79,.08); color: var(--red); border: 1px solid rgba(242,61,79,.25); }
+
+    /* ── Resultado ── */
+    #result { display: none; }
+
+    .orden-header {
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 20px 24px; margin-bottom: 16px;
+    }
+    .orden-id-label { font-family: var(--font-accent); font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+    .orden-id-val { font-size: 16px; font-weight: 700; color: var(--text); font-family: monospace; }
+
+    /* Progress steps */
+    .progress-steps {
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 24px; margin-bottom: 16px;
+    }
+    .progress-steps h3 { font-family: var(--font-accent); font-size: 13px; font-weight: 700; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 20px; }
+    .steps { position: relative; }
+    .steps::before {
+      content: ''; position: absolute; left: 15px; top: 8px; bottom: 8px;
+      width: 2px; background: var(--border); z-index: 0;
+    }
+    .step { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; position: relative; z-index: 1; }
+    .step:last-child { margin-bottom: 0; }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); background: var(--white);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 14px; transition: all .3s;
+    }
+    .step.done   .step-dot { background: var(--green); border-color: var(--green); color: #fff; }
+    .step.active .step-dot { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 0 0 4px rgba(52,131,250,.15); }
+    .step.pending .step-dot { background: var(--white); border-color: var(--border); color: var(--text-3); }
+    .step-info { padding-top: 5px; }
+    .step-label { font-size: 14px; font-weight: 600; color: var(--text); }
+    .step.pending .step-label { color: var(--text-3); }
+    .step-date { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+    /* Estado badge grande */
+    .status-hero {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 18px; border-radius: 24px; font-family: var(--font-accent);
+      font-size: 14px; font-weight: 700; margin-bottom: 12px;
+    }
+    .sh-pendiente      { background: rgba(107,114,128,.1); color: #6B7280; border: 1px solid rgba(107,114,128,.2); }
+    .sh-pendiente_pago { background: rgba(245,158,11,.1); color: #D97706; border: 1px solid rgba(245,158,11,.2); }
+    .sh-pagado         { background: rgba(0,166,80,.1); color: var(--green); border: 1px solid rgba(0,166,80,.25); }
+    .sh-despachado     { background: rgba(52,131,250,.1); color: var(--blue); border: 1px solid rgba(52,131,250,.25); }
+    .sh-entregado      { background: rgba(0,166,80,.12); color: var(--green); border: 1px solid rgba(0,166,80,.3); }
+    .sh-rechazado      { background: rgba(242,61,79,.08); color: var(--red); border: 1px solid rgba(242,61,79,.2); }
+    .sh-cancelado      { background: rgba(107,114,128,.1); color: #6B7280; border: 1px solid rgba(107,114,128,.2); }
+
+    /* Tracking */
+    .tracking-card {
+      background: rgba(52,131,250,.05); border: 1px solid rgba(52,131,250,.2);
+      border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 16px;
+    }
+    .tracking-card h3 { font-family: var(--font-accent); font-size: 12px; font-weight: 700; color: var(--blue); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
+    .tracking-number { font-size: 22px; font-weight: 800; font-family: monospace; color: var(--text); letter-spacing: .04em; margin-bottom: 12px; word-break: break-all; }
+    .tracking-link-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--blue); color: #fff; padding: 10px 18px; border-radius: var(--radius);
+      text-decoration: none; font-family: var(--font-accent); font-size: 13px; font-weight: 600;
+      transition: background .15s;
+    }
+    .tracking-link-btn:hover { background: var(--blue-dark); }
+
+    /* Items */
+    .items-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; margin-bottom: 16px;
+    }
+    .items-card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); font-family: var(--font-accent); font-size: 12px; font-weight: 700; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+    .item-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    .item-row:last-child { border-bottom: none; }
+    .item-img { width: 44px; height: 44px; border-radius: var(--radius); object-fit: contain; background: var(--bg); flex-shrink: 0; }
+    .item-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 14px; color: var(--text); }
+    .item-variant { font-size: 12px; color: var(--text-3); }
+    .item-qty  { font-size: 13px; color: var(--text-2); white-space: nowrap; }
+    .item-price { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; }
+
+    /* Totales */
+    .totals-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 16px 20px; margin-bottom: 16px;
+    }
+    .total-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+    .total-row.final { font-size: 16px; font-weight: 700; color: var(--text); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; margin-bottom: 0; }
+
+    /* Help */
+    .help-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 16px; }
+    .help-card h3 { font-family: var(--font-accent); font-size: 13px; font-weight: 700; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 14px; }
+    .help-row { display: flex; gap: 12px; margin-bottom: 10px; align-items: center; font-size: 14px; color: var(--text-2); }
+    .help-row svg { color: var(--blue); flex-shrink: 0; }
+    .help-row a { color: var(--text); text-decoration: none; font-weight: 500; }
+    .help-row a:hover { color: var(--blue); }
+
+    .skeleton-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
+    .skel-line { height: 14px; border-radius: var(--radius); background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 400px 100%; animation: shimmer 1.5s infinite linear; margin-bottom: 10px; }
+    @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+<div id="header-root"></div>
+
+<main class="page-container">
+
+  <nav id="page-breadcrumb" style="font-size:13px;color:var(--text-3);margin-bottom:20px;">
+    <a href="./index.html" style="color:var(--text-3);text-decoration:none;">Inicio</a> · Seguimiento de pedido
+  </nav>
+
+  <h1 id="page-title" style="font-family:var(--font-accent);font-size:26px;font-weight:700;color:var(--text);margin-bottom:20px;">
+    Seguimiento de pedido
+  </h1>
+
+  <!-- ── Formulario de búsqueda ── -->
+  <div class="search-card" id="search-card">
+    <h2>Consultá tu pedido</h2>
+    <p>Ingresá el número de orden y el email con el que compraste.</p>
+    <form id="search-form" novalidate>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="s-orden">Número de orden</label>
+          <input type="text" id="s-orden" placeholder="ej. WZ-260612-K3F7" autocomplete="off" required>
+        </div>
+        <div class="form-field">
+          <label for="s-email">Email de compra</label>
+          <input type="email" id="s-email" placeholder="tu@email.com" autocomplete="email" required>
+        </div>
+      </div>
+      <button type="submit" class="search-btn" id="btn-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Buscar pedido
+      </button>
+      <div class="form-feedback" id="search-feedback"></div>
+    </form>
+  </div>
+
+  <!-- ── Loading ── -->
+  <div id="result-loading" style="display:none;">
+    <div class="skeleton-card">
+      <div class="skel-line" style="width:40%;height:20px;"></div>
+      <div class="skel-line" style="width:60%;"></div>
+      <div class="skel-line" style="width:80%;"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skel-line" style="width:30%;height:20px;"></div>
+      <div class="skel-line" style="width:100%;"></div>
+      <div class="skel-line" style="width:100%;"></div>
+      <div class="skel-line" style="width:60%;"></div>
+    </div>
+  </div>
+
+  <!-- ── Resultado ── -->
+  <div id="result"></div>
+
+</main>
+
+<div id="footer-root"></div>
+
+<script src="./components/cart.js?v=8"></script>
+<script src="./components/header.js?v=9"></script>
+<script src="./components/footer.js?v=4"></script>
+<script>
+  initPage('seguimiento');
+
+  const $ = id => document.getElementById(id);
+  /* Escapa texto para uso seguro dentro de innerHTML */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  const fmt = n => '$' + Number(n||0).toLocaleString('es-AR', { minimumFractionDigits: 0 });
+  const fmtDate = iso => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // ── Pre-rellenar desde URL ──────────────────────────────────
+  const urlParams = new URLSearchParams(location.search);
+  const preId     = urlParams.get('id')    || '';
+  const preEmail  = urlParams.get('email') || '';
+  const fromCuenta = urlParams.get('from') === 'cuenta';
+  if (preId)    { $('s-orden').value = preId; }
+  if (preEmail) { $('s-email').value = preEmail; }
+
+  // Si llegamos desde "Mi cuenta → Mis pedidos" con id y email ya resueltos,
+  // esta pantalla deja de comportarse como un buscador genérico y pasa a ser
+  // la vista de detalle de ESE pedido puntual: ocultamos el formulario de
+  // búsqueda y el título, y dejamos un link de vuelta a "Mis pedidos".
+  if (fromCuenta && preId && preEmail) {
+    $('search-card').style.display = 'none';
+    $('page-title').textContent = 'Detalle de tu pedido';
+    $('page-breadcrumb').innerHTML =
+      `<a href="./index.html" style="color:var(--text-3);text-decoration:none;">Inicio</a> · ` +
+      `<a href="./mi-cuenta.html" style="color:var(--text-3);text-decoration:none;">Mi cuenta</a> · Pedido #${preId.slice(-8)}`;
+  }
+
+  // Auto-buscar si ambos params están en la URL
+  if (preId && preEmail) {
+    buscar(preId, preEmail);
+  }
+
+  // ── Si está logueado, rellenar email desde sesión y buscar automáticamente ──
+  fetch('/api/tienda/me', { credentials: 'include' })
+    .then(r => r.ok ? r.json() : null)
+    .then(user => {
+      if (!user || !user.email) return;
+      // Solo pre-rellenar si el campo email está vacío (no sobrescribir URL param)
+      if (!$('s-email').value) $('s-email').value = user.email;
+      // Si ya tenemos el ID de orden (desde URL), buscar directamente sin requerir submit
+      const id = $('s-orden').value.trim();
+      if (id && !preEmail) buscar(id, user.email);
+    })
+    .catch(() => {});
+
+  // ── Formulario ──────────────────────────────────────────────
+  $('search-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const id    = $('s-orden').value.trim();
+    const email = $('s-email').value.trim();
+    if (!id || !email) {
+      $('search-feedback').className = 'form-feedback error';
+      $('search-feedback').textContent = 'Completá ambos campos.';
+      return;
+    }
+    buscar(id, email);
+  });
+
+  // ── Buscar ──────────────────────────────────────────────────
+  async function buscar(id, email) {
+    const btn = $('btn-search');
+    btn.disabled = true; btn.querySelector('svg').style.animation = 'spin .8s linear infinite';
+    $('search-feedback').className = 'form-feedback';
+    $('result').style.display = 'none';
+    $('result-loading').style.display = 'block';
+
+    try {
+      const r = await fetch(`/api/tienda/seguimiento?id=${encodeURIComponent(id)}&email=${encodeURIComponent(email)}`);
+      $('result-loading').style.display = 'none';
+      if (r.status === 404) {
+        $('search-feedback').className = 'form-feedback error';
+        $('search-feedback').textContent = 'No encontramos una orden con ese número y email. Verificá los datos e intentá de nuevo.';
+        return;
+      }
+      if (!r.ok) throw new Error('Error al buscar');
+      const orden = await r.json();
+      renderResultado(orden, email);
+    } catch(e) {
+      $('result-loading').style.display = 'none';
+      $('search-feedback').className = 'form-feedback error';
+      $('search-feedback').textContent = 'Error de red. Intentá de nuevo en unos segundos.';
+    } finally {
+      btn.disabled = false;
+      btn.querySelector('svg').style.animation = '';
+    }
+  }
+
+  // ── Render resultado ─────────────────────────────────────────
+  function renderResultado(o, email) {
+    const statusConfig = {
+      pendiente:      { label: 'Pendiente', emoji: '⏳', sh: 'sh-pendiente' },
+      pendiente_pago: { label: 'Esperando confirmación de pago', emoji: '🕐', sh: 'sh-pendiente_pago' },
+      pagado:         { label: 'Pago confirmado', emoji: '✅', sh: 'sh-pagado' },
+      despachado:     { label: 'En camino', emoji: '🚚', sh: 'sh-despachado' },
+      entregado:      { label: 'Entregado', emoji: '🎉', sh: 'sh-entregado' },
+      rechazado:      { label: 'Pago rechazado', emoji: '❌', sh: 'sh-rechazado' },
+      cancelado:      { label: 'Cancelado', emoji: '🚫', sh: 'sh-cancelado' },
+    };
+    const sc = statusConfig[o.status] || { label: o.status, emoji: '📦', sh: 'sh-pendiente' };
+
+    // Steps del timeline
+    const allSteps = [
+      { key: 'recibido',   label: 'Pedido recibido',           emoji: '📋', date: o.fecha },
+      { key: 'pagado',     label: 'Pago confirmado',           emoji: '💳', date: o.paid_at },
+      { key: 'despachado', label: 'Pedido despachado',         emoji: '📦', date: o.shipped_at },
+      { key: 'entregado',  label: 'Entregado',                 emoji: '✅', date: o.delivered_at },
+    ];
+
+    const stateOrder = ['pendiente', 'pendiente_pago', 'pagado', 'despachado', 'entregado'];
+    const statusIndex = stateOrder.indexOf(o.status);
+
+    const stepsHtml = allSteps.map((step, i) => {
+      let cls;
+      if (step.date) { cls = i < 3 && step.key !== 'entregado' ? 'done' : (step.key === o.status || step.date ? 'done' : 'pending'); }
+      // Lógica más clara:
+      if (step.key === 'recibido')   cls = 'done';
+      else if (step.key === 'pagado')     cls = ['pagado','despachado','entregado'].includes(o.status) ? 'done' : (o.status === 'pendiente_pago' ? 'active' : 'pending');
+      else if (step.key === 'despachado') cls = ['despachado','entregado'].includes(o.status) ? 'done' : (o.status === 'pagado' ? 'active' : 'pending');
+      else if (step.key === 'entregado')  cls = o.status === 'entregado' ? 'done' : 'pending';
+
+      const dotContent = cls === 'done' ? '✓' : step.emoji;
+      const dateStr = step.date ? fmtDate(step.date) : '';
+      return `
+        <div class="step ${cls}">
+          <div class="step-dot">${dotContent}</div>
+          <div class="step-info">
+            <div class="step-label">${step.label}</div>
+            ${dateStr ? `<div class="step-date">${dateStr}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    // Items HTML
+    const items = o.items || [];
+    const subtotal = items.reduce((s,i) => s + (i.price||0)*(i.qty||1), 0);
+    const total  = o.total || subtotal;
+    const envio  = o.envio || {};
+    const pago   = o.pago || {};
+    let descuentoCupon = pago.descuento_cupon || 0;
+    let descuentoTransferencia = pago.descuento_transferencia || 0;
+    // Pedidos viejos no guardaron el desglose del descuento — lo calculamos
+    // por diferencia entre subtotal+envío y el total para no ocultarlo.
+    if (descuentoCupon === 0 && descuentoTransferencia === 0) {
+      const diff = Math.round((subtotal + (envio.precio || 0) - total) * 100) / 100;
+      if (diff > 0) descuentoCupon = diff;
+    }
+    const itemsHtml = items.map(it => `
+      <div class="item-row">
+        ${it.img ? `<img class="item-img" src="${esc(it.img)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+        <div style="flex:1;">
+          <div class="item-name">${esc(it.title || 'Producto')}</div>
+          ${it.variant ? `<div class="item-variant">${esc(it.variant)}</div>` : ''}
+        </div>
+        <div class="item-qty">× ${it.qty || 1}</div>
+        <div class="item-price">${fmt((it.price||0)*(it.qty||1))}</div>
+      </div>`).join('');
+
+    // Tracking card
+    const trackHtml = o.tracking_number ? `
+      <div class="tracking-card">
+        <h3>Número de seguimiento</h3>
+        <div class="tracking-number">${esc(o.tracking_number)}</div>
+        <a class="tracking-link-btn" href="https://correoargentino.com.ar/MiCorreo/public/index#seguimiento?piezas=${encodeURIComponent(o.tracking_number)}" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Ver estado en Correo Argentino
+        </a>
+      </div>` : '';
+
+    // Botón de reintentar pago (MercadoPago) — disponible mientras la orden no esté pagada
+    const puedeReintentar = ['pendiente','pendiente_pago','rechazado','cancelado'].includes(o.status)
+      && (o.pago?.metodo === 'mercadopago');
+    const retryBtnHtml = puedeReintentar ? `
+      <button id="retry-pago-btn" onclick="reintentarPago('${esc(o.id)}')" style="display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">
+        Reintentar pago
+      </button>` : '';
+
+    // Botón de cancelar pedido — disponible mientras el pago no esté confirmado
+    const puedeCancelar = ['pendiente','pendiente_pago','rechazado'].includes(o.status);
+    const cancelBtnHtml = puedeCancelar ? `
+      <button id="cancel-pedido-btn" onclick="cancelarPedido('${esc(o.id)}','${esc(email)}')" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--text-3);border:1px solid var(--border-2);border-radius:var(--radius);padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;margin-left:8px;">
+        Cancelar pedido
+      </button>` : '';
+
+    // Alerta pago pendiente
+    const pendPagoHtml = o.status === 'pendiente_pago' ? `
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#D97706;">⏳ Esperando confirmación de pago</p>
+        <p style="margin:0;font-size:13px;color:#92400E;">Si ya realizaste el pago, se actualizará automáticamente en los próximos minutos. Si el pago fue rechazado o no lo completaste, podés reintentarlo, o cancelar el pedido si ya no lo querés.</p>
+        ${retryBtnHtml}${cancelBtnHtml}
+      </div>` : '';
+
+    // Alerta rechazado/cancelado
+    const rejHtml = ['rechazado','cancelado'].includes(o.status) ? `
+      <div style="background:rgba(242,61,79,.06);border:1px solid rgba(242,61,79,.2);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:var(--red);">${sc.emoji} ${sc.label}</p>
+        <p style="margin:0 0 4px;font-size:13px;color:var(--red);">Podés reintentar el pago o contactarnos por WhatsApp o email.</p>
+        ${retryBtnHtml}${cancelBtnHtml}
+      </div>` : '';
+
+    // Estado "pendiente" (orden recibida, sin pago online) — también puede cancelarse
+    const pendHtml = o.status === 'pendiente' ? `
+      <div style="background:rgba(107,114,128,.06);border:1px solid rgba(107,114,128,.2);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#6B7280;">⏳ Pedido recibido, todavía no confirmamos el pago</p>
+        <p style="margin:0;font-size:13px;color:var(--text-2);">Si necesitás cancelarlo, podés hacerlo desde acá.</p>
+        ${cancelBtnHtml}
+      </div>` : '';
+
+    const metodoPago = { mercadopago: 'MercadoPago', stripe: 'Tarjeta', transferencia: 'Transferencia bancaria' };
+
+    const volverHtml = fromCuenta ? `
+      <div style="margin-bottom:16px;">
+        <a href="./mi-cuenta.html" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-3);text-decoration:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Volver a mis pedidos
+        </a>
+      </div>` : '';
+
+    $('result').innerHTML = `
+      ${volverHtml}
+      <!-- Header con estado -->
+      <div class="orden-header">
+        <div class="orden-id-label">Orden</div>
+        <div class="orden-id-val">#${o.id}</div>
+        <div style="margin-top:12px;">
+          <span class="status-hero ${sc.sh}">${sc.emoji} ${sc.label}</span>
+        </div>
+        <div style="font-size:13px;color:var(--text-3);margin-top:4px;">
+          Realizada el ${fmtDate(o.fecha)} · ${metodoPago[o.pago?.metodo] || o.pago?.metodo || '—'}
+        </div>
+      </div>
+
+      ${pendHtml}
+      ${pendPagoHtml}
+      ${rejHtml}
+
+      <!-- Timeline de estados -->
+      <div class="progress-steps">
+        <h3>Estado del pedido</h3>
+        <div class="steps">${stepsHtml}</div>
+      </div>
+
+      <!-- Tracking -->
+      ${trackHtml}
+
+      <!-- Items -->
+      <div class="items-card">
+        <div class="items-card-header">Productos (${items.length})</div>
+        ${itemsHtml}
+      </div>
+
+      <!-- Totales -->
+      <div class="totals-card">
+        ${(descuentoCupon > 0 || descuentoTransferencia > 0) ? `<div class="total-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>` : ''}
+        ${descuentoCupon > 0 ? `<div class="total-row" style="color:var(--green)"><span>${pago.cupon ? 'Cupón ' + esc(pago.cupon) : 'Descuento'}</span><span>-${fmt(descuentoCupon)}</span></div>` : ''}
+        ${descuentoTransferencia > 0 ? `<div class="total-row" style="color:var(--green)"><span>Descuento por transferencia</span><span>-${fmt(descuentoTransferencia)}</span></div>` : ''}
+        ${envio.precio > 0 ? `<div class="total-row"><span>Envío (${envio.metodo || '—'})</span><span>${fmt(envio.precio)}</span></div>` : `<div class="total-row"><span>Envío</span><span>${envio.metodo === 'retiro' ? 'Retiro en sucursal (gratis)' : fmt(envio.precio)}</span></div>`}
+        <div class="total-row final"><span>Total</span><span>${fmt(total)}</span></div>
+      </div>
+
+      <!-- Ayuda -->
+      <div class="help-card">
+        <h3>¿Necesitás ayuda?</h3>
+        <div class="help-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+          <a href="https://wa.me/5492304216009?text=Hola%2C+consulta+sobre+mi+orden+%23${o.id}" target="_blank" rel="noopener">WhatsApp</a>
+        </div>
+        <div class="help-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+          <a href="mailto:hola@wzmallas.com?subject=Consulta+sobre+orden+%23${o.id}">hola@wzmallas.com</a>
+        </div>
+        <div style="margin-top:12px;">
+          <a href="./contacto.html" style="font-size:13px;color:var(--blue);text-decoration:none;">Ir al formulario de contacto →</a>
+        </div>
+      </div>
+    `;
+    $('result').style.display = 'block';
+    $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // spin animation for button
+  const style = document.createElement('style');
+  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+  document.head.appendChild(style);
+
+  // ── Cancelar pedido (solo si el pago no está confirmado) ──────
+  window.cancelarPedido = function(ordenId, email) {
+    if (!confirm('¿Seguro que querés cancelar este pedido? Esta acción no se puede deshacer.')) return;
+    const btn = document.getElementById('cancel-pedido-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Cancelando…'; }
+    fetch(`/api/tienda/orden/${encodeURIComponent(ordenId)}/cancelar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'No se pudo cancelar el pedido');
+        buscar(ordenId, email);
+      })
+      .catch(err => {
+        if (btn) { btn.disabled = false; btn.textContent = 'Cancelar pedido'; }
+        alert('No pudimos cancelar el pedido: ' + err.message + '\nProbá de nuevo o contactanos por WhatsApp.');
+      });
+  };
+
+  // ── Reintentar pago con MercadoPago ──────────────────────────
+  window.reintentarPago = function(ordenId) {
+    const btn = document.getElementById('retry-pago-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando link de pago…'; }
+    fetch('/api/tienda/pago/mercadopago/crear-preferencia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orden_id: ordenId }),
+    })
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok || !data.init_point) throw new Error(data.error || 'No se pudo generar el link de pago');
+        window.location.href = data.init_point;
+      })
+      .catch(err => {
+        if (btn) { btn.disabled = false; btn.textContent = 'Reintentar pago'; }
+        alert('No pudimos generar el link de pago: ' + err.message + '\nProbá de nuevo o contactanos por WhatsApp.');
+      });
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tu carrito — WZMALLAS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+    body { background: var(--bg); font-family: var(--font-body); color: var(--text); }
+
+    /* ---- Layout carrito ---- */
+    .cart-layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+    .cart-items-col { flex: 1; min-width: 0; }
+    .cart-summary-col { width: 320px; flex-shrink: 0; }
+
+    @media (max-width: 768px) {
+      .cart-layout { flex-direction: column; }
+      .cart-summary-col { width: 100%; }
+    }
+
+    /* ---- Panel título ---- */
+    .cart-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .cart-header h1 {
+      font-family: var(--font-body);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+    }
+    .cart-header .cart-count-label {
+      font-size: 14px;
+      color: var(--text-2);
+      margin-top: 4px;
+    }
+
+    /* ---- Lista de items ---- */
+    .cart-items-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    .cart-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-2);
+    }
+    .cart-item:last-child { border-bottom: none; }
+
+    .cart-item-img {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--bg);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cart-item-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .cart-item-info { flex: 1; min-width: 0; }
+    .cart-item-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .cart-item-variant {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-bottom: 10px;
+    }
+
+    /* Qty selector */
+    .qty-selector {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      overflow: hidden;
+      height: 32px;
+    }
+    .qty-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--text);
+      transition: background 0.15s;
+    }
+    .qty-btn:hover { background: var(--bg); }
+    .qty-btn:disabled { color: var(--text-3); cursor: not-allowed; }
+    .qty-value {
+      width: 36px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      border-left: 1px solid var(--border-2);
+      border-right: 1px solid var(--border-2);
+    }
+
+    /* Price & remove */
+    .cart-item-price {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+    .cart-item-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      font-size: 20px;
+      line-height: 1;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    .cart-item-remove:hover { color: var(--red); }
+
+    /* ---- Estado vacío ---- */
+    .cart-empty {
+      background: var(--bg-card);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 64px 24px;
+      text-align: center;
+    }
+    .cart-empty svg { margin: 0 auto 20px; display: block; color: var(--border-2); }
+    .cart-empty h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .cart-empty p { font-size: 14px; color: var(--text-3); margin-bottom: 24px; }
+
+    /* ---- Panel de resumen ---- */
+    .summary-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 24px;
+      position: sticky;
+      top: 72px;
+    }
+    .summary-label {
+      font-family: var(--font-accent);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-3);
+      margin-bottom: 16px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text-2);
+      margin-bottom: 10px;
+    }
+    .summary-row.shipping { color: var(--text-3); font-size: 13px; }
+    .summary-divider {
+      border: none;
+      border-top: 1px solid var(--border-2);
+      margin: 16px 0;
+    }
+    .summary-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .summary-total .label {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .summary-total .amount {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .summary-cta { display: block; width: 100%; margin-bottom: 16px; }
+
+    /* Métodos de pago en resumen */
+    .payment-section { margin-top: 4px; }
+    .payment-section-label {
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: center;
+      margin-bottom: 8px;
+      font-family: var(--font-accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .payment-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+    }
+    .pay-card {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 4px;
+      font-family: var(--font-accent);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      color: #fff;
+    }
+    .pay-card.mp         { background: #009EE3; }
+    .pay-card.visa       { background: #1A1F71; }
+    .pay-card.mc         { background: #EB001B; }
+    .pay-card.amex       { background: #2E77BC; }
+    .pay-card.naranja    { background: #F97316; }
+    .pay-card.cabal      { background: #00529B; }
+    .pay-card.debin      { background: #6B7280; }
+    .pay-card.transfer   { background: #374151; }
+    .payment-mp-note {
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: center;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* ---- Cupón ---- */
+    .coupon-wrap {
+      margin-bottom: 16px;
+    }
+    .coupon-row {
+      display: flex;
+      gap: 8px;
+    }
+    .coupon-input {
+      flex: 1;
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      color: var(--text);
+      background: var(--white);
+      transition: border-color 0.15s;
+      text-transform: uppercase;
+    }
+    .coupon-input::placeholder { text-transform: none; color: var(--text-3); }
+    .coupon-input:focus { outline: none; border-color: var(--blue); }
+    .coupon-input:disabled { opacity: 0.6; background: var(--bg); }
+    .coupon-btn {
+      padding: 0 16px;
+      height: 38px;
+      background: var(--bg);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      font-family: var(--font-accent);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-2);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .coupon-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .coupon-feedback { font-size: 12px; margin-top: 6px; }
+    .coupon-feedback.ok  { color: var(--green); }
+    .coupon-feedback.err { color: var(--red); }
+
+    /* Fila de descuento en summary */
+    .summary-row.discount { color: var(--green); font-weight: 500; }
+
+    /* ── CP estimator (cost transparency upfront, trend 2026) ── */
+    .cp-estimator {
+      margin: 8px 0 14px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+    }
+    .cp-estimator summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      list-style: none;
+      user-select: none;
+    }
+    .cp-estimator summary::-webkit-details-marker { display: none; }
+    .cp-estimator summary::after {
+      content: '+';
+      margin-left: auto;
+      color: var(--text-3);
+      font-size: 16px;
+      transition: transform .15s;
+    }
+    .cp-estimator[open] summary::after { content: '−'; }
+    .cp-form {
+      display: flex; gap: 6px; margin-top: 10px;
+    }
+    .cp-form input {
+      flex: 1; min-width: 0;
+      padding: 7px 10px;
+      font-size: 14px;
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg-card);
+    }
+    .cp-form input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(52, 131, 250, 0.1);
+    }
+    .cp-form button {
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .cp-form button:hover { background: var(--blue-dark, #2570d6); }
+    .cp-result {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .cp-result strong { color: var(--text); }
+    .cp-result .cp-zone-tag {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 6px;
+      background: var(--blue-light);
+      color: var(--blue);
+      border-radius: 4px;
+      font-weight: 500;
+      margin-left: 4px;
+    }
+    .cp-result .cp-extra-options {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border-2);
+      font-size: 12px;
+    }
+    .cp-result .cp-error {
+      color: var(--red);
+    }
+    .cp-ship-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .cp-ship-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+    }
+    .cp-ship-option-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .cp-ship-option-name { color: var(--text); font-weight: 500; }
+    .cp-ship-option-eta { font-size: 11px; color: var(--text-2); }
+    .cp-ship-option-cost { font-weight: 600; color: var(--text); white-space: nowrap; }
+    .cp-ship-option-cost.is-free { color: var(--green); }
+
+    /* ── Fila de envío con estimación ── */
+    .summary-row.shipping-estimated { color: var(--text); }
+    .summary-row.shipping-estimated .label-tag {
+      font-size: 10px;
+      color: var(--text-3);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+
+    /* ---- Barra envío gratis ---- */
+    .fship-box {
+      background: var(--bg);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .fship-box.achieved {
+      background: rgba(0,166,80,.07);
+      border-color: rgba(0,166,80,.22);
+    }
+    .fship-msg {
+      font-size: 12px;
+      color: var(--text-2);
+      margin-bottom: 8px;
+      line-height: 1.45;
+    }
+    .fship-msg strong { color: var(--text); font-weight: 600; }
+    .fship-track {
+      height: 5px;
+      background: var(--border-2);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .fship-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), #1ac76b);
+      border-radius: 99px;
+      transition: width 0.5s cubic-bezier(.25,.8,.25,1);
+    }
+    .fship-done {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    /* Mobile actions */
+    @media (max-width: 768px) {
+      .cart-item { padding: 14px 16px; }
+      .cart-item-price { font-size: 16px; }
+      .summary-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <div id="header-root"></div>
+
+  <!-- Breadcrumb -->
+  <div style="background:var(--bg-card); border-bottom:1px solid var(--border);">
+    <div style="max-width:1120px;margin:0 auto;padding:10px 16px;">
+      <nav style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-3);">
+        <a href="./index.html" style="color:var(--text-3);text-decoration:none;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--text-3)'">Inicio</a>
+        <span>›</span>
+        <span style="color:var(--text-2);">Tu carrito</span>
+      </nav>
+    </div>
+  </div>
+
+  <div class="cart-layout">
+
+    <!-- Columna items -->
+    <div class="cart-items-col">
+      <div class="cart-header">
+        <h1>Tu carrito</h1>
+        <div class="cart-count-label" id="cart-count-label"></div>
+      </div>
+
+      <!-- Estado vacío (oculto si hay items) -->
+      <div class="cart-empty" id="cart-empty" style="display:none;">
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 8H44L52 28H12L20 8Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M12 28L14 52H50L52 28" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+          <circle cx="24" cy="56" r="4" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="40" cy="56" r="4" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M26 20V36M32 20V36M38 20V36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <h2>Tu carrito está vacío</h2>
+        <p>Explorá nuestro catálogo y encontrá lo que buscás</p>
+        <a href="./catalogo.html" class="btn-primary" style="border-radius:var(--radius);text-decoration:none;">Ir al catálogo</a>
+      </div>
+
+      <!-- Lista de items -->
+      <div class="cart-items-panel" id="cart-items-panel"></div>
+    </div>
+
+    <!-- Columna resumen -->
+    <div class="cart-summary-col" id="cart-summary-col">
+      <div class="summary-panel">
+
+        <!-- Barra envío gratis -->
+        <div id="fship-bar"></div>
+
+        <div class="summary-label">Resumen del pedido</div>
+
+        <!-- Cupón -->
+        <div class="coupon-wrap">
+          <div class="coupon-row">
+            <input type="text" id="coupon-input" class="coupon-input" placeholder="Código de descuento" maxlength="20" autocomplete="off">
+            <button class="coupon-btn" id="coupon-btn" onclick="applyCoupon()">Aplicar</button>
+          </div>
+          <div class="coupon-feedback" id="coupon-feedback"></div>
+        </div>
+
+        <!-- Estimador de envío por CP (trend 2026: cost transparency upfront) -->
+        <details class="cp-estimator" id="cp-estimator">
+          <summary>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Estimar costo de envío
+          </summary>
+          <div class="cp-form">
+            <input type="text" id="cp-input" placeholder="Tu código postal (ej: 1043)" maxlength="8" inputmode="numeric" autocomplete="postal-code">
+            <button onclick="estimarEnvio()" type="button">Calcular</button>
+          </div>
+          <div class="cp-result" id="cp-result"></div>
+        </details>
+
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span id="summary-subtotal">$0</span>
+        </div>
+        <div class="summary-row discount" id="discount-row" style="display:none;">
+          <span id="discount-label">Descuento</span>
+          <span id="discount-amount">-$0</span>
+        </div>
+        <div class="summary-row shipping">
+          <span id="shipping-label">Envío</span>
+          <span id="shipping-status">Se calcula en el siguiente paso</span>
+        </div>
+
+        <hr class="summary-divider">
+
+        <div class="summary-total">
+          <span class="label">Total</span>
+          <span class="amount" id="summary-total">$0</span>
+        </div>
+
+        <a href="./checkout.html" class="btn-primary summary-cta" id="checkout-btn" style="border-radius:var(--radius);text-decoration:none;" onclick="pushBeginCheckout()">
+          Continuar con la compra
+        </a>
+
+        <!-- Métodos de pago -->
+        <div class="payment-section">
+          <p class="payment-section-label">Medios de pago aceptados</p>
+          <div class="pay-row">
+            <span class="pay-chip"><img src="./img/pay/mercadopago.svg?v=2" alt="MercadoPago" loading="lazy"></span>
+            <span class="pay-chip"><img src="./img/pay/visa.svg" alt="Visa" loading="lazy"></span>
+            <span class="pay-chip"><img src="./img/pay/mastercard.svg" alt="Mastercard" loading="lazy"></span>
+            <span class="pay-chip"><img src="./img/pay/americanexpress.svg" alt="American Express" loading="lazy"></span>
+            <span class="pay-chip is-text">Transferencia</span>
+          </div>
+          <p class="payment-mp-note">Tarjetas procesadas de forma segura vía MercadoPago</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /cart-layout -->
+
+  <div id="footer-root"></div>
+
+  <script src="./components/footer.js?v=4"></script>
+  <script src="./components/header.js?v=9"></script>
+  <script src="./components/cart.js?v=8"></script>
+
+  <script>
+    initPage('carrito');
+
+    /* ---- Restaurar carrito abandonado (deep-link del email "tu carrito te espera") ---- */
+    (function restoreAbandonedCart() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('restore');
+      if (!token) return;
+      fetch('/api/tienda/carrito-abandonado/' + encodeURIComponent(token))
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data || !Array.isArray(data.items) || !data.items.length) return;
+          // Fusiona con lo que ya haya en el carrito actual (sin duplicar por id+variant)
+          const current = Cart.getItems();
+          data.items.forEach(it => {
+            if (!current.find(c => c.id === it.id && c.variant === it.variant)) current.push(it);
+          });
+          Cart.save(current);
+          renderCart();
+        })
+        .catch(() => {})
+        .finally(() => {
+          // Limpiar el parámetro de la URL sin recargar la página
+          params.delete('restore');
+          const qs = params.toString();
+          history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+        });
+    })();
+
+    /* ---- GA4 — begin_checkout ---- */
+    function pushBeginCheckout() {
+      const items = Cart.getItems();
+      if (!items.length) return;
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null });
+      window.dataLayer.push({
+        event: 'begin_checkout',
+        ecommerce: {
+          currency: 'ARS',
+          value: Cart.getTotal(),
+          items: items.map(item => ({
+            item_id:    item.id,
+            item_name:  item.title,
+            item_variant: item.variant || '',
+            price:      item.price,
+            item_category: item.categoria || '',
+            quantity:   item.qty,
+          })),
+        },
+      });
+    }
+
+    /* ---- Cupones ---- */
+    // Fallback hardcodeado — se reemplaza con lo que devuelva la API
+    let COUPONS = {
+      'WEB10':     { type: 'percent',  value: 10, label: '10% off — cupón web' },
+      'WZMALLAS15':{ type: 'percent',  value: 15, label: '15% off — descuento especial' },
+      'ENVIO':     { type: 'freeship', value: 0,  label: 'Envío gratis activado', freeShip: true },
+    };
+
+    // Carga cupones desde API (reemplaza fallback)
+    fetch('/api/tienda/cupones')
+      .then(r => r.ok ? r.json() : null)
+      .then(list => {
+        if (!Array.isArray(list) || !list.length) return;
+        const map = {};
+        list.filter(c => c.active !== false).forEach(c => {
+          map[c.code] = {
+            type:          c.type,
+            value:         c.value,
+            label:         c.label || c.code,
+            freeShip:      c.type === 'freeship',
+            categoria:     c.categoria  || null,
+            max_descuento: c.max_descuento > 0 ? c.max_descuento : 0,
+          };
+        });
+        COUPONS = map;
+      })
+      .catch(() => {});
+
+    let appliedCoupon = null;
+    let cpEstimate    = null;  // { cp, zona, price, label }
+
+    /* ---- Estimador de envío por CP (cost transparency upfront) ---- */
+    const SHIPPING_ESTIMATES = {
+      caba:      { price: 5000, label: 'Flex CABA',          method: 'Flex' },
+      gba_cerca: { price: 6500, label: 'Correo Argentino',   method: 'Correo' },
+      gba_lejos: { price: 8500, label: 'Correo Argentino',   method: 'Correo' },
+      interior:  { price: 8500, label: 'Correo Argentino',   method: 'Correo' },
+    };
+
+    function detectarZonaCP(cp) {
+      if (!cp) return null;
+      const cleaned = String(cp).trim();
+      const num = parseInt(cleaned.replace(/\D/g, '').slice(0, 4), 10);
+      if (isNaN(num)) return null;
+      // Guardia de rango: CPs argentinos existen solo entre 1000 y 9431
+      // (Correo Argentino / Andreani no reconocen fuera de este rango)
+      if (num < 1000 || num > 9431) return null;
+      // CABA: empieza con C o numérico 1000-1499
+      if (/^C/i.test(cleaned) || num <= 1499) return 'caba';
+      // GBA cercano: 1500-1750
+      if (num <= 1750) return 'gba_cerca';
+      // GBA lejano: 1751-2000
+      if (num <= 2000) return 'gba_lejos';
+      // Interior del país: 2001-9431
+      return 'interior';
+    }
+
+    const ZONA_LABELS = {
+      caba:      'CABA',
+      gba_cerca: 'GBA (zona cercana)',
+      gba_lejos: 'GBA (zona alejada)',
+      interior:  'Interior del país',
+    };
+
+    async function estimarEnvio() {
+      const input  = document.getElementById('cp-input');
+      const result = document.getElementById('cp-result');
+      const raw = input.value.trim();
+
+      // Formatos válidos en Argentina:
+      // - Viejo (más común): exactamente 4 dígitos (ej: 1043, 8000, 5000)
+      // - CPA: letra + 4 dígitos + 3 letras opcionales (ej: C1043AAA, B1636XAA)
+      const soloDigitos = /^\d{4}$/.test(raw);
+      const cpaAlfa     = /^[A-Za-z]\d{4}([A-Za-z]{3})?$/.test(raw);
+      if (!raw || (!soloDigitos && !cpaAlfa)) {
+        result.innerHTML = '<span class="cp-error">⚠ Ingresá tu CP de 4 dígitos (ej: 1043, 5000, 8000)</span>';
+        cpEstimate = null;
+        renderCart();
+        return;
+      }
+
+      const cp = raw.toUpperCase();
+
+      const zona = detectarZonaCP(cp);
+      if (!zona) {
+        result.innerHTML = '<span class="cp-error">⚠ CP no encontrado en Argentina — verificá que sea de 4 dígitos (ej: 1043)</span>';
+        cpEstimate = null;
+        renderCart();
+        return;
+      }
+
+      // 1) Estimación heurística por zona — se muestra de inmediato como
+      //    "borrador" mientras consultamos el costo real a la API de ML.
+      const est = SHIPPING_ESTIMATES[zona];
+      cpEstimate = { cp, zona, price: est.price, label: est.label, method: est.method };
+      result.innerHTML = `
+        <strong>CP ${esc(cp)}</strong> <span class="cp-zone-tag">${ZONA_LABELS[zona]}</span><br>
+        Calculando el costo real de envío…`;
+      renderCart();
+
+      // Persistir si hay consent funcional
+      try {
+        if (!window.CookieConsent || !window.CookieConsent.hasDecided
+            || !window.CookieConsent.hasDecided()
+            || window.CookieConsent.hasConsent('functional')) {
+          localStorage.setItem('wz_cp', cp);
+        }
+      } catch {}
+
+      // 2) Cotización real vía la API de envíos de Mercado Libre (mismo
+      //    endpoint que usa la calculadora de la ficha de producto):
+      //    tomamos como referencia el ítem de mayor valor del carrito.
+      const numCp = soloDigitos ? cp : (cp.match(/\d{4}/) || [])[0];
+      if (!numCp) return;
+
+      try {
+        const items = (typeof Cart !== 'undefined') ? Cart.getItems() : [];
+        const ref = items.reduce((max, it) => (it.price > (max?.price || 0) ? it : max), null);
+        if (!ref || !/^[A-Z]{3}\d+$/.test(ref.id || '')) return;
+
+        const r = await fetch(`/api/tienda/envio?id=${encodeURIComponent(ref.id)}&cp=${numCp}`);
+        const data = await r.json();
+        if (!r.ok || data.configured === false || !data.options || !data.options.length) {
+          // Sin datos reales → dejamos la estimación heurística como resultado final
+          result.innerHTML = `
+            Envío estimado: <strong>${formatPrice(est.price)}</strong> · ${esc(est.label)}
+            <div class="cp-ship-options">
+              <div class="cp-ship-option">
+                <span class="cp-ship-option-info">
+                  <span class="cp-ship-option-name">Retiro en sucursal</span>
+                </span>
+                <span class="cp-ship-option-cost is-free">Gratis</span>
+              </div>
+            </div>
+            <div class="cp-extra-options">El precio exacto se confirma al elegir el envío en el checkout</div>`;
+          return;
+        }
+
+        // De las opciones calculadas por ML, mostramos las "a sucursal de
+        // correo" (NO usamos type==='address' / Mercado Envíos Flex/Full
+        // como base: ese servicio no lo despacha WZMALLAS para todo el
+        // país, y a veces ML lo cotiza "gratis" (cost 0) para el comprador
+        // aunque el costo real de envío lo sigue pagando WZMALLAS),
+        // ordenadas por precio, y dejamos que el cliente elija cuál usar —
+        // igual que en producto.html.
+        // ML a veces devuelve varias opciones con el mismo nombre, costo y
+        // fecha estimada (distintos `id` de transportista internos) — para
+        // el comprador son indistinguibles, así que nos quedamos con una.
+        const dedupe = (list) => {
+          const seen = new Set();
+          return list.filter(o => {
+            const key = `${o.name}|${o.cost}|${o.estimate && o.estimate.label}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        };
+
+        // Descartamos opciones "gratis" (cost 0) de Mercado Envíos cuando el
+        // subtotal del carrito es menor a $33.000: esa promo de ME2 no la
+        // cumple WZMALLAS, y mostrarla confunde al comprador haciéndole creer
+        // que el envío no tiene costo (mismo criterio que producto.html).
+        const subtotalCarrito = (typeof Cart !== 'undefined') ? Cart.getTotal() : 0;
+        const sinGratisIndebido = (o) => !(o.free && subtotalCarrito < 33000);
+
+        const opciones = dedupe(data.options
+          .filter(o => o.type === 'agency' && sinGratisIndebido(o))
+          .sort((a, b) => (a.cost || 0) - (b.cost || 0)));
+
+        // Mercado Envíos Flex (envío en el día) sí lo ofrece WZMALLAS, pero
+        // solo para CABA y Buenos Aires (GBA) — en el interior no aplica.
+        const flexOpciones = (zona === 'caba' || zona === 'gba_cerca' || zona === 'gba_lejos')
+          ? dedupe(data.options.filter(o => o.type === 'address' && sinGratisIndebido(o)).sort((a, b) => (a.cost || 0) - (b.cost || 0)))
+          : [];
+
+        if (!opciones.length && !flexOpciones.length) return;
+
+        // Por defecto, seleccionamos la más económica
+        const best = opciones[0] || flexOpciones[0];
+        const precioBest = best.free ? 0 : Math.round(best.cost || 0);
+        const etaBest = (best.estimate && best.estimate.label) ? best.estimate.label : ZONA_LABELS[zona];
+        cpEstimate = { cp, zona, price: precioBest, label: etaBest, method: best.name || est.method };
+
+        const renderOption = (opt) => {
+          const cost = opt.free ? 0 : Math.round(opt.cost || 0);
+          const costTxt = cost > 0 ? formatPrice(cost) : 'Gratis';
+          const eta = (opt.estimate && opt.estimate.label) ? opt.estimate.label : ZONA_LABELS[zona];
+          return `
+            <div class="cp-ship-option">
+              <span class="cp-ship-option-info">
+                <span class="cp-ship-option-name">${esc(opt.name || 'Envío')}</span>
+                <span class="cp-ship-option-eta">${esc(eta)}</span>
+              </span>
+              <span class="cp-ship-option-cost${cost === 0 ? ' is-free' : ''}">${costTxt}</span>
+            </div>`;
+        };
+
+        const optionsHtml = flexOpciones.map(renderOption).join('')
+          + opciones.map(renderOption).join('') + `
+            <div class="cp-ship-option">
+              <span class="cp-ship-option-info">
+                <span class="cp-ship-option-name">Retiro en sucursal</span>
+              </span>
+              <span class="cp-ship-option-cost is-free">Gratis</span>
+            </div>`;
+
+        result.innerHTML = `
+          Opciones de envío disponibles:
+          <div class="cp-ship-options">${optionsHtml}</div>
+          <div class="cp-extra-options">
+            Elegís el método de envío al finalizar la compra · el costo final puede variar según el resto del carrito
+          </div>`;
+
+        renderCart();
+      } catch (e) {
+        console.warn('[envio] No se pudo cotizar en tiempo real, usando estimación:', e.message);
+        result.innerHTML = `
+          Envío estimado: <strong>${formatPrice(est.price)}</strong> · ${esc(est.label)}
+          <div class="cp-ship-options">
+            <div class="cp-ship-option">
+              <span class="cp-ship-option-info">
+                <span class="cp-ship-option-name">Retiro en sucursal</span>
+              </span>
+              <span class="cp-ship-option-cost is-free">Gratis</span>
+            </div>
+          </div>
+          <div class="cp-extra-options">El precio exacto se confirma al elegir el envío en el checkout</div>`;
+      }
+    }
+
+    // Auto-cargar CP guardado al iniciar (si existe)
+    function loadSavedCP() {
+      try {
+        const cp = localStorage.getItem('wz_cp');
+        if (!cp) return;
+        // Si el usuario rechazó funcionales → no auto-llenar
+        if (window.CookieConsent && window.CookieConsent.hasDecided
+            && window.CookieConsent.hasDecided()
+            && !window.CookieConsent.hasConsent('functional')) {
+          localStorage.removeItem('wz_cp');
+          return;
+        }
+        const input = document.getElementById('cp-input');
+        if (!input) return;
+        input.value = cp;
+        const det = document.getElementById('cp-estimator');
+        if (det) det.open = true;
+        estimarEnvio();
+      } catch {}
+    }
+    if (document.readyState !== 'loading') setTimeout(loadSavedCP, 50);
+    else document.addEventListener('DOMContentLoaded', () => setTimeout(loadSavedCP, 50));
+
+    // Si revocan funcionales → limpiar CP guardado
+    window.addEventListener('wz:consent', e => {
+      if (e.detail && e.detail.functional === false) {
+        try { localStorage.removeItem('wz_cp'); } catch {}
+      }
+    });
+
+    // Helper de escape (por si no existe globalmente)
+    if (typeof esc !== 'function') {
+      window.esc = function(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+          ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      };
+    }
+
+    function applyCoupon() {
+      const input    = document.getElementById('coupon-input');
+      const btn      = document.getElementById('coupon-btn');
+      const feedback = document.getElementById('coupon-feedback');
+
+      // Si ya hay cupón → quitar
+      if (appliedCoupon) {
+        appliedCoupon = null;
+        input.value   = '';
+        input.disabled = false;
+        btn.textContent = 'Aplicar';
+        btn.onclick = applyCoupon;
+        feedback.textContent = '';
+        feedback.className = 'coupon-feedback';
+        // Limpiar storage (ambos, por si acaso)
+        try { sessionStorage.removeItem('wz_promo'); } catch {}
+        try { localStorage.removeItem('wz_promo'); } catch {}
+        renderCart();
+        return;
+      }
+
+      const code   = (input.value || '').trim().toUpperCase();
+      if (!code) return;
+
+      const coupon = COUPONS[code];
+      if (coupon) {
+        appliedCoupon = { code, ...coupon };
+        input.disabled  = true;
+        btn.textContent = 'Quitar';
+        btn.onclick     = applyCoupon;
+        feedback.textContent = '✓ ' + coupon.label + ' aplicado';
+        feedback.className   = 'coupon-feedback ok';
+        // Persistir si cookies funcionales aceptadas
+        if (typeof CookieConsent !== 'undefined' && CookieConsent.hasConsent('functional')) {
+          try { localStorage.setItem('wz_promo', code); } catch {}
+        } else {
+          try { sessionStorage.setItem('wz_promo', code); } catch {}
+        }
+      } else {
+        feedback.textContent = '✗ Código inválido. Revisá el cupón e intentá de nuevo.';
+        feedback.className   = 'coupon-feedback err';
+        appliedCoupon = null;
+      }
+      renderCart();
+    }
+
+    /* ---- Helpers ---- */
+    function formatPrice(n) {
+      return '$' + Math.round(Number(n)).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+    }
+
+    function getItemKey(item) {
+      return item.id + '|' + (item.variant || '');
+    }
+
+    /* ---- Renderizado ---- */
+    function renderCart() {
+      const items = Cart.getItems();
+      const countLabel = document.getElementById('cart-count-label');
+      const empty      = document.getElementById('cart-empty');
+      const panel      = document.getElementById('cart-items-panel');
+      const summaryCol = document.getElementById('cart-summary-col');
+      const subtotalEl = document.getElementById('summary-subtotal');
+      const totalEl    = document.getElementById('summary-total');
+      const checkoutBtn = document.getElementById('checkout-btn');
+
+      if (items.length === 0) {
+        countLabel.textContent = '';
+        empty.style.display = 'block';
+        panel.style.display = 'none';
+        // Mostrar el panel de cupón aunque el carrito esté vacío para que
+        // el descuento quede guardado cuando se agreguen productos
+        summaryCol.style.display = 'block';
+        // Ocultar filas de precios y checkout cuando no hay items
+        ['summary-subtotal','summary-total','shipping-label','shipping-status']
+          .forEach(id => { const el = document.getElementById(id); if (el) el.closest('.summary-row, .summary-total, .shipping') && (el.closest('.summary-row, .summary-total') || el.parentElement).style ? el.parentElement.style.display = 'none' : null; });
+        const summaryDivider = document.querySelector('.summary-divider');
+        const summaryTotalRow = document.querySelector('.summary-total');
+        if (summaryDivider) summaryDivider.style.display = 'none';
+        if (summaryTotalRow) summaryTotalRow.style.display = 'none';
+        if (checkoutBtn) checkoutBtn.style.display = 'none';
+        const shippingRow = document.querySelector('.summary-row.shipping');
+        if (shippingRow) shippingRow.style.display = 'none';
+        const subtotalRow = document.querySelector('.summary-row:not(.discount):not(.shipping)');
+        if (subtotalRow) subtotalRow.style.display = 'none';
+        return;
+      }
+      // Con items: restaurar visibilidad de todo
+      const summaryDivider = document.querySelector('.summary-divider');
+      const summaryTotalRow = document.querySelector('.summary-total');
+      if (summaryDivider) summaryDivider.style.display = '';
+      if (summaryTotalRow) summaryTotalRow.style.display = '';
+      if (checkoutBtn) checkoutBtn.style.display = '';
+      const shippingRow = document.querySelector('.summary-row.shipping');
+      if (shippingRow) shippingRow.style.display = '';
+      const subtotalRow = document.querySelector('.summary-row:not(.discount):not(.shipping)');
+      if (subtotalRow) subtotalRow.style.display = '';
+
+      const totalItems = items.reduce((s, i) => s + i.qty, 0);
+      countLabel.textContent = totalItems === 1 ? '1 producto' : `${totalItems} productos`;
+      empty.style.display = 'none';
+      panel.style.display = 'block';
+      summaryCol.style.display = 'block';
+
+      panel.innerHTML = items.map((item, idx) => {
+        // Título: link al producto si hay stock, texto plano si no
+        const titleHtml = item.stock > 0
+          ? `<a href="./producto.html?id=${item.id}" style="color:inherit;text-decoration:none;cursor:pointer;" class="cart-item-name">${esc(item.title || 'Producto')}</a>`
+          : `<div class="cart-item-name" style="color:var(--text-3);">${esc(item.title || 'Producto')} (sin stock)</div>`;
+
+        return `
+        <div class="cart-item" data-idx="${idx}">
+          <div class="cart-item-img">
+            <img src="${esc(item.img || '')}" alt="${esc(item.title || '')}"
+                 onerror="this.style.display='none'">
+          </div>
+          <div class="cart-item-info">
+            ${titleHtml}
+            ${item.variant ? `<div class="cart-item-variant">${esc(item.variant)}</div>` : '<div style="margin-bottom:10px"></div>'}
+            <div class="qty-selector">
+              <button class="qty-btn" onclick="changeQty(${idx}, ${item.qty - 1})" ${item.qty <= 1 ? 'disabled' : ''}>−</button>
+              <span class="qty-value">${item.qty}</span>
+              <button class="qty-btn" onclick="changeQty(${idx}, ${item.qty + 1})" ${item.qty >= (item.stock ?? 0) ? 'disabled' : ''} title="${item.stock ? `Stock máximo: ${item.stock}` : 'Agregar cantidad'}">+</button>
+            </div>
+          </div>
+          <div class="cart-item-price">${formatPrice(item.price * item.qty)}</div>
+          <button class="cart-item-remove" onclick="removeItem(${idx})" title="Eliminar" aria-label="Eliminar ${esc(item.title || 'producto')}">×</button>
+        </div>
+      `;
+      }).join('');
+
+      const subtotal = Cart.getTotal();
+      subtotalEl.textContent = formatPrice(subtotal);
+
+      // ── Cupón / descuento ─────────────────────────────────────
+      const discountRow  = document.getElementById('discount-row');
+      const discountLbl  = document.getElementById('discount-label');
+      const discountAmt  = document.getElementById('discount-amount');
+      let   descuento    = 0;
+
+      if (appliedCoupon && (appliedCoupon.type === 'percent' || appliedCoupon.type === 'fixed')) {
+        // Filtrar por categoría si el cupón lo requiere
+        const catFilter = appliedCoupon.categoria || null;
+        const baseParaDescuento = catFilter
+          ? items.reduce((s, i) => (i.categoria || '') === catFilter ? s + i.price * i.qty : s, 0)
+          : subtotal;
+
+        if (appliedCoupon.type === 'percent') {
+          descuento = Math.round(baseParaDescuento * appliedCoupon.value / 100);
+        } else {
+          // fixed: monto fijo, no puede superar la base aplicable
+          descuento = Math.min(appliedCoupon.value, baseParaDescuento);
+        }
+
+        // Cap de descuento máximo
+        if (appliedCoupon.max_descuento > 0) {
+          descuento = Math.min(descuento, appliedCoupon.max_descuento);
+        }
+
+        if (descuento > 0) {
+          const valorTxt = appliedCoupon.type === 'percent' ? `−${appliedCoupon.value}%` : `−${formatPrice(appliedCoupon.value)}`;
+          const catTxt   = catFilter ? ` · solo ${catFilter}` : '';
+          const maxTxt   = appliedCoupon.max_descuento > 0 ? ` (máx ${formatPrice(appliedCoupon.max_descuento)})` : '';
+          discountLbl.textContent = `Descuento (${appliedCoupon.code} ${valorTxt}${catTxt}${maxTxt})`;
+          discountAmt.textContent = '−' + formatPrice(descuento);
+          discountRow.style.display = 'flex';
+        } else {
+          discountRow.style.display = 'none';
+        }
+      } else {
+        discountRow.style.display = 'none';
+      }
+
+      // Actualizar estado del envío (dinámico, con estimación si hay CP)
+      const shippingStatusEl = document.getElementById('shipping-status');
+      const shippingLabelEl  = document.getElementById('shipping-label');
+      const shippingRowEl    = shippingStatusEl?.parentElement;
+      const FREE_SHIP = 33000;
+      const freeShipApplied = appliedCoupon && appliedCoupon.freeShip;
+      const subtotalDescontado = subtotal - descuento;
+      // Free ship se evalúa sobre el subtotal original (no después del descuento)
+      // Si ya cotizamos el envío real con el CP y dio $0, es envío gratis sin importar el subtotal
+      const cpEsGratis = cpEstimate && cpEstimate.price === 0;
+      const tieneFreeShip = subtotal >= FREE_SHIP || freeShipApplied || cpEsGratis;
+
+      let shippingCost = 0;
+      if (tieneFreeShip) {
+        shippingStatusEl.textContent = '¡Envío gratis!';
+        shippingStatusEl.style.color = 'var(--green)';
+        shippingStatusEl.style.fontWeight = '600';
+        if (shippingLabelEl) shippingLabelEl.textContent = 'Envío';
+        shippingRowEl?.classList.remove('shipping-estimated');
+      } else if (cpEstimate) {
+        // Estimación basada en CP ingresado
+        shippingCost = cpEstimate.price;
+        shippingStatusEl.textContent = formatPrice(cpEstimate.price);
+        shippingStatusEl.style.color = 'var(--text)';
+        shippingStatusEl.style.fontWeight = '500';
+        if (shippingLabelEl) shippingLabelEl.innerHTML = 'Envío estimado <span class="label-tag">a CP ' + esc(cpEstimate.cp) + '</span>';
+        shippingRowEl?.classList.add('shipping-estimated');
+      } else {
+        shippingStatusEl.textContent = 'Se calcula en el siguiente paso';
+        shippingStatusEl.style.color = 'var(--text-3)';
+        shippingStatusEl.style.fontWeight = 'normal';
+        if (shippingLabelEl) shippingLabelEl.textContent = 'Envío';
+        shippingRowEl?.classList.remove('shipping-estimated');
+      }
+
+      const total = subtotalDescontado + shippingCost;
+      totalEl.textContent = formatPrice(total);
+
+      // Barra de envío gratis
+      const fshipEl = document.getElementById('fship-bar');
+      if (freeShipApplied) {
+        fshipEl.innerHTML = `
+          <div class="fship-box achieved">
+            <p class="fship-done">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              ¡Envío gratis con cupón ${appliedCoupon.code}! 🎉
+            </p>
+          </div>`;
+      } else {
+        const pct = Math.min(100, (subtotal / FREE_SHIP) * 100);
+        const rem = FREE_SHIP - subtotal;
+        if (rem > 0) {
+          fshipEl.innerHTML = `
+            <div class="fship-box">
+              <p class="fship-msg">Sumá <strong>${formatPrice(rem)}</strong> más y desbloqueás el <strong>envío gratis</strong> 🚚</p>
+              <div class="fship-track"><div class="fship-fill" style="width:${pct.toFixed(1)}%"></div></div>
+            </div>`;
+        } else {
+          fshipEl.innerHTML = `
+            <div class="fship-box achieved">
+              <p class="fship-done">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                ¡Envío gratis desbloqueado! 🎉
+              </p>
+            </div>`;
+        }
+      }
+
+      // Habilitar/deshabilitar botón
+      checkoutBtn.style.pointerEvents = items.length ? 'auto' : 'none';
+      checkoutBtn.style.opacity = items.length ? '1' : '0.5';
+    }
+
+    function changeQty(idx, newQty) {
+      const items = Cart.getItems();
+      if (newQty <= 0) {
+        removeItem(idx);
+        return;
+      }
+      // ✓ VALIDACIÓN: contra stock disponible (sin fallback inseguro)
+      const stock = items[idx].stock ?? 0;  // Si no hay stock guardado, asumir 0
+      if (newQty > stock) {
+        alert(`⚠️ Stock limitado\n\nEste producto solo tiene ${stock} ${stock === 1 ? 'unidad' : 'unidades'} disponibles.`);
+        return;
+      }
+      items[idx].qty = newQty;
+      Cart.save(items);
+      renderCart();
+    }
+
+    function removeItem(idx) {
+      const items = Cart.getItems();
+      items.splice(idx, 1);
+      Cart.save(items);
+      renderCart();
+    }
+
+    // Escuchar cambios externos (ej: desde producto.html)
+    document.addEventListener('cart:updated', renderCart);
+
+    // ── Auto-apply cupón proveniente del hero de index ─────────
+    // Funciona con sessionStorage (siempre) y localStorage (si cookies funcionales ok)
+    function _checkPendingCoupon() {
+      if (appliedCoupon) return; // Ya hay uno aplicado
+      let code = null;
+      try { code = sessionStorage.getItem('wz_promo') || localStorage.getItem('wz_promo'); } catch {}
+      if (!code || !COUPONS[code]) return;
+
+      const input = document.getElementById('coupon-input');
+      if (!input) return;
+      input.value = code;
+      applyCoupon();                       // Aplica y actualiza UI
+      try { sessionStorage.removeItem('wz_promo'); } catch {} // Solo se usa 1 vez
+      // localStorage queda → persiste para la próxima sesión si funcional ok
+    }
+
+    // Correr después de que CookieConsent cargue (puede ser async)
+    if (window.CookieConsent) {
+      _checkPendingCoupon();
+    } else {
+      // Si cookies.js aún no cargó, esperar
+      window.addEventListener('load', _checkPendingCoupon, { once: true });
+      setTimeout(_checkPendingCoupon, 300); // Fallback adicional
+    }
+
+    // ── Escuchar cambios de consentimiento ─────────────────────
+    // Si revocan funcional → limpiar cupón persistido
+    window.addEventListener('wz:consent', (e) => {
+      if (!e.detail.functional) {
+        try { localStorage.removeItem('wz_promo'); } catch {}
+      }
+    });
+
+    // Renderizar al cargar
+    renderCart();
+  </script>
+</body>
+</html>

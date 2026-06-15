@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-K7X3HQ4W');</script>
+  <!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32.png">
+  <link rel="apple-touch-icon" href="./img/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WZMALLAS · Mallas, Fundas y Protectores para Smartwatch y Celular</title>
+  <meta name="description" content="Tienda especializada en mallas y protectores para Apple Watch y Samsung Galaxy Watch, fundas y protectores de pantalla para iPhone y Samsung. Envío gratis en compras +$33.000. Pagá con MercadoPago.">
+  <meta name="keywords" content="mallas apple watch, protectores samsung watch, fundas iphone, fundas samsung, mallas samsung galaxy watch, protectores de pantalla, accesorios smartwatch y celular argentina">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wzmallas.com/tienda/">
+  <!-- Open Graph -->
+  <meta property="og:type"        content="website">
+  <meta property="og:site_name"   content="WZMALLAS">
+  <meta property="og:title"       content="WZMALLAS · Mallas, Fundas y Protectores para Smartwatch y Celular">
+  <meta property="og:description" content="Tienda especializada en mallas y protectores para Apple Watch y Samsung Galaxy Watch, fundas y protectores de pantalla para iPhone y Samsung. Envío gratis en compras +$33.000.">
+  <meta property="og:image"       content="https://wzmallas.com/tienda/img/og-cover.jpg">
+  <meta property="og:image:width"  content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url"         content="https://wzmallas.com/tienda/">
+  <meta property="og:locale"      content="es_AR">
+  <!-- Twitter Card -->
+  <meta name="twitter:card"        content="summary_large_image">
+  <meta name="twitter:title"       content="WZMALLAS · Accesorios para Smartwatch y Celular">
+  <meta name="twitter:description" content="Mallas, fundas y protectores premium para Apple Watch, Samsung Galaxy Watch, iPhone y Samsung. Envío gratis +$33.000. Buenos Aires, Argentina.">
+  <meta name="twitter:image"       content="https://wzmallas.com/tienda/img/og-cover.jpg">
+  <!-- Schema.org Store -->
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Store","name":"WZMALLAS","description":"Tienda especializada en mallas y protectores para Apple Watch y Samsung Galaxy Watch, y fundas y protectores de pantalla para iPhone y Samsung","url":"https://wzmallas.com/tienda/","logo":"https://wzmallas.com/tienda/img/logo.png","address":{"@type":"PostalAddress","addressLocality":"Buenos Aires","addressCountry":"AR"},"priceRange":"$$","currenciesAccepted":"ARS","paymentAccepted":"MercadoPago, Transferencia bancaria"}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=optional">
+  <link rel="stylesheet" href="./css/design-system.css?v=7">
+  <style>
+
+    /* ── Bento Hero (compacto, mismo lenguaje visual que el resto) ── */
+    .hero-bento { padding: 32px 0 40px; background: var(--bg); }
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Celda principal (izquierda) */
+    .bento-main {
+      grid-column: 1;
+      grid-row: 1 / 3;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 40px 44px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .bento-eyebrow {
+      display: inline-flex;
+      background: transparent;
+      color: var(--blue);
+      font-family: var(--font-accent);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 0;
+      margin-bottom: 18px;
+      width: fit-content;
+    }
+    .bento-title {
+      font-family: var(--font-accent);
+      font-size: clamp(28px, 4vw, 46px);
+      font-weight: 600; line-height: 1.05;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 14px;
+    }
+    .bento-desc {
+      font-size: 16px;
+      color: var(--text-2);
+      line-height: 1.5;
+      margin-bottom: 28px;
+      max-width: 42ch;
+    }
+    .bento-btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--ink); color: #fff;
+      font-family: var(--font-accent);
+      font-size: 14px; font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 0 28px; min-height: 52px;
+      border-radius: var(--radius);
+      border: none; cursor: pointer; text-decoration: none;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+      width: fit-content;
+    }
+    .bento-btn-primary:hover { background: var(--ink-soft); transform: translateY(-1px); box-shadow: var(--shadow); }
+
+    /* Celdas de categorías (columna media + derecha, fila 1) */
+    .bento-cat {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+      text-decoration: none;
+      color: inherit;
+      min-height: 72px;
+    }
+    .bento-cat:hover {
+      border-color: transparent;
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+    .bento-cat-title {
+      font-family: var(--font-accent);
+      font-size: 14px; font-weight: 700;
+      color: var(--text);
+    }
+    .bento-cat-eyebrow {
+      display: block;
+      font-size: 11px; color: var(--text-3);
+      margin-top: 1px;
+      font-weight: 400;
+      font-family: var(--font-body);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .bento-cat-arrow {
+      color: var(--blue);
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .bento-cat:hover .bento-cat-arrow { transform: translateX(3px); }
+
+    /* Celda cupón (mismo grid auto-flow, queda como otra celda más) */
+    .bento-coupon {
+      background: var(--green-light);
+      border: 1px dashed var(--green);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.15s, box-shadow 0.2s ease, transform 0.2s ease;
+      min-height: 72px;
+    }
+    .bento-coupon:hover { background: #d8efe2; box-shadow: var(--shadow); transform: translateY(-2px); }
+    .bento-coupon-inner {
+      display: flex; flex-direction: column; gap: 3px;
+      min-width: 0;
+    }
+    .bento-coupon-code {
+      font-family: var(--font-accent);
+      font-size: 14px; font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.04em;
+    }
+    .bento-coupon-desc {
+      font-size: 11px;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .bento-coupon-arrow {
+      color: var(--green);
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .bento-coupon:hover .bento-coupon-arrow { transform: translateX(3px); }
+
+
+    /* ── Value strip ──────────────────────────────────────────── */
+    .value-strip {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 0;
+    }
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .value-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 20px;
+      border-right: 1px solid var(--border);
+    }
+    .value-item:first-child { padding-left: 0; }
+    .value-item:last-child  { border-right: none; }
+    .value-icon {
+      width: 34px; height: 34px;
+      border-radius: var(--radius);
+      background: var(--blue-light); color: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .value-icon.green { background: var(--green-light); color: var(--green); }
+    .value-icon.ml    { background: #FEF3C7; color: #D97706; }
+    .value-title { font-family: var(--font-accent); font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 1px; }
+    .value-desc  { font-size: 11px; color: var(--text-3); }
+    .value-item-link { text-decoration: none; transition: background 0.15s; border-radius: var(--radius); }
+    .value-item-link:hover { background: var(--bg-2); }
+    .value-item-link:hover .value-title { color: var(--blue); }
+
+    /* ── Products sections ────────────────────────────────────── */
+    .products-section { padding: 40px 0; }
+    .products-section + .products-section { padding-top: 0; }
+
+    /* ── Carousel ─────────────────────────────────────────────── */
+    .carousel-wrap { position: relative; }
+    .carousel-track {
+      display: flex; gap: 16px;
+      overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory;
+      padding-bottom: 4px; scrollbar-width: none;
+    }
+    .carousel-track::-webkit-scrollbar { display: none; }
+    .carousel-track > .product-card {
+      flex: 0 0 calc((100% - 64px) / 5);
+      scroll-snap-align: start; min-width: 0;
+    }
+    .carousel-arrows { display: flex; gap: 8px; }
+    .carousel-arrow {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px;
+      background: var(--bg-card); border: 1px solid var(--border-2);
+      border-radius: var(--radius); color: var(--text-2);
+      cursor: pointer; transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    .carousel-arrow:hover:not(:disabled) {
+      border-color: var(--blue); color: var(--blue);
+      box-shadow: 0 2px 6px rgba(52,131,250,0.15);
+    }
+    .carousel-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── CTA section ──────────────────────────────────────────── */
+    .cta-section {
+      padding: 48px 0;
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%);
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .cta-title { font-family: var(--font-accent); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .cta-desc  { font-size: 14px; color: var(--text-2); margin-bottom: 24px; }
+    .cta-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--ink); color: #fff;
+      font-family: var(--font-accent); font-size: 14px; font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 0 32px; min-height: 52px;
+      border-radius: var(--radius);
+      text-decoration: none; border: none; cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .cta-btn:hover { background: var(--ink-soft); transform: translateY(-1px); box-shadow: var(--shadow); }
+
+    /* ── Reseñas destacadas (UGC) ─────────────────────────────── */
+    .home-reviews {
+      padding: 8px 0 40px;
+    }
+    /* El track de reseñas reutiliza .carousel-track / .carousel-wrap
+       (mismo comportamiento de scroll suave + snap que el resto de los
+       carruseles), solo definimos el ancho de cada tarjeta. */
+    #home-reviews-track {
+      /* A diferencia del track de productos (tarjetas de altura uniforme),
+         las reseñas varían mucho de longitud — si las estiramos a la
+         altura de la más larga queda demasiado espacio vacío adentro.
+         Con flex-start cada tarjeta toma su alto natural. */
+      align-items: flex-start;
+    }
+    #home-reviews-track > .home-review-card {
+      flex: 0 0 calc((100% - 32px) / 3);
+      scroll-snap-align: start;
+      min-width: 0;
+    }
+    @media (max-width: 900px) {
+      #home-reviews-track > .home-review-card { flex: 0 0 calc((100% - 16px) / 2); }
+    }
+    @media (max-width: 600px) {
+      #home-reviews-track > .home-review-card { flex: 0 0 calc((100% - 16px) / 1.15); }
+    }
+    .home-review-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+      overflow: hidden;
+    }
+    .home-review-card:hover {
+      border-color: var(--border-2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -8px rgba(0,0,0,0.08);
+    }
+    /* Reseñas con fotos reales de clientes: la imagen es la protagonista —
+       son justamente las fotos "reales" (no de catálogo) que nos faltan,
+       así que las mostramos grandes, como portada de la tarjeta. */
+    .home-review-card.has-photo {
+      padding: 0 0 20px;
+      gap: 0;
+    }
+    .home-review-card.has-photo .home-review-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px 20px 0;
+      flex: 1;
+    }
+    .home-review-photos-hero {
+      display: grid;
+      gap: 2px;
+      background: var(--border);
+    }
+    .home-review-photos-hero.count-1 { grid-template-columns: 1fr; }
+    .home-review-photos-hero.count-2 { grid-template-columns: 1fr 1fr; }
+    .home-review-photos-hero img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      display: block;
+      background: var(--bg-card);
+    }
+    .home-review-photo-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .home-review-stars {
+      color: #f5a623;
+      font-size: 14px;
+      letter-spacing: 1.5px;
+    }
+    .home-review-title {
+      font-family: var(--font-accent);
+      font-size: 14px; font-weight: 700;
+      color: var(--text);
+      line-height: 1.35;
+    }
+    .home-review-content {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .home-review-product {
+      display: flex; align-items: center;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .home-review-product img {
+      width: 32px; height: 32px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .home-review-product-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1; min-width: 0;
+    }
+
+    /* ── Skeleton loader ──────────────────────────────────────── */
+    .skeleton-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      flex: 0 0 calc((100% - 64px) / 5);
+    }
+    .skeleton-img  { height: 160px; background: var(--border-2); border-radius: var(--radius); margin-bottom: 12px; animation: shimmer 1.4s infinite; }
+    .skeleton-line { height: 12px; background: var(--border-2); border-radius: 4px; margin-bottom: 8px; animation: shimmer 1.4s infinite; }
+    .skeleton-line.w75 { width: 75%; }
+    .skeleton-line.w50 { width: 50%; }
+    @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 1024px) {
+      .carousel-track > .product-card { flex: 0 0 calc((100% - 32px) / 3); }
+      .skeleton-card { flex: 0 0 calc((100% - 32px) / 3); }
+    }
+    @media (max-width: 1024px) {
+      .bento-grid { grid-template-columns: 1fr 1fr; }
+      .bento-main { grid-column: 1 / 3; grid-row: 1; }
+      /* las 4 celdas (apple, samsung, cupón, fundas) caen en 2x2 abajo automáticamente */
+    }
+    @media (max-width: 768px) {
+      .value-grid { grid-template-columns: repeat(2, 1fr); }
+      .value-item { border-right: none; border-bottom: 1px solid var(--border); padding: 14px 0; }
+      .value-item:nth-child(odd)  { border-right: 1px solid var(--border); padding-right: 16px; }
+      .value-item:last-child, .value-item:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+      .carousel-track > .product-card { flex: 0 0 calc((100% - 16px) / 2); }
+      .skeleton-card { flex: 0 0 calc((100% - 16px) / 2); }
+      .carousel-arrows { display: none; }
+    }
+    /* ── Hero compacto mobile ──────────────────────────────────── */
+    .hero-mobile { display: none; }
+    .hero-mobile-top {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      margin-bottom: 10px;
+    }
+    .hero-mobile-title {
+      font-family: var(--font-accent); font-size: 16px; font-weight: 700;
+      color: var(--ink); margin: 0; line-height: 1.25;
+    }
+    .hero-mobile-cta {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--ink); color: #fff;
+      font-family: var(--font-accent); font-size: 12px; font-weight: 600;
+      padding: 0 14px; height: 36px; border-radius: var(--radius);
+      text-decoration: none; white-space: nowrap; flex-shrink: 0;
+    }
+    @media (max-width: 600px) {
+      /* value strip: 1 sola fila, sin scroll horizontal — mostramos solo
+         3 de los 4 beneficios (ocultamos "30 días" por ser el menos
+         determinante a la hora de comprar) para que entren completos
+         en pantalla y no se corten al cargar la página. */
+      .value-strip { padding: 0; }
+      .value-grid  { display: flex; padding: 0 16px; }
+      .value-grid::-webkit-scrollbar { display: none; }
+      .value-item  {
+        flex: 1 1 0; gap: 6px;
+        padding: 10px 8px;
+        justify-content: center;
+        border-bottom: none; border-right: 1px solid var(--border);
+      }
+      .value-item:nth-child(3) { display: none; }
+      .value-item:last-child { border-right: none; }
+      .value-icon  { width: 26px; height: 26px; flex-shrink: 0; }
+      .value-desc  { display: none; }
+      .value-title { font-size: 11px; white-space: nowrap; margin-bottom: 0; }
+
+      /* ocultar bento-grid, mostrar hero compacto */
+      .bento-grid  { display: none; }
+      .hero-bento  { padding: 14px 0 16px; }
+      .hero-mobile { display: block; }
+
+      /* secciones de productos con menos espacio vertical */
+      .products-section { padding: 20px 0; }
+      .products-section + .products-section { padding-top: 0; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K7X3HQ4W"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  <div id="header-root"></div>
+
+  <main>
+
+    <!-- ── VALUE STRIP ─────────────────────────────────────── -->
+    <section class="value-strip">
+      <div class="container">
+        <div class="value-grid">
+          <div class="value-item">
+            <div class="value-icon green">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <div>
+              <p class="value-title">Envío gratis</p>
+              <p class="value-desc">En compras +$33.000</p>
+            </div>
+          </div>
+          <div class="value-item">
+            <div class="value-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            <div>
+              <p class="value-title">Pago seguro</p>
+              <p class="value-desc">MercadoPago, débito y crédito</p>
+            </div>
+          </div>
+          <div class="value-item">
+            <div class="value-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+            </div>
+            <div>
+              <p class="value-title">30 días</p>
+              <p class="value-desc">Devolución sin costo</p>
+            </div>
+          </div>
+          <a class="value-item value-item-link" href="https://www.mercadolibre.com.ar/tienda/wzmallas" target="_blank" rel="noopener" title="Ver nuestra reputación en Mercado Libre">
+            <div class="value-icon ml">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+            </div>
+            <div>
+              <p class="value-title">MercadoLíder Platinum</p>
+              <p class="value-desc">Tienda Oficial · <span id="value-sold-stat">+8.900</span> ventas · 4.8★</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── BENTO HERO ─────────────────────────────────────────── -->
+    <section class="hero-bento">
+      <div class="container">
+        <div class="bento-grid">
+
+          <!-- Celda principal: título + CTA -->
+          <div class="bento-main">
+            <span class="bento-eyebrow">Accesorios premium</span>
+            <h1 class="bento-title">Protección y estilo para tu celular y tu smartwatch</h1>
+            <p class="bento-desc">Mallas y protectores para Apple Watch y Samsung Galaxy Watch, fundas y protectores de pantalla para iPhone y Samsung.</p>
+            <a href="./catalogo.html" class="bento-btn-primary">
+              Ver catálogo
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+            </a>
+          </div>
+
+          <!-- Celda categoría Apple Watch -->
+          <a href="./catalogo.html?cat=apple-watch" class="bento-cat">
+            <div>
+              <h3 class="bento-cat-title">Apple Watch</h3>
+              <span class="bento-cat-eyebrow">Ver mallas y protectores</span>
+            </div>
+            <svg class="bento-cat-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+          </a>
+
+          <!-- Celda categoría Samsung Watch -->
+          <a href="./catalogo.html?cat=samsung-watch" class="bento-cat">
+            <div>
+              <h3 class="bento-cat-title">Samsung Watch</h3>
+              <span class="bento-cat-eyebrow">Ver mallas y protectores</span>
+            </div>
+            <svg class="bento-cat-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+          </a>
+
+          <!-- Celda categoría Fundas celulares -->
+          <a href="./catalogo.html?cat=fundas" class="bento-cat">
+            <div>
+              <h3 class="bento-cat-title">Fundas celulares</h3>
+              <span class="bento-cat-eyebrow">Ver fundas iPhone y Samsung</span>
+            </div>
+            <svg class="bento-cat-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+          </a>
+
+          <!-- Celda cupón -->
+          <button class="bento-coupon" onclick="aplicarCuponHero('WEB10')" title="Clic para aplicar el cupón en el carrito">
+            <div class="bento-coupon-inner">
+              <span class="bento-coupon-code">Cupón WEB10</span>
+              <span class="bento-coupon-desc">10% OFF · aplicar al carrito</span>
+            </div>
+            <svg class="bento-coupon-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+          </button>
+
+        </div><!-- /bento-grid -->
+
+        <!-- ── Hero compacto: solo mobile ≤600px ── -->
+        <div class="hero-mobile">
+          <div class="hero-mobile-top">
+            <h1 class="hero-mobile-title">Mallas, fundas y protectores para tu celular y smartwatch</h1>
+            <a href="./catalogo.html" class="hero-mobile-cta">
+              Ver catálogo
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── MÁS VENDIDOS ────────────────────────────────────── -->
+    <section class="products-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Más vendidos</h2>
+          <div class="carousel-arrows">
+            <button class="carousel-arrow" data-carousel="bestsellers" data-dir="-1" aria-label="Anterior">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 3 5 7 9 11"/></svg>
+            </button>
+            <button class="carousel-arrow" data-carousel="bestsellers" data-dir="1" aria-label="Siguiente">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 3 9 7 5 11"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="carousel-wrap">
+          <div class="carousel-track" id="bestsellers-track">
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── MALLAS ──────────────────────────────────────────── -->
+    <section class="products-section" id="mallas-section" style="display:none;padding-top:0">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Mallas</h2>
+            <p style="font-size:13px;color:var(--text-3);margin-top:2px">Para Apple Watch, Samsung Watch y más</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <a href="./catalogo.html?q=malla" style="font-size:13px;font-weight:600;color:var(--text-2);text-decoration:none;white-space:nowrap">Ver todas →</a>
+            <div class="carousel-arrows">
+              <button class="carousel-arrow" data-carousel="mallas" data-dir="-1" aria-label="Anterior">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 3 5 7 9 11"/></svg>
+              </button>
+              <button class="carousel-arrow" data-carousel="mallas" data-dir="1" aria-label="Siguiente">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 3 9 7 5 11"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="carousel-wrap">
+          <div class="carousel-track" id="mallas-track">
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PROTECTORES ─────────────────────────────────────── -->
+    <section class="products-section" id="protectores-section" style="display:none;padding-top:0">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Protectores</h2>
+            <p style="font-size:13px;color:var(--text-3);margin-top:2px">Vidrios y protección para tu reloj</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <a href="./catalogo.html?q=protector" style="font-size:13px;font-weight:600;color:var(--text-2);text-decoration:none;white-space:nowrap">Ver todos →</a>
+            <div class="carousel-arrows">
+              <button class="carousel-arrow" data-carousel="protectores" data-dir="-1" aria-label="Anterior">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 3 5 7 9 11"/></svg>
+              </button>
+              <button class="carousel-arrow" data-carousel="protectores" data-dir="1" aria-label="Siguiente">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 3 9 7 5 11"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="carousel-wrap">
+          <div class="carousel-track" id="protectores-track">
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FUNDAS ──────────────────────────────────────────── -->
+    <section class="products-section" id="fundas-section" style="display:none;padding-top:0">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Fundas</h2>
+            <p style="font-size:13px;color:var(--text-3);margin-top:2px">Para iPhone y Samsung Galaxy</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <a href="./catalogo.html?q=funda" style="font-size:13px;font-weight:600;color:var(--text-2);text-decoration:none;white-space:nowrap">Ver todas →</a>
+            <div class="carousel-arrows">
+              <button class="carousel-arrow" data-carousel="fundas" data-dir="-1" aria-label="Anterior">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 3 5 7 9 11"/></svg>
+              </button>
+              <button class="carousel-arrow" data-carousel="fundas" data-dir="1" aria-label="Siguiente">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 3 9 7 5 11"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="carousel-wrap">
+          <div class="carousel-track" id="fundas-track">
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── VISTO RECIENTEMENTE (oculto por default, se muestra si hay 3+) ───── -->
+    <section class="products-section" id="recent-section" style="display:none;padding-top:0">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Visto recientemente</h2>
+            <p style="font-size:13px;color:var(--text-3);margin-top:2px">Volvé a lo que estabas mirando</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="carousel-arrows">
+              <button class="carousel-arrow" data-carousel="recent" data-dir="-1" aria-label="Anterior">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 3 5 7 9 11"/></svg>
+              </button>
+              <button class="carousel-arrow" data-carousel="recent" data-dir="1" aria-label="Siguiente">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 3 9 7 5 11"/></svg>
+              </button>
+            </div>
+            <button class="text-link" id="recent-clear" style="background:none;border:none;color:var(--text-3);font-size:12px;cursor:pointer;padding:4px 8px;font-family:inherit">
+              Limpiar historial
+            </button>
+          </div>
+        </div>
+        <div class="carousel-wrap">
+          <div class="carousel-track" id="recent-track"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── NOVEDADES ───────────────────────────────────────── -->
+    <section class="products-section" style="padding-top:0">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Para los últimos modelos</h2>
+            <p style="font-size:13px;color:var(--text-3);margin-top:2px">Fundas, mallas y protectores para los últimos modelos de celulares y smartwatches Apple y Samsung</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <a href="./catalogo.html" style="font-size:13px;font-weight:600;color:var(--text-2);text-decoration:none;white-space:nowrap">Ver catálogo →</a>
+            <div class="carousel-arrows">
+              <button class="carousel-arrow" data-carousel="novedades" data-dir="-1" aria-label="Anterior">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 3 5 7 9 11"/></svg>
+              </button>
+              <button class="carousel-arrow" data-carousel="novedades" data-dir="1" aria-label="Siguiente">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 3 9 7 5 11"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="carousel-wrap">
+          <div class="carousel-track" id="novedades-track">
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line w75"></div><div class="skeleton-line w50"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── RESEÑAS DESTACADAS (UGC) ─────────────────────────── -->
+    <section class="home-reviews" id="home-reviews" style="display:none">
+      <div class="container">
+        <div class="section-header" style="margin-bottom:20px">
+          <div>
+            <h2 class="section-title">Lo que dicen nuestros clientes</h2>
+            <p style="font-size:13px;color:var(--text-3);margin-top:2px">Reseñas verificadas de compradores reales</p>
+          </div>
+          <div class="carousel-arrows">
+            <button class="carousel-arrow" data-carousel="home-reviews" data-dir="-1" aria-label="Anterior">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 3 5 7 9 11"/></svg>
+            </button>
+            <button class="carousel-arrow" data-carousel="home-reviews" data-dir="1" aria-label="Siguiente">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 3 9 7 5 11"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="carousel-wrap">
+          <div class="carousel-track" id="home-reviews-track"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ─────────────────────────────────────────────── -->
+    <section class="cta-section">
+      <div class="container">
+        <p class="cta-title">¿Buscás algo en particular?</p>
+        <p class="cta-desc">Tenemos más de <strong id="cta-count">—</strong> productos disponibles. Explorá el catálogo completo y filtrá por categoría.</p>
+        <a href="./catalogo.html" class="cta-btn">
+          Ver catálogo completo
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 12 19 12"/><polyline points="13 6 19 12 13 18"/></svg>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="footer-root"></div>
+
+  <script src="./components/cart.js?v=8"></script>
+  <script src="./components/header.js?v=9"></script>
+  <script src="./components/footer.js?v=4"></script>
+  <script src="./components/products.js?v=10"></script>
+  <script>
+    initPage('home');
+
+    // ── Carrusel ────────────────────────────────────────────
+    function setupCarousel(name) {
+      const track = document.getElementById(name + '-track');
+      if (!track) return;
+      const arrows = document.querySelectorAll('[data-carousel="' + name + '"]');
+      arrows.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dir  = parseInt(btn.dataset.dir);
+          const card = track.firstElementChild;
+          const w    = card ? card.offsetWidth + 16 : 240;
+          const step = w * Math.max(1, Math.floor(track.offsetWidth / w));
+          track.scrollBy({ left: dir * step, behavior: 'smooth' });
+        });
+      });
+      function updateArrows() {
+        const max = track.scrollWidth - track.clientWidth - 2;
+        arrows.forEach(btn => {
+          const dir = parseInt(btn.dataset.dir);
+          btn.disabled = dir < 0 ? track.scrollLeft <= 2 : track.scrollLeft >= max;
+        });
+      }
+      track.addEventListener('scroll', updateArrows);
+      window.addEventListener('resize', updateArrows);
+      setTimeout(updateArrows, 100);
+    }
+
+    // ── Cargar productos ────────────────────────────────────
+    async function loadProducts() {
+      // Los skeletons estáticos ya están en el HTML (se muestran al instante)
+      // y se reemplazan abajo con los productos reales.
+      let products = PRODUCTS;
+
+      try {
+        // Intentar cargar desde la API (sin límite fijo, paginación del servidor)
+        const res = await fetch('/api/tienda/productos?limit=9999');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.productos && data.productos.length > 0) {
+            products = data.productos;
+          }
+        }
+      } catch { /* usa fallback hardcodeado */ }
+
+      const total = products.length;
+
+      // CTA count (los hero stats fueron removidos)
+      document.getElementById('cta-count').textContent = total;
+
+      // Stats hardcodeadas (valores reales obtenidos de ML, actualizados manualmente)
+
+      // ── Más vendidos: top 12 por sold_quantity ──────────
+      // Los primeros 5 (above-the-fold) cargan con prioridad alta
+      const bestsellers = [...products]
+        .sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0))
+        .slice(0, 12);
+      document.getElementById('bestsellers-track').innerHTML =
+        bestsellers.map((p, i) => productCardHtml(p, { priority: i < 5 })).join('');
+      setupCarousel('bestsellers');
+
+      // ── Clasificación liviana por título — refleja lo que realmente
+      // vendemos (mallas, protectores, fundas), igual criterio que el
+      // catálogo (ver _clientCat en catalogo.html) pero simplificado. ──
+      const _t = p => (p.title || '').toLowerCase();
+      const esFunda      = p => /funda|carcasa|cover/.test(_t(p));
+      const esMalla      = p => /malla|correa|milanese/.test(_t(p)) && !esFunda(p);
+      const esProtector  = p => /protector|cobertor|bumper|templado|bisel|vidrio/.test(_t(p)) && !esFunda(p);
+      // Último modelo de teléfono (para fundas/protectores de pantalla) o
+      // de smartwatch (para mallas/protectores de reloj) — cubrimos ambos
+      // mundos porque WZMALLAS vende tanto accesorios de celular como de
+      // smartwatch, y "lo último" debe representar ambas categorías.
+      const esUltimoTelefono = p => /iphone\s*17|s26|galaxy\s*s\s*26/.test(_t(p));
+      const esUltimoReloj = p => {
+        const t = _t(p);
+        if (!/watch/.test(t)) return false;
+        return /(serie\s*11|series\s*11|watch\s*8|watch ultra|ultra\s*1\/2|ultra\s*7\/8)/.test(t);
+      };
+      const esUltimoModelo = p => esUltimoTelefono(p) || esUltimoReloj(p);
+      const esModeloAnterior = p => {
+        const t = _t(p);
+        if (/iphone\s*16|s25|galaxy\s*s\s*25/.test(t)) return true;
+        if (/watch/.test(t) && /(serie\s*10|series\s*10|watch\s*7)/.test(t)) return true;
+        return false;
+      };
+
+      const fillCarousel = (id, name, list) => {
+        const section = document.getElementById(id + '-section');
+        const track   = document.getElementById(id + '-track');
+        if (!track) return;
+        if (!list.length) { if (section) section.style.display = 'none'; return; }
+        track.innerHTML = list.map(p => productCardHtml(p)).join('');
+        if (section) section.style.display = '';
+        setupCarousel(name);
+      };
+
+      // ── Mallas: las más vendidas, con stock ──────────────
+      const mallas = [...products]
+        .filter(p => esMalla(p) && getStock(p) > 0)
+        .sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0))
+        .slice(0, 12);
+      fillCarousel('mallas', 'mallas', mallas);
+
+      // ── Protectores: los más vendidos, con stock ──────────
+      const protectores = [...products]
+        .filter(p => esProtector(p) && getStock(p) > 0)
+        .sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0))
+        .slice(0, 12);
+      fillCarousel('protectores', 'protectores', protectores);
+
+      // ── Fundas: las más vendidas, con stock ──────────────
+      const fundas = [...products]
+        .filter(p => esFunda(p) && getStock(p) > 0)
+        .sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0))
+        .slice(0, 12);
+      fillCarousel('fundas', 'fundas', fundas);
+
+      // ── Visto recientemente (localStorage) ──────────────
+      loadRecentProducts(products);
+
+      // ── Para los últimos modelos: fundas, mallas y protectores
+      // específicamente para lo último del mercado — tanto teléfonos
+      // (iPhone 17 / Galaxy S26) como smartwatches (Apple Watch Series 11 /
+      // Watch Ultra, Samsung Galaxy Watch 8 / Watch Ultra) — priorizando lo
+      // más vendido entre esos modelos. Si todavía no hay suficiente
+      // variedad para esos modelos puntuales, completamos con accesorios
+      // para los modelos inmediatamente anteriores (iPhone 16 / S25,
+      // Apple Watch Series 10, Galaxy Watch 7) para no dejar el carrusel
+      // vacío o poco poblado. ──
+      const conStock = p => getStock(p) > 0;
+      const ultimosModelos = [...products].filter(p => esUltimoModelo(p) && conStock(p));
+      let novedades = ultimosModelos
+        .sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0))
+        .slice(0, 12);
+      if (novedades.length < 8) {
+        const usados = new Set(novedades.map(p => p.id));
+        const modeloAnterior = [...products]
+          .filter(p => !usados.has(p.id) && conStock(p) && esModeloAnterior(p) && (esFunda(p) || esMalla(p) || esProtector(p)))
+          .sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0));
+        novedades = novedades.concat(modeloAnterior).slice(0, 12);
+      }
+      document.getElementById('novedades-track').innerHTML =
+        novedades.map(p => productCardHtml(p)).join('');
+      setupCarousel('novedades');
+
+      // ── Reseñas destacadas (UGC) ─────────────────────────
+      loadHomeReviews(bestsellers);
+    }
+
+    // ── Visto recientemente: cruza wz_recent con el catálogo ──
+    function loadRecentProducts(allProducts) {
+      const section = document.getElementById('recent-section');
+      const track   = document.getElementById('recent-track');
+      if (!section || !track) return;
+
+      try {
+        // Si el usuario rechazó funcionales, no mostrar (ya fue vaciado en consent change)
+        if (window.CookieConsent && window.CookieConsent.hasDecided
+            && window.CookieConsent.hasDecided()
+            && !window.CookieConsent.hasConsent('functional')) {
+          section.style.display = 'none';
+          return;
+        }
+
+        const ids = JSON.parse(localStorage.getItem('wz_recent') || '[]');
+        if (ids.length < 3) { section.style.display = 'none'; return; }
+
+        // Mantener orden de visita (último primero) cruzando con catálogo actual
+        const map = new Map(allProducts.map(p => [p.id, p]));
+        const recent = ids.map(id => map.get(id)).filter(Boolean).slice(0, 12);
+        if (recent.length < 3) { section.style.display = 'none'; return; }
+
+        track.innerHTML = recent.map(p => productCardHtml(p)).join('');
+        section.style.display = 'block';
+        setupCarousel('recent');
+      } catch (e) {
+        section.style.display = 'none';
+      }
+    }
+
+    // Botón "Limpiar historial"
+    (function() {
+      const btn = document.getElementById('recent-clear');
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        try { localStorage.removeItem('wz_recent'); } catch {}
+        const section = document.getElementById('recent-section');
+        if (section) section.style.display = 'none';
+      });
+    })();
+
+    // Si el usuario revoca cookies funcionales → ocultar y vaciar historial
+    window.addEventListener('wz:consent', e => {
+      if (e.detail && e.detail.functional === false) {
+        try { localStorage.removeItem('wz_recent'); } catch {}
+        const section = document.getElementById('recent-section');
+        if (section) section.style.display = 'none';
+      }
+    });
+
+    // ── Reseñas destacadas en home (UGC) ────────────────────
+    // Trae reseñas de los top bestsellers en paralelo, filtra las mejores
+    // y arma un carrusel deslizable (no solo 3 fijas) para que se puedan
+    // recorrer más fotos/publicaciones de clientes reales.
+    async function loadHomeReviews(bestsellers) {
+      try {
+        // Tomar top 14 productos para tener buen pool de reseñas con foto
+        const candidates = bestsellers.slice(0, 14);
+        if (!candidates.length) return;
+
+        // Fetch en paralelo, fail-soft
+        const results = await Promise.all(candidates.map(p =>
+          fetch(`/api/tienda/reviews/${encodeURIComponent(p.id)}?offset=0&limit=12`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => (d && d.reviews ? d.reviews : []).map(r => ({
+              ...r,
+              productId: p.id,
+              productTitle: p.title,
+              productImg: getImg(p)
+            })))
+            .catch(() => [])
+        ));
+        const all = results.flat();
+
+        // Filtrar: buena calificación (4★ o 5★) y contenido con sustancia
+        let pool = all.filter(r =>
+          (r.rate || 0) >= 4 &&
+          (r.content || '').trim().length >= 30
+        );
+        // Priorizar fuerte las reseñas con fotos reales de clientes: son
+        // justo el tipo de imagen "real" (no de catálogo/estudio) que nos
+        // falta mostrar en la tienda, y generan mucha más confianza que el
+        // texto solo. Entre fotos, priorizamos la mejor calificación.
+        pool.sort((a, b) => {
+          const photoDiff = (b.photos?.length || 0) - (a.photos?.length || 0);
+          if (photoDiff !== 0) return photoDiff;
+          return (b.rate || 0) - (a.rate || 0);
+        });
+
+        // Deduplicar por productId (no repetir mismo producto) — ahora
+        // armamos hasta 10 tarjetas para que el carrusel tenga contenido
+        // de sobra para deslizar (antes se cortaba en solo 3).
+        const seen = new Set();
+        const unique = [];
+        for (const r of pool) {
+          if (seen.has(r.productId)) continue;
+          seen.add(r.productId);
+          unique.push(r);
+          if (unique.length === 10) break;
+        }
+
+        if (unique.length < 2) return;  // Si no hay suficientes, ocultar sección
+
+        // Renderizar
+        const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const stars = n => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
+
+        document.getElementById('home-reviews-track').innerHTML = unique.map(r => {
+          const photos = (r.photos || []).slice(0, 2);
+          const hasPhotos = photos.length > 0;
+
+          const body = `
+            <div class="home-review-stars">${stars(r.rate)}</div>
+            ${r.title ? `<div class="home-review-title">${esc(r.title)}</div>` : ''}
+            <p class="home-review-content">${esc(r.content)}</p>
+            <div class="home-review-product">
+              <img src="${esc(r.productImg)}" alt="" loading="lazy" decoding="async">
+              <span class="home-review-product-name">${esc(r.productTitle)}</span>
+            </div>
+          `;
+
+          if (hasPhotos) {
+            // La foto del cliente es la protagonista de la tarjeta — la
+            // mostramos grande, como portada, con el texto debajo.
+            const heroHtml = `
+              <div class="home-review-photos-hero count-${photos.length}">
+                ${photos.map(p => `<img src="${esc(p.full || p.thumb)}" alt="Foto real de un cliente" loading="lazy" decoding="async">`).join('')}
+              </div>
+            `;
+            return `
+              <a href="./producto.html?id=${esc(r.productId)}" class="home-review-card has-photo">
+                ${heroHtml}
+                <div class="home-review-body">
+                  <span class="home-review-photo-badge">📷 Foto de un cliente</span>
+                  ${body}
+                </div>
+              </a>
+            `;
+          }
+
+          return `
+            <a href="./producto.html?id=${esc(r.productId)}" class="home-review-card">
+              ${body}
+            </a>
+          `;
+        }).join('');
+
+        document.getElementById('home-reviews').style.display = 'block';
+        setupCarousel('home-reviews');
+      } catch (e) {
+        // Silencioso: si falla, la sección queda oculta
+      }
+    }
+
+    // ── Cupón desde hero ─────────────────────────────────────
+    function aplicarCuponHero(code) {
+      // sessionStorage: siempre (auto-limpia al cerrar el browser)
+      try { sessionStorage.setItem('wz_promo', code); } catch {}
+      // localStorage: solo si aceptaron cookies funcionales (persiste entre sesiones)
+      if (typeof CookieConsent !== 'undefined' && CookieConsent.hasConsent('functional')) {
+        try { localStorage.setItem('wz_promo', code); } catch {}
+      }
+      window.location.href = './carrito.html';
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+    loadProducts();
+  </script>
+</body>
+</html>
