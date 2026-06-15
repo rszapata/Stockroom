@@ -9,6 +9,22 @@ Todo corre sobre un servidor Node.js puro (sin frameworks) con PostgreSQL, notif
 
 ## Capturas
 
+### Tienda web (e-commerce)
+
+#### Home
+![Tienda — Home](assets/Tienda-Home.png)
+
+#### Catálogo
+![Tienda — Catálogo](assets/Tienda-Catalogo.png)
+
+#### Página de producto
+![Tienda — Producto](assets/Tienda-Producto.png)
+
+#### Cuenta de cliente
+![Tienda — Mi cuenta](assets/Tienda-Cuenta.png)
+
+### Back-office (Stockroom)
+
 ### Dashboard
 ![Dashboard](assets/Dashboard.png)
 
