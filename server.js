@@ -6709,21 +6709,25 @@ function buildVariantAdjustments(g, variantMismatches, pendingVarKeys) {
     if (pendingVarKeys.has(g.id + '|' + vk)) continue;       // ya hay aviso para esta variante
     const changes = buildVariantChangesFromMismatches([mm]);
     if (!changes.length) continue;
-    out.push({
+    const adj = {
       id: newId('adj_var_'), type: 'variant', createdAt: new Date().toISOString(),
       groupId: g.id, groupName: g.name, variantKey: vk,
       variantMismatches: [mm], changes, status: 'pending',
-    });
-    created.push(mm);
+    };
+    out.push(adj);
+    created.push(adj);
     pendingVarKeys.add(g.id + '|' + vk);
   }
   // Resumen opcional: sólo si se crearon 2+ avisos de variante en esta corrida.
+  // Guarda childIds para poder resolver/limpiar esos avisos al "aplicar todas".
   if (created.length >= 2) {
+    const allMm = created.flatMap(a => a.variantMismatches);
     out.push({
       id: newId('adj_vsum_'), type: 'variant-summary', createdAt: new Date().toISOString(),
       groupId: g.id, groupName: g.name,
-      variantMismatches: created,
-      changes: buildVariantChangesFromMismatches(created),
+      childIds: created.map(a => a.id),
+      variantMismatches: allMm,
+      changes: buildVariantChangesFromMismatches(allMm),
       status: 'pending',
     });
   }
