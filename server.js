@@ -5432,41 +5432,54 @@ async function sendTgAdjustmentNotification(adj) {
   // (1 botón por variante por item), así que mostramos un resumen y
   // remitimos a la web, donde está el detalle completo y el botón "Aplicar".
   if (adj.type === 'variant') {
+    // Un aviso por UNA variante desalineada. Un botón por cuenta con su cantidad
+    // real para esa variante; la cuenta que vendió (menor cantidad) se marca como
+    // recomendada. Al elegir una, su cantidad se copia al resto (sube o baja).
+    const m0 = (adj.variantMismatches || [])[0];
+    if (!m0) return null;
+    const detalle = m0.perItem.map(p => `${_shortAcct(p.acctLabel)} x${p.qty}`).join(' vs ');
+    let text = `📦 <b>Diferencia de stock</b> · ${adj.groupName}\n`;
+    text += `🎨 <b>${m0.label}</b>: ${detalle}\n\n`;
+    text += `Elegí qué cuenta tiene el stock correcto para esta variante (se copia a las demás):`;
+
+    const minQty = Math.min(...m0.perItem.map(p => p.qty));
+    let recMarked = false;
+    const keyboard = m0.perItem.map(p => {
+      const isRec = !recMarked && p.qty === minQty; // recomendada = la que vendió (menor)
+      if (isRec) recMarked = true;
+      return [{ text: `✅ Usar ${_shortAcct(p.acctLabel)} x${p.qty}${isRec ? ' · recom.' : ''}`, callback_data: `vsrc:${adj.id}:${p.itemId}` }];
+    });
+    keyboard.push([{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]);
+
+    const photoUrl = m0.perItem.map(p => p.pic).find(Boolean) || null;
+    const sent = photoUrl
+      ? await tgSendPhoto(photoUrl, text, keyboard)
+      : await tgSend(text, keyboard);
+    console.log('[tg] Notificación enviada (variante):', adj.id, photoUrl ? '(con foto)' : '');
+    return (sent && sent.ok && sent.result)
+      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id, isPhoto: !!(photoUrl && sent.result.photo) }
+      : null;
+  }
+
+  // Resumen cuando hay 2+ variantes desalineadas: cada una tiene su propio aviso,
+  // pero este permite aplicar de una todas las recomendadas (la cuenta que vendió
+  // en cada variante = la de menor cantidad).
+  if (adj.type === 'variant-summary') {
     const mm = adj.variantMismatches || [];
-    let text = `📦 <b>Diferencia de stock</b> · ${adj.groupName}\n\n`;
+    let text = `📦 <b>Varias variantes desalineadas</b> · ${adj.groupName}\n\n`;
     for (const m of mm) {
       const detalle = m.perItem.map(p => `${_shortAcct(p.acctLabel)} x${p.qty}`).join(' vs ');
       text += `🎨 ${m.label}: ${detalle}\n`;
     }
-    text += `\nElegí qué cuenta tiene el stock correcto (se copia a las demás):`;
-
-    // Un botón por cuenta del grupo (fuente de verdad), sin importar cuántas
-    // variantes estén desbalanceadas. Al elegir una, su cantidad de cada
-    // variante se copia al resto (sube o baja). Reemplaza el viejo "gestioná
-    // desde la web" cuando había 2+ variantes.
-    const srcMap = {};
-    for (const m of mm) for (const p of m.perItem) {
-      if (!srcMap[p.itemId]) srcMap[p.itemId] = { acctLabel: p.acctLabel, qtys: [] };
-      srcMap[p.itemId].qtys.push(p.qty);
-    }
-    const keyboard = Object.entries(srcMap).map(([itemId, info]) => {
-      // Mostrar la cantidad resultante sólo cuando hay una sola variante
-      // (con 2+ variantes una misma cuenta tiene cantidades distintas y no hay
-      // un único número que mostrar — el detalle va en el cuerpo del mensaje).
-      const qtyTxt = info.qtys.length === 1 ? ` x${info.qtys[0]}` : '';
-      return [{ text: `✅ Usar ${_shortAcct(info.acctLabel)}${qtyTxt}`, callback_data: `vsrc:${adj.id}:${itemId}` }];
-    });
-    keyboard.push([{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }]);
-
-    // Imagen de la variante: si hay UNA sola variante en juego, usamos su foto
-    // específica (el color exacto). Con varias, la primera disponible.
-    const photoUrl = mm.flatMap(m => m.perItem).map(p => p.pic).find(Boolean) || null;
-    const sent = photoUrl
-      ? await tgSendPhoto(photoUrl, text, keyboard)
-      : await tgSend(text, keyboard);
-    console.log('[tg] Notificación enviada para ajuste:', adj.id, photoUrl ? '(con foto)' : '');
+    text += `\nMandé un aviso por cada variante para decidirla por separado.\nO aplicá de una todas las recomendadas (la que vendió en cada una):`;
+    const keyboard = [
+      [{ text: '✅ Aplicar todas las recomendadas', callback_data: `apvarall:${adj.id}` }],
+      [{ text: '✕ Descartar resumen', callback_data: `dis:${adj.id}` }],
+    ];
+    const sent = await tgSend(text, keyboard);
+    console.log('[tg] Notificación enviada (resumen variantes):', adj.id);
     return (sent && sent.ok && sent.result)
-      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id, isPhoto: !!(photoUrl && sent.result.photo) }
+      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id }
       : null;
   }
 
@@ -5755,6 +5768,59 @@ async function handleTgCallback(cb) {
       appendVincLog({ action: adj.status, source: 'telegram', adjId: adj.id, groupId: adj.groupId, itemsApplied: applied, itemsTotal: adj.changes.length });
       const failMsg = failed ? ` · ${failed} fallido(s)` : '';
       await reply(`✅ <b>${adj.groupName}</b>\n${mm.label}: ajustado a x${chosen.qty} (${_shortAcct(chosen.acctLabel)})${failMsg}.`);
+
+    } else if (action === 'apvarall') {
+      // Resumen: aplicar TODAS las variantes a su cantidad recomendada (la menor
+      // = la cuenta que vendió). Resuelve también los avisos por-variante hijos.
+      const allAdj = loadPendingAdjustments();
+      const adj = allAdj.find(a => a.id === rest);
+      if (!adj || adj.status !== 'pending') { await reply(_adjStaleMsg(adj)); return; }
+      const changes = (adj.changes && adj.changes.length)
+        ? adj.changes
+        : buildVariantChangesFromMismatches(adj.variantMismatches || []);
+
+      reply(`🔄 Aplicando ${(adj.variantMismatches || []).length} variante(s)...`).catch(() => {});
+
+      const allAccounts = fullConfig.accounts || [];
+      const results = await Promise.allSettled(changes.map(async ch => {
+        const acct = allAccounts.find(a => a.id === ch.accountId);
+        if (!acct) return { skipped: true };
+        await refreshAccountToken(acct);
+        const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
+        const vars = itemData.variations || [];
+        const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+        for (const vc of ch.variantChanges || []) {
+          const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+          if (matchedVar) { const t = newVars.find(v => v.id === matchedVar.id); if (t) t.available_quantity = Math.max(0, vc.to); }
+        }
+        const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+        await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
+        return { applied: true, itemId: ch.itemId };
+      }));
+
+      let applied = 0, failed = 0;
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled' && r.value?.applied) applied++;
+        else if (r.status === 'rejected') { failed++; console.log('[tg] Error apvarall', changes[i].itemId, r.reason?.message || r.reason); }
+      });
+
+      adj.status = (applied > 0 && failed === 0) ? 'applied' : 'error';
+      adj.appliedAt = new Date().toISOString();
+      // Resolver los avisos por-variante hijos y limpiar sus mensajes.
+      for (const cid of (adj.childIds || [])) {
+        const child = allAdj.find(a => a.id === cid);
+        if (child && child.status === 'pending') {
+          child.status = 'applied'; child.appliedAt = adj.appliedAt;
+          if (child.tgChatId && child.tgMsgId) {
+            const txt = `✅ <b>${child.groupName}</b>\nResuelto vía "aplicar todas las recomendadas".`;
+            (child.tgIsPhoto ? tgEditCaption(child.tgChatId, child.tgMsgId, txt) : tgEdit(child.tgChatId, child.tgMsgId, txt)).catch(() => {});
+          }
+        }
+      }
+      savePendingAdjustments(allAdj);
+      appendVincLog({ action: adj.status, source: 'telegram', adjId: adj.id, groupId: adj.groupId, kind: 'variant-summary', itemsApplied: applied, itemsTotal: changes.length });
+      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
+      await reply(`✅ <b>${adj.groupName}</b>\nTodas las variantes recomendadas aplicadas (${applied} item(s))${failMsg}.`);
 
     } else if (action === 'vsrc') {
       // Elegir una cuenta (su item) como fuente de verdad para TODAS las
@@ -6631,6 +6697,39 @@ function buildVariantChangesFromSource(variantMismatches, sourceItemId) {
   return Object.values(changesMap);
 }
 
+// A partir de los mismatches de un grupo crea UN ajuste por variante desalineada
+// (cada uno con su propio mensaje de Telegram y sus botones por cuenta) y, si hay
+// 2 o más, un ajuste "resumen" con un botón "aplicar todas las recomendadas".
+// Dedup por (grupo|variante) vía pendingVarKeys para no duplicar entre checks.
+function buildVariantAdjustments(g, variantMismatches, pendingVarKeys) {
+  const out = [], created = [];
+  const newId = (p) => p + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  for (const mm of variantMismatches) {
+    const vk = mm.attrKey;
+    if (pendingVarKeys.has(g.id + '|' + vk)) continue;       // ya hay aviso para esta variante
+    const changes = buildVariantChangesFromMismatches([mm]);
+    if (!changes.length) continue;
+    out.push({
+      id: newId('adj_var_'), type: 'variant', createdAt: new Date().toISOString(),
+      groupId: g.id, groupName: g.name, variantKey: vk,
+      variantMismatches: [mm], changes, status: 'pending',
+    });
+    created.push(mm);
+    pendingVarKeys.add(g.id + '|' + vk);
+  }
+  // Resumen opcional: sólo si se crearon 2+ avisos de variante en esta corrida.
+  if (created.length >= 2) {
+    out.push({
+      id: newId('adj_vsum_'), type: 'variant-summary', createdAt: new Date().toISOString(),
+      groupId: g.id, groupName: g.name,
+      variantMismatches: created,
+      changes: buildVariantChangesFromMismatches(created),
+      status: 'pending',
+    });
+  }
+  return out;
+}
+
 async function _checkStockChangesImpl() {
   const _checkStartMs = Date.now();
   const fp = path.join(__dirname, 'vinculaciones.json');
@@ -6645,7 +6744,10 @@ async function _checkStockChangesImpl() {
   // Cargar TODOS los ajustes (para poder mutar estados y guardar)
   const allAdjustments   = loadPendingAdjustments();
   const existing         = allAdjustments.filter(p => p.status === 'pending');
-  const pendingGroupIds  = new Set(existing.map(p => p.groupId));
+  // Dedup separado: total/venta por grupo; variante por (grupo + variante),
+  // para que cada variante tenga su propio aviso sin bloquear a las demás.
+  const pendingGroupIds  = new Set(existing.filter(p => p.type !== 'variant' && p.type !== 'variant-summary').map(p => p.groupId));
+  const pendingVarKeys   = new Set(existing.filter(p => p.type === 'variant' && p.variantKey).map(p => p.groupId + '|' + p.variantKey));
   const newAdjustments   = [];
   let   autoResolvedCount = 0;
 
@@ -6757,18 +6859,37 @@ async function _checkStockChangesImpl() {
     // casualidad mientras las variantes individuales quedan desalineadas).
     const variantMismatches = detectVariantMismatches(stocks);
 
-    // ── Auto-resolver ajustes pendientes si los stocks ya están igualados ──
+    // ── Auto-resolver avisos de VARIANTE ya alineados ───────────
+    // Cada aviso de variante (o el resumen) cuya(s) variante(s) ya no figura(n)
+    // en variantMismatches (se aplicó o se corrigió a mano) se resuelve solo.
+    {
+      const stillBadKeys = new Set(variantMismatches.map(m => m.attrKey));
+      allAdjustments.forEach(a => {
+        if (a.groupId !== g.id || a.status !== 'pending') return;
+        if (a.type !== 'variant' && a.type !== 'variant-summary') return;
+        const keys = (a.variantMismatches || []).map(m => m.attrKey);
+        if (keys.some(k => stillBadKeys.has(k))) return;   // todavía hay algo que ajustar
+        a.status = 'auto-resolved';
+        autoResolvedCount++;
+        if (a.variantKey) pendingVarKeys.delete(g.id + '|' + a.variantKey);
+        if (a.tgChatId && a.tgMsgId) {
+          const txt = `✅ <b>${a.groupName}</b>\nVariante(s) ya sincronizada(s) — nada que ajustar.`;
+          (a.tgIsPhoto ? tgEditCaption(a.tgChatId, a.tgMsgId, txt) : tgEdit(a.tgChatId, a.tgMsgId, txt)).catch(() => {});
+        }
+        console.log('[vinc]   ✅ Auto-resuelto (variante): "' + g.name + '"');
+      });
+    }
+
+    // ── Auto-resolver ajustes de TOTAL/VENTA si los totales se igualaron ──
     // Ocurre cuando el ajuste fue aplicado desde otra instancia del servidor.
     if (pendingGroupIds.has(g.id)) {
       const nums    = stocks.map(s => s.realStock);
       const allSame = nums.length >= 2 && nums.every(n => n === nums[0]);
       if (allSame) {
         allAdjustments.forEach(a => {
-          if (a.groupId === g.id && a.status === 'pending') {
+          if (a.groupId === g.id && a.status === 'pending' && a.type !== 'variant' && a.type !== 'variant-summary') {
             a.status = 'auto-resolved';
             autoResolvedCount++;
-            // Editar el mensaje de Telegram para quitar los botones zombi:
-            // la venta se canceló o el stock se reequilibró solo.
             if (a.tgChatId && a.tgMsgId) {
               const txt = `↩️ <b>${a.groupName}</b>\nLa venta se canceló o el stock se reequilibró solo (${nums[0]} u.) — no hay nada que ajustar.`;
               (a.tgIsPhoto ? tgEditCaption(a.tgChatId, a.tgMsgId, txt) : tgEdit(a.tgChatId, a.tgMsgId, txt)).catch(() => {});
@@ -6777,55 +6898,24 @@ async function _checkStockChangesImpl() {
           }
         });
         pendingGroupIds.delete(g.id); // liberar para que pueda generarse nuevo si vuelve a desbalancearse
-
-        // Si pese a coincidir los totales hay variantes desalineadas
-        // (ej: se vendió una variante distinta en cada cuenta), generar
-        // un ajuste de tipo "variant" para corregirlas.
-        if (variantMismatches.length) {
-          const changes = buildVariantChangesFromMismatches(variantMismatches);
-          if (changes.length) {
-            newAdjustments.push({
-              id: 'adj_var_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-              type: 'variant',
-              createdAt: new Date().toISOString(),
-              groupId: g.id,
-              groupName: g.name,
-              variantMismatches,
-              changes,
-              status: 'pending',
-            });
-            pendingGroupIds.add(g.id);
-            console.log('[vinc]   ⚠ "' + g.name + '" — totales igualados pero ' + variantMismatches.length + ' variante(s) desalineada(s)');
-          }
-        }
       }
     }
 
-    // Generar ajuste pendiente si: stocks desiguales + hubo cambio + no hay pendiente para este grupo
-    if (!pendingGroupIds.has(g.id)) {
-      const nums = stocks.map(s => s.realStock);
-      const allSame = nums.every(n => n === nums[0]);
+    // ── Generar ajustes nuevos ───────────────────────────────────
+    const nums = stocks.map(s => s.realStock);
+    const allSame = nums.every(n => n === nums[0]);
 
-      // Verificar siempre por variante primero: si hay desalineación a nivel
-      // de variante, es más precisa que el ajuste por total y la corrige de
-      // entrada, sin importar si los totales ya coinciden o no.
-      if (variantMismatches.length) {
-        const changes = buildVariantChangesFromMismatches(variantMismatches);
-        if (changes.length) {
-          newAdjustments.push({
-            id: 'adj_var_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-            type: 'variant',
-            createdAt: new Date().toISOString(),
-            groupId: g.id,
-            groupName: g.name,
-            variantMismatches,
-            changes,
-            status: 'pending',
-          });
-          pendingGroupIds.add(g.id);
-          console.log('[vinc]   ⚠ "' + g.name + '" — ' + variantMismatches.length + ' variante(s) desalineada(s)' + (allSame ? ' (totales iguales)' : ''));
-        }
-      } else if (!allSame && anyChanged) {
+    // Verificar por variante primero (más preciso): 1 aviso por variante
+    // desalineada + un resumen "aplicar todas" si hay 2 o más. Dedup por
+    // (grupo|variante), así cada variante se decide por separado.
+    if (variantMismatches.length) {
+      const created = buildVariantAdjustments(g, variantMismatches, pendingVarKeys);
+      if (created.length) {
+        newAdjustments.push(...created);
+        const nVar = created.filter(a => a.type === 'variant').length;
+        console.log('[vinc]   ⚠ "' + g.name + '" — ' + nVar + ' variante(s) desalineada(s)' + (allSame ? ' (totales iguales)' : '') + ' → ' + created.length + ' aviso(s)');
+      }
+    } else if (!pendingGroupIds.has(g.id) && !allSame && anyChanged) {
         const minStock = Math.min(...nums);
 
         // Detectar el trigger: item con mayor caída
@@ -6876,7 +6966,6 @@ async function _checkStockChangesImpl() {
           console.log('[vinc]   ⚠ Ajuste pendiente: "' + g.name + '" → stock ' + minStock + ' (' + changes.length + ' item(s))');
         }
       }
-    }
   }
 
   // Guardar lastStock actualizado
