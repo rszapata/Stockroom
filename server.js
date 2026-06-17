@@ -5571,9 +5571,17 @@ async function handleTgCallback(cb) {
   // cb.message.photo.
   const _isPhoto = !!cb.message?.photo;
   // Edita el mensaje original (quita botones); si no hay contexto, manda uno nuevo
-  const reply = (text, keyboard) => (_chatId && _msgId)
-    ? (_isPhoto ? tgEditCaption(_chatId, _msgId, text, keyboard) : tgEdit(_chatId, _msgId, text, keyboard))
-    : tgSend(text, keyboard);
+  // Edita el mensaje original in-place; si el edit falla (ok:false / red), cae a
+  // un mensaje NUEVO para no dejar el aviso colgado en "Aplicando…" sin resultado.
+  const reply = async (text, keyboard) => {
+    if (_chatId && _msgId) {
+      const r = await (_isPhoto
+        ? tgEditCaption(_chatId, _msgId, text, keyboard)
+        : tgEdit(_chatId, _msgId, text, keyboard));
+      if (r) return r;
+    }
+    return tgSend(text, keyboard);
+  };
 
   try {
     if (action === 'apply') {
@@ -6794,8 +6802,10 @@ async function _checkStockChangesImpl() {
           pic: (picId && picsById[picId]) || null,
         };
       });
-      const thumb = d.thumbnail ||
-        (d.pictures && d.pictures[0] && (d.pictures[0].secure_url || d.pictures[0].url)) || '';
+      // Preferir secure_url (https, alta resolución) sobre d.thumbnail (http, baja
+      // res) — Telegram a veces no puede bajar las URLs http de ML al mandar la foto.
+      const thumb = (d.pictures && d.pictures[0] && (d.pictures[0].secure_url || d.pictures[0].url))
+        || d.thumbnail || '';
       return { itemId, realStock, variantSnap, thumb };
     })
   );
