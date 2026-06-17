@@ -6733,38 +6733,23 @@ function buildVariantChangesFromSource(variantMismatches, sourceItemId) {
 }
 
 // A partir de los mismatches de un grupo crea UN ajuste por variante desalineada
-// (cada uno con su propio mensaje de Telegram y sus botones por cuenta) y, si hay
-// 2 o más, un ajuste "resumen" con un botón "aplicar todas las recomendadas".
+// (cada uno con su propio mensaje de Telegram y sus botones por cuenta). Sin
+// resumen "aplicar todas" — cada variante se decide y aplica por separado.
 // Dedup por (grupo|variante) vía pendingVarKeys para no duplicar entre checks.
 function buildVariantAdjustments(g, variantMismatches, pendingVarKeys) {
-  const out = [], created = [];
+  const out = [];
   const newId = (p) => p + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   for (const mm of variantMismatches) {
     const vk = mm.attrKey;
     if (pendingVarKeys.has(g.id + '|' + vk)) continue;       // ya hay aviso para esta variante
     const changes = buildVariantChangesFromMismatches([mm]);
     if (!changes.length) continue;
-    const adj = {
+    out.push({
       id: newId('adj_var_'), type: 'variant', createdAt: new Date().toISOString(),
       groupId: g.id, groupName: g.name, variantKey: vk,
       variantMismatches: [mm], changes, status: 'pending',
-    };
-    out.push(adj);
-    created.push(adj);
-    pendingVarKeys.add(g.id + '|' + vk);
-  }
-  // Resumen opcional: sólo si se crearon 2+ avisos de variante en esta corrida.
-  // Guarda childIds para poder resolver/limpiar esos avisos al "aplicar todas".
-  if (created.length >= 2) {
-    const allMm = created.flatMap(a => a.variantMismatches);
-    out.push({
-      id: newId('adj_vsum_'), type: 'variant-summary', createdAt: new Date().toISOString(),
-      groupId: g.id, groupName: g.name,
-      childIds: created.map(a => a.id),
-      variantMismatches: allMm,
-      changes: buildVariantChangesFromMismatches(allMm),
-      status: 'pending',
     });
+    pendingVarKeys.add(g.id + '|' + vk);
   }
   return out;
 }
