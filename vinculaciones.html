@@ -1309,33 +1309,35 @@ function renderPending(list) {
       })).join(' ');
       triggerTxt = icon + ' ' + (isCancelAdj ? 'Venta cancelada' : 'Venta detectada') + ' — se sugiere ' + verbo + ' stock vinculado &nbsp;' + deltaBadges;
     } else if (isVariantAdj) {
+      // Card compacto: cada ajuste es de UNA variante → la mostramos una sola vez
+      // (thumb + variante + cambio + elección de cuenta en una fila). El badge
+      // "POR VARIANTE" del encabezado ya indica el tipo, así que no repetimos fila.
+      triggerTxt = '';
       const mm = adj.variantMismatches || [];
-      const varBadges = mm.map(m =>
-        '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--mono);font-size:10px;color:var(--text)">' +
-        esc(m.label || fmtAttrKey(m.attrKey)) +
-        '<span style="color:#f87171;font-weight:600;margin-left:2px">x' + Math.max(...m.perItem.map(p => p.qty)) + '</span>' +
-        '<span style="color:var(--text-3);margin:0 3px">→</span>' +
-        '<span style="color:#4ade80;font-weight:600">x' + m.targetQty + '</span>' +
-        '</span>'
-      ).join(' ');
-      triggerTxt = '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg> Desbalance por variante &nbsp;' + varBadges;
-
-      // ── Selector por variante: elegir qué cuenta tiene el valor correcto ──
-      choiceHtml = '<div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px">' +
-        '<div style="font-size:10px;color:var(--text-3);font-family:var(--mono)">Elegí qué cuenta tiene el stock correcto para cada variante:</div>' +
-        mm.map((m, idx) => {
-          const opts = m.perItem.map(p => {
-            const checked = p.qty === m.targetQty ? 'checked' : '';
-            return '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:10px;color:var(--text)">' +
-              '<input type="radio" name="vc_' + adj.id + '_' + idx + '" value="' + esc(p.itemId) + '" data-attrkey="' + esc(m.attrKey) + '" ' + checked + ' style="margin:0">' +
-              esc(shortAcct(p.acctLabel)) + ' x' + p.qty +
-              '</label>';
-          }).join(' ');
-          return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-            '<span style="font-family:var(--mono);font-size:10px;color:var(--text-2);min-width:160px">' + esc(m.label || fmtAttrKey(m.attrKey)) + '</span>' +
-            opts +
-          '</div>';
-        }).join('') +
+      const thumb = (adj.changes.find(c => c.thumb) || {}).thumb || '';
+      const rows = mm.map((m, idx) => {
+        const fromQty = Math.max(...m.perItem.map(p => p.qty));
+        const opts = m.perItem.map(p => {
+          const checked = p.qty === m.targetQty ? 'checked' : '';
+          return '<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-family:var(--mono);font-size:11px;color:var(--text)">' +
+            '<input type="radio" name="vc_' + adj.id + '_' + idx + '" value="' + esc(p.itemId) + '" data-attrkey="' + esc(m.attrKey) + '" ' + checked + ' style="margin:0">' +
+            esc(shortAcct(p.acctLabel)) + ' <span style="color:var(--text-3)">x' + p.qty + '</span>' +
+            '</label>';
+        }).join('');
+        return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+          '<span style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:600">' + esc(m.label || fmtAttrKey(m.attrKey)) + '</span>' +
+          '<span style="font-family:var(--mono);font-size:11px">' +
+            '<span style="color:#f87171;text-decoration:line-through;opacity:.6">x' + fromQty + '</span>' +
+            '<span style="color:var(--text-3);margin:0 4px">→</span>' +
+            '<span style="color:#4ade80;font-weight:600">x' + m.targetQty + '</span>' +
+          '</span>' +
+          '<span style="color:var(--text-3);font-size:11px">·</span>' +
+          opts +
+        '</div>';
+      }).join('');
+      choiceHtml = '<div style="padding:12px 16px;display:flex;align-items:center;gap:12px">' +
+        (thumb ? '<img src="' + esc(thumb) + '" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '') +
+        '<div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">' + rows + '</div>' +
       '</div>';
     } else {
       triggerTxt = adj.trigger
@@ -1353,8 +1355,8 @@ function renderPending(list) {
       }
     }
 
-    // ── Filas de items a ajustar ──
-    const changesHtml = adj.changes.map(ch => {
+    // ── Filas de items a ajustar ── (las de variante ya van compactas arriba)
+    const changesHtml = isVariantAdj ? '' : adj.changes.map(ch => {
       let varHtml = '';
       if ((isSaleAdj || isCancelAdj) && ch.variantChanges && ch.variantChanges.length) {
         const sign = isCancelAdj ? '+' : '−';
@@ -1442,7 +1444,7 @@ function renderPending(list) {
             '</button>' +
           '</div>' +
         '</div>' +
-        '<div style="padding:8px 16px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-3);display:flex;flex-wrap:wrap;align-items:center;gap:6px">' + triggerTxt + '</div>' +
+        (triggerTxt ? '<div style="padding:8px 16px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-3);display:flex;flex-wrap:wrap;align-items:center;gap:6px">' + triggerTxt + '</div>' : '') +
         choiceHtml +
         changesHtml +
       '</div>'
