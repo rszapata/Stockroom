@@ -5422,6 +5422,29 @@ let lastVincCheck = null;
 // TELEGRAM_DISABLED y las primitivas tgSend/tgSendPhoto/tgEditCaption/tgAlert/
 // tgEdit se definen más arriba (antes del payment poller, que necesita tgSend).
 
+// Mejor URL de foto para un ajuste de venta/cancelación: la de la variante
+// vendida si se puede resolver, si no la primera foto del item (https). Hace 1
+// GET a ML; nunca tira (devuelve null ante cualquier error para no frenar el aviso).
+async function getSaleAdjPhotoUrl(adj) {
+  try {
+    const ch = (adj.changes || []).find(c => c.itemId);
+    if (!ch) return null;
+    const acct = (fullConfig.accounts || []).find(a => a.id === ch.accountId);
+    if (!acct) return null;
+    const d = await mlGetAuth(acct, '/items/' + ch.itemId);
+    const picsById = {};
+    (d.pictures || []).forEach(p => { if (p.id) picsById[p.id] = p.secure_url || p.url; });
+    const attrKeys = new Set((ch.variantChanges || []).map(vc => vc.attrKey));
+    for (const v of (d.variations || [])) {
+      if (_varKeysAll(v).some(k => attrKeys.has(k))) {
+        const pid = (v.picture_ids && v.picture_ids[0]) || null;
+        if (pid && picsById[pid]) return picsById[pid];
+      }
+    }
+    return (d.pictures && d.pictures[0] && (d.pictures[0].secure_url || d.pictures[0].url)) || d.thumbnail || null;
+  } catch { return null; }
+}
+
 async function sendTgAdjustmentNotification(adj) {
   const tg = fullConfig.telegram;
   if (!tg?.bot_token || !tg?.chat_id) return;
@@ -5505,10 +5528,14 @@ async function sendTgAdjustmentNotification(adj) {
       [{ text: '✅ Aplicar', callback_data: `apsync:${adj.id}` }],
       [{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }],
     ];
-    const sent = await tgSend(text, keyboard);
-    console.log('[tg] Notificación enviada para ajuste:', adj.id);
+    // Foto de la variante vendida (1 GET a ML; cae a texto si no se puede).
+    const photoUrl = await getSaleAdjPhotoUrl(adj);
+    const sent = photoUrl
+      ? await tgSendPhoto(photoUrl, text, keyboard)
+      : await tgSend(text, keyboard);
+    console.log('[tg] Notificación enviada para ajuste:', adj.id, photoUrl ? '(con foto)' : '');
     return (sent && sent.ok && sent.result)
-      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id }
+      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id, isPhoto: !!sent.result.photo }
       : null;
   }
 
@@ -6631,14 +6658,14 @@ async function notifySaleAdjustments(newSales, cancellations) {
   for (const adj of newAdjustments) {
     try {
       const ref = await sendTgAdjustmentNotification(adj);
-      if (ref?.msgId) { adj.tgChatId = ref.chatId; adj.tgMsgId = ref.msgId; refsChanged = true; }
+      if (ref?.msgId) { adj.tgChatId = ref.chatId; adj.tgMsgId = ref.msgId; adj.tgIsPhoto = !!ref.isPhoto; refsChanged = true; }
     } catch(e) { console.log('[tg] Error notificando ajuste de venta:', _errMsg(e)); }
   }
   if (refsChanged) {
     const allNow = loadPendingAdjustments();
     for (const adj of newAdjustments) {
       const a = allNow.find(x => x.id === adj.id);
-      if (a && adj.tgMsgId) { a.tgChatId = adj.tgChatId; a.tgMsgId = adj.tgMsgId; }
+      if (a && adj.tgMsgId) { a.tgChatId = adj.tgChatId; a.tgMsgId = adj.tgMsgId; a.tgIsPhoto = adj.tgIsPhoto; }
     }
     savePendingAdjustments(allNow);
   }
