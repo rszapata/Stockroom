@@ -607,6 +607,19 @@ def generar_excel(ventas, rango_label, output_path, modo="fundas"):
     }
     print(f"RESUMEN_JSON:{json.dumps(resumen)}")
 
+    # Emitir filas para el preview en la página (id, fecha, título, tipo, neto…)
+    filas_json = [{
+        'id':       v['id'],
+        'fecha':    v['fecha'].strftime('%Y-%m-%d') if v.get('fecha') else '',
+        'titulo':   (v.get('titulo') or '')[:80],
+        'tipo':     v.get('tipo', ''),
+        'ingresos': round(float(v['ingresos']), 2) if isinstance(v.get('ingresos'), (int, float)) else None,
+        'neto':     round(float(v['neto']), 2) if isinstance(v.get('neto'), (int, float)) else None,
+        'excluida': bool(v.get('excluida')),
+        'mixto':    bool(v.get('mixto')),
+    } for v in ventas]
+    print(f"VENTAS_JSON:{json.dumps(filas_json)}")
+
 # -- Main -------------------------------------------------------
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()

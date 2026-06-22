@@ -74,6 +74,7 @@ const CONFIG_PATH  = path.join(__dirname, 'config.json');
 const TIENDA_DIR   = path.resolve(__dirname, '..', 'tienda');
 const ORDENES_PATH          = path.join(__dirname, 'ordenes.json');
 const TIENDA_USERS_PATH     = path.join(__dirname, 'tienda-users.json');
+const COBROS_GUARDADOS_PATH = path.join(__dirname, 'cobros-guardados.json');
 
 // ── .env loader (sin dependencias externas) ───────────────────
 // Lee pares KEY=VALUE ignorando comentarios y líneas vacías.
@@ -4423,8 +4424,9 @@ const server = http.createServer((req, res) => {
           return;
         }
 
-        // Parsear resumen JSON del stdout
+        // Parsear resumen + filas JSON del stdout
         let resumen = {};
+        let ventas  = [];
         try {
           const clean = stdout.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
           const idx = clean.indexOf('RESUMEN_JSON:');
@@ -4434,14 +4436,90 @@ const server = http.createServer((req, res) => {
           } else {
             console.log('RESUMEN_JSON not found in stdout');
           }
-        } catch(e) { console.log('Resumen parse error:', e.message); }
+          const vidx = clean.indexOf('VENTAS_JSON:');
+          if (vidx !== -1) {
+            const vStr = clean.slice(vidx + 'VENTAS_JSON:'.length).split('\n')[0].trim();
+            ventas = JSON.parse(vStr);
+          }
+        } catch(e) { console.log('Resumen/ventas parse error:', e.message); }
 
         const xlsxB64 = fs.readFileSync(tmpOut).toString('base64');
         try { fs.unlinkSync(tmpOut); } catch(e) {}
 
-        json(res, 200, { ok: true, file_b64: xlsxB64, resumen, stdout });
+        json(res, 200, { ok: true, file_b64: xlsxB64, resumen, ventas, stdout });
       });
     });
+    return;
+  }
+
+  // ── Cobros guardados (CRUD) — admin (gateado por auth global) ──────
+  // Archivo: cobros-guardados.json = [{ id, nombre, modo, periodo, resumen,
+  // ventas, file_b64, guardado_en }]. Listar omite ventas/file_b64 (pesados).
+  function leerCobrosGuardados() {
+    try { return JSON.parse(fs.readFileSync(COBROS_GUARDADOS_PATH, 'utf8')); }
+    catch (e) { return []; }
+  }
+
+  // GET /cobro/guardados → lista liviana
+  if (pathname === '/cobro/guardados' && req.method === 'GET') {
+    const lista = leerCobrosGuardados().map(c => ({
+      id: c.id, nombre: c.nombre, modo: c.modo, periodo: c.periodo,
+      guardado_en: c.guardado_en,
+      total_neto: c.resumen?.total_neto ?? null,
+      incluidas: c.resumen?.incluidas ?? null,
+    }));
+    json(res, 200, { ok: true, cobros: lista });
+    return;
+  }
+
+  // GET /cobro/guardados/:id → registro completo (con ventas + file_b64)
+  const mGet = pathname.match(/^\/cobro\/guardados\/([^/]+)$/);
+  if (mGet && req.method === 'GET') {
+    const c = leerCobrosGuardados().find(x => x.id === mGet[1]);
+    if (!c) { json(res, 404, { error: 'No encontrado' }); return; }
+    json(res, 200, { ok: true, cobro: c });
+    return;
+  }
+
+  // POST /cobro/guardar → guarda un cobro
+  if (pathname === '/cobro/guardar' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      try {
+        const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+        if (!body.file_b64 || !body.resumen) { json(res, 400, { error: 'Faltan datos del cobro' }); return; }
+        const lista = leerCobrosGuardados();
+        const rec = {
+          id: 'cb_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          nombre:   String(body.nombre || '').slice(0, 120) || 'Cobro sin nombre',
+          modo:     body.modo === 'otros' ? 'otros' : (body.modo === 'flex' ? 'flex' : 'fundas'),
+          periodo:  String(body.periodo || body.resumen?.periodo || ''),
+          resumen:  body.resumen,
+          ventas:   Array.isArray(body.ventas) ? body.ventas : [],
+          file_b64: String(body.file_b64),
+          guardado_en: new Date().toISOString(),
+        };
+        lista.unshift(rec);
+        if (lista.length > 200) lista.length = 200; // tope defensivo
+        writeJsonAtomic(COBROS_GUARDADOS_PATH, lista);
+        json(res, 200, { ok: true, id: rec.id });
+      } catch (e) {
+        json(res, 500, { error: 'No se pudo guardar', detail: e.message });
+      }
+    });
+    return;
+  }
+
+  // DELETE /cobro/guardados/:id → borra
+  const mDel = pathname.match(/^\/cobro\/guardados\/([^/]+)$/);
+  if (mDel && req.method === 'DELETE') {
+    const lista = leerCobrosGuardados();
+    const idx = lista.findIndex(x => x.id === mDel[1]);
+    if (idx === -1) { json(res, 404, { error: 'No encontrado' }); return; }
+    lista.splice(idx, 1);
+    writeJsonAtomic(COBROS_GUARDADOS_PATH, lista);
+    json(res, 200, { ok: true });
     return;
   }
 
@@ -5330,7 +5408,7 @@ const server = http.createServer((req, res) => {
     'vinculaciones-pending.json', 'vinculaciones-log.json', 'telegram-notified-questions.json',
     'tienda-pending-alerted.json',
     'tienda-cupones.json', 'tienda-users.json', 'tienda-ordenes.json',
-    'ordenes.json', 'flex_zones.json',
+    'ordenes.json', 'flex_zones.json', 'cobros-guardados.json',
     'sessions.json', 'auth.json', 'rate_limits.json',
     'package.json', 'package-lock.json', '.env', '.env.local', '.env.production',
     'readme.md', 'security_setup.md', 'alibaba-mapping.json',

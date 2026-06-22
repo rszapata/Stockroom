@@ -131,6 +131,31 @@
 .pg .download-btn{height:32px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;border-radius:8px}
 .pg .download-btn.fundas-dl{background:var(--ye);color:#0a0a0a}
 .pg .download-btn.otros-dl{background:var(--pu);color:#fff}
+.pg .r-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.pg .r-btn-toggle,.pg .r-btn-save{height:32px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;border-radius:8px;transition:all .15s}
+.pg .r-btn-toggle:hover,.pg .r-btn-save:hover{color:var(--tx);border-color:var(--t2)}
+.pg .cobro-preview{margin-top:14px;border:1px solid var(--b1);border-radius:10px;overflow:auto;max-height:340px}
+.pg .cobro-preview table{width:100%;border-collapse:collapse;font-size:11px}
+.pg .cobro-preview thead{position:sticky;top:0;background:var(--s2)}
+.pg .cobro-preview th{font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--t3);text-transform:uppercase;text-align:left;padding:8px 10px;white-space:nowrap}
+.pg .cobro-preview td{padding:7px 10px;border-top:1px solid var(--b1);color:var(--tx);vertical-align:top}
+.pg .cobro-preview tr.excl td{opacity:.45}
+.pg .cobro-preview .num{font-family:var(--mono);text-align:right;white-space:nowrap}
+.pg .cobro-preview .neto{font-family:var(--mono);text-align:right;font-weight:700;color:var(--ye)}
+.pg .cobro-preview .tag{font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:4px;background:var(--s2);color:var(--t3)}
+.pg .cobro-preview .tag.ok{background:rgba(71,255,138,.15);color:var(--gr)}
+.pg .cobro-preview .tag.mix{background:rgba(255,149,71,.15);color:var(--or)}
+.pg .guardados-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.pg .guardado-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--s1);border:1px solid var(--b1);border-radius:10px}
+.pg .guardado-main{flex:1;min-width:180px}
+.pg .guardado-nombre{font-family:var(--mono);font-size:12px;color:var(--tx);font-weight:700}
+.pg .guardado-meta{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px}
+.pg .guardado-neto{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ye)}
+.pg .guardado-acc{display:flex;gap:6px}
+.pg .g-btn{height:28px;padding:0 11px;font-family:var(--mono);font-size:9px;letter-spacing:.06em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;border-radius:6px;transition:all .15s}
+.pg .g-btn:hover{color:var(--tx);border-color:var(--t2)}
+.pg .g-btn.del:hover{color:var(--re);border-color:var(--re)}
+.pg .guardados-empty{font-family:var(--mono);font-size:11px;color:var(--t3);padding:20px 0}
 .pg .err-detail{font-size:11px;color:var(--re);font-family:var(--mono);margin-top:8px;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow-y:auto}
 
 /* CHARTS SECTION */
@@ -255,7 +280,12 @@
         <div class="result-strip" id="res-fundas">
           <div class="r-title">✓ Cobro generado</div>
           <div class="result-kpis" id="kpis-fundas"></div>
-          <button class="download-btn fundas-dl" id="dl-fundas" onclick="descargar('fundas')">↓ Descargar Excel</button>
+          <div class="r-actions">
+            <button class="download-btn fundas-dl" id="dl-fundas" onclick="descargar('fundas')">↓ Descargar Excel</button>
+            <button class="r-btn-toggle" onclick="togglePreview('fundas')">👁 Ver detalle</button>
+            <button class="r-btn-save" onclick="guardarCobro('fundas')">💾 Guardar</button>
+          </div>
+          <div class="cobro-preview" id="preview-fundas" style="display:none"></div>
         </div>
       </div>
 
@@ -289,7 +319,12 @@
         <div class="result-strip" id="res-otros">
           <div class="r-title">✓ Cobro generado</div>
           <div class="result-kpis" id="kpis-otros"></div>
-          <button class="download-btn otros-dl" id="dl-otros" onclick="descargar('otros')">↓ Descargar Excel</button>
+          <div class="r-actions">
+            <button class="download-btn otros-dl" id="dl-otros" onclick="descargar('otros')">↓ Descargar Excel</button>
+            <button class="r-btn-toggle" onclick="togglePreview('otros')">👁 Ver detalle</button>
+            <button class="r-btn-save" onclick="guardarCobro('otros')">💾 Guardar</button>
+          </div>
+          <div class="cobro-preview" id="preview-otros" style="display:none"></div>
         </div>
       </div>
 
@@ -388,6 +423,12 @@
         <div class="err-detail" id="flex-error-msg"></div>
       </div>
     </div>
+  </div>
+
+  <!-- COBROS GUARDADOS -->
+  <div class="ventas-section" id="guardados-section">
+    <div class="section-title">Cobros guardados <span id="guardados-count" style="color:var(--t3)"></span></div>
+    <div id="guardados-list" class="guardados-list"></div>
   </div>
 
   <!-- CHARTS -->
@@ -537,8 +578,8 @@ const HOST = '';
 
 // ── Estado ──────────────────────────────────────────────────────
 const state = {
-  fundas: { file: null, desde: '', hasta: '', b64: null, resumen: null },
-  otros:  { file: null, desde: '', hasta: '', b64: null, resumen: null },
+  fundas: { file: null, desde: '', hasta: '', b64: null, resumen: null, ventas: [] },
+  otros:  { file: null, desde: '', hasta: '', b64: null, resumen: null, ventas: [] },
 };
 
 let chartPie = null, chartBar = null;
@@ -768,6 +809,11 @@ async function generar(modo) {
 
     s.b64     = data.file_b64;
     s.resumen = data.resumen || {};
+    s.ventas  = Array.isArray(data.ventas) ? data.ventas : [];
+
+    // resetear preview previo
+    const pv = document.getElementById('preview-' + modo);
+    if (pv) { pv.style.display = 'none'; pv.innerHTML = ''; }
 
     res.className = `result-strip ok ${modo === 'otros' ? 'otros-res' : ''}`;
     const r = data.resumen || {};
@@ -819,11 +865,129 @@ function descargar(modo) {
   const bin = atob(b64);
   const arr = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  downloadXlsx(b64, nom);
+}
+function downloadXlsx(b64, nom) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   const blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = nom;
   a.click();
+}
+
+// ── Preview / guardado de cobros ────────────────────────────────
+function rpEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtMoney(n) { return (n == null || isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2 }); }
+
+function renderPreviewTable(ventas) {
+  if (!ventas || !ventas.length) return '<div style="padding:16px;font-family:var(--mono);font-size:11px;color:var(--t3)">Sin filas para mostrar.</div>';
+  const rows = ventas.map(v => {
+    const tag = v.excluida ? '<span class="tag">excluida</span>'
+              : v.mixto    ? '<span class="tag mix">mixto</span>'
+              :              '<span class="tag ok">incluida</span>';
+    return `<tr class="${v.excluida ? 'excl' : ''}">
+      <td>${rpEsc(v.fecha)}</td>
+      <td>${rpEsc(v.titulo)}</td>
+      <td>${tag}</td>
+      <td class="num">${v.ingresos == null ? '—' : fmtMoney(v.ingresos)}</td>
+      <td class="neto">${v.neto == null ? '—' : fmtMoney(v.neto)}</td>
+    </tr>`;
+  }).join('');
+  return `<table><thead><tr><th>Fecha</th><th>Título</th><th>Estado</th><th class="num">Ingresos</th><th class="num">Neto</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function togglePreview(modo) {
+  const pv = document.getElementById('preview-' + modo);
+  if (!pv) return;
+  if (pv.style.display === 'none' || !pv.innerHTML) {
+    pv.innerHTML = renderPreviewTable(state[modo].ventas);
+    pv.style.display = 'block';
+  } else {
+    pv.style.display = 'none';
+  }
+}
+
+async function guardarCobro(modo) {
+  const s = state[modo];
+  if (!s.b64 || !s.resumen) { alert('Generá un cobro primero.'); return; }
+  const def = `Cobro ${modo} ${s.resumen.periodo || ''}`.trim();
+  const nombre = prompt('Nombre para guardar este cobro:', def);
+  if (nombre === null) return;
+  try {
+    const resp = await fetch(`${HOST}/cobro/guardar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, modo, periodo: s.resumen.periodo || '', resumen: s.resumen, ventas: s.ventas || [], file_b64: s.b64 }),
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.detail || data.error || 'Error');
+    loadGuardados();
+    document.getElementById('guardados-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (e) { alert('No se pudo guardar: ' + e.message); }
+}
+
+const gCache = {};
+async function loadGuardados() {
+  try {
+    const resp = await fetch(`${HOST}/cobro/guardados`);
+    const data = await resp.json();
+    renderGuardados(data.cobros || []);
+  } catch (e) { renderGuardados([]); }
+}
+function renderGuardados(list) {
+  const cont = document.getElementById('guardados-list');
+  const cnt  = document.getElementById('guardados-count');
+  if (cnt) cnt.textContent = list.length ? `(${list.length})` : '';
+  if (!list.length) { cont.innerHTML = '<div class="guardados-empty">Todavía no guardaste ningún cobro.</div>'; return; }
+  cont.innerHTML = list.map(c => {
+    const fecha = c.guardado_en ? new Date(c.guardado_en).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    return `<div class="guardado-item" id="gi-${c.id}">
+      <div class="guardado-main">
+        <div class="guardado-nombre">${rpEsc(c.nombre)}</div>
+        <div class="guardado-meta">${rpEsc(c.modo)} · ${rpEsc(c.periodo || 'período completo')} · ${c.incluidas ?? '—'} incluidas · guardado ${fecha}</div>
+      </div>
+      <div class="guardado-neto">${fmtMoney(c.total_neto)}</div>
+      <div class="guardado-acc">
+        <button class="g-btn" onclick="verGuardado('${c.id}')">👁 Ver</button>
+        <button class="g-btn" onclick="descargarGuardado('${c.id}')">↓ Excel</button>
+        <button class="g-btn del" onclick="borrarGuardado('${c.id}','${rpEsc(c.nombre)}')">✕</button>
+      </div>
+      <div class="cobro-preview" id="gprev-${c.id}" style="display:none;flex-basis:100%"></div>
+    </div>`;
+  }).join('');
+}
+async function fetchGuardado(id) {
+  if (gCache[id]) return gCache[id];
+  const resp = await fetch(`${HOST}/cobro/guardados/${id}`);
+  const data = await resp.json();
+  if (!data.ok) throw new Error(data.error || 'Error');
+  gCache[id] = data.cobro;
+  return data.cobro;
+}
+async function verGuardado(id) {
+  const pv = document.getElementById('gprev-' + id);
+  if (!pv) return;
+  if (pv.style.display !== 'none' && pv.innerHTML) { pv.style.display = 'none'; return; }
+  pv.innerHTML = '<div style="padding:14px;font-family:var(--mono);font-size:11px;color:var(--t3)">Cargando…</div>';
+  pv.style.display = 'block';
+  try { const c = await fetchGuardado(id); pv.innerHTML = renderPreviewTable(c.ventas); }
+  catch (e) { pv.innerHTML = '<div style="padding:14px;color:var(--re)">Error: ' + rpEsc(e.message) + '</div>'; }
+}
+async function descargarGuardado(id) {
+  try { const c = await fetchGuardado(id); downloadXlsx(c.file_b64, `${(c.nombre||'cobro').replace(/[^\w-]+/g,'_')}.xlsx`); }
+  catch (e) { alert('No se pudo descargar: ' + e.message); }
+}
+async function borrarGuardado(id, nombre) {
+  if (!confirm(`¿Borrar "${nombre}"? No se puede deshacer.`)) return;
+  try {
+    const resp = await fetch(`${HOST}/cobro/guardados/${id}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    delete gCache[id];
+    loadGuardados();
+  } catch (e) { alert('No se pudo borrar: ' + e.message); }
 }
 
 // ── Charts ──────────────────────────────────────────────────────
@@ -997,6 +1161,7 @@ const ZONE_LABELS = {
 };
 const flexState = { desde: '', hasta: '', file: null, lastResult: null, pendingChoices: {} };
 initDateDefaults(); // Requiere que state y flexState ya estén definidos
+loadGuardados();    // Carga la lista de cobros guardados del servidor
 
 // Drag & Drop para Flex
 (function initFlexDz() {
