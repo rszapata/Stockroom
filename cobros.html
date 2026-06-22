@@ -75,6 +75,36 @@
 .pg .date-range-lbl input.inp-flex:focus{border-color:var(--cy);outline:none}
 .pg .date-sep{font-family:var(--mono);font-size:11px;color:var(--t3);padding-bottom:8px}
 
+/* ── Selector único de rango de fechas (estilo "vuelos") ── */
+.pg .daterange{position:relative;display:inline-block}
+.pg .daterange-field{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;border-radius:8px;cursor:pointer;transition:border-color .15s}
+.pg .daterange-field:hover,.pg .daterange.open .daterange-field{border-color:var(--ac,var(--t2))}
+.pg .daterange-field svg{flex-shrink:0;opacity:.6}
+.pg .daterange-label{letter-spacing:.04em;white-space:nowrap}
+.pg .daterange-pop{position:fixed;z-index:200;background:var(--s1);border:1px solid var(--b2);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:12px;display:none;width:300px}
+.pg .daterange.open .daterange-pop{display:block;animation:pg-fadeUp .15s ease both}
+.pg .dr-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--b1)}
+.pg .dr-preset{font-family:var(--mono);font-size:9px;letter-spacing:.05em;padding:5px 9px;background:var(--s2);border:1px solid var(--b1);color:var(--t2);border-radius:6px;cursor:pointer;transition:all .12s}
+.pg .dr-preset:hover{border-color:var(--t2);color:var(--tx)}
+.pg .dr-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.pg .dr-cal-title{font-family:var(--mono);font-size:11px;color:var(--tx);text-transform:capitalize}
+.pg .dr-nav{width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--s2);border:1px solid var(--b1);border-radius:6px;color:var(--t2);cursor:pointer;font-size:13px}
+.pg .dr-nav:hover{color:var(--tx);border-color:var(--t2)}
+.pg .dr-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.pg .dr-dow{font-family:var(--mono);font-size:8px;color:var(--t3);text-align:center;padding:4px 0;text-transform:uppercase}
+.pg .dr-day{font-family:var(--mono);font-size:10px;text-align:center;padding:7px 0;color:var(--tx);cursor:pointer;border-radius:6px;transition:background .1s}
+.pg .dr-day.empty{cursor:default}
+.pg .dr-day:not(.empty):hover{background:var(--s2)}
+.pg .dr-day.in-range{background:var(--s2)}
+.pg .dr-day.sel{background:var(--ac,var(--t2));color:#0a0a0a;font-weight:700}
+.pg .dr-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)}
+.pg .dr-clear{font-family:var(--mono);font-size:9px;color:var(--t3);background:none;border:none;cursor:pointer}
+.pg .dr-clear:hover{color:var(--tx)}
+.pg .dr-hint{font-family:var(--mono);font-size:9px;color:var(--t3)}
+.pg .daterange[data-rp=fundas]{--ac:var(--ye)}
+.pg .daterange[data-rp=otros]{--ac:var(--pu)}
+.pg .daterange[data-rp=flex]{--ac:var(--cy)}
+
 .pg .generate-btn{height:36px;padding:0 20px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;display:flex;align-items:center;gap:8px;border-radius:10px}
 .pg .generate-btn.fundas-btn{background:var(--ye);color:#0a0a0a}
 .pg .generate-btn.fundas-btn:hover{background:#d4eb3a}
@@ -208,16 +238,13 @@
         </div>
 
         <div class="controls">
-          <div class="date-range-sel" id="rango-fundas">
-            <div class="date-range-lbl">
-              <span>Desde</span>
-              <input type="date" id="desde-fundas" class="inp-fundas" onchange="state.fundas.desde=this.value">
-            </div>
-            <div class="date-sep">→</div>
-            <div class="date-range-lbl">
-              <span>Hasta</span>
-              <input type="date" id="hasta-fundas" class="inp-fundas" onchange="state.fundas.hasta=this.value">
-            </div>
+          <div class="daterange" data-rp="fundas" id="rango-fundas">
+            <button type="button" class="daterange-field" id="rp-field-fundas">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+              <span class="daterange-label" id="rp-label-fundas">Seleccionar fechas</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="daterange-pop" id="rp-pop-fundas"></div>
           </div>
           <button class="generate-btn fundas-btn" id="btn-fundas" onclick="generar('fundas')" disabled>
             <div class="spin"></div>
@@ -245,16 +272,13 @@
         </div>
 
         <div class="controls">
-          <div class="date-range-sel" id="rango-otros">
-            <div class="date-range-lbl">
-              <span>Desde</span>
-              <input type="date" id="desde-otros" class="inp-otros" onchange="state.otros.desde=this.value">
-            </div>
-            <div class="date-sep">→</div>
-            <div class="date-range-lbl">
-              <span>Hasta</span>
-              <input type="date" id="hasta-otros" class="inp-otros" onchange="state.otros.hasta=this.value">
-            </div>
+          <div class="daterange" data-rp="otros" id="rango-otros">
+            <button type="button" class="daterange-field" id="rp-field-otros">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+              <span class="daterange-label" id="rp-label-otros">Seleccionar fechas</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="daterange-pop" id="rp-pop-otros"></div>
           </div>
           <button class="generate-btn otros-btn" id="btn-otros" onclick="generar('otros')" disabled>
             <div class="spin"></div>
@@ -290,16 +314,13 @@
       </div>
 
       <div class="controls" style="margin-bottom:14px;margin-top:14px">
-        <div class="date-range-sel" id="rango-flex">
-          <div class="date-range-lbl">
-            <span>Desde</span>
-            <input type="date" id="desde-flex" class="inp-flex" onchange="flexState.desde=this.value">
-          </div>
-          <div class="date-sep">→</div>
-          <div class="date-range-lbl">
-            <span>Hasta</span>
-            <input type="date" id="hasta-flex" class="inp-flex" onchange="flexState.hasta=this.value">
-          </div>
+        <div class="daterange" data-rp="flex" id="rango-flex">
+          <button type="button" class="daterange-field" id="rp-field-flex">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+            <span class="daterange-label" id="rp-label-flex">Seleccionar fechas</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="daterange-pop" id="rp-pop-flex"></div>
         </div>
         <button class="generate-btn" id="btn-flex" onclick="calcFlex()" disabled style="background:var(--cy);color:#0c0c0e">
           <div class="spin"></div>
@@ -553,27 +574,159 @@ function setFile(modo, file) {
   res.className = 'result-strip';
 }
 
+// ── Selector único de rango de fechas (estilo "vuelos") ─────────
+const RP_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const RP_DOW   = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+const rpView   = {};   // key -> { y, m, selStart, selEnd }  (selección pendiente en el popover)
+
+function rpTarget(key) {
+  return key === 'flex'
+    ? { st: flexState, resId: 'flex-result' }
+    : { st: state[key], resId: 'res-' + key };
+}
+function rpYmd(d)    { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function rpParse(s)  { if (!s) return null; const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function rpFmt(s)    { const d = rpParse(s); return d ? `${d.getDate()} ${RP_MESES[d.getMonth()].slice(0,3)}` : ''; }
+
+function rpUpdateLabel(key) {
+  const { st } = rpTarget(key);
+  const lbl = document.getElementById('rp-label-' + key);
+  if (!lbl) return;
+  if (st.desde && st.hasta) lbl.textContent = `${rpFmt(st.desde)} – ${rpFmt(st.hasta)}`;
+  else if (st.desde)        lbl.textContent = `Desde ${rpFmt(st.desde)}`;
+  else                      lbl.textContent = 'Seleccionar fechas';
+}
+// Aplica el rango al state y BORRA el resultado viejo (para que nunca quede pegado).
+function rpApply(key, desde, hasta) {
+  const { st, resId } = rpTarget(key);
+  st.desde = desde || '';
+  st.hasta = hasta || '';
+  rpUpdateLabel(key);
+  const res = document.getElementById(resId);
+  if (res) res.style.display = 'none';
+}
+
+function rpRender(key) {
+  const pop = document.getElementById('rp-pop-' + key);
+  const v   = rpView[key];
+  const first = new Date(v.y, v.m, 1);
+  const startDow = first.getDay();
+  const days = new Date(v.y, v.m + 1, 0).getDate();
+  const today = rpYmd(new Date());
+
+  const presets = [
+    ['Hoy', 0, 0], ['Ayer', 1, 1], ['Últimos 7 días', 6, 0],
+    ['Este mes', 'mes', 0], ['Mes pasado', 'mespasado', 0],
+  ];
+  const presetsHtml = presets.map(([lbl]) => `<button type="button" class="dr-preset" data-preset="${lbl}">${lbl}</button>`).join('');
+
+  let cells = '';
+  RP_DOW.forEach(d => cells += `<div class="dr-dow">${d}</div>`);
+  for (let i = 0; i < startDow; i++) cells += `<div class="dr-day empty"></div>`;
+  for (let d = 1; d <= days; d++) {
+    const ds = rpYmd(new Date(v.y, v.m, d));
+    let cls = 'dr-day';
+    if (ds === v.selStart || ds === v.selEnd) cls += ' sel';
+    else if (v.selStart && v.selEnd && ds > v.selStart && ds < v.selEnd) cls += ' in-range';
+    cells += `<div class="${cls}" data-day="${ds}">${d}</div>`;
+  }
+
+  pop.innerHTML = `
+    <div class="dr-presets">${presetsHtml}</div>
+    <div class="dr-cal-head">
+      <button type="button" class="dr-nav" data-nav="-1">‹</button>
+      <span class="dr-cal-title">${RP_MESES[v.m]} ${v.y}</span>
+      <button type="button" class="dr-nav" data-nav="1">›</button>
+    </div>
+    <div class="dr-grid">${cells}</div>
+    <div class="dr-foot">
+      <button type="button" class="dr-clear" data-clear="1">Limpiar</button>
+      <span class="dr-hint">${v.selStart && !v.selEnd ? 'Elegí la fecha de fin' : 'Elegí inicio y fin'}</span>
+    </div>`;
+}
+
+function rpOpen(key) {
+  // Cerrar otros
+  document.querySelectorAll('.daterange.open').forEach(el => el.classList.remove('open'));
+  const { st } = rpTarget(key);
+  const base = rpParse(st.desde) || new Date();
+  rpView[key] = { y: base.getFullYear(), m: base.getMonth(), selStart: st.desde || null, selEnd: st.hasta || null };
+  rpRender(key);
+  document.getElementById('rango-' + key).classList.add('open');
+  // Posicionar el popover (position:fixed) bajo el campo, escapando el overflow del card.
+  const field = document.getElementById('rp-field-' + key);
+  const pop   = document.getElementById('rp-pop-' + key);
+  const r = field.getBoundingClientRect();
+  const W = 300;
+  let left = r.left;
+  if (left + W > window.innerWidth - 8) left = Math.max(8, window.innerWidth - W - 8);
+  pop.style.left = left + 'px';
+  pop.style.top  = (r.bottom + 6) + 'px';
+}
+function rpClose(key) { document.getElementById('rango-' + key)?.classList.remove('open'); }
+
+function rpDayClick(key, ds) {
+  const v = rpView[key];
+  if (!v.selStart || v.selEnd) {            // empezar nueva selección
+    v.selStart = ds; v.selEnd = null;
+    rpRender(key);
+  } else {                                   // segunda fecha → cerrar rango
+    if (ds < v.selStart) { v.selEnd = v.selStart; v.selStart = ds; }
+    else                 { v.selEnd = ds; }
+    rpApply(key, v.selStart, v.selEnd);
+    rpClose(key);
+  }
+}
+function rpPreset(key, lbl) {
+  const now = new Date();
+  let desde, hasta;
+  const dim = n => { const d = new Date(now); d.setDate(d.getDate() - n); return rpYmd(d); };
+  if (lbl === 'Hoy')              { desde = rpYmd(now); hasta = rpYmd(now); }
+  else if (lbl === 'Ayer')        { desde = dim(1); hasta = dim(1); }
+  else if (lbl === 'Últimos 7 días') { desde = dim(6); hasta = rpYmd(now); }
+  else if (lbl === 'Este mes')    { desde = rpYmd(new Date(now.getFullYear(), now.getMonth(), 1)); hasta = rpYmd(now); }
+  else if (lbl === 'Mes pasado')  { const f = new Date(now.getFullYear(), now.getMonth()-1, 1); const l = new Date(now.getFullYear(), now.getMonth(), 0); desde = rpYmd(f); hasta = rpYmd(l); }
+  rpApply(key, desde, hasta);
+  rpClose(key);
+}
+
+function initRangePickers() {
+  ['fundas','otros','flex'].forEach(key => {
+    const field = document.getElementById('rp-field-' + key);
+    const pop   = document.getElementById('rp-pop-' + key);
+    if (!field || !pop) return;
+    field.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = document.getElementById('rango-' + key).classList.contains('open');
+      if (open) rpClose(key); else rpOpen(key);
+    });
+    pop.addEventListener('click', e => {
+      e.stopPropagation();
+      const day = e.target.closest('[data-day]');
+      const nav = e.target.closest('[data-nav]');
+      const pre = e.target.closest('[data-preset]');
+      const clr = e.target.closest('[data-clear]');
+      if (day) rpDayClick(key, day.dataset.day);
+      else if (nav) { const v = rpView[key]; v.m += parseInt(nav.dataset.nav); if (v.m < 0) { v.m = 11; v.y--; } if (v.m > 11) { v.m = 0; v.y++; } rpRender(key); }
+      else if (pre) rpPreset(key, pre.dataset.preset);
+      else if (clr) { rpApply(key, '', ''); rpClose(key); }
+    });
+    rpUpdateLabel(key);
+  });
+  document.addEventListener('click', () => document.querySelectorAll('.daterange.open').forEach(el => el.classList.remove('open')));
+  window.addEventListener('scroll', () => document.querySelectorAll('.daterange.open').forEach(el => el.classList.remove('open')), true);
+}
+
 function initDateDefaults() {
   const now = new Date();
   const y  = now.getFullYear();
   const m  = String(now.getMonth() + 1).padStart(2, '0');
-  const d  = String(now.getDate()).padStart(2, '0');
   const firstDay = `${y}-${m}-01`;
-  const today    = `${y}-${m}-${d}`;
-  ['fundas', 'otros'].forEach(modo => {
-    state[modo].desde = firstDay;
-    state[modo].hasta = today;
-    const df = document.getElementById(`desde-${modo}`);
-    const hf = document.getElementById(`hasta-${modo}`);
-    if (df) df.value = firstDay;
-    if (hf) hf.value = today;
-  });
-  flexState.desde = firstDay;
-  flexState.hasta = today;
-  const df = document.getElementById('desde-flex');
-  const hf = document.getElementById('hasta-flex');
-  if (df) df.value = firstDay;
-  if (hf) hf.value = today;
+  const today    = rpYmd(now);
+  state.fundas.desde = firstDay; state.fundas.hasta = today;
+  state.otros.desde  = firstDay; state.otros.hasta  = today;
+  flexState.desde    = firstDay; flexState.hasta    = today;
+  initRangePickers();
 }
 // initDateDefaults() se llama después de que flexState esté definido (ver final de sección FLEX)
 
