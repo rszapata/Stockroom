@@ -3,7 +3,7 @@ const fs   = require('fs');
 const path = require('path');
 const { json }                                       = require('../lib/http');
 const { RESUMEN_DIR, loadResumenIndex, saveResumenIndex } = require('../lib/resumenes');
-const { extractPdfText, extractStringsFromStream, parseSinergiaTable } = require('../lib/pdf-extract');
+const { extractPdfText, extractStringsFromStream, parseSinergiaTable, parseValueString } = require('../lib/pdf-extract');
 
 module.exports = function handlePdfResumenes(req, res, pathname, parsed) {
 
@@ -122,7 +122,13 @@ module.exports = function handlePdfResumenes(req, res, pathname, parsed) {
           periodo: periodoMatch ? { desde: periodoMatch[1], hasta: periodoMatch[2] } : null,
           cliente,
           total_entregas: totalMatch ? parseInt(totalMatch[1]) : rows.length,
-          total_valor:    totalMatch ? parseFloat(totalMatch[2].replace(/,/g,'.')) : null,
+          // El total se calcula SIEMPRE como la suma de las filas (valores
+          // parseados con parseValueString, formato es-AR confiable). El total
+          // declarado en el PDF se parseaba con parseFloat tratando el punto de
+          // miles como decimal ("155.520" → 155.52), lo que rompía el monto.
+          // Guardamos también total_valor_declarado para detectar discrepancias.
+          total_valor:    rows.reduce((s, r) => s + (r.valor || 0), 0),
+          total_valor_declarado: totalMatch ? parseValueString(totalMatch[2]) : null,
           rows,
           _debug: {
             ..._dbg,
