@@ -1,8 +1,44 @@
 'use strict';
 const https = require('https');
+const fs   = require('fs');
+const path = require('path');
 const { json } = require('../lib/http');
 
 const ML_BASE = 'api.mercadolibre.com';
+
+// ── Costo esperado de logística por CP ──────────────────────────
+// Tabla empírica CP -> costos válidos, derivada de los resúmenes ya
+// validados (cp-tarifas.json, regenerable). Permite que el verificador
+// detecte sobrecobros del proveedor, no solo que el envío exista.
+// Es más exacta que una regla por rangos: dentro de GBA las tarifas
+// cercano/lejano no siguen un rango numérico limpio (se solapan).
+let _tarifasCache = null, _tarifasMtime = 0;
+function loadCpTarifas() {
+  try {
+    const p = path.join(__dirname, '..', 'cp-tarifas.json');
+    const m = fs.statSync(p).mtimeMs;
+    if (!_tarifasCache || m !== _tarifasMtime) {
+      _tarifasCache = JSON.parse(fs.readFileSync(p, 'utf8'));
+      _tarifasMtime = m;
+    }
+  } catch (e) { _tarifasCache = _tarifasCache || { caba_default: 4490, tarifas: {} }; }
+  return _tarifasCache;
+}
+// Devuelve { known, valid_costs:[...], expected } para un CP.
+function expectedCostForCp(cp) {
+  const t = loadCpTarifas();
+  const clean = String(cp || '').trim().replace(/^C/i, '');
+  if (t.tarifas && t.tarifas[clean]) {
+    const costs = t.tarifas[clean];
+    return { known: true, valid_costs: costs, expected: costs[0] };
+  }
+  // CP CABA no visto en los validados → tarifa CABA por defecto
+  const n = parseInt(clean, 10);
+  if (Number.isFinite(n) && n >= 1000 && n <= 1499) {
+    return { known: true, valid_costs: [t.caba_default], expected: t.caba_default };
+  }
+  return { known: false, valid_costs: [], expected: null };
+}
 
 module.exports = function(ctx) {
   const { mlGetAuth, fullConfig, refreshAccountToken } = ctx;
@@ -225,6 +261,8 @@ module.exports = function(ctx) {
 
             const { acct, ship } = found;
             const addr = ship.receiver_address || {};
+            const zip  = addr.zip_code || '';
+            const exp  = expectedCostForCp(zip);
             return {
               raw: rawId, id: numId, found: true,
               cuenta: acct.label || acct.id,
@@ -236,7 +274,11 @@ module.exports = function(ctx) {
               logistic_type: ship.logistic_type || ship.shipping_option?.name || '',
               address: `${addr.street_name || ''} ${addr.street_number || ''}`.trim(),
               city: addr.city?.name || addr.neighborhood?.name || '',
-              zip: addr.zip_code || '',
+              zip,
+              // Validación de costo (vs tabla empírica de los validados)
+              cp_known: exp.known,
+              expected_cost: exp.expected,
+              valid_costs: exp.valid_costs,
             };
           }));
 

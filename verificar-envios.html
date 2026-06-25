@@ -59,6 +59,8 @@
 .pdf-tot-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); font-weight: 600; }
 .pdf-tot-value { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--font-mono); }
 .pdf-tot-value.yellow { color: #c9a800; }
+.pdf-tot-value.red { color: var(--re); }
+.pdf-tot-value.green { color: var(--gr); }
 
 /* ── Tabs ────────────────────────────────────────────── */
 .v-tabs { display: flex; gap: 2px; padding: 3px; background: var(--bg-card);
@@ -445,10 +447,23 @@ function renderTotals() {
   for (const [cuenta, val] of Object.entries(byAccount)) {
     items.push({ label: cuenta, value: `$${val.toLocaleString('es-AR')}` });
   }
+  // Sobrecobro detectado (suma de diferencias en filas con valor incorrecto)
+  if (verifiedData.length) {
+    let over = 0, nOver = 0, correcto = 0;
+    verifiedData.forEach(r => {
+      const ci = costInfo(r);
+      if (ci.status === 'mal') { over += (ci.delta || 0); nOver++; correcto += (ci.expected || 0); }
+      else correcto += (r.valor || 0);
+    });
+    if (nOver > 0) {
+      items.push({ label: `Sobrecobro (${nOver})`, value: `+$${over.toLocaleString('es-AR')}`, red: true });
+      items.push({ label: 'Total correcto', value: `$${correcto.toLocaleString('es-AR')}`, green: true });
+    }
+  }
   $I('pdf-totals').innerHTML = items.map(i => `
     <div class="pdf-tot-item">
       <div class="pdf-tot-label">${esc(i.label)}</div>
-      <div class="pdf-tot-value${i.yellow ? ' yellow' : ''}">${esc(i.value)}</div>
+      <div class="pdf-tot-value${i.yellow ? ' yellow' : ''}${i.red ? ' red' : ''}${i.green ? ' green' : ''}">${esc(i.value)}</div>
     </div>`).join('');
 }
 
@@ -677,11 +692,25 @@ async function verificar() {
 }
 
 /* ── Clasificación ──────────────────────────────────── */
+// Validación del costo cobrado vs la tabla empírica (cp-tarifas).
+// status: 'na' (sin API/externo) · 'desconocido' (CP no validado) ·
+//         'ok' (valor entre los válidos) · 'mal' (sobrecobro/valor incorrecto)
+function costInfo(row) {
+  const api = row.api || {};
+  if (!api.found) return { status:'na' };
+  if (!api.cp_known) return { status:'desconocido' };
+  const charged = row.valor || 0;
+  const valid = api.valid_costs || [];
+  if (valid.includes(charged)) return { status:'ok', expected: api.expected_cost };
+  return { status:'mal', expected: api.expected_cost, delta: charged - (api.expected_cost || 0) };
+}
+
 function classify(row) {
   const api = row.api || {};
   if (!api.found) return /^ML\d/.test(row.tracking) ? 'err' : 'warn';
   if (!api.ok_owner) return 'err';
   if (['cancelled','not_delivered','lost'].includes(api.status)) return 'err';
+  if (costInfo(row).status === 'mal') return 'err';   // sobrecobro = problema
   if (['shipped','handling','ready_to_ship'].includes(api.status)) return 'warn';
   return 'ok';
 }
@@ -715,6 +744,7 @@ function renderTable() {
   const rows = filtered.map(row => {
     const api    = row.api || {};
     const cls    = classify(row);
+    const ci     = costInfo(row);
     const stInfo = STATUS_MAP[api.status] || { text: api.status || '—', cls:'grey' };
     const isExt  = !/^ML\d/.test(row.tracking);
     const num    = verifiedData.indexOf(row) + 1;
@@ -726,6 +756,8 @@ function renderTable() {
         : '<span class="v-badge err">✗ No en ML</span>';
     } else if (!api.ok_owner) {
       res = '<span class="v-badge err">✗ Cuenta incorrecta</span>';
+    } else if (ci.status === 'mal') {
+      res = '<span class="v-badge err">✗ Sobrecobro</span>';
     } else if (cls === 'err') {
       res = `<span class="v-badge err">✗ ${stInfo.text}</span>`;
     } else if (cls === 'warn') {
@@ -761,7 +793,11 @@ function renderTable() {
         <div class="addr-pdf">${esc(row.domicilio || '—')}</div>
         ${addrApi}
       </td>
-      <td style="white-space:nowrap;font-weight:600;font-family:var(--font-mono)">$${(row.valor||0).toLocaleString('es-AR')}</td>
+      <td style="white-space:nowrap;font-family:var(--font-mono)">
+        <span style="font-weight:600;${ci.status==='mal'?'color:var(--re)':''}">$${(row.valor||0).toLocaleString('es-AR')}</span>
+        ${ci.status==='mal' ? `<div style="font-size:10px;color:var(--t3);margin-top:2px">esperado $${(ci.expected||0).toLocaleString('es-AR')} <span style="color:var(--re)">(+$${(ci.delta||0).toLocaleString('es-AR')})</span></div>` : ''}
+        ${ci.status==='desconocido' ? `<div style="font-size:10px;color:var(--t3);margin-top:2px">CP no validado</div>` : ''}
+      </td>
       <td>${res}</td>
       <td style="font-size:12px;font-weight:500">${api.cuenta ? esc(api.cuenta) : '<span class="dim">—</span>'}</td>
       <td>${mlBtn}</td>
