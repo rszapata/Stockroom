@@ -28,7 +28,7 @@ const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item')
 const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado } = require('./lib/email-templates');
+const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const { _normalizeStr, _varKeysAll, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
@@ -45,6 +45,7 @@ const { createTgClient } = require('./lib/tg-client');
 const { auditLog } = require('./lib/audit-log');
 const { sendEmail: sendEmailWith } = require('./lib/email-sender');
 const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef, mpGetInstallments } = require('./lib/mercadopago');
+const firebaseAuth = require('./lib/firebase-admin');
 const { createMpHelpers } = require('./lib/mp-helpers');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
 const { buildProductMetaDescription, buildProductJsonLd } = require('./lib/seo');
@@ -520,6 +521,7 @@ async function _refreshStatsCache() {
 }
 const _contactRateLimit = new Map(); // ip -> [timestamp1, timestamp2...]
 const _newsletterRL     = new Map(); // ip -> [timestamp1, timestamp2...] — máx 5 altas/hora
+const _stockAlertRL     = new Map(); // ip -> [...] — máx 10 alertas de stock/hora
 const _ordenRateLimit   = new Map(); // ip -> [timestamp1, timestamp2...] — máx 10 órdenes/hora
 const _tiendaLoginRL    = new Map(); // ip -> { count, since } — rate limit login tienda clientes
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 días
@@ -2469,6 +2471,70 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── POST /api/tienda/stock-alert ─────────────────────────
+    // Back-in-stock: el cliente deja su email para que le avisen cuando
+    // una variante agotada vuelva. Guarda + notifica al dueño por Telegram.
+    if (pathname === '/api/tienda/stock-alert' && req.method === 'POST') {
+      readBody(req).then(async (rawBody) => {
+        try {
+          const data = JSON.parse(rawBody);
+
+          // Honeypot
+          if (data.website && String(data.website).trim().length > 0) {
+            res.writeHead(200);
+            res.end(JSON.stringify({ ok: true, created: false }));
+            return;
+          }
+
+          // Rate limit: 10 por IP por hora
+          const ip  = getClientIP(req) || 'unknown';
+          const now = Date.now();
+          if (!_stockAlertRL.has(ip)) _stockAlertRL.set(ip, []);
+          const recent = _stockAlertRL.get(ip).filter(t => now - t < 3600 * 1000);
+          if (recent.length >= 10) {
+            res.writeHead(429);
+            res.end(JSON.stringify({ error: 'Demasiados intentos. Probá en 1 hora.' }));
+            return;
+          }
+          recent.push(now);
+          _stockAlertRL.set(ip, recent);
+
+          const email = String(data.email || '').trim().toLowerCase().slice(0, 200);
+          if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Email inválido' }));
+            return;
+          }
+          const item_id = String(data.item_id || '').trim().slice(0, 40);
+          if (!item_id) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Falta el producto' }));
+            return;
+          }
+          const variant = String(data.variant || '').trim().slice(0, 200);
+          const titulo  = String(data.titulo  || '').trim().slice(0, 200);
+
+          const r = await db.addStockAlert({ item_id, variant, titulo, email });
+          if (r.created) {
+            const h = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            tgSend(`🔔 <b>Alerta de stock</b>\n${h(titulo || item_id)}${variant ? ' — <b>' + h(variant) + '</b>' : ''}\nLo espera: ${h(email)}`).catch(() => {});
+            console.log(`  ✓ [stock-alert] ${email} quiere ${item_id} ${variant || ''}`.trim());
+          }
+          res.writeHead(201);
+          res.end(JSON.stringify({ ok: true, created: r.created }));
+
+        } catch (e) {
+          console.error('[stock-alert] error:', e.message);
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'No se pudo registrar la alerta' }));
+        }
+      }).catch(e => {
+        res.writeHead(e.status || 400);
+        res.end(JSON.stringify({ error: e.message }));
+      });
+      return;
+    }
+
     // ── POST /api/tienda/arrepentimiento ─────────────────────
     // Formulario público de arrepentimiento de compra (Art. 34 Ley 24.240)
     if (pathname === '/api/tienda/arrepentimiento' && req.method === 'POST') {
@@ -3271,6 +3337,98 @@ const server = http.createServer((req, res) => {
         res.writeHead(200);
         res.end(JSON.stringify({ ok: true }));
       })().catch(() => { res.writeHead(200); res.end(JSON.stringify({ ok: true })); });
+      return;
+    }
+
+    // ── POST /api/tienda/auth/firebase ───────────────────────
+    // Intercambio de ID token de Firebase → sesión propia (wz_sid).
+    // Modo híbrido: Firebase valida la identidad; PostgreSQL es la fuente de
+    // verdad; la autoridad de sesión sigue siendo wz_sid (no se reescribe).
+    if (pathname === '/api/tienda/auth/firebase' && req.method === 'POST') {
+      readBody(req).then(async (rawBody) => {
+        try {
+          if (!firebaseAuth.isConfigured()) {
+            res.writeHead(503);
+            res.end(JSON.stringify({ error: 'Login con Firebase no disponible' })); return;
+          }
+
+          // Rate limiting por IP (reusa el mismo mapa/criterio que el login)
+          const _rlIp  = getClientIP(req) || 'unknown';
+          const _rlNow = Date.now();
+          const RL_WIN = 15 * 60 * 1000;
+          const RL_MAX = 8;
+          if (!_tiendaLoginRL.has(_rlIp)) _tiendaLoginRL.set(_rlIp, { count: 0, since: _rlNow });
+          const _rlEntry = _tiendaLoginRL.get(_rlIp);
+          if (_rlNow - _rlEntry.since > RL_WIN) { _rlEntry.count = 0; _rlEntry.since = _rlNow; }
+          if (_rlEntry.count >= RL_MAX) {
+            const wait = Math.ceil((RL_WIN - (_rlNow - _rlEntry.since)) / 60000);
+            res.writeHead(429);
+            res.end(JSON.stringify({ error: `Demasiados intentos. Esperá ${wait} min.` })); return;
+          }
+
+          const data    = JSON.parse(rawBody);
+          const idToken = String(data.idToken || data.id_token || '');
+          if (!idToken) { res.writeHead(400); res.end(JSON.stringify({ error: 'Falta idToken' })); return; }
+
+          // Validar el token con firebase-admin (lanza si es inválido/expirado/revocado)
+          let decoded;
+          try {
+            decoded = await firebaseAuth.verifyIdToken(idToken);
+          } catch (e) {
+            _rlEntry.count++; _tiendaLoginRL.set(_rlIp, _rlEntry);
+            console.warn('[tienda-auth] Firebase token inválido:', e.message);
+            res.writeHead(401);
+            res.end(JSON.stringify({ error: 'Token inválido o expirado' })); return;
+          }
+
+          const uid      = decoded.uid;
+          const email    = String(decoded.email || '').trim().toLowerCase();
+          const provider = (decoded.firebase && decoded.firebase.sign_in_provider) || 'firebase';
+          const emailVer = decoded.email_verified === true;
+          // Nombre: del token (Google trae 'name'); fallback al body (registro por email,
+          // donde el token recién emitido puede no incluir el displayName todavía).
+          const nombre   = String(decoded.name || decoded.displayName || data.nombre || '').trim().slice(0, 100);
+          if (!email) { res.writeHead(400); res.end(JSON.stringify({ error: 'El proveedor no devolvió email' })); return; }
+
+          // Resolver usuario: por firebase_uid → por email (vincular) → crear
+          let user = await db.getUserByFirebaseUid(uid);
+          if (!user) {
+            const byEmail = await db.getUserByEmail(email);
+            if (byEmail) {
+              user = await db.linkFirebaseUid(byEmail.id, {
+                firebase_uid: uid, auth_provider: provider, email_verificado: emailVer,
+              });
+              console.log(`  ✓ [tienda-auth] Firebase vinculado a cuenta existente: ${email}`);
+            } else {
+              user = await db.createUserFromFirebase({
+                nombre, email, firebase_uid: uid, auth_provider: provider, email_verificado: emailVer,
+              });
+              console.log(`  ✓ [tienda-auth] Nuevo usuario via Firebase (${provider}): ${email}`);
+              // Mail de bienvenida (informativo, NO verificación) — fire-and-forget,
+              // solo en la creación. No bloquea ni rompe el login si el email falla.
+              sendEmail({
+                to: email,
+                subject: '¡Bienvenido/a a WZMALLAS!',
+                html: emailBienvenidaCuenta({ nombre, email, provider }),
+              }).catch(e => console.warn('[tienda-auth] mail bienvenida falló:', e.message));
+            }
+          }
+
+          // Login exitoso: resetear rate-limit y registrar acceso
+          _tiendaLoginRL.delete(_rlIp);
+          await db.updateLastLogin(user.id).catch(() => {});
+
+          const sid      = makeSid();
+          const sessData = { user_id: user.id, email: user.email, nombre: user.nombre, exp: Date.now() + TIENDA_SESSION_TTL };
+          await setTiendaSession(sid, sessData);
+          res.setHeader('Set-Cookie', `wz_sid=${sid}; HttpOnly; Path=/; Max-Age=${TIENDA_SESSION_TTL/1000}; SameSite=Lax${cookieSecure(req)}`);
+          res.writeHead(200);
+          res.end(JSON.stringify({ ok: true, user: { id: user.id, nombre: user.nombre, email: user.email } }));
+        } catch (e) {
+          console.error('[tienda-auth] firebase exchange error:', e.message);
+          res.writeHead(400); res.end(JSON.stringify({ error: 'Body inválido' }));
+        }
+      }).catch(e => { res.writeHead(e.status || 400); res.end(JSON.stringify({ error: e.message })); });
       return;
     }
 
@@ -5352,12 +5510,12 @@ const server = http.createServer((req, res) => {
       tiendaHeaders['Referrer-Policy'] = 'strict-origin-when-cross-origin';
       tiendaHeaders['Content-Security-Policy'] =
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://www.mercadopago.com https://www.googletagmanager.com https://*.googletagmanager.com; " +
+        "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://www.mercadopago.com https://www.googletagmanager.com https://*.googletagmanager.com https://www.gstatic.com https://apis.google.com; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
-        "img-src 'self' data: blob: https://*.mlstatic.com http://*.mlstatic.com https://mlstatic.com https://http2.mlstatic.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com; " +
-        "connect-src 'self' https://api.mercadolibre.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com; " +
-        "frame-src https://www.mercadopago.com https://*.mercadopago.com https://www.google.com https://maps.google.com https://www.youtube.com https://www.youtube-nocookie.com https://www.googletagmanager.com; " +
+        "img-src 'self' data: blob: https://*.mlstatic.com http://*.mlstatic.com https://mlstatic.com https://http2.mlstatic.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.googleusercontent.com; " +
+        "connect-src 'self' https://api.mercadolibre.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://*.firebaseapp.com; " +
+        "frame-src https://www.mercadopago.com https://*.mercadopago.com https://www.google.com https://maps.google.com https://www.youtube.com https://www.youtube-nocookie.com https://www.googletagmanager.com https://*.firebaseapp.com https://accounts.google.com https://apis.google.com; " +
         "media-src 'self' blob:; " +
         "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
     }
@@ -6843,7 +7001,10 @@ async function _checkStockChangesImpl() {
   const allAccounts = fullConfig.accounts || [];
   let vincChanged = false;
 
-  // Cargar TODOS los ajustes (para poder mutar estados y guardar)
+  // Cargar TODOS los ajustes (para poder mutar estados y guardar).
+  // IMPORTANTE: se recarga AQUÍ (después de notifySaleAdjustments) para que
+  // los ajustes 'sale'/'cancel' recién creados ya estén en pendingGroupIds
+  // y el safety-net de stock total NO genere un segundo aviso duplicado.
   const allAdjustments   = loadPendingAdjustments();
   const existing         = allAdjustments.filter(p => p.status === 'pending');
   // Dedup separado: total/venta por grupo; variante por (grupo + variante),
@@ -7012,13 +7173,20 @@ async function _checkStockChangesImpl() {
     // Verificar por variante primero (más preciso): 1 aviso por variante
     // desalineada + un resumen "aplicar todas" si hay 2 o más. Dedup por
     // (grupo|variante), así cada variante se decide por separado.
-    if (variantMismatches.length) {
+    //
+    // IMPORTANTE: si ya existe un ajuste sale/cancel pendiente para este grupo
+    // (generado por detectLinkedSales en el mismo ciclo), NO crear avisos de
+    // variante. La venta ya explica el desbalance — generar un segundo aviso
+    // de "variante desalineada" produce notificaciones duplicadas en Telegram.
+    if (variantMismatches.length && !pendingGroupIds.has(g.id)) {
       const created = buildVariantAdjustments(g, variantMismatches, pendingVarKeys);
       if (created.length) {
         newAdjustments.push(...created);
         const nVar = created.filter(a => a.type === 'variant').length;
         console.log('[vinc]   ⚠ "' + g.name + '" — ' + nVar + ' variante(s) desalineada(s)' + (allSame ? ' (totales iguales)' : '') + ' → ' + created.length + ' aviso(s)');
       }
+    } else if (variantMismatches.length && pendingGroupIds.has(g.id)) {
+      console.log('[vinc]   ↳ "' + g.name + '" — variante(s) desalineada(s) suprimida(s) (ya hay ajuste sale/cancel pendiente)');
     } else if (!pendingGroupIds.has(g.id) && !allSame && anyChanged) {
         const minStock = Math.min(...nums);
 
@@ -7185,6 +7353,7 @@ db.ensureProductosPropiosTable().catch(e => console.log('[tienda-productos-propi
 
 // ── Inicializar tabla de carritos abandonados + cron de recordatorio ──
 db.ensureCarritosAbandonadosTable().catch(e => console.log('[carrito-abandonado] Error en init de tabla:', e.message));
+db.ensureStockAlertsTable().catch(e => console.log('[stock-alert] Error en init de tabla:', e.message));
 
 // Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado
 // y manda UN email "tu carrito te espera" con deep-link de restauración.

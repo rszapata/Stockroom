@@ -321,15 +321,26 @@ module.exports = function(ctx) {
                   if (isDeltaType && ch.variantChanges?.length) {
                     // Venta/cancelación: ajuste por delta (±qty) sobre la variante.
                     newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+                    let matchedAny = false;
                     for (const vc of ch.variantChanges) {
                       const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
                       const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
                       if (t) {
+                        matchedAny = true;
                         const from = t.available_quantity;
                         t.available_quantity = Math.max(0, from + (isCancel ? vc.delta : -vc.delta));
                         deltasByAdj[adj.id].push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity });
                         applyMethod = isCancel ? 'cancel-restore' : 'sale-sync';
+                      } else {
+                        // La variante ya no existe en el item (fue eliminada o renombrada).
+                        // Loguear para diagnóstico pero continuar — no bloquear el apply completo.
+                        console.log('[vinc] apply ' + ch.itemId + ' — variante "' + vc.attrKey + '" no encontrada en el item (¿fue renombrada?), se omite esa variante');
                       }
+                    }
+                    if (!matchedAny) {
+                      // Ninguna variante matcheó → el PUT no cambiaría nada, evitar el falso "aplicado".
+                      results.push({ adjId: adj.id, itemId: ch.itemId, ok: false, error: 'Ninguna variante del ajuste encontrada en el item — puede haberse renombrado. Revisar manualmente.' });
+                      continue;
                     }
                   } else if (adj.type === 'variant' && ch.variantChanges?.length) {
                     newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
