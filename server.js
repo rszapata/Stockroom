@@ -6007,38 +6007,45 @@ async function handleTgCallback(cb) {
       const allAccounts = fullConfig.accounts || [];
       const results = await Promise.allSettled(adj.changes.map(async ch => {
         const acct = allAccounts.find(a => a.id === ch.accountId);
-        if (!acct) return { skipped: true };
+        if (!acct) return { noMatch: true, itemId: ch.itemId, reason: 'cuenta no encontrada' };
         await refreshAccountToken(acct);
         const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
         const vars = itemData.variations || [];
         const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+        let matched = 0;
         for (const vc of ch.variantChanges || []) {
           const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
           if (matchedVar) {
             const t = newVars.find(v => v.id === matchedVar.id);
-            if (t) t.available_quantity = Math.max(0, vc.to);
+            if (t) { matched++; t.available_quantity = Math.max(0, vc.to); }
           }
         }
+        if (!matched) return { noMatch: true, itemId: ch.itemId, reason: 'variante no encontrada en el item' };
         const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
         await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
         return { applied: true, itemId: ch.itemId };
       }));
 
-      let applied = 0, failed = 0;
+      let applied = 0, failed = 0, noMatch = 0;
       results.forEach((r, i) => {
         if (r.status === 'fulfilled' && r.value?.applied) applied++;
+        else if (r.status === 'fulfilled' && r.value?.noMatch) { noMatch++; console.log('[tg] vc no aplicado', r.value.itemId, '—', r.value.reason); }
         else if (r.status === 'rejected') {
           failed++;
           console.log('[tg] Error vc', adj.changes[i].itemId, r.reason?.message || r.reason);
         }
       });
 
-      adj.status = (applied > 0 && failed === 0) ? 'applied' : 'error';
+      adj.status = (applied > 0 && failed === 0 && noMatch === 0) ? 'applied' : 'error';
       adj.appliedAt = new Date().toISOString();
       savePendingAdjustments(allAdj);
       appendVincLog({ action: adj.status, source: 'telegram', adjId: adj.id, groupId: adj.groupId, itemsApplied: applied, itemsTotal: adj.changes.length });
-      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
-      await reply(`✅ <b>${adj.groupName}</b>\n${mm.label}: ajustado a x${chosen.qty} (${_shortAcct(chosen.acctLabel)})${failMsg}.`);
+      if (applied === 0) {
+        await reply(`⚠️ <b>${adj.groupName}</b>\n${mm.label}: no se pudo ajustar (${noMatch ? 'variante no encontrada en la otra cuenta' : 'falló'}). Revisá manualmente.`);
+      } else {
+        const extra = [failed ? `${failed} fallido(s)` : '', noMatch ? `${noMatch} sin variante` : ''].filter(Boolean).join(' · ');
+        await reply(`✅ <b>${adj.groupName}</b>\n${mm.label}: ajustado a x${chosen.qty} (${_shortAcct(chosen.acctLabel)})${extra ? ' · ' + extra : ''}.`);
+      }
 
     } else if (action === 'apvarall') {
       // Resumen: aplicar TODAS las variantes a su cantidad recomendada (la menor
@@ -6055,43 +6062,53 @@ async function handleTgCallback(cb) {
       const allAccounts = fullConfig.accounts || [];
       const results = await Promise.allSettled(changes.map(async ch => {
         const acct = allAccounts.find(a => a.id === ch.accountId);
-        if (!acct) return { skipped: true };
+        if (!acct) return { noMatch: true, itemId: ch.itemId, reason: 'cuenta no encontrada' };
         await refreshAccountToken(acct);
         const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
         const vars = itemData.variations || [];
         const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+        let matched = 0;
         for (const vc of ch.variantChanges || []) {
           const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
-          if (matchedVar) { const t = newVars.find(v => v.id === matchedVar.id); if (t) t.available_quantity = Math.max(0, vc.to); }
+          if (matchedVar) { const t = newVars.find(v => v.id === matchedVar.id); if (t) { matched++; t.available_quantity = Math.max(0, vc.to); } }
         }
+        if (!matched) return { noMatch: true, itemId: ch.itemId, reason: 'variante no encontrada en el item' };
         const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
         await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
         return { applied: true, itemId: ch.itemId };
       }));
 
-      let applied = 0, failed = 0;
+      let applied = 0, failed = 0, noMatch = 0;
       results.forEach((r, i) => {
         if (r.status === 'fulfilled' && r.value?.applied) applied++;
+        else if (r.status === 'fulfilled' && r.value?.noMatch) { noMatch++; console.log('[tg] apvarall no aplicado', r.value.itemId, '—', r.value.reason); }
         else if (r.status === 'rejected') { failed++; console.log('[tg] Error apvarall', changes[i].itemId, r.reason?.message || r.reason); }
       });
 
-      adj.status = (applied > 0 && failed === 0) ? 'applied' : 'error';
+      adj.status = (applied > 0 && failed === 0 && noMatch === 0) ? 'applied' : 'error';
       adj.appliedAt = new Date().toISOString();
-      // Resolver los avisos por-variante hijos y limpiar sus mensajes.
-      for (const cid of (adj.childIds || [])) {
-        const child = allAdj.find(a => a.id === cid);
-        if (child && child.status === 'pending') {
-          child.status = 'applied'; child.appliedAt = adj.appliedAt;
-          if (child.tgChatId && child.tgMsgId) {
-            const txt = `✅ <b>${child.groupName}</b>\nResuelto vía "aplicar todas las recomendadas".`;
-            (child.tgIsPhoto ? tgEditCaption(child.tgChatId, child.tgMsgId, txt) : tgEdit(child.tgChatId, child.tgMsgId, txt)).catch(() => {});
+      // Resolver los avisos por-variante hijos SÓLO si el apply fue exitoso
+      // (no marcar hijos como aplicados si en realidad no se aplicó nada).
+      if (adj.status === 'applied') {
+        for (const cid of (adj.childIds || [])) {
+          const child = allAdj.find(a => a.id === cid);
+          if (child && child.status === 'pending') {
+            child.status = 'applied'; child.appliedAt = adj.appliedAt;
+            if (child.tgChatId && child.tgMsgId) {
+              const txt = `✅ <b>${child.groupName}</b>\nResuelto vía "aplicar todas las recomendadas".`;
+              (child.tgIsPhoto ? tgEditCaption(child.tgChatId, child.tgMsgId, txt) : tgEdit(child.tgChatId, child.tgMsgId, txt)).catch(() => {});
+            }
           }
         }
       }
       savePendingAdjustments(allAdj);
       appendVincLog({ action: adj.status, source: 'telegram', adjId: adj.id, groupId: adj.groupId, kind: 'variant-summary', itemsApplied: applied, itemsTotal: changes.length });
-      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
-      await reply(`✅ <b>${adj.groupName}</b>\nTodas las variantes recomendadas aplicadas (${applied} item(s))${failMsg}.`);
+      if (applied === 0) {
+        await reply(`⚠️ <b>${adj.groupName}</b>\nNo se pudo aplicar ninguna variante (${noMatch ? 'no encontradas en las publicaciones' : 'fallaron'}). Revisá manualmente.`);
+      } else {
+        const extra = [failed ? `${failed} fallido(s)` : '', noMatch ? `${noMatch} sin variante` : ''].filter(Boolean).join(' · ');
+        await reply(`✅ <b>${adj.groupName}</b>\nVariantes recomendadas aplicadas (${applied} item(s))${extra ? ' · ' + extra : ''}.`);
+      }
 
     } else if (action === 'vsrc') {
       // Elegir una cuenta (su item) como fuente de verdad para TODAS las
@@ -6119,35 +6136,42 @@ async function handleTgCallback(cb) {
       const allAccounts = fullConfig.accounts || [];
       const results = await Promise.allSettled(adj.changes.map(async ch => {
         const acct = allAccounts.find(a => a.id === ch.accountId);
-        if (!acct) return { skipped: true };
+        if (!acct) return { noMatch: true, itemId: ch.itemId, reason: 'cuenta no encontrada' };
         await refreshAccountToken(acct);
         const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
         const vars = itemData.variations || [];
         const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
         const itemDeltas = [];
+        let matched = 0;
         for (const vc of ch.variantChanges || []) {
           const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
           const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
-          if (t) { const from = t.available_quantity; t.available_quantity = Math.max(0, vc.to); itemDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity }); }
+          if (t) { matched++; const from = t.available_quantity; t.available_quantity = Math.max(0, vc.to); itemDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity }); }
         }
+        if (!matched) return { noMatch: true, itemId: ch.itemId, reason: 'variante no encontrada en el item' };
         const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
         await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
         return { applied: true, itemId: ch.itemId, deltas: itemDeltas };
       }));
 
-      let applied = 0, failed = 0;
+      let applied = 0, failed = 0, noMatch = 0;
       const variantDeltas = [];
       results.forEach((r, i) => {
         if (r.status === 'fulfilled' && r.value?.applied) { applied++; variantDeltas.push(...(r.value.deltas || [])); }
+        else if (r.status === 'fulfilled' && r.value?.noMatch) { noMatch++; console.log('[tg] vsrc no aplicado', r.value.itemId, '—', r.value.reason); }
         else if (r.status === 'rejected') { failed++; console.log('[tg] Error vsrc', adj.changes[i].itemId, r.reason?.message || r.reason); }
       });
 
-      adj.status = (applied > 0) ? 'applied' : 'error';
+      adj.status = (applied > 0 && failed === 0 && noMatch === 0) ? 'applied' : 'error';
       adj.appliedAt = new Date().toISOString();
       savePendingAdjustments(allAdj);
       appendVincLog({ action: 'sync-from', source: 'telegram', adjId: adj.id, groupId: adj.groupId, groupName: adj.groupName, syncFromLabel: srcLabel, itemsApplied: applied, variantDeltas });
-      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
-      await reply(`✅ <b>${adj.groupName}</b>\nStock copiado desde ${_shortAcct(srcLabel)} en ${applied} publicación(es)${failMsg}.`);
+      if (applied === 0) {
+        await reply(`⚠️ <b>${adj.groupName}</b>\nNo se pudo copiar: ${noMatch ? 'no encontré la variante en la(s) publicación(es)' : 'todos los intentos fallaron'}. Revisá manualmente.`);
+      } else {
+        const extra = [failed ? `${failed} fallido(s)` : '', noMatch ? `${noMatch} sin variante` : ''].filter(Boolean).join(' · ');
+        await reply(`✅ <b>${adj.groupName}</b>\nStock copiado desde ${_shortAcct(srcLabel)} en ${applied} publicación(es)${extra ? ' · ' + extra : ''}.`);
+      }
 
     } else if (action === 'apsync') {
       // Aplica un ajuste "sale" (bajar stock vinculado) o "cancel" (restaurar
@@ -6163,46 +6187,58 @@ async function handleTgCallback(cb) {
 
       const results = await Promise.allSettled(adj.changes.map(async ch => {
         const acct = allAccounts.find(a => a.id === ch.accountId);
-        if (!acct) return { skipped: true };
+        if (!acct) return { noMatch: true, itemId: ch.itemId, reason: 'cuenta no encontrada' };
         await refreshAccountToken(acct);
         const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
         const vars = itemData.variations || [];
         const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
         const itemDeltas = [];
+        let matched = 0;
         for (const vc of (ch.variantChanges || [])) {
           const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
           const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
           if (t) {
+            matched++;
             const from = t.available_quantity;
             const to = Math.max(0, from + (isCancel ? vc.delta : -vc.delta));
             t.available_quantity = to;
             itemDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to, delta: to - from });
+          } else {
+            console.log('[tg] apsync ' + ch.itemId + ' — variante "' + vc.attrKey + '" no encontrada en el item');
           }
         }
+        // Si ninguna variante matcheó, el PUT sería un no-op que igual "verifica"
+        // OK (el total no cambia) → se reportaría falso éxito. Lo marcamos noMatch.
+        if (!matched) return { noMatch: true, itemId: ch.itemId, acctLabel: ch.acctLabel, reason: 'variante no encontrada (¿renombrada en ML?)' };
         const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
         await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
         return { applied: true, itemId: ch.itemId, acctLabel: ch.acctLabel, deltas: itemDeltas };
       }));
 
-      let applied = 0, failed = 0;
+      let applied = 0, failed = 0, noMatch = 0;
       const allDeltas = [];
       results.forEach((r, i) => {
         if (r.status === 'fulfilled' && r.value?.applied) { applied++; allDeltas.push(r.value); }
+        else if (r.status === 'fulfilled' && r.value?.noMatch) { noMatch++; console.log('[tg] apsync no aplicado', r.value.itemId, '—', r.value.reason); }
         else if (r.status === 'rejected') {
           failed++;
           console.log('[tg] Error apsync', adj.changes[i].itemId, r.reason?.message || r.reason);
         }
       });
 
-      // Marcar ventas/cancelaciones como sincronizadas en el ledger
-      const ledger = loadVentasLedger();
-      for (const saleKey of (adj.saleKeys || [])) {
-        const entry = ledger.find(e => e.saleKey === saleKey);
-        if (entry) { if (isCancel) entry.cancelSynced = true; else entry.synced = true; }
+      // Marcar el ledger como sincronizado SOLO si no hubo errores transitorios
+      // (failed). Un noMatch es permanente (variante renombrada) → se marca para
+      // no re-notificar en loop; un failed (red/token) → NO se marca, reintenta.
+      if (failed === 0) {
+        const ledger = loadVentasLedger();
+        for (const saleKey of (adj.saleKeys || [])) {
+          const entry = ledger.find(e => e.saleKey === saleKey);
+          if (entry) { if (isCancel) entry.cancelSynced = true; else entry.synced = true; }
+        }
+        saveVentasLedger(ledger);
       }
-      saveVentasLedger(ledger);
 
-      adj.status = (applied > 0) ? 'applied' : 'error';
+      adj.status = (applied > 0 && failed === 0 && noMatch === 0) ? 'applied' : 'error';
       adj.appliedAt = new Date().toISOString();
       savePendingAdjustments(allAdj);
 
@@ -6217,9 +6253,19 @@ async function handleTgCallback(cb) {
         itemsApplied: applied, variantDeltas,
       });
 
-      const failMsg = failed ? ` · ${failed} fallido(s)` : '';
       const verbo = isCancel ? 'Repuesto' : 'Sincronizado';
-      await reply(`✅ <b>${adj.groupName}</b>\n${verbo} stock vinculado en ${applied} publicación(es)${failMsg}.`);
+      if (applied === 0) {
+        // Nada se aplicó: no mentir con un ✅.
+        const motivo = noMatch ? 'no encontré la variante en la(s) publicación(es) (pudo renombrarse en ML)' : 'todos los intentos fallaron';
+        await reply(`⚠️ <b>${adj.groupName}</b>\nNo se pudo aplicar: ${motivo}. Revisá y ajustá el stock manualmente.`);
+      } else {
+        const extra = [
+          failed  ? `${failed} fallido(s)`   : '',
+          noMatch ? `${noMatch} sin variante` : '',
+        ].filter(Boolean).join(' · ');
+        const suf = extra ? ` · ${extra}` : '';
+        await reply(`✅ <b>${adj.groupName}</b>\n${verbo} stock vinculado en ${applied} publicación(es)${suf}.`);
+      }
 
     } else if (action === 'dis') {
       const allAdj = loadPendingAdjustments();
