@@ -7,7 +7,7 @@ const {
   loadVincLog, appendVincLog,
   loadVentasLedger, saveVentasLedger,
 } = require('../lib/json-store');
-const { _varKeysAll } = require('../lib/variant-helpers');
+const { _varKeysAll, _matchVarForApply } = require('../lib/variant-helpers');
 
 const VINC_PATH = path.join(__dirname, '..', 'vinculaciones.json');
 
@@ -344,12 +344,20 @@ module.exports = function(ctx) {
                     }
                   } else if (adj.type === 'variant' && ch.variantChanges?.length) {
                     newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+                    let matchedAny = false;
                     for (const vc of ch.variantChanges) {
-                      const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+                      const matchedVar = _matchVarForApply(vars, vc);
                       if (matchedVar) {
                         const t = newVars.find(v => v.id === matchedVar.id);
-                        if (t) { const from = t.available_quantity; t.available_quantity = Math.max(0, vc.to); deltasByAdj[adj.id].push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity }); applyMethod = 'variant-exact'; }
+                        if (t) { matchedAny = true; const from = t.available_quantity; t.available_quantity = Math.max(0, vc.to); deltasByAdj[adj.id].push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity }); applyMethod = 'variant-exact'; }
+                      } else {
+                        console.log('[vinc] apply ' + ch.itemId + ' — variante "' + vc.attrKey + '" no encontrada en el item (¿renombrada?), se omite');
                       }
+                    }
+                    if (!matchedAny) {
+                      // Ninguna variante matcheó → el PUT no cambiaría nada, evitar el falso "aplicado".
+                      results.push({ adjId: adj.id, itemId: ch.itemId, ok: false, error: 'Ninguna variante del ajuste encontrada en el item — puede haberse renombrado. Revisar manualmente.' });
+                      continue;
                     }
                   } else {
                     const srcDeltas = ch.sourceVariantDeltas || [];

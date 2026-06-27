@@ -30,7 +30,7 @@ const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
 const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
-const { _normalizeStr, _varKeysAll, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
+const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
@@ -6014,7 +6014,7 @@ async function handleTgCallback(cb) {
         const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
         let matched = 0;
         for (const vc of ch.variantChanges || []) {
-          const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+          const matchedVar = _matchVarForApply(vars, vc);
           if (matchedVar) {
             const t = newVars.find(v => v.id === matchedVar.id);
             if (t) { matched++; t.available_quantity = Math.max(0, vc.to); }
@@ -6069,7 +6069,7 @@ async function handleTgCallback(cb) {
         const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
         let matched = 0;
         for (const vc of ch.variantChanges || []) {
-          const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+          const matchedVar = _matchVarForApply(vars, vc);
           if (matchedVar) { const t = newVars.find(v => v.id === matchedVar.id); if (t) { matched++; t.available_quantity = Math.max(0, vc.to); } }
         }
         if (!matched) return { noMatch: true, itemId: ch.itemId, reason: 'variante no encontrada en el item' };
@@ -6144,7 +6144,7 @@ async function handleTgCallback(cb) {
         const itemDeltas = [];
         let matched = 0;
         for (const vc of ch.variantChanges || []) {
-          const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+          const matchedVar = _matchVarForApply(vars, vc);
           const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
           if (t) { matched++; const from = t.available_quantity; t.available_quantity = Math.max(0, vc.to); itemDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity }); }
         }
