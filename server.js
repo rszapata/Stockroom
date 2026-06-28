@@ -6755,17 +6755,34 @@ function detectVariantMismatches(stocks) {
 // loguea. No crea ajustes ni toca stock todavía (eso es la fase 2).
 const SALE_OK_STATES = new Set(['paid', 'shipped', 'delivered', 'completed']);
 
-// Rango de avance de la orden, para saber hasta dónde llegó antes de cancelarse.
-// paid = pagada, sin despachar. shipped = despachada (salió del depósito, en
-// tránsito). delivered/completed = el comprador la recibió. Si una orden se
-// cancela DESPUÉS de entregada (rank >= 3) es una devolución física: la unidad
-// puede volver usada/dañada y no ser apta para reventa → NO reponer stock a
-// ciegas (sobrestock fantasma). Ver detectLinkedSales / notifySaleAdjustments.
-const ORDER_STATUS_RANK = { paid: 1, shipped: 2, delivered: 3, completed: 3 };
-const _deliveredFromTags = (o) => {
-  const t = o.tags || [];
-  return t.includes('delivered') || (o.shipping && o.shipping.status === 'delivered');
-};
+// ── ¿La orden fue ENTREGADA? (datos reales de la API de ML) ──────────────
+// Verificado contra la API: el `status` de la ORDEN es sólo 'paid' | 'cancelled'
+// (nunca shipped/delivered). El estado de entrega vive en DOS lugares reales:
+//   1. `order.tags`: incluye 'delivered' o 'not_delivered' (viene en el search,
+//      sin costo extra). Señal barata y confiable mientras la orden está activa.
+//   2. `/shipments/{id}.status`: la verdad autoritativa (ready_to_ship → shipped
+//      → delivered → returned). Se consulta sólo al cancelar, para confirmar.
+// Si una orden se cancela DESPUÉS de entregada es una devolución física: la
+// unidad puede volver usada/dañada y no ser apta para reventa → NO reponer stock
+// a ciegas (sobrestock fantasma). Ver detectLinkedSales / notifySaleAdjustments.
+const _deliveredFromTags = (o) => (o.tags || []).includes('delivered');
+
+// Verdad autoritativa de entrega vía el shipment. 'delivered' = el comprador la
+// recibió; 'returned' = la recibió y la devolvió. Ambos ⇒ unidad ya estuvo en
+// manos del comprador. Una sola llamada, sólo al cancelar (las cancelaciones son
+// raras). Si falla la llamada, devuelve null (no asume nada).
+async function _shipmentWasDelivered(acct, shippingId) {
+  if (!shippingId) return null;
+  try {
+    const sh = await mlGetAuth(acct, '/shipments/' + shippingId);
+    const st = sh && sh.status;
+    if (!st) return null;
+    return st === 'delivered' || st === 'returned';
+  } catch (e) {
+    console.log('[vinc-ventas] No se pudo leer shipment ' + shippingId + ': ' + (e.message || e));
+    return null;
+  }
+}
 
 async function detectLinkedSales() {
   const fp = path.join(__dirname, 'vinculaciones.json');
@@ -6840,8 +6857,7 @@ async function detectLinkedSales() {
         if (!qty || !link) continue;
 
         const existing = ledgerIdx.get(saleKey);
-        const rank = ORDER_STATUS_RANK[status] || 0;
-        const deliveredSignal = rank >= 3 || _deliveredFromTags(o);
+        const deliveredTag = _deliveredFromTags(o);   // dato real del search
 
         if (SALE_OK_STATES.has(status)) {
           if (!existing) {
@@ -6851,9 +6867,9 @@ async function detectLinkedSales() {
               itemId, varId, attrKey, label, qty,
               groupId: link.groupId, groupName: link.groupName,
               targets: link.targets,            // dónde bajar el stock
+              shippingId: o.shipping?.id || null, // para verificar entrega al cancelar
               saleStatus: status,               // estado real (no más 'paid' hardcodeado)
-              maxStatusRank: rank,              // hasta dónde llegó la orden
-              wasDelivered: deliveredSignal,    // ¿el comprador la recibió? (sticky)
+              wasDelivered: deliveredTag,       // ¿el comprador la recibió? (sticky, del tag real)
               // backfill (ventas previas al arranque) = ya contabilizadas → no sugerir
               synced: isFirstRun, backfilled: isFirstRun, cancelSynced: false,
               detectedAt: new Date().toISOString(), orderDate: o.date_created || null,
@@ -6862,18 +6878,23 @@ async function detectLinkedSales() {
             if (isFirstRun) backfilled++;
             else newSales.push(entry);
           } else if (existing.saleStatus !== 'cancelled') {
-            // Actualizar el avance de la orden (paid → shipped → delivered) para
-            // que, si después se cancela, sepamos si ya había sido entregada.
-            if (rank > (existing.maxStatusRank || 0)) { existing.maxStatusRank = rank; existing.saleStatus = status; }
-            if (deliveredSignal) existing.wasDelivered = true;
+            // La orden sigue activa: refrescar el flag de entrega (sticky) con el
+            // tag real, y guardar el shippingId por si más adelante hay que
+            // verificar contra el shipment.
+            if (deliveredTag) existing.wasDelivered = true;
+            if (!existing.shippingId && o.shipping?.id) existing.shippingId = o.shipping.id;
           }
         } else if (status === 'cancelled') {
           if (existing && existing.saleStatus !== 'cancelled') {
             existing.saleStatus = 'cancelled';
             existing.cancelledAt = new Date().toISOString();
-            // Devolución post-entrega: cancelada cuando ya había sido entregada/
-            // completada. La unidad vuelve físicamente y puede no ser revendible.
-            existing.afterDelivery = !!existing.wasDelivered || (existing.maxStatusRank || 0) >= 3 || _deliveredFromTags(o);
+            // ¿Devolución post-entrega? 1º el flag sticky / tag (sin costo); si no,
+            // se confirma con la API del shipment (verdad autoritativa). Si el
+            // shipment no se puede leer (null), cae al tag para no asumir de más.
+            const shipId = existing.shippingId || o.shipping?.id || null;
+            const shipDelivered = await _shipmentWasDelivered(acct, shipId);
+            existing.afterDelivery = !!existing.wasDelivered || deliveredTag
+              || shipDelivered === true;
             cancellations.push(existing);
           }
         }
