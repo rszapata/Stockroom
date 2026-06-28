@@ -5745,9 +5745,10 @@ async function sendTgAdjustmentNotification(adj) {
   // Ajustes dirigidos por ventas/cancelaciones (fase 2): un solo botón
   // "Aplicar" sin importar cuántas variantes/items estén involucrados.
   if (adj.type === 'sale' || adj.type === 'cancel') {
-    const isCancel = adj.type === 'cancel';
-    const icon  = isCancel ? '↩️' : '🔻';
-    const title = isCancel ? 'Venta cancelada' : 'Venta detectada';
+    const isCancel  = adj.type === 'cancel';
+    const isReturn  = isCancel && adj.afterDelivery;   // devolución post-entrega
+    const icon  = isReturn ? '📦↩️' : isCancel ? '↩️' : '🔻';
+    const title = isReturn ? 'Devolución (cancelada tras entrega)' : isCancel ? 'Venta cancelada' : 'Venta detectada';
     let text = `${icon} <b>${title}</b> · ${adj.groupName}\n\n`;
     for (const ch of adj.changes) {
       for (const vc of (ch.variantChanges || [])) {
@@ -5756,14 +5757,26 @@ async function sendTgAdjustmentNotification(adj) {
         text += `🎨 ${vc.label} (${signo}${vc.delta}) → ${verbo} en ${_shortAcct(ch.acctLabel)}\n`;
       }
     }
-    text += isCancel
-      ? `\nSe sugiere subir el stock vinculado de vuelta.`
-      : `\nSe sugiere bajar el stock vinculado.`;
+    if (isReturn) {
+      // No sugerir reponer por defecto: la unidad ya fue entregada y vuelve
+      // físicamente; puede venir usada/dañada y no ser apta para reventa.
+      text += `\n⚠️ Esta venta se canceló <b>después de entregada</b> — es una devolución. La unidad puede no estar apta para reventa.\n`;
+      text += `Reponé el stock vinculado <b>solo si verificaste que está en condiciones</b>. Si no, descartá (el stock queda como está).`;
+    } else {
+      text += isCancel
+        ? `\nCancelada antes de despachar — se sugiere subir el stock vinculado de vuelta.`
+        : `\nSe sugiere bajar el stock vinculado.`;
+    }
 
-    const keyboard = [
-      [{ text: '✅ Aplicar', callback_data: `apsync:${adj.id}` }],
-      [{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }],
-    ];
+    const keyboard = isReturn
+      ? [
+          [{ text: '✅ Reponer (verifiqué que está apta)', callback_data: `apsync:${adj.id}` }],
+          [{ text: '✕ No reponer (no revendible / dudosa)', callback_data: `dis:${adj.id}` }],
+        ]
+      : [
+          [{ text: '✅ Aplicar', callback_data: `apsync:${adj.id}` }],
+          [{ text: '✕ Descartar', callback_data: `dis:${adj.id}` }],
+        ];
     // Foto de la variante vendida (1 GET a ML; cae a texto si no se puede).
     const photoUrl = await getSaleAdjPhotoUrl(adj);
     const sent = photoUrl
@@ -6742,6 +6755,18 @@ function detectVariantMismatches(stocks) {
 // loguea. No crea ajustes ni toca stock todavía (eso es la fase 2).
 const SALE_OK_STATES = new Set(['paid', 'shipped', 'delivered', 'completed']);
 
+// Rango de avance de la orden, para saber hasta dónde llegó antes de cancelarse.
+// paid = pagada, sin despachar. shipped = despachada (salió del depósito, en
+// tránsito). delivered/completed = el comprador la recibió. Si una orden se
+// cancela DESPUÉS de entregada (rank >= 3) es una devolución física: la unidad
+// puede volver usada/dañada y no ser apta para reventa → NO reponer stock a
+// ciegas (sobrestock fantasma). Ver detectLinkedSales / notifySaleAdjustments.
+const ORDER_STATUS_RANK = { paid: 1, shipped: 2, delivered: 3, completed: 3 };
+const _deliveredFromTags = (o) => {
+  const t = o.tags || [];
+  return t.includes('delivered') || (o.shipping && o.shipping.status === 'delivered');
+};
+
 async function detectLinkedSales() {
   const fp = path.join(__dirname, 'vinculaciones.json');
   if (!fs.existsSync(fp)) return { newSales: [], cancellations: [] };
@@ -6815,6 +6840,8 @@ async function detectLinkedSales() {
         if (!qty || !link) continue;
 
         const existing = ledgerIdx.get(saleKey);
+        const rank = ORDER_STATUS_RANK[status] || 0;
+        const deliveredSignal = rank >= 3 || _deliveredFromTags(o);
 
         if (SALE_OK_STATES.has(status)) {
           if (!existing) {
@@ -6824,7 +6851,9 @@ async function detectLinkedSales() {
               itemId, varId, attrKey, label, qty,
               groupId: link.groupId, groupName: link.groupName,
               targets: link.targets,            // dónde bajar el stock
-              saleStatus: 'paid',
+              saleStatus: status,               // estado real (no más 'paid' hardcodeado)
+              maxStatusRank: rank,              // hasta dónde llegó la orden
+              wasDelivered: deliveredSignal,    // ¿el comprador la recibió? (sticky)
               // backfill (ventas previas al arranque) = ya contabilizadas → no sugerir
               synced: isFirstRun, backfilled: isFirstRun, cancelSynced: false,
               detectedAt: new Date().toISOString(), orderDate: o.date_created || null,
@@ -6832,11 +6861,19 @@ async function detectLinkedSales() {
             ledger.push(entry); ledgerIdx.set(saleKey, entry);
             if (isFirstRun) backfilled++;
             else newSales.push(entry);
+          } else if (existing.saleStatus !== 'cancelled') {
+            // Actualizar el avance de la orden (paid → shipped → delivered) para
+            // que, si después se cancela, sepamos si ya había sido entregada.
+            if (rank > (existing.maxStatusRank || 0)) { existing.maxStatusRank = rank; existing.saleStatus = status; }
+            if (deliveredSignal) existing.wasDelivered = true;
           }
         } else if (status === 'cancelled') {
           if (existing && existing.saleStatus !== 'cancelled') {
             existing.saleStatus = 'cancelled';
             existing.cancelledAt = new Date().toISOString();
+            // Devolución post-entrega: cancelada cuando ya había sido entregada/
+            // completada. La unidad vuelve físicamente y puede no ser revendible.
+            existing.afterDelivery = !!existing.wasDelivered || (existing.maxStatusRank || 0) >= 3 || _deliveredFromTags(o);
             cancellations.push(existing);
           }
         }
@@ -6864,7 +6901,10 @@ async function detectLinkedSales() {
       console.log(`[vinc-ventas]   🔻 Venta en ${_shortAcct(s.acctLabel)}: ${s.label} ×${s.qty} (${s.groupName}) → sugeriría bajar ${s.qty} en ${tgt}`);
     }
     for (const c of cancellations) {
-      console.log(`[vinc-ventas]   ↩️ CANCELADA en ${_shortAcct(c.acctLabel)}: ${c.label} ×${c.qty} (${c.groupName}) → ${c.synced ? 'sugeriría SUBIR ' + c.qty + ' de vuelta' : 'venta no sincronizada, sin acción'}`);
+      const accion = !c.synced ? 'venta no sincronizada, sin acción'
+        : c.afterDelivery ? '⚠️ DEVOLUCIÓN post-entrega → NO reponer a ciegas (revisar si es revendible)'
+        : 'sugeriría SUBIR ' + c.qty + ' de vuelta (cancelada antes de despachar)';
+      console.log(`[vinc-ventas]   ↩️ CANCELADA en ${_shortAcct(c.acctLabel)}: ${c.label} ×${c.qty} (${c.groupName}) → ${accion}`);
     }
   }
   return { newSales, cancellations };
@@ -6913,6 +6953,10 @@ function buildSaleAdjustments(newSales, cancellations) {
   // vinculado ya fue bajado y ahora hay que devolverlo.
   const cancelEntries = cancellations.filter(c => c.synced && !c.cancelSynced);
   const byCancelGroup = groupByGroupId(cancelEntries);
+  // ¿Alguna cancelación del grupo es una devolución post-entrega? Si sí, el
+  // ajuste se marca para que la notificación avise y NO sugiera reponer a ciegas.
+  const afterDeliveryByGroup = {};
+  for (const c of cancelEntries) { if (c.afterDelivery) afterDeliveryByGroup[c.groupId] = true; }
   for (const [groupId, g] of Object.entries(byCancelGroup)) {
     const changes = Object.values(g.itemsMap).map(im => ({ ...im, variantChanges: Object.values(im.variantChanges) }));
     if (!changes.length) continue;
@@ -6920,6 +6964,7 @@ function buildSaleAdjustments(newSales, cancellations) {
       id: 'adj_cancel_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       type: 'cancel', createdAt: new Date().toISOString(),
       groupId, groupName: g.groupName, saleKeys: g.saleKeys, changes, status: 'pending',
+      afterDelivery: !!afterDeliveryByGroup[groupId],
     });
   }
 
