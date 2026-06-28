@@ -786,7 +786,7 @@ function invalidateProductCache() {
 // ctx expone las funciones de server.js que los routers necesitan.
 // fullConfig/config/lastVincCheck son getters para capturar el valor actual.
 const _routerCtx = {
-  mlGetAuth, mlPutAuth, mlPostAuth, refreshAccountToken,
+  mlGetAuth, mlPutAuth, mlPutVerified, mlPostAuth, refreshAccountToken,
   fullConfig: () => fullConfig, config: () => config,
   getProductCache, invalidateProductCache,
   checkStockChanges, buildVariantChangesFromMismatches, buildVariantChangesFromSource,

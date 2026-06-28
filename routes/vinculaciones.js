@@ -13,7 +13,7 @@ const VINC_PATH = path.join(__dirname, '..', 'vinculaciones.json');
 
 module.exports = function(ctx) {
   const {
-    mlGetAuth, mlPutAuth, refreshAccountToken,
+    mlGetAuth, mlPutVerified, refreshAccountToken,
     fullConfig, checkStockChanges, getLastVincCheck,
     buildVariantChangesFromMismatches,
   } = ctx;
@@ -130,11 +130,12 @@ module.exports = function(ctx) {
                     if (newVariations[0].available_quantity < 0) newVariations[0].available_quantity = 0;
                   }
                 }
-                await mlPutAuth(acct, '/items/' + it.itemId, { variations: newVariations });
+                const expTotal = newVariations.reduce((a, v) => a + (v.available_quantity || 0), 0);
+                await mlPutVerified(acct, it.itemId, { variations: newVariations }, expTotal);
                 updates.push({ itemId: it.itemId, from: it.realStock, to: targetStock, ok: true, hasVariations: true, matchMethod });
               } else {
                 if (it.realStock !== targetStock) {
-                  await mlPutAuth(acct, '/items/' + it.itemId, { available_quantity: targetStock });
+                  await mlPutVerified(acct, it.itemId, { available_quantity: targetStock }, targetStock);
                 }
                 updates.push({ itemId: it.itemId, from: it.realStock, to: targetStock, ok: true });
               }
@@ -230,9 +231,10 @@ module.exports = function(ctx) {
                         newVars[0].available_quantity += (minStock - sum);
                         if (newVars[0].available_quantity < 0) newVars[0].available_quantity = 0;
                       }
-                      await mlPutAuth(acct, '/items/' + s.itemId, { variations: newVars });
+                      const expTotal = newVars.reduce((a, v) => a + (v.available_quantity || 0), 0);
+                      await mlPutVerified(acct, s.itemId, { variations: newVars }, expTotal);
                     } else {
-                      await mlPutAuth(acct, '/items/' + s.itemId, { available_quantity: minStock });
+                      await mlPutVerified(acct, s.itemId, { available_quantity: minStock }, minStock);
                     }
                   }
                   syncResults.push({ group: g.name, groupId: g.id, accountId: s.accountId, item: s.itemId, from: s.stock, to: minStock, hasVars: !!s.hasVars });
@@ -380,10 +382,11 @@ module.exports = function(ctx) {
                     }
                   }
                   console.log('[vinc] apply', ch.itemId, 'method:', applyMethod);
-                  await mlPutAuth(acct, '/items/' + ch.itemId, { variations: newVars });
-                  newTotalByItem[ch.itemId] = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+                  const expTotal = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+                  await mlPutVerified(acct, ch.itemId, { variations: newVars }, expTotal);
+                  newTotalByItem[ch.itemId] = expTotal;
                 } else {
-                  await mlPutAuth(acct, '/items/' + ch.itemId, { available_quantity: adj.targetStock });
+                  await mlPutVerified(acct, ch.itemId, { available_quantity: adj.targetStock }, adj.targetStock);
                   newTotalByItem[ch.itemId] = adj.targetStock;
                 }
                 const fromQty = (adj.type === 'variant' || isDeltaType) ? (ch.variantChanges?.reduce((s, v) => s + (v.from ?? 0), 0) || ch.from) : ch.from;
@@ -500,9 +503,10 @@ module.exports = function(ctx) {
                   results.push({ itemId: ch.itemId, ok: false, error: 'sin info de variante para revertir' });
                   continue;
                 }
-                await mlPutAuth(acct, '/items/' + ch.itemId, { variations: newVars });
+                const expTotal = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+                await mlPutVerified(acct, ch.itemId, { variations: newVars }, expTotal);
               } else {
-                await mlPutAuth(acct, '/items/' + ch.itemId, { available_quantity: ch.from });
+                await mlPutVerified(acct, ch.itemId, { available_quantity: ch.from }, ch.from);
               }
               results.push({ itemId: ch.itemId, ok: true });
             } catch(e) {
