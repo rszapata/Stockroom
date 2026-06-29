@@ -20,19 +20,20 @@
   --yellow:        #E5A21E;
   --yellow-light:  #F8EFD9;
 
-  /* Fondos — graphite premium */
-  --bg:            #F6F7F6;
+  /* Fondos — graphite premium (página claramente por debajo del blanco de las
+     cards para que separen bien; sidebar blanco) */
+  --bg:            #EAECE8;
   --bg-card:       #FFFFFF;
-  --bg-sidebar:    #FBFBFA;
+  --bg-sidebar:    #FFFFFF;
 
-  /* Bordes */
-  --border:        #E8E9E7;
-  --border-2:      #D6D8D4;
+  /* Bordes — hairline visible (no se pierden contra el blanco) */
+  --border:        #D8DBD5;
+  --border-2:      #BFC3BC;
 
-  /* Texto — casi-tinta */
-  --text:          #181B1A;
-  --text-2:        #5A615E;
-  --text-3:        #969B98;
+  /* Texto — casi-tinta, secundarios más oscuros para legibilidad */
+  --text:          #14171A;
+  --text-2:        #515650;
+  --text-3:        #7E847C;
 
   /* Tipografía */
   --font:          'Inter', system-ui, -apple-system, sans-serif;

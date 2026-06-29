@@ -83,6 +83,11 @@
 .pg .pkg-buyer{font-size:11px;color:var(--t2);font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg .pkg-multi-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,230,0,.08);border:1px solid rgba(255,230,0,.2);color:var(--ye);letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
 .pg .pkg-single-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--b1);color:var(--t3);letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+/* Encabezado de subsección por tipo (Fundas / Mallas-Protectores / Combinadas) */
+.pg .pkg-subhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 18px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--t2);background:var(--bg);border-top:1px solid var(--b1);border-bottom:1px solid var(--b1)}
+.pg .orders-list > .pkg-subhead:first-child{border-top:none}
+.pg .pkg-subcount{font-size:10px;font-weight:700;color:var(--t3);background:var(--bg-card);border:1px solid var(--b1);border-radius:9px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.pg .pkg-subhead.sh-mixta{color:var(--or);box-shadow:inset 3px 0 0 var(--or)}
 .pg .pkg-item{display:flex;align-items:flex-start;gap:12px;padding:7px 18px 7px 30px}
 .pg .pkg-item:not(:last-child){border-bottom:1px solid rgba(255,255,255,.03)}
 .pg .pkg-multi .pkg-item:not(:last-child){border-bottom:1px solid rgba(255,230,0,.05)}
@@ -490,7 +495,7 @@ function renderOrders(acct) {
     byKey[key].orders.push(o);
   }
 
-  return groups.map(g => {
+  const renderCard = (g) => {
     const orders    = g.orders;
     const o0        = orders[0];
     const orderIds  = orders.map(o => String(o.id));
@@ -547,7 +552,27 @@ function renderOrders(acct) {
       </div>
       ${itemsHtml}
     </div>`;
-  }).join('');
+  };
+
+  // ── Separar por tipo: Fundas vs Mallas/Protectores ──────────────
+  // Clasifica cada VENTA (no cada ítem). Una venta que mezcla fundas con
+  // mallas/protectores va a "Combinadas" para no duplicarla ni esconderla:
+  // así se despacha contemplando que tiene de ambas.
+  const esFunda = t => /funda|carcasa|cover/i.test(t || '');
+  const buckets = { malla: [], funda: [], mixta: [] };
+  for (const g of groups) {
+    const titles = g.orders.flatMap(o => o.items).map(i => i.title || '');
+    const hasFunda = titles.some(esFunda);
+    const hasOtro  = titles.some(t => !esFunda(t));
+    buckets[(hasFunda && hasOtro) ? 'mixta' : hasFunda ? 'funda' : 'malla'].push(g);
+  }
+  const sub = (label, arr, cls) => arr.length
+    ? `<div class="pkg-subhead ${cls}"><span>${label}</span><span class="pkg-subcount">${arr.length}</span></div>` + arr.map(renderCard).join('')
+    : '';
+  const html = sub('Mallas / Protectores', buckets.malla, 'sh-malla')
+             + sub('Fundas', buckets.funda, 'sh-funda')
+             + sub('Combinadas · fundas + mallas/protectores', buckets.mixta, 'sh-mixta');
+  return html || '<div class="empty-row">✓ Nada para despachar</div>';
 }
 
 // ── Selección de órdenes ──────────────────────────────────────
