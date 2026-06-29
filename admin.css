@@ -6,33 +6,33 @@
 
 /* ── Variables ─────────────────────────────────────────────── */
 :root {
-  /* Acción / Brand */
-  --blue:          #3483FA;
-  --blue-dark:     #2968C8;
-  --blue-light:    #EBF2FF;
-  --blue-mid:      #d4e8ff;
+  /* Acción / Brand — Verde Pizarra (reemplaza el azul ML #3483FA) */
+  --blue:          #15715F;
+  --blue-dark:     #0F5849;
+  --blue-light:    #E7F0ED;
+  --blue-mid:      #CFE5DF;
 
-  /* Estados */
-  --green:         #00A650;
-  --green-light:   #E6F5EE;
-  --red:           #F23D4F;
-  --red-light:     #FDECEA;
-  --yellow:        #F5A623;
-  --yellow-light:  #FEF3DC;
+  /* Estados (mantienen su semántica; texto #fff/#333 ya pareado) */
+  --green:         #1F8A5B;
+  --green-light:   #E7F2EB;
+  --red:           #C23B34;
+  --red-light:     #FBEAE8;
+  --yellow:        #E5A21E;
+  --yellow-light:  #F8EFD9;
 
-  /* Fondos */
-  --bg:            #F5F5F5;
+  /* Fondos — graphite premium */
+  --bg:            #F6F7F6;
   --bg-card:       #FFFFFF;
-  --bg-sidebar:    #FFFFFF;
+  --bg-sidebar:    #FBFBFA;
 
   /* Bordes */
-  --border:        #E6E6E6;
-  --border-2:      #D0D0D0;
+  --border:        #E8E9E7;
+  --border-2:      #D6D8D4;
 
-  /* Texto */
-  --text:          #333333;
-  --text-2:        #666666;
-  --text-3:        #999999;
+  /* Texto — casi-tinta */
+  --text:          #181B1A;
+  --text-2:        #5A615E;
+  --text-3:        #969B98;
 
   /* Tipografía */
   --font:          'Inter', system-ui, -apple-system, sans-serif;
@@ -56,24 +56,24 @@
 
 /* ── Dark mode ─────────────────────────────────────────────── */
 html[data-theme="dark"] {
-  --blue:          #4C9EFF;
-  --blue-dark:     #3483FA;
-  --blue-light:    #152742;
-  --blue-mid:      #1A3050;
-  --green:         #00C85A;
-  --green-light:   #072A16;
-  --red:           #FF5261;
-  --red-light:     #2D0810;
-  --yellow:        #F5A623;
-  --yellow-light:  #2A1B07;
-  --bg:            #0F1117;
-  --bg-card:       #1A1D27;
-  --bg-sidebar:    #13151F;
-  --border:        #252836;
-  --border-2:      #333647;
-  --text:          #E8EAF0;
-  --text-2:        #9094A8;
-  --text-3:        #565C75;
+  --blue:          #2BB394;
+  --blue-dark:     #1F9C81;
+  --blue-light:    #10302A;
+  --blue-mid:      #16403A;
+  --green:         #34B36F;
+  --green-light:   #0E2A1C;
+  --red:           #E5675E;
+  --red-light:     #2E1210;
+  --yellow:        #D9A23A;
+  --yellow-light:  #2C2208;
+  --bg:            #0E1112;
+  --bg-card:       #15191A;
+  --bg-sidebar:    #111516;
+  --border:        #232A2A;
+  --border-2:      #323A39;
+  --text:          #E8ECEA;
+  --text-2:        #99A19E;
+  --text-3:        #5F6764;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
   --shadow:    0 4px 12px rgba(0,0,0,.6);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.7);
@@ -118,7 +118,7 @@ a    { text-decoration: none; color: inherit; }
 img  { display: block; max-width: 100%; }
 button { cursor: pointer; font-family: var(--font); border: none; background: none; touch-action: manipulation; }
 input, select, textarea { font-family: var(--font); }
-::selection { background: rgba(52,131,250,.18); }
+::selection { background: rgba(21,113,95,.16); }
 *:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 /* ── Layout base ───────────────────────────────────────────── */
