@@ -74,7 +74,10 @@
 /* ── package view ── */
 .pg .pkg-card{border-bottom:1px solid var(--b1)}
 .pg .pkg-card:last-child{border-bottom:none}
-.pg .pkg-card.pkg-multi{background:rgba(255,230,0,.015);box-shadow:inset 3px 0 0 var(--ye)}
+/* Venta multi-producto (pack): caja delimitada con margen, para que dos packs
+   seguidos se vean como dos cajas separadas y no como un bloque continuo. */
+.pg .pkg-card.pkg-multi{background:rgba(255,230,0,.025);border:1px solid rgba(255,230,0,.28);border-left:3px solid var(--ye);border-radius:8px;margin:10px;overflow:hidden}
+.pg .pkg-card.pkg-multi + .pkg-card.pkg-multi{margin-top:10px}
 .pg .pkg-header{display:flex;align-items:center;justify-content:space-between;padding:9px 18px 5px;gap:8px;flex-wrap:wrap}
 .pg .pkg-id{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:.04em}
 .pg .pkg-buyer{font-size:11px;color:var(--t2);font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
