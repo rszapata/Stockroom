@@ -110,6 +110,10 @@ module.exports = function(ctx) {
       const isFlex = logisticType === 'self_service';
       return {
         id: o.id,
+        // pack_id: ML parte una compra de varios productos en varias órdenes que
+        // comparten este id (y el mismo shipping_id). El front las agrupa en una
+        // sola venta. Null/ausente → compra de un solo ítem.
+        pack_id: o.pack_id || null,
         date_created: o.date_created,
         buyer: o.buyer?.nickname || o.buyer?.id || '—',
         shipping_id: sid || null,

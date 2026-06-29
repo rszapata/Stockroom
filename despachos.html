@@ -74,11 +74,12 @@
 /* ── package view ── */
 .pg .pkg-card{border-bottom:1px solid var(--b1)}
 .pg .pkg-card:last-child{border-bottom:none}
-.pg .pkg-card.pkg-multi{background:rgba(255,230,0,.015)}
+.pg .pkg-card.pkg-multi{background:rgba(255,230,0,.015);box-shadow:inset 3px 0 0 var(--ye)}
 .pg .pkg-header{display:flex;align-items:center;justify-content:space-between;padding:9px 18px 5px;gap:8px;flex-wrap:wrap}
 .pg .pkg-id{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:.04em}
 .pg .pkg-buyer{font-size:11px;color:var(--t2);font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg .pkg-multi-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,230,0,.08);border:1px solid rgba(255,230,0,.2);color:var(--ye);letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+.pg .pkg-single-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--b1);color:var(--t3);letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
 .pg .pkg-item{display:flex;align-items:flex-start;gap:12px;padding:7px 18px 7px 30px}
 .pg .pkg-item:not(:last-child){border-bottom:1px solid rgba(255,255,255,.03)}
 .pg .pkg-multi .pkg-item:not(:last-child){border-bottom:1px solid rgba(255,230,0,.05)}
@@ -393,7 +394,8 @@ function renderData(d, ts) {
     section.className = 'acct-section';
 
     const acctOrders = acct.orders || [];
-    const acctFlexIds    = acctOrders.filter(o => o.is_flex && o.shipping_id).map(o => o.shipping_id);
+    // Dedup por shipping_id: un pack (varias órdenes, mismo envío) = 1 etiqueta Flex.
+    const acctFlexIds    = [...new Set(acctOrders.filter(o => o.is_flex && o.shipping_id).map(o => o.shipping_id))];
     const acctFlexCount  = acctFlexIds.length;
     const acctNonFlex    = acctOrders.filter(o => !o.is_flex).length;
     const acctUnits      = acctOrders.reduce((s,o) => s + o.items.reduce((a,i) => a+(i.quantity||0),0), 0);
@@ -473,15 +475,32 @@ function renderOrders(acct) {
     correo:  ['correo-badge',  'CORREO'],
   };
 
-  return acct.orders.map(o => {
-    const tipo = o.is_flex ? 'flex' : dispatchType;
-    const [cls, label] = BADGE[tipo] || BADGE.correo;
-    const ordId = String(o.id || '').slice(-6);
-    const buyer = o.buyer && o.buyer !== '—' ? o.buyer : '';
-    const totalItems = o.items.reduce((s, i) => s + (i.quantity || 1), 0);
-    const isMulti = totalItems > 1;
+  // Agrupar por pack_id: varias órdenes con el mismo pack_id = UNA compra de
+  // varios productos (ML la parte en órdenes separadas que comparten envío). Sin
+  // pack (o pack único) = venta de un solo producto. Así una compra de 2
+  // productos se ve como UNA venta y no como dos ventas sueltas.
+  const groups = [];
+  const byKey = {};
+  for (const o of acct.orders) {
+    const key = o.pack_id || ('o_' + o.id);
+    if (!byKey[key]) { byKey[key] = { orders: [] }; groups.push(byKey[key]); }
+    byKey[key].orders.push(o);
+  }
 
-    const itemsHtml = o.items.map(i => {
+  return groups.map(g => {
+    const orders    = g.orders;
+    const o0        = orders[0];
+    const orderIds  = orders.map(o => String(o.id));
+    const items     = orders.flatMap(o => o.items);    // todos los productos de la venta
+    const prodLines = items.length;                    // cantidad de productos distintos
+    const totalUnits = items.reduce((s, i) => s + (i.quantity || 1), 0);
+    const isMulti   = prodLines > 1;                   // venta de más de un producto
+
+    const tipo = o0.is_flex ? 'flex' : dispatchType;
+    const [cls, label] = BADGE[tipo] || BADGE.correo;
+    const buyer = o0.buyer && o0.buyer !== '—' ? o0.buyer : '';
+
+    const itemsHtml = items.map(i => {
       const variant = (i.variation_attributes||[]).map(v => v.value_name||v.value_id||'').filter(Boolean).join(' · ');
       return `
       <div class="pkg-item">
@@ -496,19 +515,32 @@ function renderOrders(acct) {
       </div>`;
     }).join('');
 
+    const idsAttr = orderIds.join(',');
+    const sel = orderIds.every(id => isOrderSelected(id));
+    // Badge claro de la composición de la venta (lo que pidió el usuario).
+    const ventaBadge = isMulti
+      ? `<span class="pkg-multi-badge">📦 Venta de ${prodLines} productos</span>`
+      : (totalUnits > 1
+          ? `<span class="pkg-multi-badge">📦 1 producto ×${totalUnits}</span>`
+          : `<span class="pkg-single-badge">1 producto</span>`);
+    // # de orden(es): si es un pack, mostrar todas las que lo componen.
+    const ordChips = orders.length > 1
+      ? orders.map(o => '#' + String(o.id).slice(-6)).join(' + ')
+      : '#' + String(o0.id || '').slice(-6);
+
     return `
     <div class="pkg-card${isMulti ? ' pkg-multi' : ''}">
       <div class="pkg-header">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <input type="checkbox" class="ord-chk" data-order-id="${esc(String(o.id))}"
-            ${isOrderSelected(o.id) ? 'checked' : ''}
-            onclick="toggleOrder('${esc(String(o.id))}')"
+          <input type="checkbox" class="ord-chk" data-order-ids="${esc(idsAttr)}"
+            ${sel ? 'checked' : ''}
+            onclick="togglePackSel('${esc(idsAttr)}')"
           />
           <span class="${cls}">${label}</span>
-          ${ordId ? `<span class="pkg-id">#${ordId}</span>` : ''}
+          <span class="pkg-id">${esc(ordChips)}</span>
           ${buyer ? `<span class="pkg-buyer">${esc(buyer)}</span>` : ''}
         </div>
-        ${isMulti ? `<span class="pkg-multi-badge">📦 ${totalItems} items</span>` : ''}
+        ${ventaBadge}
       </div>
       ${itemsHtml}
     </div>`;
@@ -525,6 +557,15 @@ function toggleOrder(orderId) {
   const id = String(orderId);
   if (deselectedOrders.has(id)) deselectedOrders.delete(id);
   else deselectedOrders.add(id);
+  updateSelectionUI();
+}
+// Una venta puede agrupar varias órdenes (pack). El checkbox de la card las
+// toca todas juntas: si están todas seleccionadas → deselecciona todas, si no
+// → selecciona todas.
+function togglePackSel(idsCsv) {
+  const ids = String(idsCsv).split(',').filter(Boolean);
+  const allSel = ids.every(id => isOrderSelected(id));
+  ids.forEach(id => { if (allSel) deselectedOrders.add(id); else deselectedOrders.delete(id); });
   updateSelectionUI();
 }
 function selectAll(accountId) {
@@ -565,9 +606,10 @@ function updateSelectionUI() {
     if (hasSel) btnSel.textContent = `↓ Flex sel. (${selFlex.length})`;
   }
 
-  // Actualizar checkboxes visibles
+  // Actualizar checkboxes visibles (cada uno puede agrupar varias órdenes/pack)
   document.querySelectorAll('.ord-chk').forEach(chk => {
-    chk.checked = isOrderSelected(chk.dataset.orderId);
+    const ids = (chk.dataset.orderIds || '').split(',').filter(Boolean);
+    chk.checked = ids.length > 0 && ids.every(id => isOrderSelected(id));
   });
 }
 
@@ -628,7 +670,8 @@ async function generarSeleccionadas() {
   );
   if (!selFlex.length) { setStatus('No hay envíos Flex seleccionados.'); return; }
 
-  const shippingIds = selFlex.map(o => o.shippingId).join(',');
+  // Dedup: un pack son varias órdenes con el MISMO shipping_id → una sola etiqueta.
+  const shippingIds = [...new Set(selFlex.map(o => o.shippingId))].join(',');
   const cuentas = [...new Set(selFlex.map(o => o.accountId))];
   const multiCuenta = cuentas.length > 1;
 
@@ -688,8 +731,9 @@ async function generar(responseType) {
   // Solo filtrar si hay órdenes deseleccionadas (parcial), de lo contrario no pasar filtro
   const hasDesel = deselectedOrders.size > 0;
   const selIds  = hasDesel ? allOrd.filter(o => isOrderSelected(o.id)) : allOrd;
-  const selFlex = hasDesel ? selIds.filter(o => o.is_flex && o.shipping_id).map(o => String(o.shipping_id)).join(',') : '';
-  const selShip = hasDesel ? selIds.filter(o => o.shipping_id).map(o => String(o.shipping_id)).join(',') : '';
+  // Dedup por shipping_id: un pack son varias órdenes con el mismo envío → 1 etiqueta.
+  const selFlex = hasDesel ? [...new Set(selIds.filter(o => o.is_flex && o.shipping_id).map(o => String(o.shipping_id)))].join(',') : '';
+  const selShip = hasDesel ? [...new Set(selIds.filter(o => o.shipping_id).map(o => String(o.shipping_id)))].join(',') : '';
   const qs = isPdf ? (selFlex ? `&shipping_ids=${selFlex}` : '') : (selShip ? `&shipping_ids=${selShip}` : '');
   const endpoint = isPdf ? `/flex-pdf-all?responseType=${responseType}${qs}` : `/etiquetas-all?responseType=${responseType}${qs}`;
   $I('btn-pdf').disabled = true;
@@ -765,8 +809,9 @@ async function generarCuenta(accountId, responseType) {
   const allAcctOrds = acctData ? (acctData.orders||[]) : [];
   const hasDesel = deselectedOrders.size > 0;
   const acctOrds = hasDesel ? allAcctOrds.filter(o => isOrderSelected(o.id)) : allAcctOrds;
-  const selFlex = hasDesel ? acctOrds.filter(o => o.is_flex && o.shipping_id).map(o => String(o.shipping_id)).join(',') : '';
-  const selShip = hasDesel ? acctOrds.filter(o => o.shipping_id).map(o => String(o.shipping_id)).join(',') : '';
+  // Dedup por shipping_id: un pack son varias órdenes con el mismo envío → 1 etiqueta.
+  const selFlex = hasDesel ? [...new Set(acctOrds.filter(o => o.is_flex && o.shipping_id).map(o => String(o.shipping_id)))].join(',') : '';
+  const selShip = hasDesel ? [...new Set(acctOrds.filter(o => o.shipping_id).map(o => String(o.shipping_id)))].join(',') : '';
   const qs = isPdf ? (selFlex ? `&shipping_ids=${selFlex}` : '') : (selShip ? `&shipping_ids=${selShip}` : '');
   const endpoint = isPdf ? `/flex-pdf-all?responseType=${responseType}${qs}` : `/etiquetas-all?responseType=${responseType}${qs}`;
   setStatus(`Generando ${isPdf ? 'PDF Flex' : 'etiquetas'} para ${accountId}…`, true);
