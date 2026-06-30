@@ -128,8 +128,27 @@ tr.excluded .oc-inp { pointer-events: none; }
 }
 .oc-iconbtn:hover { color: var(--text); border-color: var(--border-2); }
 .oc-iconbtn.danger:hover { color: var(--red); border-color: var(--red); background: var(--red-light); }
+.oc-prov { position: relative; }
 .oc-prov[disabled] { opacity: .45; cursor: not-allowed; }
+.oc-prov.has { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 40%, var(--border)); background: var(--blue-light); }
+.oc-prov-count { position: absolute; top: -5px; right: -5px; background: var(--blue); color: #fff; font-size: 9px; font-weight: 700; border-radius: 99px; min-width: 14px; height: 14px; line-height: 14px; text-align: center; padding: 0 2px; }
 tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+
+/* ── Popover de links de proveedor (Alibaba) ── */
+#prov-pop { position: absolute; z-index: 60; width: 320px; background: var(--bg-card); border: 1px solid var(--border-2); border-radius: 12px; box-shadow: var(--shadow-md); padding: 12px; display: none; }
+#prov-pop.show { display: block; }
+.pp-head { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.pp-list { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; margin-bottom: 10px; }
+.pp-link { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.pp-prov { font-size: 12px; font-weight: 600; color: var(--text); }
+.pp-url { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+.pp-nota { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.pp-empty { font-size: 12px; color: var(--text-3); text-align: center; padding: 10px; }
+.pp-btn { width: 26px; height: 26px; border-radius: 7px; }
+.pp-form { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+.pp-in { height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); font-size: 12px; }
+.pp-in:focus { outline: none; border-color: var(--blue); }
+.pp-close { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1; }
 
 .oc-empty { text-align: center; padding: 60px 20px; }
 .oc-empty svg { color: var(--text-3); opacity: .4; }
@@ -283,6 +302,7 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
   </main>
 </div>
 </div>
+<div id="prov-pop"></div>
 
 <script>
 /* ═══════════ Orden de Compra — preview + edición + export ═══════════ */
@@ -303,6 +323,7 @@ let dirty = false;
 let catalog = null;   // parseado de oc_csv (para agregar manual)
 let currentSort = 'group';
 let prodOrder = new Map();   // orden estable de productos (1ª aparición que devolvió el backend)
+let provLinks = {};          // { item_id: [ {url, proveedor, precio_usd, nota} ] }
 
 function markDirty() { if (!dirty) { dirty = true; $('oc-dirty').classList.add('show'); } }
 
@@ -430,8 +451,9 @@ function renderRows() {
         <td class="right hide-sm" id="mg-${i}">${mgCell(it)}</td>
         <td class="right"><span class="oc-rowtot" id="rt-${i}">$0</span></td>
         <td class="right" style="white-space:nowrap">
-          <button class="oc-iconbtn oc-prov" disabled title="Links de proveedor (próximamente)">
+          <button class="oc-iconbtn oc-prov ${(provLinks[it.item_id]||[]).length ? 'has' : ''}" data-item="${esc(it.item_id || '')}" data-i="${i}" ${it.item_id ? '' : 'disabled'} title="Links de proveedor${(provLinks[it.item_id]||[]).length ? ' (' + provLinks[it.item_id].length + ')' : ''}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            ${(provLinks[it.item_id]||[]).length ? `<span class="oc-prov-count">${provLinks[it.item_id].length}</span>` : ''}
           </button>
           <button class="oc-iconbtn danger oc-toggle" data-i="${i}" title="Quitar / restaurar de esta orden">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
@@ -442,6 +464,7 @@ function renderRows() {
 
   tb.querySelectorAll('.oc-inp').forEach(inp => inp.addEventListener('input', onEdit));
   tb.querySelectorAll('.oc-toggle').forEach(btn => btn.addEventListener('click', onToggle));
+  tb.querySelectorAll('.oc-prov:not([disabled])').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openProv(btn.dataset.item, +btn.dataset.i, btn); }));
 }
 
 function refreshRowDerived(i) {
@@ -707,6 +730,96 @@ $('oc-saved').addEventListener('change', e => {
   e.target.value = '';
 });
 
+/* ───── links de proveedor (Alibaba) ───── */
+const isHttp = u => /^https?:\/\//i.test(String(u || '').trim());
+async function loadProvLinks() {
+  try { const r = await fetch('/proveedor-links'); const d = await r.json(); if (d.ok) provLinks = d.links || {}; } catch(e) {}
+}
+async function saveProvLinks(itemId) {
+  try {
+    const r = await fetch('/proveedor-links', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_id: itemId, links: provLinks[itemId] || [] }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'error');
+    return true;
+  } catch(e) { setStatus(`✕ No se pudieron guardar los links: ${esc(e.message)}`, false); return false; }
+}
+
+let provCtx = null;   // { itemId, rowIdx }
+function closeProv() { $('prov-pop').classList.remove('show'); provCtx = null; }
+
+function openProv(itemId, rowIdx, anchor) {
+  if (!itemId) return;
+  provCtx = { itemId, rowIdx };
+  const links = provLinks[itemId] || [];
+  const pop = $('prov-pop');
+  pop.innerHTML = `
+    <div class="pp-head"><span>Links de proveedor</span><button class="pp-close" id="pp-x">✕</button></div>
+    <div class="pp-list">${links.length ? links.map((l, i) => `
+      <div class="pp-link">
+        <div style="min-width:0;flex:1">
+          <div class="pp-prov">${esc(l.proveedor || '(sin nombre)')}${l.precio_usd != null ? ` · <span style="color:var(--blue)">u$${l.precio_usd}</span>` : ''}</div>
+          <div class="pp-url" title="${esc(l.url)}">${esc(l.url)}</div>
+          ${l.nota ? `<div class="pp-nota">${esc(l.nota)}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:3px;flex-shrink:0">
+          ${l.precio_usd != null ? `<button class="oc-iconbtn pp-btn pp-use" data-i="${i}" title="Usar u$${l.precio_usd} como costo de esta fila">$</button>` : ''}
+          <button class="oc-iconbtn pp-btn pp-open" data-i="${i}" title="Abrir en proveedor (pestaña nueva)">↗</button>
+          <button class="oc-iconbtn pp-btn danger pp-del" data-i="${i}" title="Eliminar link">✕</button>
+        </div>
+      </div>`).join('') : '<div class="pp-empty">Sin links cargados todavía</div>'}
+    </div>
+    <div class="pp-form">
+      <input class="pp-in" id="pp-url" placeholder="URL del proveedor (https://…)">
+      <div style="display:flex;gap:6px">
+        <input class="pp-in" id="pp-prov" placeholder="Proveedor" style="flex:1">
+        <input class="pp-in" id="pp-usd" type="number" step="0.01" min="0" placeholder="u$" style="width:72px">
+      </div>
+      <input class="pp-in" id="pp-nota" placeholder="Nota (opcional)">
+      <button class="btn btn-primary btn-sm" id="pp-add" style="justify-content:center">+ Agregar link</button>
+    </div>`;
+
+  // posicionar bajo el botón, dentro del viewport
+  const r = anchor.getBoundingClientRect();
+  pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+  pop.style.left = Math.max(8, Math.min(r.right + window.scrollX - 320, window.scrollX + window.innerWidth - 332)) + 'px';
+  pop.classList.add('show');
+
+  $('pp-x').addEventListener('click', closeProv);
+  pop.querySelectorAll('.pp-open').forEach(b => b.addEventListener('click', () => {
+    const l = (provLinks[itemId] || [])[+b.dataset.i];
+    if (l && isHttp(l.url)) window.open(l.url, '_blank', 'noopener,noreferrer');
+  }));
+  pop.querySelectorAll('.pp-del').forEach(b => b.addEventListener('click', async () => {
+    provLinks[itemId].splice(+b.dataset.i, 1);
+    if (!provLinks[itemId].length) delete provLinks[itemId];
+    await saveProvLinks(itemId);
+    renderRows(); openProv(itemId, rowIdx, document.querySelector(`.oc-prov[data-i="${rowIdx}"]`) || anchor);
+  }));
+  pop.querySelectorAll('.pp-use').forEach(b => b.addEventListener('click', () => {
+    const l = (provLinks[itemId] || [])[+b.dataset.i];
+    if (!l || l.precio_usd == null) return;
+    const tc = +((draft.params||{}).tc) || 0, fu = +((draft.params||{}).flete_unit) || 0;
+    draft.items[rowIdx].costo_unit = Math.round(l.precio_usd * tc + fu);
+    markDirty(); renderRows(); recompute(); closeProv();
+    setStatus(`✓ Costo de la fila actualizado desde el proveedor (u$${l.precio_usd}).`, true);
+  }));
+  $('pp-add').addEventListener('click', async () => {
+    const url = $('pp-url').value.trim();
+    if (!isHttp(url)) { $('pp-url').classList.add('invalid'); $('pp-url').style.borderColor = 'var(--red)'; return; }
+    const usd = $('pp-usd').value.trim();
+    const link = { url, proveedor: $('pp-prov').value.trim(), precio_usd: usd !== '' ? +usd : null, nota: $('pp-nota').value.trim() };
+    (provLinks[itemId] = provLinks[itemId] || []).push(link);
+    const ok = await saveProvLinks(itemId);
+    if (ok) { renderRows(); openProv(itemId, rowIdx, document.querySelector(`.oc-prov[data-i="${rowIdx}"]`) || anchor); }
+  });
+}
+document.addEventListener('click', e => { if (!e.target.closest('#prov-pop') && !e.target.closest('.oc-prov')) closeProv(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeProv(); });
+document.querySelector('#oc-order .adm-table-wrap')?.addEventListener('scroll', closeProv);
+
 /* ───── export ───── */
 $('oc-export').addEventListener('click', async () => {
   const btn = $('oc-export');
@@ -737,6 +850,7 @@ $('oc-export').addEventListener('click', async () => {
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 loadDraft();
+loadProvLinks().then(() => { if (draft) renderRows(); });
 </script>
 </body>
 </html>

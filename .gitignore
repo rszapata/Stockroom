@@ -60,3 +60,6 @@ test_flex_preview.pdf
 test_*.pdf
 *.tmp.xlsx
 *.tmp.csv
+
+# ── Estado operativo (no commitear, no pisar en deploy) ───────
+proveedor-links.json

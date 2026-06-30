@@ -4862,6 +4862,46 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── /proveedor-links → links de compra (Alibaba/etc) por publicación (item_id) ──
+  //    Persisten por producto, así reaparecen en órdenes futuras. Archivo operativo
+  //    (gitignored + excluido del deploy).
+  if (pathname === '/proveedor-links' && req.method === 'GET') {
+    const fp = path.join(__dirname, 'proveedor-links.json');
+    let data = {};
+    try { if (fs.existsSync(fp)) data = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch(e) {}
+    json(res, 200, { ok: true, links: data });
+    return;
+  }
+  if (pathname === '/proveedor-links' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      let body;
+      try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+      catch(e) { json(res, 400, { error: 'JSON inválido' }); return; }
+      const itemId = String(body.item_id || '').trim();
+      if (!itemId) { json(res, 400, { error: 'falta item_id' }); return; }
+      // Saneado: sólo URLs http(s), tamaños acotados, máx 20 links por producto
+      const links = (Array.isArray(body.links) ? body.links : [])
+        .filter(l => l && /^https?:\/\//i.test(String(l.url || '')))
+        .slice(0, 20)
+        .map(l => ({
+          url: String(l.url).slice(0, 600),
+          proveedor: String(l.proveedor || '').slice(0, 140),
+          precio_usd: (l.precio_usd != null && isFinite(l.precio_usd)) ? +l.precio_usd : null,
+          nota: String(l.nota || '').slice(0, 240),
+        }));
+      const fp = path.join(__dirname, 'proveedor-links.json');
+      let data = {};
+      try { if (fs.existsSync(fp)) data = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch(e) {}
+      if (links.length) data[itemId] = links; else delete data[itemId];
+      try { fs.writeFileSync(fp, JSON.stringify(data, null, 2)); }
+      catch(e) { json(res, 500, { error: 'No se pudo guardar' }); return; }
+      json(res, 200, { ok: true, count: links.length });
+    });
+    return;
+  }
+
   // ── /flex-debug GET → diagnóstico de envíos flex ──
   if (pathname === '/flex-debug' && req.method === 'GET') {
     const userId = config.user_id;
