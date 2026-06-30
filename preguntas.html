@@ -26,11 +26,11 @@
 .pg {
   --bg:var(--bg);--s1:var(--bg-card);--s2:var(--bg-card);--b1:var(--border);--b2:var(--border-2);
   --tx:var(--text);--t2:var(--text-2);--t3:var(--text-3);
-  --ye:#FFE600;--cy:#47ffe8;--re:#ff4747;--or:#ff9547;--gr:#47ff8a;
+  --ye:var(--blue);--cy:#3E7CB1;--re:var(--red);--or:var(--yellow);--gr:var(--green);
 }
 
 /* ── spinner ── */
-.pg .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);border-top-color:#FFE600;border-radius:50%;animation:pg-spin .7s linear infinite}
+.pg .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--ye);border-radius:50%;animation:pg-spin .7s linear infinite}
 @keyframes pg-spin{to{transform:rotate(360deg)}}
 .pg #btn-refresh.is-loading #btn-refresh-icon{animation:pg-spin .7s linear infinite}
 
@@ -71,7 +71,7 @@
 .pg .q-meta{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:6px}
 .pg .q-answer-row{display:flex;flex-direction:column;gap:8px}
 .pg .q-textarea{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--tx);font-size:13px;font-family:'Inter',sans-serif;padding:10px 14px;resize:vertical;min-height:72px;line-height:1.5;transition:border-color .2s}
-.pg .q-textarea:focus{outline:none;border-color:rgba(255,230,0,.4)}
+.pg .q-textarea:focus{outline:none;border-color:color-mix(in srgb,var(--ye) 40%,transparent)}
 .pg .q-textarea::placeholder{color:var(--t3)}
 .pg .q-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .pg .char-count{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
@@ -84,7 +84,7 @@
 /* ── quick replies ── */
 .pg .quick-replies{display:flex;flex-wrap:wrap;gap:6px}
 .pg .quick-btn{height:26px;padding:0 10px;font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em;border:1px solid var(--b1);background:transparent;color:var(--t2);border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.pg .quick-btn:hover{border-color:rgba(255,230,0,.3);color:var(--ye);background:rgba(255,230,0,.05)}
+.pg .quick-btn:hover{border-color:color-mix(in srgb,var(--ye) 30%,transparent);color:var(--ye);background:color-mix(in srgb,var(--ye) 5%,transparent)}
 
 /* ── empty / error ── */
 .pg .empty-row{padding:32px 18px;text-align:center;color:var(--t3);font-size:12px}

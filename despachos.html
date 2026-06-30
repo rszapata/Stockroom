@@ -23,18 +23,18 @@
 .pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
 
 /* ── css vars (dark only for page components) ── */
-.pg { --bg:var(--bg);--s1:var(--bg-card);--s2:var(--bg-card);--b1:var(--border);--b2:var(--border-2);--tx:var(--text);--t2:var(--text-2);--t3:var(--text-3);--ye:#FFE600;--cy:#47ffe8;--re:#ff4747;--or:#ff9547;--gr:#47ff8a }
+.pg { --bg:var(--bg);--s1:var(--bg-card);--s2:var(--bg-card);--b1:var(--border);--b2:var(--border-2);--tx:var(--text);--t2:var(--text-2);--t3:var(--text-3);--ye:var(--blue);--cy:#3E7CB1;--re:var(--red);--or:var(--yellow);--gr:var(--green) }
 
 /* ── spinner ── */
-.pg .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);border-top-color:#FFE600;border-radius:50%;animation:pg-spin .7s linear infinite}
+.pg .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--ye);border-radius:50%;animation:pg-spin .7s linear infinite}
 @keyframes pg-spin{to{transform:rotate(360deg)}}
 
 /* ── btn ── */
 .pg .btn{height:36px;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px}
 .pg .btn:hover{border-color:var(--b2);color:var(--tx)}
 .pg .btn:disabled{opacity:.45;cursor:default}
-.pg .btn-primary{background:var(--ye);color:#111;border-color:var(--ye);font-weight:700}
-.pg .btn-primary:hover{background:#f5dc00;border-color:#f5dc00;color:#111}
+.pg .btn-primary{background:var(--ye);color:#fff;border-color:var(--ye);font-weight:700}
+.pg .btn-primary:hover{background:var(--blue-dark);border-color:var(--blue-dark);color:#fff}
 .pg .btn-ghost{background:transparent;border-color:var(--b1);color:var(--t2)}
 .pg .btn-zpl{background:#6366f1;border-color:#6366f1;color:#fff;font-weight:700}
 .pg .btn-zpl:hover{background:#4f46e5;border-color:#4f46e5}
@@ -64,10 +64,10 @@
 .pg .item-img{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--b1);flex-shrink:0;background:var(--s2)}
 .pg .item-title{font-size:12px;color:var(--tx);font-weight:500;line-height:1.4}
 .pg .item-variant{font-size:11px;color:var(--t2);margin-top:2px}
-.pg .qty-badge{height:24px;min-width:28px;padding:0 8px;background:rgba(255,230,0,.1);border:1px solid rgba(255,230,0,.25);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ye);display:inline-flex;align-items:center;justify-content:center}
-.pg .flex-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(71,255,232,.1);border:1px solid rgba(71,255,232,.3);color:var(--cy);letter-spacing:.06em;font-weight:600}
+.pg .qty-badge{height:24px;min-width:28px;padding:0 8px;background:color-mix(in srgb,var(--ye) 10%,transparent);border:1px solid color-mix(in srgb,var(--ye) 25%,transparent);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ye);display:inline-flex;align-items:center;justify-content:center}
+.pg .flex-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--cy) 10%,transparent);border:1px solid color-mix(in srgb,var(--cy) 30%,transparent);color:var(--cy);letter-spacing:.06em;font-weight:600}
 .pg .correo-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.05);border:1px solid var(--b2);color:var(--t2);letter-spacing:.06em}
-.pg .agencia-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,149,71,.1);border:1px solid rgba(255,149,71,.35);color:var(--or);letter-spacing:.06em;font-weight:600}
+.pg .agencia-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--or) 10%,transparent);border:1px solid color-mix(in srgb,var(--or) 35%,transparent);color:var(--or);letter-spacing:.06em;font-weight:600}
 .pg .error-row{padding:16px 18px;color:var(--re);font-size:12px;font-family:'JetBrains Mono',monospace}
 .pg .empty-row{padding:24px 18px;text-align:center;color:var(--t3);font-size:12px}
 
@@ -76,12 +76,12 @@
 .pg .pkg-card:last-child{border-bottom:none}
 /* Venta multi-producto (pack): caja delimitada con margen, para que dos packs
    seguidos se vean como dos cajas separadas y no como un bloque continuo. */
-.pg .pkg-card.pkg-multi{background:rgba(255,230,0,.025);border:1px solid rgba(255,230,0,.28);border-left:3px solid var(--ye);border-radius:8px;margin:10px;overflow:hidden}
+.pg .pkg-card.pkg-multi{background:color-mix(in srgb,var(--ye) 2.5%,transparent);border:1px solid color-mix(in srgb,var(--ye) 28%,transparent);border-left:3px solid var(--ye);border-radius:8px;margin:10px;overflow:hidden}
 .pg .pkg-card.pkg-multi + .pkg-card.pkg-multi{margin-top:10px}
 .pg .pkg-header{display:flex;align-items:center;justify-content:space-between;padding:9px 18px 5px;gap:8px;flex-wrap:wrap}
 .pg .pkg-id{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:.04em}
 .pg .pkg-buyer{font-size:11px;color:var(--t2);font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pg .pkg-multi-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,230,0,.08);border:1px solid rgba(255,230,0,.2);color:var(--ye);letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+.pg .pkg-multi-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--ye) 8%,transparent);border:1px solid color-mix(in srgb,var(--ye) 20%,transparent);color:var(--ye);letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
 .pg .pkg-single-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--b1);color:var(--t3);letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
 /* Encabezado de subsección por tipo (Fundas / Mallas-Protectores / Combinadas) */
 .pg .pkg-subhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 18px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--t2);background:var(--bg);border-top:1px solid var(--b1);border-bottom:1px solid var(--b1)}
@@ -90,7 +90,7 @@
 .pg .pkg-subhead.sh-mixta{color:var(--or);box-shadow:inset 3px 0 0 var(--or)}
 .pg .pkg-item{display:flex;align-items:flex-start;gap:12px;padding:7px 18px 7px 30px}
 .pg .pkg-item:not(:last-child){border-bottom:1px solid rgba(255,255,255,.03)}
-.pg .pkg-multi .pkg-item:not(:last-child){border-bottom:1px solid rgba(255,230,0,.05)}
+.pg .pkg-multi .pkg-item:not(:last-child){border-bottom:1px solid color-mix(in srgb,var(--ye) 5%,transparent)}
 
 /* ── status bar ── */
 .pg .status-bar{min-height:22px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t2);margin-bottom:20px}
@@ -431,7 +431,7 @@ function renderData(d, ts) {
               CORREO
             </button>
             <button onclick="setDispatchType('${esc(acct.accountId)}','agencia')"
-              style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s;${dispType==='agencia' ? 'background:rgba(255,149,71,.25);color:var(--or)' : 'background:transparent;color:var(--t3)'}">
+              style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s;${dispType==='agencia' ? 'background:color-mix(in srgb,var(--or) 25%,transparent);color:var(--or)' : 'background:transparent;color:var(--t3)'}">
               AGENCIA
             </button>
           </div>
