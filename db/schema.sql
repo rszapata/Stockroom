@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash   TEXT          NOT NULL DEFAULT '',
   password_salt   TEXT          NOT NULL DEFAULT '',
   telefono        TEXT          NOT NULL DEFAULT '',
+  firebase_uid     TEXT,                            -- uid de Firebase Auth (NULL para cuentas legacy locales)
+  auth_provider    TEXT          NOT NULL DEFAULT 'local',  -- 'local' | 'password' | 'google.com'
+  email_verificado BOOLEAN       NOT NULL DEFAULT false,
   status          user_status   NOT NULL DEFAULT 'active',
   acepta_terms    BOOLEAN       NOT NULL DEFAULT false,
   login_count     INTEGER       NOT NULL DEFAULT 0,
@@ -59,6 +62,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique
 
 CREATE INDEX IF NOT EXISTS idx_users_email      ON users (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_users_created_at ON users (created_at DESC);
+
+-- firebase_uid único (parcial: permite múltiples NULL en cuentas legacy)
+CREATE UNIQUE INDEX IF NOT EXISTS users_firebase_uid_unique
+  ON users (firebase_uid)
+  WHERE firebase_uid IS NOT NULL;
 
 -- ── ORDERS ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS orders (

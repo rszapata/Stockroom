@@ -82,6 +82,9 @@ function rowToUser(row) {
     email:         row.email,
     salt:          row.password_salt,
     password_hash: row.password_hash,
+    firebase_uid:     row.firebase_uid     || null,
+    auth_provider:    row.auth_provider    || 'local',
+    email_verificado: row.email_verificado === true,
     telefono:      row.telefono      || '',
     direccion:     addr.direccion    || '',
     altura:        addr.altura       || '',
@@ -177,6 +180,59 @@ async function updateLastLogin(id) {
     'UPDATE users SET last_login_at = NOW(), login_count = login_count + 1 WHERE id = $1',
     [id]
   );
+}
+
+// ── Firebase Auth (modo híbrido — ver PLAN.md FASE 9) ─────────────
+// La tabla `users` la creó el admin (postgres) en schema.sql, así que
+// wzmallas_app NO puede hacer DDL sobre ella ("must be owner"). La migración
+// de columnas se aplica una vez como admin (ver db/migrate-firebase-auth.sql),
+// NO en runtime. Esta función queda como referencia/instalación limpia.
+async function ensureUsersAuthColumns() {
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS firebase_uid     TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider    TEXT    NOT NULL DEFAULT 'local'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verificado BOOLEAN NOT NULL DEFAULT false`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_firebase_uid_unique ON users (firebase_uid) WHERE firebase_uid IS NOT NULL`);
+}
+
+/** Buscar usuario por firebase_uid (o null) */
+async function getUserByFirebaseUid(uid) {
+  if (!uid) return null;
+  const { rows } = await pool.query(
+    'SELECT * FROM users WHERE firebase_uid = $1 AND deleted_at IS NULL LIMIT 1',
+    [uid]
+  );
+  return rowToUser(rows[0]);
+}
+
+/**
+ * Vincula un firebase_uid a un usuario existente (cuenta legacy o creada por
+ * email antes de migrar). Actualiza también provider y verificación de email.
+ */
+async function linkFirebaseUid(userId, { firebase_uid, auth_provider, email_verificado }) {
+  const { rows } = await pool.query(
+    `UPDATE users
+        SET firebase_uid     = $2,
+            auth_provider    = COALESCE($3, auth_provider),
+            email_verificado = COALESCE($4, email_verificado),
+            updated_at       = NOW()
+      WHERE id = $1 AND deleted_at IS NULL
+      RETURNING *`,
+    [userId, firebase_uid, auth_provider || null,
+     typeof email_verificado === 'boolean' ? email_verificado : null]
+  );
+  return rowToUser(rows[0]);
+}
+
+/** Crear un usuario nuevo proveniente de Firebase (sin password local). */
+async function createUserFromFirebase({ nombre, email, firebase_uid, auth_provider, email_verificado }) {
+  const { rows } = await pool.query(
+    `INSERT INTO users (nombre, email, firebase_uid, auth_provider, email_verificado,
+                        password_hash, password_salt, status, acepta_terms, last_login_at)
+     VALUES ($1, $2, $3, $4, $5, '', '', 'active', true, NOW())
+     RETURNING *`,
+    [nombre || '', email, firebase_uid, auth_provider || 'firebase', email_verificado === true]
+  );
+  return rowToUser(rows[0]);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1299,6 +1355,40 @@ async function getCarritoAbandonadoPorToken(token) {
   return { ...rows[0], total: parseFloat(rows[0].total) };
 }
 
+// ── Alertas de stock (back-in-stock) ──────────────────────────
+async function ensureStockAlertsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tienda_stock_alerts (
+      id          SERIAL PRIMARY KEY,
+      item_id     TEXT NOT NULL,
+      variant     TEXT NOT NULL DEFAULT '',
+      titulo      TEXT NOT NULL DEFAULT '',
+      email       TEXT NOT NULL,
+      notified_at TIMESTAMPTZ,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_stock_alert_lookup ON tienda_stock_alerts (item_id, variant, LOWER(email)) WHERE notified_at IS NULL`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_stock_alert_item ON tienda_stock_alerts (item_id) WHERE notified_at IS NULL`);
+}
+
+// Registra una alerta de reposición (dedup por item+variant+email pendiente).
+// Devuelve { created:true } si es nueva; { created:false } si ya existía.
+async function addStockAlert({ item_id, variant, titulo, email }) {
+  const exists = await pool.query(
+    `SELECT 1 FROM tienda_stock_alerts
+      WHERE item_id = $1 AND variant = $2 AND LOWER(email) = LOWER($3) AND notified_at IS NULL
+      LIMIT 1`,
+    [item_id, variant || '', email]
+  );
+  if (exists.rows.length) return { created: false };
+  await pool.query(
+    `INSERT INTO tienda_stock_alerts (item_id, variant, titulo, email) VALUES ($1, $2, $3, $4)`,
+    [item_id, variant || '', titulo || '', email]
+  );
+  return { created: true };
+}
+
 module.exports = {
   pool,   // expuesto para queries puntuales en server.js
   // Users
@@ -1307,6 +1397,11 @@ module.exports = {
   createUser,
   updateUser,
   updateLastLogin,
+  // Firebase Auth (modo híbrido)
+  ensureUsersAuthColumns,
+  getUserByFirebaseUid,
+  linkFirebaseUid,
+  createUserFromFirebase,
   // Orders
   getOrdenes,
   getOrdenById,
@@ -1362,4 +1457,7 @@ module.exports = {
   getCarritosAbandonadosPendientes,
   marcarCarritoEmailEnviado,
   getCarritoAbandonadoPorToken,
+  // Alertas de stock (back-in-stock)
+  ensureStockAlertsTable,
+  addStockAlert,
 };

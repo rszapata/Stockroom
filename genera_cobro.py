@@ -65,12 +65,12 @@ PERIODOS = {
 }
 
 C = {
-    'header_bg': 'FF0D0D10', 'header_fg': 'FFE8FF47',
-    'funda_bg':  'FF101810', 'funda_fg':  'FFD0F0D0',
-    'paq2_bg':   'FF0A1A0A', 'paq2_fg':   'FFB0FFB0',
-    'mixto_bg':  'FF101818', 'mixto_fg':  'FF47FFE8',
-    'excl_bg':   'FF1A0808', 'excl_fg':   'FFFF6060',
-    'total_bg':  'FF08080F', 'total_fg':  'FFE8FF47',
+    'header_bg': 'FF1F3864', 'header_fg': 'FFFFFFFF',  # navy / blanco
+    'funda_bg':  'FFE8F5E9', 'funda_fg':  'FF1B5E20',  # verde muy claro / verde oscuro
+    'paq2_bg':   'FFF1F8E9', 'paq2_fg':   'FF33691E',  # verde pálido / verde medio
+    'mixto_bg':  'FFFFF8E1', 'mixto_fg':  'FFE65100',  # ámbar muy claro / naranja oscuro
+    'excl_bg':   'FFFCE4EC', 'excl_fg':   'FFB71C1C',  # rosa muy claro / rojo oscuro
+    'total_bg':  'FF2C5282', 'total_fg':  'FFFFFFFF',  # navy medio / blanco
 }
 
 
@@ -426,7 +426,7 @@ def generar_excel(ventas, rango_label, output_path, modo="fundas"):
     def fl(h):  return PatternFill('solid', start_color=h, end_color=h)
     def fn(color, bold=False, sz=10): return Font(name='Arial', color=color, bold=bold, size=sz)
     def brd():
-        s = Side(style='thin', color='FF2a2a30')
+        s = Side(style='thin', color='FFBDBDBD')
         return Border(left=s, right=s, top=s, bottom=s)
     def aln(h='left', w=False): return Alignment(horizontal=h, vertical='center', wrap_text=w)
 
@@ -444,7 +444,7 @@ def generar_excel(ventas, rango_label, output_path, modo="fundas"):
     ws['A2'].value     = (f'Generado: {datetime.now().strftime("%d/%m/%Y %H:%M")}  |  '
                           f'neto = ingresos/1.21 + cargo + costo_fijo − ${COSTO_IMPUESTOS:.0f} (impuestos)  |  '
                           f'Paquetes mixtos: neto calculado con precio estimado de la funda')
-    ws['A2'].font      = fn('FF8888a0', sz=9)
+    ws['A2'].font      = fn('FFB0C4D8', sz=9)
     ws['A2'].fill      = fl(C['header_bg'])
     ws['A2'].alignment = aln('center')
     ws.row_dimensions[2].height = 16
@@ -499,18 +499,21 @@ def generar_excel(ventas, rango_label, output_path, modo="fundas"):
             if ci == 8 and isinstance(val, (int, float)):
                 c.number_format = '#,##0.00'
 
-        ws.row_dimensions[fila].height = 16
         fila += 1
 
     # -- Fila TOTAL ----------------------------------------------
     ft = fila + 1
-    ws.merge_cells(f'A{ft}:G{ft}')
-    c = ws[f'A{ft}']
-    c.value = 'TOTAL NETO A DEPOSITAR'
-    c.font = fn(C['total_fg'], bold=True, sz=13)
-    c.fill = fl(C['total_bg'])
+    # Celdas A-F: decorativas (fondo total, sin texto)
+    for ci in range(1, 7):
+        c = ws.cell(row=ft, column=ci)
+        c.fill   = fl(C['total_bg'])
+        c.border = brd()
+    # Celda G: etiqueta compacta junto al valor
+    c = ws.cell(row=ft, column=7, value='TOTAL NETO A DEPOSITAR')
+    c.font      = fn(C['total_fg'], bold=True, sz=11)
+    c.fill      = fl(C['total_bg'])
     c.alignment = aln('right')
-    c.border = brd()
+    c.border    = brd()
 
     c = ws[f'H{ft}']
     c.value         = f'=SUM(H{ROW_START}:H{fila-1})'
@@ -521,7 +524,7 @@ def generar_excel(ventas, rango_label, output_path, modo="fundas"):
     c.alignment     = aln('right')
     ws[f'I{ft}'].fill   = fl(C['total_bg'])
     ws[f'I{ft}'].border = brd()
-    ws.row_dimensions[ft].height = 28
+    ws.row_dimensions[ft].height = 26
 
     # -- Leyenda -------------------------------------------------
     fl2 = ft + 2

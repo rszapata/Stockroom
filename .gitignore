@@ -1,4 +1,6 @@
 node_modules/
+__pycache__/
+*.pyc
 
 # ── Credenciales y tokens (NUNCA subir) ───────────────────────
 config.json
@@ -9,6 +11,8 @@ auth*.json
 *.key
 .env
 .env.*
+firebase-service-account.json
+*firebase-adminsdk*.json
 
 # ── Datos personales / operativos ─────────────────────────────
 # Contienen IDs de artículos, cuentas, CPs, direcciones, pedidos y clientes reales
@@ -16,6 +20,7 @@ flex_zones.json
 vinculaciones.json
 vinculaciones-log.json
 vinculaciones-pending.json
+vinculaciones-ventas.json
 ordenes.json
 sessions.json
 rate_limits.json
