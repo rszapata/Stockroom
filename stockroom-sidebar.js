@@ -16,6 +16,7 @@
     const p = (location.pathname || '').toLowerCase();
     if (p === '/' || p.includes('index.html'))   return 'dashboard';
     if (p.includes('analytics'))                 return 'analytics';
+    if (p.includes('orden-compra'))              return 'orden';
     if (p.includes('despachos'))                 return 'despachos';
     if (p.includes('cobros'))                    return 'cobros';
     if (p.includes('verificar-envios'))          return 'verificar';
@@ -55,6 +56,10 @@
       <a href="/analytics.html" class="${A('analytics')}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
         <span>Analytics</span>
+      </a>
+      <a href="/orden-compra.html" class="${A('orden')}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4H8z"/><path d="M3 6h18l-1.5 13a2 2 0 01-2 1.8H6.5a2 2 0 01-2-1.8z"/><path d="M9 11h6"/></svg>
+        <span>Orden de compra</span>
       </a>
       <a href="/despachos.html" class="${A('despachos')}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>

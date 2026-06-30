@@ -10,8 +10,9 @@ from openpyxl.utils import get_column_letter
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('csv_input')
+    p.add_argument('csv_input', nargs='?')
     p.add_argument('--output', required=True)
+    p.add_argument('--from-json', dest='from_json', help='Genera el xlsx desde un borrador editado (JSON), usando cant/costo editados')
     p.add_argument('--tc',     type=float, default=1421,   help='Tipo de cambio ARS/USD')
     p.add_argument('--flete',  type=float, default=800000, help='Flete + impuestos ARS')
     p.add_argument('--units',  type=int,   default=415,    help='Unidades de referencia para prorrateo')
@@ -85,49 +86,80 @@ def main():
     def cant_adj(vendidos):
         return max(5, math.ceil(vendidos / 4 / 5) * 5)
 
-    # ── Leer CSV ────────────────────────────────────────────────
-    with open(args.csv_input, 'r', encoding='utf-8-sig') as f:
-        rows = list(csv.DictReader(f))
+    if args.from_json:
+        # ── Modo EXPORT: armar xlsx desde un borrador EDITADO (JSON) ──
+        # Usa los cant_ajustada / costo_unit editados por el usuario (vía '_cu/_csug/_cadj').
+        # El orden de los items se respeta tal cual viene del borrador (ya ordenado).
+        with open(args.from_json, 'r', encoding='utf-8') as f:
+            draft = json.load(f)
+        prm = draft.get('params', {}) or {}
+        TC         = float(prm.get('tc', TC))
+        FLETE_UNIT = int(round(float(prm.get('flete_unit', FLETE_UNIT))))
+        VEND_MIN   = int(prm.get('vendidos_min', VEND_MIN))
+        STOCK_MAX  = int(prm.get('stock_max', STOCK_MAX))
+        relaxed_used = bool((draft.get('diagnostico', {}) or {}).get('relaxed_used', False))
+        lista = []
+        for it in draft.get('items', []):
+            if not it.get('incluido', True):
+                continue   # item quitado de la orden por el usuario
+            lista.append({
+                'Título':   it.get('producto', ''),
+                'Variante': it.get('variante', ''),
+                'Stock':    int(float(it.get('stock_actual', 0) or 0)),
+                'Vendidos': int(float(it.get('vendidas', 0) or 0)),
+                '_cu':      int(round(float(it.get('costo_unit', 0) or 0))),
+                '_csug':    int(round(float(it.get('cant_sugerida', 0) or 0))),
+                '_cadj':    int(round(float(it.get('cant_ajustada', 0) or 0))),
+            })
+        fundas = lista
+        variantes = lista
+        pass_vend = len(lista); pass_stock = len(lista)
+    else:
+        if not args.csv_input:
+            p.error('se requiere csv_input (o --from-json)')
+        # ── Leer CSV ────────────────────────────────────────────────
+        with open(args.csv_input, 'r', encoding='utf-8-sig') as f:
+            rows = list(csv.DictReader(f))
 
-    variantes = [r for r in rows if r['Variante'] != '(total)']
-    for r in variantes:
-        r['Stock']   = int(float(r['Stock']))
-        r['Vendidos']= int(float(r['Vendidos']))
-        r['Precio']  = round(float(r['Precio']))
+        variantes = [r for r in rows if r['Variante'] != '(total)']
+        for r in variantes:
+            r['Stock']   = int(float(r['Stock']))
+            r['Vendidos']= int(float(r['Vendidos']))
+            r['Precio']  = round(float(r['Precio']))
 
-    fundas = variantes if args.all_products else [r for r in variantes if es_funda(r['Título'])]
-    # Diagnóstico de filtros
-    pass_vend  = sum(1 for r in fundas if r['Vendidos'] >= VEND_MIN)
-    pass_stock = sum(1 for r in fundas if r['Stock'] <= STOCK_MAX)
-    lista = [r for r in fundas if r['Vendidos'] >= VEND_MIN and r['Stock'] <= STOCK_MAX]
+        fundas = variantes if args.all_products else [r for r in variantes if es_funda(r['Título'])]
+        # Diagnóstico de filtros
+        pass_vend  = sum(1 for r in fundas if r['Vendidos'] >= VEND_MIN)
+        pass_stock = sum(1 for r in fundas if r['Stock'] <= STOCK_MAX)
+        lista = [r for r in fundas if r['Vendidos'] >= VEND_MIN and r['Stock'] <= STOCK_MAX]
 
-    # Fallback automático: si lista vacía y los umbrales son los default, relajar
-    relaxed_used = False
-    if not lista and VEND_MIN == 5 and STOCK_MAX == 7:
-        VEND_MIN_R, STOCK_MAX_R = 1, 15
-        lista = [r for r in fundas if r['Vendidos'] >= VEND_MIN_R and r['Stock'] <= STOCK_MAX_R]
-        if lista:
-            VEND_MIN, STOCK_MAX = VEND_MIN_R, STOCK_MAX_R
-            relaxed_used = True
+        # Fallback automático: si lista vacía y los umbrales son los default, relajar
+        relaxed_used = False
+        if not lista and VEND_MIN == 5 and STOCK_MAX == 7:
+            VEND_MIN_R, STOCK_MAX_R = 1, 15
+            lista = [r for r in fundas if r['Vendidos'] >= VEND_MIN_R and r['Stock'] <= STOCK_MAX_R]
+            if lista:
+                VEND_MIN, STOCK_MAX = VEND_MIN_R, STOCK_MAX_R
+                relaxed_used = True
 
-    # Ordenar por publicación luego por vendidos desc
-    orden = [
-        "iPhone 17 Pro Max Air | Con Costura",
-        "iPhone 17 Pro Max Air Magnética",
-        "iPhone 17 Pro Max Air Magsafe",
-        "iPhone 16/15/14/13/12 | Con Costura",
-        "iPhone 16/15/14/13/12 Magnética Magsafe",
-        "S25 Ultra | Magnética",
-        "S25 Ultra | Premium",
-        "S22 S23 S24 Ultra",
-    ]
-    def sort_key(r):
-        t = r['Título']
-        for i, o in enumerate(orden):
-            if o.lower() in t.lower(): return (i, -r['Vendidos'], r['Stock'])
-        return (99, -r['Vendidos'], r['Stock'])
+        # Ordenar por publicación luego por vendidos desc
+        orden = [
+            "iPhone 17 Pro Max Air | Con Costura",
+            "iPhone 17 Pro Max Air Magnética",
+            "iPhone 17 Pro Max Air Magsafe",
+            "iPhone 16/15/14/13/12 | Con Costura",
+            "iPhone 16/15/14/13/12 Magnética Magsafe",
+            "S25 Ultra | Magnética",
+            "S25 Ultra | Premium",
+            "S22 S23 S24 Ultra",
+        ]
+        def sort_key(r):
+            t = r['Título']
+            for i, o in enumerate(orden):
+                if o.lower() in t.lower(): return (i, -r['Vendidos'], r['Stock'])
+            return (99, -r['Vendidos'], r['Stock'])
 
-    lista.sort(key=sort_key)
+        lista.sort(key=sort_key)
 
     # ══ MODO BORRADOR (--json): emitir filas calculadas, sin xlsx ══
     # Reusa las MISMAS funciones de cálculo (costo_unit / cant_sug / cant_adj)
@@ -268,9 +300,10 @@ def main():
             color = pts[0].replace('Color:','').strip()
             modelo = pts[1].replace('Nombre del diseño:','').strip() if len(pts)>1 else ''
 
-        cu = costo_unit(titulo)
-        csug = cant_sug(stock, r['Vendidos'])
-        cadj = cant_adj(r['Vendidos'])
+        # En modo --from-json usa los valores editados; en CSV los calcula (idéntico a antes)
+        cu   = r.get('_cu',   costo_unit(titulo))
+        csug = r.get('_csug', cant_sug(stock, r['Vendidos']))
+        cadj = r.get('_cadj', cant_adj(r['Vendidos']))
 
         # Color de costo según línea
         if 'costura' in titulo.lower() or 's22' in titulo.lower() or 's25' in titulo.lower():

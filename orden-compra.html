@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Orden de Compra — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=9">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+/* ── Barra sticky de la orden ── */
+.oc-bar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 18px; margin-bottom: 18px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+.oc-bar-id { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+.oc-bar-id strong { color: var(--text); font-weight: 600; }
+.oc-total-wrap { margin-left: auto; text-align: right; }
+.oc-total-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; }
+.oc-total-val { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.oc-total-sub { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.oc-dirty { display: none; font-size: 11px; color: var(--yellow); font-weight: 600; }
+.oc-dirty.show { display: inline; }
+
+/* ── Chips de parámetros ── */
+.oc-params { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.oc-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 99px; font-size: 12px;
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-2);
+}
+.oc-chip b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ── Inputs inline de la grilla ── */
+.oc-inp {
+  width: 78px; height: 32px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text);
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  text-align: right; font-variant-numeric: tabular-nums;
+  transition: border-color .12s, box-shadow .12s;
+}
+.oc-inp:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,113,95,.12); background: var(--bg-card); }
+.oc-inp.invalid { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
+.oc-inp-pre { font-size: 11px; color: var(--text-3); margin-right: 2px; }
+
+.oc-rowtot { font-family: var(--font-mono); font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+tr.excluded { opacity: .42; }
+tr.excluded .oc-inp { pointer-events: none; }
+
+.oc-iconbtn {
+  width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card);
+  color: var(--text-3); cursor: pointer; transition: all .12s;
+}
+.oc-iconbtn:hover { color: var(--text); border-color: var(--border-2); }
+.oc-iconbtn.danger:hover { color: var(--red); border-color: var(--red); background: var(--red-light); }
+.oc-prov[disabled] { opacity: .45; cursor: not-allowed; }
+
+.oc-empty { text-align: center; padding: 60px 20px; }
+.oc-empty svg { color: var(--text-3); opacity: .4; }
+.oc-empty h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 14px 0 6px; }
+.oc-empty p { font-size: 13px; color: var(--text-3); margin-bottom: 18px; }
+
+#oc-status { font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-top: 14px; display: none; font-family: var(--font-mono); }
+#oc-status.show { display: block; }
+#oc-status.ok  { background: var(--green-light); color: var(--green); }
+#oc-status.err { background: var(--red-light); color: var(--red); }
+
+@media (max-width: 700px) {
+  .oc-total-wrap { margin-left: 0; text-align: left; width: 100%; }
+  .adm-table th.hide-sm, .adm-table td.hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/stockroom-sidebar.js?v=2"></script>
+
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Orden de Compra</div>
+        <div class="adm-page-sub"><span>Previsualizá y editá antes de exportar</span></div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <!-- ESTADO VACÍO -->
+    <div id="oc-empty" class="oc-empty" style="display:none">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4H8z"/><path d="M3 6h18l-1.5 13a2 2 0 01-2 1.8H6.5a2 2 0 01-2-1.8z"/><path d="M9 11h6"/></svg>
+      <h3>No hay un borrador de orden</h3>
+      <p>Generá una orden de compra desde Analytics para previsualizarla y editarla acá.</p>
+      <a href="/analytics.html" class="btn btn-primary">Ir a Analytics</a>
+    </div>
+
+    <!-- ORDEN -->
+    <div id="oc-order" style="display:none">
+      <div class="oc-bar">
+        <div>
+          <div class="oc-bar-id">Borrador <strong id="oc-id">—</strong></div>
+          <div class="oc-bar-id" id="oc-fecha" style="margin-top:2px"></div>
+        </div>
+        <div class="oc-total-wrap">
+          <div class="oc-total-lbl">Inversión estimada <span class="oc-dirty" id="oc-dirty">● sin guardar</span></div>
+          <div class="oc-total-val" id="oc-total">$0</div>
+          <div class="oc-total-sub"><span id="oc-items">0</span> ítems · <span id="oc-units">0</span> unidades</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a href="/analytics.html" class="btn btn-ghost">Cancelar</a>
+          <button id="oc-export" class="btn btn-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Confirmar y Exportar a Excel
+          </button>
+        </div>
+      </div>
+
+      <div class="oc-params" id="oc-params"></div>
+
+      <div class="adm-card">
+        <div class="adm-card-body-flush">
+          <div class="adm-table-wrap">
+            <table class="adm-table">
+              <thead><tr>
+                <th>Producto</th>
+                <th>Estado</th>
+                <th class="right hide-sm">Stock</th>
+                <th class="right hide-sm">Vendidas</th>
+                <th class="right hide-sm">Sugerido</th>
+                <th class="right">Cant. a pedir</th>
+                <th class="right">Costo unit.</th>
+                <th class="right">Total</th>
+                <th></th>
+              </tr></thead>
+              <tbody id="oc-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="oc-status"></div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<script>
+/* ═══════════ Orden de Compra — preview + edición + export ═══════════ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ars = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
+
+/* Theme toggle */
+$('btn-theme').addEventListener('click', () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('adminTheme', t); } catch(e) {}
+});
+$('btn-hamburger')?.addEventListener('click', () => document.getElementById('sidebar')?.classList.toggle('open'));
+
+let draft = null;
+let dirty = false;
+
+function markDirty() { if (!dirty) { dirty = true; $('oc-dirty').classList.add('show'); } }
+
+function loadDraft() {
+  let raw = null;
+  try { raw = sessionStorage.getItem('oc_draft'); } catch(e) {}
+  if (!raw) { $('oc-empty').style.display = 'block'; return; }
+  try { draft = JSON.parse(raw); } catch(e) { $('oc-empty').style.display = 'block'; return; }
+  if (!draft || !Array.isArray(draft.items) || !draft.items.length) { $('oc-empty').style.display = 'block'; return; }
+  $('oc-order').style.display = 'block';
+  renderHeader();
+  renderParams();
+  renderRows();
+  recompute();
+}
+
+function renderHeader() {
+  $('oc-id').textContent = draft.draft_id || '—';
+  const d = draft.creado ? new Date(draft.creado) : new Date();
+  $('oc-fecha').textContent = d.toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function renderParams() {
+  const p = draft.params || {};
+  const dg = draft.diagnostico || {};
+  const chips = [
+    ['TC', '$' + Math.round(p.tc || 0).toLocaleString('es-AR')],
+    ['Flete/u', '$' + Math.round(p.flete_unit || 0).toLocaleString('es-AR')],
+    ['Criterio', 'Vendidas ≥ ' + (p.vendidos_min ?? '?') + ' · Stock ≤ ' + (p.stock_max ?? '?')],
+    ['Universo', p.all_products ? 'Todas las publicaciones' : 'Solo fundas'],
+  ];
+  if (dg.relaxed_used) chips.push(['⚠', 'Umbrales relajados automáticamente']);
+  $('oc-params').innerHTML = chips.map(([k, v]) => `<span class="oc-chip">${esc(k)} <b>${esc(v)}</b></span>`).join('');
+}
+
+const PRIO = { critico: ['err', 'Crítico'], bajo: ['low', 'Bajo'] };
+
+function renderRows() {
+  const tb = $('oc-tbody');
+  tb.innerHTML = draft.items.map((it, i) => {
+    const [cls, lbl] = PRIO[it.prioridad] || ['neu', '—'];
+    const foto = it.foto
+      ? `<img class="adm-prod-thumb" src="${esc(it.foto)}" onerror="this.style.visibility='hidden'" alt="">`
+      : `<div class="adm-prod-thumb"></div>`;
+    const meta = [it.color, it.modelo].filter(Boolean).join(' · ') || it.variante || it.item_id || '';
+    return `
+      <tr data-i="${i}" class="${it.incluido === false ? 'excluded' : ''}">
+        <td>
+          <div class="adm-prod">
+            ${foto}
+            <div style="min-width:0">
+              <div class="adm-prod-title">${esc(it.producto)}</div>
+              <div class="adm-prod-meta">${esc(meta)}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="adm-state ${cls}">${lbl}</span></td>
+        <td class="right hide-sm" style="font-variant-numeric:tabular-nums${(+it.stock_actual) <= 4 ? ';color:var(--red);font-weight:600' : ''}">${it.stock_actual}</td>
+        <td class="right hide-sm" style="font-variant-numeric:tabular-nums">${it.vendidas}</td>
+        <td class="right hide-sm" style="font-variant-numeric:tabular-nums;color:var(--text-3)">${it.cant_sugerida}</td>
+        <td class="right"><input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="cant_ajustada" data-i="${i}" value="${it.cant_ajustada}"></td>
+        <td class="right"><span class="oc-inp-pre">$</span><input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="costo_unit" data-i="${i}" value="${it.costo_unit}"></td>
+        <td class="right"><span class="oc-rowtot" id="rt-${i}">$0</span></td>
+        <td class="right" style="white-space:nowrap">
+          <button class="oc-iconbtn oc-prov" disabled title="Links de proveedor (próximamente)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          </button>
+          <button class="oc-iconbtn danger oc-toggle" data-i="${i}" title="Quitar / restaurar de esta orden">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  tb.querySelectorAll('.oc-inp').forEach(inp => inp.addEventListener('input', onEdit));
+  tb.querySelectorAll('.oc-toggle').forEach(btn => btn.addEventListener('click', onToggle));
+}
+
+function onEdit(e) {
+  const i = +e.target.dataset.i, f = e.target.dataset.f;
+  const raw = e.target.value.trim();
+  const num = raw === '' ? NaN : Number(raw);
+  const valid = Number.isFinite(num) && num >= 0;
+  e.target.classList.toggle('invalid', !valid);
+  if (valid) draft.items[i][f] = num;
+  markDirty();
+  recompute();
+}
+
+function onToggle(e) {
+  const i = +e.currentTarget.dataset.i;
+  draft.items[i].incluido = draft.items[i].incluido === false;   // flip (default true → false)
+  document.querySelector(`tr[data-i="${i}"]`).classList.toggle('excluded', draft.items[i].incluido === false);
+  markDirty();
+  recompute();
+}
+
+function rowValid(it) {
+  return Number.isFinite(+it.cant_ajustada) && +it.cant_ajustada >= 0
+      && Number.isFinite(+it.costo_unit)    && +it.costo_unit >= 0;
+}
+
+function recompute() {
+  let items = 0, units = 0, inv = 0;
+  draft.items.forEach((it, i) => {
+    const included = it.incluido !== false;
+    const valid = rowValid(it);
+    const tot = (included && valid) ? (+it.cant_ajustada) * (+it.costo_unit) : 0;
+    const rt = $('rt-' + i);
+    if (rt) rt.textContent = ars(tot);
+    if (included && valid && (+it.cant_ajustada) > 0) { items++; units += (+it.cant_ajustada); inv += tot; }
+  });
+  $('oc-total').textContent = ars(inv);
+  $('oc-items').textContent = items;
+  $('oc-units').textContent = units;
+
+  // inputs con valor inválido (vacío / negativo) en filas incluidas → bloquean export
+  const invalid = document.querySelectorAll('#oc-tbody tr:not(.excluded) .oc-inp.invalid').length;
+  const btn = $('oc-export');
+  if (invalid > 0) { btn.disabled = true; btn.title = `Revisá ${invalid} campo(s) inválido(s)`; }
+  else if (items === 0) { btn.disabled = true; btn.title = 'La orden no tiene ítems'; }
+  else { btn.disabled = false; btn.title = ''; }
+}
+
+function setStatus(msg, ok) {
+  const el = $('oc-status');
+  el.className = 'show ' + (ok ? 'ok' : 'err');
+  el.innerHTML = msg;
+}
+
+$('oc-export').addEventListener('click', async () => {
+  const btn = $('oc-export');
+  btn.disabled = true; const orig = btn.innerHTML; btn.textContent = 'Generando…';
+  try {
+    const resp = await fetch('/orden-compra/export', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+    // descargar
+    const bytes = atob(data.file_b64);
+    const arr = new Uint8Array(bytes.length);
+    for (let k = 0; k < bytes.length; k++) arr[k] = bytes.charCodeAt(k);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `orden_compra_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.click();
+    dirty = false; $('oc-dirty').classList.remove('show');
+    setStatus(`✓ Excel generado con ${data.items} ítems.`, true);
+  } catch (e) {
+    setStatus(`✕ ${esc(e.message)}`, false);
+  } finally {
+    btn.innerHTML = orig; recompute();
+  }
+});
+
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+loadDraft();
+</script>
+</body>
+</html>

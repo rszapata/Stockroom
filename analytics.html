@@ -306,7 +306,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=1"></script>
+<script src="/stockroom-sidebar.js?v=2"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -515,9 +515,15 @@
 
       <div id="orden-status" class="hidden" style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;padding:0.75rem;border-radius:0.5rem;margin-top:0.75rem"></div>
     </div>
-    <div class="modal-panel-foot">
-      <button id="btn-orden-gen" style="flex:1;background:var(--blue);color:#fff;font-weight:600;border:none;border-radius:0.75rem;padding:0.625rem 0;font-size:0.875rem;cursor:pointer">Generar Excel</button>
-      <button id="btn-orden-cancel" class="modal-btn-cancel">Cancelar</button>
+    <div class="modal-panel-foot" style="flex-direction:column;gap:8px;align-items:stretch">
+      <button id="btn-orden-prev" style="width:100%;background:var(--blue);color:#fff;font-weight:600;border:none;border-radius:0.75rem;padding:0.625rem 0;font-size:0.875rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
+        <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        Previsualizar y editar
+      </button>
+      <div style="display:flex;gap:8px;width:100%">
+        <button id="btn-orden-gen" style="flex:1;background:var(--bg);color:var(--text-2);border:1px solid var(--border-2);border-radius:0.75rem;padding:0.5rem 0;font-size:0.8125rem;cursor:pointer">Generar Excel directo</button>
+        <button id="btn-orden-cancel" class="modal-btn-cancel">Cancelar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1007,6 +1013,56 @@ function setOrdenStatus(msg, ok) {
   el.style.border = '1px solid ' + (ok ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)');
 }
 
+/* Previsualizar: calcula el borrador y abre la página de edición */
+async function previsualizarOrden() {
+  const tc       = parseInt($('orden-tc').value)    || 1421;
+  const flete    = parseInt($('orden-flete').value) || 800000;
+  const units    = parseInt($('orden-units').value) || 415;
+  const vmin     = parseInt($('orden-vmin').value);
+  const smax     = parseInt($('orden-smax').value);
+  const allProds = $('orden-allprods').checked;
+  const btn      = $('btn-orden-prev');
+  btn.disabled = true; const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner" style="margin-right:0.5rem;vertical-align:middle"></span>Calculando…';
+  setOrdenStatus('⏳ Procesando inventario…', true);
+  try {
+    // CSV con la URL de foto CRUDA (no =IMAGE) para previsualizar en la página
+    const rows = [['Item ID','Título','Variante','Categoría','Stock','Vendidos','Precio','Estado','Foto']];
+    S.items.forEach(item => {
+      if (item.hasVariations) {
+        rows.push([item.id, item.title, '(total)', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, item.picture||'']);
+        item.variations.forEach(v => rows.push([item.id, item.title, v.varLabel, item.category_name, v.available_quantity, v.sold_quantity||0, v.price, v.status, v.picture||'']));
+      } else {
+        rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, item.picture||'']);
+      }
+    });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csvBlob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const fd = new FormData();
+    fd.append('file', csvBlob, 'inventario.csv');
+    fd.append('tc', String(tc)); fd.append('flete', String(flete)); fd.append('units', String(units));
+    if (Number.isFinite(vmin)) fd.append('vendidos_min', String(vmin));
+    if (Number.isFinite(smax)) fd.append('stock_max',    String(smax));
+    if (allProds)              fd.append('all_products', '1');
+
+    const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+    const draft = data.draft || {};
+    if (!draft.items || !draft.items.length) {
+      const r = draft.diagnostico || {};
+      const grupo = r.all_products ? 'productos' : 'fundas';
+      setOrdenStatus(`⚠ Sin ítems con los criterios. De ${r.fundas_total ?? '?'} ${grupo}: ${r.pass_vendidos ?? '?'} con vendidas≥${r.vendidos_min}, ${r.pass_stock ?? '?'} con stock≤${r.stock_max}.<br><span style="color:var(--text-3)">Probá bajar los umbrales o tildar "todas las publicaciones".</span>`, false);
+      btn.disabled = false; btn.innerHTML = orig; return;
+    }
+    try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {}
+    window.location.href = '/orden-compra.html';
+  } catch (e) {
+    setOrdenStatus(`❌ ${esc(e.message)}`, false);
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+
 async function ejecutarOrden() {
   const tc       = parseInt($('orden-tc').value)    || 1421;
   const flete    = parseInt($('orden-flete').value) || 800000;
@@ -1154,6 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-orden').addEventListener('click', openOrden);
   $('orden-close').addEventListener('click', closeOrden);
   $('btn-orden-cancel').addEventListener('click', closeOrden);
+  $('btn-orden-prev').addEventListener('click', previsualizarOrden);
   $('btn-orden-gen').addEventListener('click', ejecutarOrden);
   $('orden-overlay').addEventListener('click', e => { if (e.target.id === 'orden-overlay') closeOrden(); });
 

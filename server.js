@@ -4819,6 +4819,49 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── /orden-compra/export POST → genera el xlsx DEFINITIVO desde el borrador EDITADO ──
+  //    Body JSON = el draft con los cant/costo editados y los items incluidos.
+  if (pathname === '/orden-compra/export' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      let draft;
+      try { draft = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+      catch(e) { json(res, 400, { error: 'JSON inválido' }); return; }
+
+      const items = Array.isArray(draft?.items) ? draft.items.filter(i => i.incluido !== false) : [];
+      if (!items.length) { json(res, 400, { error: 'La orden no tiene items para exportar' }); return; }
+
+      const scriptPath = path.join(__dirname, 'genera_orden_compra.py');
+      if (!fs.existsSync(scriptPath)) { json(res, 500, { error: 'No se encontró genera_orden_compra.py' }); return; }
+
+      const tmpJson = path.join(os.tmpdir(), `draft_${Date.now()}.json`);
+      const tmpOut  = path.join(os.tmpdir(), `orden_${Date.now()}.xlsx`);
+      try { fs.writeFileSync(tmpJson, JSON.stringify(draft), 'utf8'); }
+      catch(e) { json(res, 500, { error: 'No se pudo escribir el borrador' }); return; }
+
+      const PYTHON      = process.platform === 'win32' ? 'py' : 'python3';
+      const PYTHON_ARGS = process.platform === 'win32' ? ['-3.12'] : [];
+      const args = [scriptPath, '--from-json', tmpJson, '--output', tmpOut];
+      const py = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
+      let stderr = '';
+      py.stderr.on('data', d => stderr += d);
+
+      py.on('close', code => {
+        try { fs.unlinkSync(tmpJson); } catch(e) {}
+        if (code !== 0 || !fs.existsSync(tmpOut)) {
+          console.error('\n[orden-compra/export] ERROR Python:\n', stderr);
+          try { fs.unlinkSync(tmpOut); } catch(e) {}
+          json(res, 500, { error: 'Error generando Excel', detail: stderr.slice(-800) }); return;
+        }
+        const xlsxB64 = fs.readFileSync(tmpOut).toString('base64');
+        try { fs.unlinkSync(tmpOut); } catch(e) {}
+        json(res, 200, { ok: true, file_b64: xlsxB64, items: items.length });
+      });
+    });
+    return;
+  }
+
   // ── /flex-debug GET → diagnóstico de envíos flex ──
   if (pathname === '/flex-debug' && req.method === 'GET') {
     const userId = config.user_id;
