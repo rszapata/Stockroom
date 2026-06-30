@@ -4749,6 +4749,76 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── /orden-compra/draft POST → calcula la orden y devuelve el BORRADOR (JSON) ──
+  //    Mismo cálculo que /orden-compra pero sin generar xlsx: el frontend lo
+  //    previsualiza y edita antes de exportar. Garantiza números idénticos.
+  if (pathname === '/orden-compra/draft' && req.method === 'POST') {
+    const ct = req.headers['content-type'] || '';
+    const bm = ct.match(/boundary=(.+)/);
+    if (!bm) { json(res, 400, { error: 'No boundary' }); return; }
+
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      const body  = Buffer.concat(chunks);
+      const parts = parseMultipart(body, bm[1]);
+
+      const fileData = parts['file'];
+      const tc       = parseFloat(parts['tc']    || '1421');
+      const flete    = parseFloat(parts['flete'] || '800000');
+      const units    = parseInt(parts['units']   || '415');
+      const vendMin  = parseInt(parts['vendidos_min'] || '5');
+      const stockMax = parseInt(parts['stock_max']    || '7');
+      const allProds = String(parts['all_products'] || '') === '1' || String(parts['all_products'] || '') === 'true';
+
+      if (!fileData?.data) { json(res, 400, { error: 'CSV no recibido' }); return; }
+
+      const tmpIn = path.join(os.tmpdir(), `inv_${Date.now()}.csv`);
+      fs.writeFileSync(tmpIn, fileData.data);
+
+      const scriptPath = path.join(__dirname, 'genera_orden_compra.py');
+      if (!fs.existsSync(scriptPath)) {
+        try { fs.unlinkSync(tmpIn); } catch(e) {}
+        json(res, 500, { error: 'No se encontró genera_orden_compra.py' });
+        return;
+      }
+
+      const PYTHON      = process.platform === 'win32' ? 'py' : 'python3';
+      const PYTHON_ARGS = process.platform === 'win32' ? ['-3.12'] : [];
+      // --output es required en el script aunque en modo --json no lo use
+      const tmpOut = path.join(os.tmpdir(), `orden_${Date.now()}.xlsx`);
+      const args = [scriptPath, tmpIn, '--output', tmpOut, '--json',
+        '--tc', String(tc), '--flete', String(flete), '--units', String(units),
+        '--vendidos-min', String(vendMin), '--stock-max', String(stockMax)];
+      if (allProds) args.push('--all-products');
+      const py   = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
+      let stdout = '', stderr = '';
+      py.stdout.on('data', d => stdout += d);
+      py.stderr.on('data', d => stderr += d);
+
+      py.on('close', code => {
+        try { fs.unlinkSync(tmpIn); } catch(e) {}
+        try { fs.unlinkSync(tmpOut); } catch(e) {}
+        if (code !== 0) {
+          console.error('\n[orden-compra/draft] ERROR Python:\n', stderr);
+          json(res, 500, { error: 'Error ejecutando script', detail: stderr.slice(-800) }); return;
+        }
+        try {
+          const idx = stdout.indexOf('ORDEN_JSON:');
+          if (idx === -1) { json(res, 500, { error: 'Script no devolvió JSON', detail: stdout.slice(-400) }); return; }
+          const draft = JSON.parse(stdout.slice(idx + 'ORDEN_JSON:'.length).split('\n')[0].trim());
+          draft.draft_id = 'oc_' + new Date().toISOString().slice(2,10).replace(/-/g,'') + '_' + Math.random().toString(36).slice(2,6);
+          draft.creado   = new Date().toISOString();
+          draft.estado   = 'borrador';
+          json(res, 200, { ok: true, draft });
+        } catch(e) {
+          json(res, 500, { error: 'No se pudo parsear el JSON', detail: String(e).slice(0,300) });
+        }
+      });
+    });
+    return;
+  }
+
   // ── /flex-debug GET → diagnóstico de envíos flex ──
   if (pathname === '/flex-debug' && req.method === 'GET') {
     const userId = config.user_id;

@@ -18,6 +18,7 @@ def main():
     p.add_argument('--vendidos-min', type=int, default=5,  help='Umbral mínimo de vendidos para incluir (default 5)')
     p.add_argument('--stock-max',    type=int, default=7,  help='Umbral máximo de stock para incluir (default 7)')
     p.add_argument('--all-products', action='store_true', help='Incluir todas las publicaciones, no solo fundas')
+    p.add_argument('--json', action='store_true', help='Emitir las filas calculadas como JSON (modo borrador) en vez de generar xlsx')
     args = p.parse_args()
 
     TC         = args.tc
@@ -127,6 +128,65 @@ def main():
         return (99, -r['Vendidos'], r['Stock'])
 
     lista.sort(key=sort_key)
+
+    # ══ MODO BORRADOR (--json): emitir filas calculadas, sin xlsx ══
+    # Reusa las MISMAS funciones de cálculo (costo_unit / cant_sug / cant_adj)
+    # y el mismo filtrado/orden que el Excel → números idénticos garantizados.
+    if args.json:
+        items_out = []
+        for idx, r in enumerate(lista, 1):
+            titulo   = r['Título']
+            variante = r['Variante']
+            color = ""; modelo = variante
+            if '·' in variante:
+                pts = variante.split('·')
+                color = pts[0].replace('Color:', '').strip()
+                modelo = pts[1].replace('Nombre del diseño:', '').strip() if len(pts) > 1 else ''
+            stock = r['Stock']; vendidos = r['Vendidos']
+            cu   = costo_unit(titulo)
+            csug = cant_sug(stock, vendidos)
+            cadj = cant_adj(vendidos)
+            items_out.append({
+                "id":             f"{r.get('Item ID', '')}::{variante}",
+                "item_id":        r.get('Item ID', ''),
+                "producto":       titulo,
+                "variante":       variante,
+                "color":          color,
+                "modelo":         modelo,
+                "categoria":      r.get('Categoría', ''),
+                "foto":           r.get('Foto', ''),
+                "prioridad":      "critico" if stock <= 4 else "bajo",
+                "stock_actual":   stock,
+                "vendidas":       vendidos,
+                "precio":         r.get('Precio', 0),
+                "cant_sugerida":  csug,
+                "cant_ajustada":  cadj,
+                "costo_unit":     cu,
+                "costo_total":    cadj * cu,   # total de la fila usando la cantidad AJUSTADA (lo que se pide)
+                "incluido":       True,
+            })
+        payload = {
+            "params": {
+                "tc": TC, "flete": args.flete, "flete_unit": FLETE_UNIT, "units": args.units,
+                "vendidos_min": VEND_MIN, "stock_max": STOCK_MAX, "all_products": bool(args.all_products),
+            },
+            "totales": {
+                "items":        len(items_out),
+                "unidades_sug": sum(i["cant_sugerida"] for i in items_out),
+                "unidades_aj":  sum(i["cant_ajustada"] for i in items_out),
+                "inversion_sug": sum(i["cant_sugerida"] * i["costo_unit"] for i in items_out),
+                "inversion_aj":  sum(i["costo_total"] for i in items_out),
+            },
+            "diagnostico": {
+                "variantes_total": len(variantes), "fundas_total": len(fundas),
+                "pass_vendidos": pass_vend, "pass_stock": pass_stock,
+                "vendidos_min": VEND_MIN, "stock_max": STOCK_MAX,
+                "all_products": bool(args.all_products), "relaxed_used": relaxed_used,
+            },
+            "items": items_out,
+        }
+        print(f"ORDEN_JSON:{json.dumps(payload, ensure_ascii=False)}")
+        return
 
     # ── Estilos ──────────────────────────────────────────────────
     thin = Side(style='thin', color='BDD7EE')
