@@ -41,7 +41,7 @@
   padding: 8px 12px; margin-bottom: 16px; flex-wrap: wrap;
 }
 .pg .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .3s; flex-shrink: 0; }
-.pg .auto-dot.active { background: #4ade80; animation: pg-ring 2s ease-out infinite; }
+.pg .auto-dot.active { background: var(--green); animation: pg-ring 2s ease-out infinite; }
 @keyframes pg-ring { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.5); } 100% { box-shadow: 0 0 0 8px rgba(74,222,128,0); } }
 .pg .auto-sep { color: var(--border-2); font-size: 12px; }
 .pg .auto-status-txt { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
@@ -86,7 +86,7 @@
 .pg .jsbtn.primary { background: var(--ye); color: var(--bg); border-color: var(--ye); font-weight: 700; }
 .pg .jsbtn.primary:hover { background: #FFE82E; }
 .pg .jsbtn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
-.pg .jsbtn.danger { border-color: rgba(248,113,113,.3); color: #f87171; }
+.pg .jsbtn.danger { border-color: rgba(248,113,113,.3); color: var(--red); }
 .pg .jsbtn.danger:hover { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.5); }
 
 .pg .btn-outline {
@@ -105,8 +105,8 @@
 
 /* ── Chips ── */
 .pg .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; letter-spacing: .02em; }
-.pg .chip-green   { background: rgba(34,197,94,.12);  color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
-.pg .chip-red     { background: rgba(239,68,68,.12);  color: #f87171; border: 1px solid rgba(239,68,68,.25); }
+.pg .chip-green   { background: rgba(34,197,94,.12);  color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+.pg .chip-red     { background: rgba(239,68,68,.12);  color: var(--red); border: 1px solid rgba(239,68,68,.25); }
 .pg .chip-neutral { background: var(--bg-card); color: var(--text-2); border: 1px solid var(--border); }
 .pg .chip-brand   { background: color-mix(in srgb,var(--ye) 10%,transparent);   color: var(--ye); border: 1px solid color-mix(in srgb,var(--ye) 25%,transparent); }
 .pg .chip-blue    { background: color-mix(in srgb,var(--ye) 10%,transparent);   color: var(--ye); border: 1px solid color-mix(in srgb,var(--ye) 25%,transparent); }
@@ -136,11 +136,11 @@
 .pg .li-acct { display: inline-block; font-family: var(--mono); font-size: 9px; padding: 2px 7px; border: 1px solid var(--border); color: var(--text-3); border-radius: 6px; background: var(--bg-card); white-space: nowrap; }
 .pg .li-id { font-family: var(--mono); font-size: 10px; color: var(--border-2); }
 .pg .li-stock { font-family: var(--mono); font-size: 12px; font-weight: 600; }
-.pg .li-stock.ok   { color: #4ade80; }
-.pg .li-stock.warn { color: #fb923c; }
-.pg .li-stock.err  { color: #f87171; }
+.pg .li-stock.ok   { color: var(--green); }
+.pg .li-stock.warn { color: var(--yellow); }
+.pg .li-stock.err  { color: var(--red); }
 .pg .btn-rm { background: none; border: none; color: var(--border-2); cursor: pointer; font-size: 16px; padding: 2px 4px; transition: color .15s; line-height: 1; }
-.pg .btn-rm:hover { color: #f87171; }
+.pg .btn-rm:hover { color: var(--red); }
 .pg .lg-actions { padding: 9px 14px; border-top: 1px solid var(--bg-card); display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 .pg .lg-tbl { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .pg .lg-tbl table.data { min-width: 560px; }
@@ -162,9 +162,9 @@
 
 /* ── Sync badges ── */
 .pg .sync-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
-.pg .sync-ok      { color: #4ade80; border-color: rgba(74,222,128,.25);  background: rgba(74,222,128,.07);  }
-.pg .sync-pending { color: #fb923c; border-color: rgba(251,146,60,.25);  background: rgba(251,146,60,.07);  }
-.pg .sync-err     { color: #f87171; border-color: rgba(248,113,113,.25); background: rgba(248,113,113,.07); }
+.pg .sync-ok      { color: var(--green); border-color: rgba(74,222,128,.25);  background: rgba(74,222,128,.07);  }
+.pg .sync-pending { color: var(--yellow); border-color: rgba(251,146,60,.25);  background: rgba(251,146,60,.07);  }
+.pg .sync-err     { color: var(--red); border-color: rgba(248,113,113,.25); background: rgba(248,113,113,.07); }
 
 /* ── Suggestions ── */
 .pg .suggestion { border: 1px solid var(--border); background: var(--bg-card); margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: opacity .3s; }
@@ -194,9 +194,9 @@
 .pg .log-wrap { max-height: 200px; overflow-y: auto; padding: 12px 16px; }
 .pg .log-e { font-family: var(--mono); font-size: 10px; line-height: 2; }
 .pg .log-e.info { color: var(--border-2); }
-.pg .log-e.ok   { color: #4ade80; }
-.pg .log-e.err  { color: #f87171; }
-.pg .log-e.warn { color: #fb923c; }
+.pg .log-e.ok   { color: var(--green); }
+.pg .log-e.err  { color: var(--red); }
+.pg .log-e.warn { color: var(--yellow); }
 
 /* ── Detect progress ── */
 .pg .detect-bar { width: 100%; height: 2px; background: var(--bg-card); margin-top: 10px; border-radius: 2px; overflow: hidden; }
@@ -241,7 +241,7 @@
   border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer;
   transition: background .15s;
 }
-.pg .btn-apply-all:hover { background: #fb923c; }
+.pg .btn-apply-all:hover { background: var(--yellow); }
 
 /* ── Historial ── */
 .pg .log-hist-card { background: var(--bg); border: 1px solid var(--bg-card); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
@@ -373,7 +373,7 @@
         </div>
         <div style="display:flex;gap:8px">
           <button onclick="acceptAllSuggestions()" class="btn-outline" style="font-size:12px">Aceptar todos</button>
-          <button onclick="dismissAllSuggestions()" class="btn-outline" style="font-size:12px;color:#f87171;border-color:rgba(248,113,113,.3)">Descartar todos</button>
+          <button onclick="dismissAllSuggestions()" class="btn-outline" style="font-size:12px;color:var(--red);border-color:rgba(248,113,113,.3)">Descartar todos</button>
         </div>
       </div>
       <div id="suggestions-list"></div>
@@ -446,12 +446,12 @@
   <div id="pending-card" class="pending-card">
     <div class="pending-head">
       <div style="display:flex;align-items:center;gap:8px">
-        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
         <span style="font-size:12px;font-weight:600;color:#fdba74">Ajustes de stock pendientes</span>
         <span id="pending-count" class="pending-count-badge">0</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button onclick="dismissAllPending()" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 8px;transition:color .15s" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--text-3)'">Descartar todos</button>
+        <button onclick="dismissAllPending()" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 8px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-3)'">Descartar todos</button>
         <button onclick="applyAllPending()" id="btn-apply-all" class="btn-apply-all">
           <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           Aplicar todos
@@ -772,7 +772,7 @@ async function doSearch(q) {
     const realItems = Array.isArray(items) ? items.map(x => x.body || x).filter(x => x.id) : [];
     renderSearchResults(realItems, acctId);
   } catch(e) {
-    results.innerHTML = '<div style="padding:12px;font-size:11px;color:#f87171">Error: ' + e.message + '</div>';
+    results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--red)">Error: ' + e.message + '</div>';
   }
 }
 
@@ -1160,7 +1160,7 @@ function renderSuggestions() {
       '</div>' +
       '<div class="sg-actions">' +
         '<button class="jsbtn danger" onclick="dismissSuggestion(\'' + sg.id + '\')">Descartar</button>' +
-        '<button class="jsbtn" style="border-color:rgba(74,222,128,.3);color:#4ade80" onclick="acceptSuggestion(\'' + sg.id + '\')">Confirmar</button>' +
+        '<button class="jsbtn" style="border-color:rgba(74,222,128,.3);color:var(--green)" onclick="acceptSuggestion(\'' + sg.id + '\')">Confirmar</button>' +
       '</div>' +
     '</div>'
   ).join('');
@@ -1228,11 +1228,11 @@ function updateAutoStatus(pending, lastCheck) {
   if (!status) return;
   if (pending.length > 0) {
     status.textContent = pending.length + ' pendiente' + (pending.length > 1 ? 's' : '');
-    status.style.color = '#fb923c';
+    status.style.color = 'var(--yellow)';
   } else if (lastCheck) {
     const t = new Date(lastCheck).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     status.textContent = 'OK · ' + t;
-    status.style.color = '#4ade80';
+    status.style.color = 'var(--green)';
   } else {
     status.textContent = '—';
     status.style.color = '';
@@ -1259,7 +1259,7 @@ async function manualCheck() {
     renderGroups();
   } catch(e) {
     log('err', 'Error al verificar: ' + e.message);
-    if (status) { status.textContent = 'Error'; status.style.color = '#f87171'; }
+    if (status) { status.textContent = 'Error'; status.style.color = 'var(--red)'; }
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
@@ -1298,11 +1298,11 @@ function renderPending(list) {
     if (isSaleAdj || isCancelAdj) {
       const verbo = isCancelAdj ? 'subir' : 'bajar';
       const icon  = isCancelAdj
-        ? '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#4ade80"><polyline points="18 15 12 9 6 15"/></svg>'
-        : '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#f87171"><polyline points="6 9 12 15 18 9"/></svg>';
+        ? '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--green)"><polyline points="18 15 12 9 6 15"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--red)"><polyline points="6 9 12 15 18 9"/></svg>';
       const deltaBadges = adj.changes.flatMap(ch => (ch.variantChanges || []).map(vc => {
         const sign = isCancelAdj ? '+' : '−';
-        const col  = isCancelAdj ? '#4ade80' : '#f87171';
+        const col  = isCancelAdj ? 'var(--green)' : 'var(--red)';
         return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--mono);font-size:10px;color:var(--text)">' +
           esc(vc.label || fmtAttrKey(vc.attrKey)) +
           '<span style="color:' + col + ';font-weight:600;margin-left:2px">' + sign + vc.delta + '</span></span>';
@@ -1327,9 +1327,9 @@ function renderPending(list) {
         return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
           '<span style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:600">' + esc(m.label || fmtAttrKey(m.attrKey)) + '</span>' +
           '<span style="font-family:var(--mono);font-size:11px">' +
-            '<span style="color:#f87171;text-decoration:line-through;opacity:.6">x' + fromQty + '</span>' +
+            '<span style="color:var(--red);text-decoration:line-through;opacity:.6">x' + fromQty + '</span>' +
             '<span style="color:var(--text-3);margin:0 4px">→</span>' +
-            '<span style="color:#4ade80;font-weight:600">x' + m.targetQty + '</span>' +
+            '<span style="color:var(--green);font-weight:600">x' + m.targetQty + '</span>' +
           '</span>' +
           '<span style="color:var(--text-3);font-size:11px">·</span>' +
           opts +
@@ -1348,7 +1348,7 @@ function renderPending(list) {
         const varParts = vd.map(d =>
           '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:var(--mono);font-size:10px;color:var(--text)">' +
           esc(fmtAttrKey(d.attrKey)) +
-          '<span style="color:#f87171;font-weight:600">−' + d.delta + '</span>' +
+          '<span style="color:var(--red);font-weight:600">−' + d.delta + '</span>' +
           '</span>'
         ).join(' ');
         triggerTxt += ' &nbsp;' + varParts;
@@ -1360,7 +1360,7 @@ function renderPending(list) {
       let varHtml = '';
       if ((isSaleAdj || isCancelAdj) && ch.variantChanges && ch.variantChanges.length) {
         const sign = isCancelAdj ? '+' : '−';
-        const col  = isCancelAdj ? '#4ade80' : '#f87171';
+        const col  = isCancelAdj ? 'var(--green)' : 'var(--red)';
         varHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">' +
           ch.variantChanges.map(vc =>
             '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--mono);font-size:9px;color:var(--text-2)">' +
@@ -1375,9 +1375,9 @@ function renderPending(list) {
           ch.variantChanges.map(vc =>
             '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:var(--mono);font-size:9px;color:var(--text-2)">' +
             '<span style="color:var(--text-3)">' + esc(vc.label || fmtAttrKey(vc.attrKey)) + '</span>' +
-            '<span style="color:#f87171;text-decoration:line-through;opacity:.7;margin-left:2px">x' + vc.from + '</span>' +
+            '<span style="color:var(--red);text-decoration:line-through;opacity:.7;margin-left:2px">x' + vc.from + '</span>' +
             '<span style="color:var(--text-3);margin:0 2px">→</span>' +
-            '<span style="color:#4ade80;font-weight:600">x' + vc.to + '</span>' +
+            '<span style="color:var(--green);font-weight:600">x' + vc.to + '</span>' +
             '</span>'
           ).join('') +
         '</div>';
@@ -1400,9 +1400,9 @@ function renderPending(list) {
       const stockBadge = (isVariantAdj || isSaleAdj || isCancelAdj)
         ? ''
         : '<span style="font-family:var(--mono);font-size:11px;flex-shrink:0;margin-top:2px">' +
-            '<span style="color:#f87171;text-decoration:line-through;opacity:.6">x' + ch.from + '</span>' +
+            '<span style="color:var(--red);text-decoration:line-through;opacity:.6">x' + ch.from + '</span>' +
             '<span style="color:var(--text-3);margin:0 6px">→</span>' +
-            '<span style="color:#4ade80;font-weight:600">x' + ch.to + '</span>' +
+            '<span style="color:var(--green);font-weight:600">x' + ch.to + '</span>' +
           '</span>';
 
       return (
@@ -1428,17 +1428,17 @@ function renderPending(list) {
           '<div style="display:flex;align-items:center;gap:8px">' +
             '<span style="font-size:11px;font-weight:600;color:var(--text)">' + esc(adj.groupName) + '</span>' +
             (isVariantAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(99,102,241,.15);color:#818cf8;border-radius:4px;padding:1px 6px;font-weight:600">POR VARIANTE</span>' : '') +
-            (isSaleAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(248,113,113,.15);color:#f87171;border-radius:4px;padding:1px 6px;font-weight:600">VENTA</span>' : '') +
-            (isCancelAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(74,222,128,.15);color:#4ade80;border-radius:4px;padding:1px 6px;font-weight:600">CANCELACIÓN</span>' : '') +
+            (isSaleAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(248,113,113,.15);color:var(--red);border-radius:4px;padding:1px 6px;font-weight:600">VENTA</span>' : '') +
+            (isCancelAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(74,222,128,.15);color:var(--green);border-radius:4px;padding:1px 6px;font-weight:600">CANCELACIÓN</span>' : '') +
             '<span style="font-family:var(--mono);font-size:10px;color:var(--text-3)">' + ts + '</span>' +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:6px">' +
             '<button onclick="dismissOneAdjustment(\'' + adj.id + '\')" ' +
               'style="font-family:var(--mono);font-size:10px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;transition:color .15s" ' +
-              'onmouseover="this.style.color=\'#f87171\'" onmouseout="this.style.color=\'var(--text-3)\'">Descartar</button>' +
+              'onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--text-3)\'">Descartar</button>' +
             '<button onclick="applyOneAdjustment(\'' + adj.id + '\')" ' +
               'style="font-family:var(--mono);font-size:10px;background:#f97316;color:#0a0a0a;font-weight:600;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:background .15s" ' +
-              'onmouseover="this.style.background=\'#fb923c\'" onmouseout="this.style.background=\'#f97316\'">' +
+              'onmouseover="this.style.background=\'var(--yellow)\'" onmouseout="this.style.background=\'#f97316\'">' +
               '<svg viewBox="0 0 24 24" fill="none" width="10" height="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
               'Aplicar' +
             '</button>' +
@@ -1583,13 +1583,13 @@ function renderLog(entries) {
   }
 
   const ACTION_CFG = {
-    applied:        { icon: '✅', label: 'Aplicado',     color: '#4ade80' },
+    applied:        { icon: '✅', label: 'Aplicado',     color: 'var(--green)' },
     'sync-from':    { icon: '🔄', label: 'Sincronizado', color: '#60a5fa' },
-    'sale-sync':    { icon: '🔻', label: 'Venta',        color: '#f87171' },
-    'cancel-restore':{ icon: '↩️', label: 'Cancelación',  color: '#4ade80' },
+    'sale-sync':    { icon: '🔻', label: 'Venta',        color: 'var(--red)' },
+    'cancel-restore':{ icon: '↩️', label: 'Cancelación',  color: 'var(--green)' },
     dismissed:      { icon: '↩️', label: 'Descartado',   color: 'var(--text-3)' },
-    error:          { icon: '❌', label: 'Error',         color: '#f87171' },
-    reverted:       { icon: '⏪', label: 'Revertido',    color: '#fb923c' },
+    error:          { icon: '❌', label: 'Error',         color: 'var(--red)' },
+    reverted:       { icon: '⏪', label: 'Revertido',    color: 'var(--yellow)' },
   };
   const SOURCE_CFG = {
     telegram: { label: '📱 Telegram', bg: 'rgba(59,130,246,.1)', border: 'rgba(59,130,246,.2)', color: '#60a5fa' },
@@ -1608,7 +1608,7 @@ function renderLog(entries) {
       const chips = vd.map(d => {
         const attrs = esc(d.label || (d.attrKey || '').split('|').map(p => p.split('=').slice(1).join('=')).join(' · '));
         const sign  = d.delta > 0 ? '−' : '+';
-        const col   = d.delta > 0 ? '#f87171' : '#4ade80';
+        const col   = d.delta > 0 ? 'var(--red)' : 'var(--green)';
         const fromTo = (d.from != null && d.to != null) ? ' <span style="color:var(--text-3)">' + d.from + '→' + d.to + '</span>' : '';
         return '<span style="font-family:var(--mono);font-size:10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--text-2)">' + attrs + fromTo + ' <span style="color:' + col + ';font-weight:600">' + sign + Math.abs(d.delta) + '</span></span>';
       }).join(' ');
@@ -1637,7 +1637,7 @@ function renderLog(entries) {
     const revertBtn = canRevert
       ? '<button onclick="revertAdjustment(\'' + e.adjId + '\', this)" ' +
           'style="font-family:var(--mono);font-size:9px;color:var(--text-3);background:none;border:1px solid var(--border);cursor:pointer;padding:2px 7px;border-radius:5px;transition:color .15s,border-color .15s;flex-shrink:0" ' +
-          'onmouseover="this.style.color=\'#fb923c\';this.style.borderColor=\'#fb923c\'" onmouseout="this.style.color=\'var(--text-3)\';this.style.borderColor=\'var(--border)\'">⏪ Revertir</button>'
+          'onmouseover="this.style.color=\'var(--yellow)\';this.style.borderColor=\'var(--yellow)\'" onmouseout="this.style.color=\'var(--text-3)\';this.style.borderColor=\'var(--border)\'">⏪ Revertir</button>'
       : '';
 
     return '<div class="log-hist-entry">' +

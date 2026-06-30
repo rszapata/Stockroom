@@ -1140,7 +1140,7 @@ async function loadAcctList() {
         '</div>'
       );
     }).join('');
-  } catch(e) { list.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:#f87171">Error</div>'; }
+  } catch(e) { list.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--red)">Error</div>'; }
 }
 async function switchAcct(id) {
   const menu = document.getElementById('acct-menu');
