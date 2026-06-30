@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v6'; // v4: excluye /tienda/ del scope
+const CACHE_NAME = 'stockroom-v7'; // v4: excluye /tienda/ del scope
 const STATIC_ASSETS = [
   '/',
   '/index.html',
