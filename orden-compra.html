@@ -327,6 +327,14 @@ let provLinks = {};          // { item_id: [ {url, proveedor, precio_usd, nota} 
 
 function markDirty() { if (!dirty) { dirty = true; $('oc-dirty').classList.add('show'); } }
 
+/* Persiste el estado de trabajo en sessionStorage (debounced) para no perder
+   ediciones si se recarga la página. El guardado "con nombre" es aparte (localStorage). */
+let persistT = null;
+function persistDraft() {
+  clearTimeout(persistT);
+  persistT = setTimeout(() => { try { if (draft) sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {} }, 400);
+}
+
 /* ───── ordenamiento ───── */
 function captureProdOrder() {
   prodOrder = new Map();
@@ -477,6 +485,8 @@ function refreshRowDerived(i) {
 function onEdit(e) {
   const i = +e.target.dataset.i, f = e.target.dataset.f;
   const raw = e.target.value.trim();
+  // El costo USD es opcional (sólo una vista del costo ARS): vacío = sin override, no es inválido
+  if (f === 'usd' && raw === '') { e.target.classList.remove('invalid'); refreshRowDerived(i); markDirty(); recompute(); return; }
   const num = raw === '' ? NaN : Number(raw);
   const valid = Number.isFinite(num) && num >= 0;
   e.target.classList.toggle('invalid', !valid);
@@ -527,11 +537,12 @@ function recompute() {
   $('oc-total').textContent = ars(inv);
   $('oc-items').textContent = items;
   $('oc-units').textContent = units;
-  const invalid = document.querySelectorAll('#oc-tbody tr:not(.excluded) .oc-inp.invalid').length;
+  const invalid = document.querySelectorAll('#oc-tbody tr:not(.excluded) .oc-inp:not(.usd).invalid').length;
   const btn = $('oc-export');
   if (invalid > 0) { btn.disabled = true; btn.title = `Revisá ${invalid} campo(s) inválido(s)`; }
   else if (items === 0) { btn.disabled = true; btn.title = 'La orden no tiene ítems'; }
   else { btn.disabled = false; btn.title = ''; }
+  persistDraft();
 }
 
 function setStatus(msg, ok) {
@@ -593,6 +604,8 @@ async function recalcular() {
   }
 }
 $('cp-recalc').addEventListener('click', recalcular);
+['cp-smax', 'cp-vmin', 'cp-tc', 'cp-flete', 'cp-units'].forEach(id =>
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); recalcular(); } }));
 $('oc-sort').addEventListener('change', e => { currentSort = e.target.value; applySort(); renderRows(); recompute(); });
 
 /* ───── agregar producto manual (parsea oc_csv) ───── */
@@ -649,6 +662,10 @@ $('add-search').addEventListener('input', () => {
   const q = $('add-search').value.trim().toLowerCase();
   const box = $('add-results');
   if (q.length < 2) { box.classList.remove('show'); return; }
+  if (!getCatalog().length) {
+    box.innerHTML = `<div class="oc-res-empty">No hay inventario cargado para buscar.<br>Generá la orden desde Analytics para poder agregar productos.</div>`;
+    box.classList.add('show'); return;
+  }
   const have = new Set(draft.items.map(it => it.id));
   const matches = getCatalog().filter(c => {
     const id = c.item_id + '::' + c.variante;

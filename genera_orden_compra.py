@@ -102,6 +102,9 @@ def main():
         for it in draft.get('items', []):
             if not it.get('incluido', True):
                 continue   # item quitado de la orden por el usuario
+            cadj = int(round(float(it.get('cant_ajustada', 0) or 0)))
+            if cadj <= 0:
+                continue   # cantidad 0 = no se pide (consistente con el total del front)
             lista.append({
                 'Título':   it.get('producto', ''),
                 'Variante': it.get('variante', ''),
@@ -109,7 +112,7 @@ def main():
                 'Vendidos': int(float(it.get('vendidas', 0) or 0)),
                 '_cu':      int(round(float(it.get('costo_unit', 0) or 0))),
                 '_csug':    int(round(float(it.get('cant_sugerida', 0) or 0))),
-                '_cadj':    int(round(float(it.get('cant_ajustada', 0) or 0))),
+                '_cadj':    cadj,
             })
         fundas = lista
         variantes = lista

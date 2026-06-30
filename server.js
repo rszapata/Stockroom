@@ -4829,8 +4829,11 @@ const server = http.createServer((req, res) => {
       try { draft = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
       catch(e) { json(res, 400, { error: 'JSON inválido' }); return; }
 
-      const items = Array.isArray(draft?.items) ? draft.items.filter(i => i.incluido !== false) : [];
-      if (!items.length) { json(res, 400, { error: 'La orden no tiene items para exportar' }); return; }
+      // Cuenta sólo lo que realmente va al Excel: incluido y con cantidad > 0
+      // (coincide con el total del front y con lo que el script --from-json saltea).
+      const items = Array.isArray(draft?.items)
+        ? draft.items.filter(i => i.incluido !== false && Number(i.cant_ajustada) > 0) : [];
+      if (!items.length) { json(res, 400, { error: 'La orden no tiene items con cantidad para exportar' }); return; }
 
       const scriptPath = path.join(__dirname, 'genera_orden_compra.py');
       if (!fs.existsSync(scriptPath)) { json(res, 500, { error: 'No se encontró genera_orden_compra.py' }); return; }
