@@ -17,7 +17,7 @@
 .oc-bar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 14px 18px; margin-bottom: 18px;
+  padding: 14px 18px; margin-bottom: 14px;
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -33,7 +33,7 @@
 /* ── Criterio editable ── */
 .oc-criteria {
   display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
-  padding: 12px 16px; margin-bottom: 16px;
+  padding: 12px 16px; margin-bottom: 12px;
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg);
 }
 .oc-cri-field { display: flex; flex-direction: column; gap: 4px; }
@@ -51,9 +51,45 @@
 .oc-cri-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 2px; }
 .oc-cri-recalc { margin-left: auto; }
 
+/* ── Toolbar (ajuste masivo + agregar + guardar) ── */
+.oc-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.oc-toolgrp {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+}
+.oc-toolgrp .lbl { font-size: 11px; color: var(--text-3); font-weight: 600; }
+.oc-mini {
+  width: 56px; height: 28px; padding: 0 7px; text-align: right;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.oc-mini:focus { outline: none; border-color: var(--blue); }
+.btn-mini { height: 28px; padding: 0 10px; font-size: 11px; border-radius: 7px; }
+
+/* ── Agregar producto manual ── */
+.oc-addwrap { position: relative; }
+.oc-addbox { position: relative; }
+.oc-search {
+  width: 240px; height: 28px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); font-size: 12px;
+}
+.oc-search:focus { outline: none; border-color: var(--blue); }
+.oc-results {
+  position: absolute; top: 34px; left: 0; z-index: 40; width: 360px; max-height: 300px; overflow-y: auto;
+  background: var(--bg-card); border: 1px solid var(--border-2); border-radius: 10px; box-shadow: var(--shadow-md);
+  display: none;
+}
+.oc-results.show { display: block; }
+.oc-res-item { display: flex; align-items: center; gap: 10px; padding: 8px 11px; cursor: pointer; border-bottom: 1px solid var(--border); }
+.oc-res-item:last-child { border-bottom: none; }
+.oc-res-item:hover { background: var(--bg); }
+.oc-res-title { font-size: 12.5px; color: var(--text); font-weight: 500; }
+.oc-res-meta { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+.oc-res-empty { padding: 12px; font-size: 12px; color: var(--text-3); text-align: center; }
+
 /* ── Inputs inline de la grilla ── */
 .oc-inp {
-  width: 78px; height: 32px; padding: 0 8px;
+  width: 72px; height: 32px; padding: 0 8px;
   border: 1px solid var(--border); border-radius: 8px;
   background: var(--bg); color: var(--text);
   font-family: var(--font-mono); font-size: 13px; font-weight: 600;
@@ -63,10 +99,27 @@
 .oc-inp:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,113,95,.12); background: var(--bg-card); }
 .oc-inp.invalid { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
 .oc-inp-pre { font-size: 11px; color: var(--text-3); margin-right: 2px; }
+.oc-inp.usd { width: 58px; }
+.oc-cost-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.oc-cost-usd { display: flex; align-items: center; gap: 2px; }
+.oc-sub { font-size: 10px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
 .oc-rowtot { font-family: var(--font-mono); font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
 tr.excluded { opacity: .42; }
 tr.excluded .oc-inp { pointer-events: none; }
+
+/* badges derivados */
+.oc-badge { display: inline-block; padding: 2px 7px; border-radius: 99px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.oc-cov-low  { color: var(--red);    background: var(--red-light); }
+.oc-cov-mid  { color: var(--yellow); background: var(--yellow-light); }
+.oc-cov-ok   { color: var(--green);  background: var(--green-light); }
+.oc-cov-over { color: var(--blue);   background: var(--blue-light); }
+.oc-cov-na   { color: var(--text-3); }
+.oc-mg-low { color: var(--red); font-weight: 600; }
+.oc-mg-mid { color: var(--yellow); font-weight: 600; }
+.oc-mg-ok  { color: var(--green); font-weight: 600; }
+.oc-stockfinal { font-variant-numeric: tabular-nums; }
+.oc-stockfinal b { color: var(--text); }
 
 .oc-iconbtn {
   width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
@@ -76,6 +129,7 @@ tr.excluded .oc-inp { pointer-events: none; }
 .oc-iconbtn:hover { color: var(--text); border-color: var(--border-2); }
 .oc-iconbtn.danger:hover { color: var(--red); border-color: var(--red); background: var(--red-light); }
 .oc-prov[disabled] { opacity: .45; cursor: not-allowed; }
+tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 
 .oc-empty { text-align: center; padding: 60px 20px; }
 .oc-empty svg { color: var(--text-3); opacity: .4; }
@@ -87,7 +141,7 @@ tr.excluded .oc-inp { pointer-events: none; }
 #oc-status.ok  { background: var(--green-light); color: var(--green); }
 #oc-status.err { background: var(--red-light); color: var(--red); }
 
-@media (max-width: 700px) {
+@media (max-width: 820px) {
   .oc-total-wrap { margin-left: 0; text-align: left; width: 100%; }
   .adm-table th.hide-sm, .adm-table td.hide-sm { display: none; }
 }
@@ -141,6 +195,8 @@ tr.excluded .oc-inp { pointer-events: none; }
           <div class="oc-total-sub"><span id="oc-items">0</span> ítems · <span id="oc-units">0</span> unidades</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="oc-saved" class="btn btn-ghost" style="max-width:150px" title="Borradores guardados"><option value="">Borradores…</option></select>
+          <button id="oc-save" class="btn btn-ghost" title="Guardar este borrador">Guardar</button>
           <a href="/analytics.html" class="btn btn-ghost">Cancelar</a>
           <button id="oc-export" class="btn btn-primary">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -149,6 +205,7 @@ tr.excluded .oc-inp { pointer-events: none; }
         </div>
       </div>
 
+      <!-- Criterio editable -->
       <div class="oc-criteria">
         <div class="oc-cri-field"><label>Stock ≤</label><input id="cp-smax" type="number" min="0" step="1" inputmode="numeric"></div>
         <div class="oc-cri-field"><label>Vendidas ≥</label><input id="cp-vmin" type="number" min="0" step="1" inputmode="numeric"></div>
@@ -163,6 +220,24 @@ tr.excluded .oc-inp { pointer-events: none; }
         </button>
       </div>
 
+      <!-- Acciones masivas + agregar -->
+      <div class="oc-tools">
+        <div class="oc-toolgrp">
+          <span class="lbl">Cantidades:</span>
+          <input id="ma-set" class="oc-mini" type="number" min="0" placeholder="X" title="Poner todas en…">
+          <button class="btn btn-ghost btn-mini" id="ma-set-btn">Poner todas</button>
+          <input id="ma-pct" class="oc-mini" type="number" placeholder="%" title="Ajustar por porcentaje (ej. 20 o -10)">
+          <button class="btn btn-ghost btn-mini" id="ma-pct-btn">Aplicar %</button>
+          <button class="btn btn-ghost btn-mini" id="ma-r5" title="Redondear hacia arriba a múltiplos de 5">↑5</button>
+          <button class="btn btn-ghost btn-mini" id="ma-r10" title="Redondear hacia arriba a múltiplos de 10">↑10</button>
+        </div>
+        <div class="oc-addwrap oc-addbox">
+          <button class="btn btn-ghost btn-mini" id="add-toggle">+ Agregar producto</button>
+          <input id="add-search" class="oc-search" placeholder="Buscar producto del catálogo…" style="display:none">
+          <div id="add-results" class="oc-results"></div>
+        </div>
+      </div>
+
       <div class="adm-card">
         <div class="adm-card-body-flush">
           <div class="adm-table-wrap">
@@ -170,11 +245,12 @@ tr.excluded .oc-inp { pointer-events: none; }
               <thead><tr>
                 <th>Producto</th>
                 <th>Estado</th>
-                <th class="right hide-sm">Stock</th>
+                <th class="right hide-sm">Stock → final</th>
                 <th class="right hide-sm">Vendidas</th>
-                <th class="right hide-sm">Sugerido</th>
+                <th class="right hide-sm">Cobertura</th>
                 <th class="right">Cant. a pedir</th>
                 <th class="right">Costo unit.</th>
+                <th class="right hide-sm">Margen</th>
                 <th class="right">Total</th>
                 <th></th>
               </tr></thead>
@@ -196,20 +272,22 @@ tr.excluded .oc-inp { pointer-events: none; }
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ars = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
+const SAVED_KEY = 'oc_saved_drafts';
 
-/* Theme toggle */
 $('btn-theme').addEventListener('click', () => {
   const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', t);
   try { localStorage.setItem('adminTheme', t); } catch(e) {}
 });
-$('btn-hamburger')?.addEventListener('click', () => document.getElementById('sidebar')?.classList.toggle('open'));
+$('btn-hamburger')?.addEventListener('click', () => $('sidebar')?.classList.toggle('open'));
 
 let draft = null;
 let dirty = false;
+let catalog = null;   // parseado de oc_csv (para agregar manual)
 
 function markDirty() { if (!dirty) { dirty = true; $('oc-dirty').classList.add('show'); } }
 
+/* ───── carga ───── */
 function loadDraft() {
   let raw = null;
   try { raw = sessionStorage.getItem('oc_draft'); } catch(e) {}
@@ -217,11 +295,11 @@ function loadDraft() {
   try { draft = JSON.parse(raw); } catch(e) { $('oc-empty').style.display = 'block'; return; }
   if (!draft || !Array.isArray(draft.items) || !draft.items.length) { $('oc-empty').style.display = 'block'; return; }
   $('oc-order').style.display = 'block';
-  renderHeader();
-  renderParams();
-  renderRows();
-  recompute();
+  renderAll();
+  refreshSavedList();
 }
+
+function renderAll() { renderHeader(); renderParams(); renderRows(); recompute(); }
 
 function renderHeader() {
   $('oc-id').textContent = draft.draft_id || '—';
@@ -239,76 +317,77 @@ function renderParams() {
   $('cp-units').value = p.units ?? '';
 }
 
-/* Recalcular: re-corre el cálculo con el criterio editado (usa el CSV guardado) */
-async function recalcular() {
-  let csv = null;
-  try { csv = sessionStorage.getItem('oc_csv'); } catch(e) {}
-  if (!csv) { setStatus('No tengo el inventario para recalcular. Volvé a generar la orden desde Analytics.', false); return; }
-  if (dirty && !confirm('Recalcular vuelve a calcular la orden con el nuevo criterio y descarta tus ediciones manuales. ¿Continuar?')) return;
-
-  const btn = $('cp-recalc'); btn.disabled = true; const orig = btn.innerHTML; btn.textContent = 'Recalculando…';
-  try {
-    const fd = new FormData();
-    fd.append('file', new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }), 'inventario.csv');
-    fd.append('tc',    String(parseInt($('cp-tc').value)    || 1421));
-    fd.append('flete', String(parseInt($('cp-flete').value) || 800000));
-    fd.append('units', String(parseInt($('cp-units').value) || 415));
-    const vmin = $('cp-vmin').value.trim(), smax = $('cp-smax').value.trim();
-    if (vmin !== '') fd.append('vendidos_min', String(parseInt(vmin)));
-    if (smax !== '') fd.append('stock_max',    String(parseInt(smax)));
-    if ($('cp-all').checked) fd.append('all_products', '1');
-
-    const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
-    const data = await resp.json();
-    if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
-    if (!data.draft.items || !data.draft.items.length) {
-      const r = data.draft.diagnostico || {};
-      const grupo = r.all_products ? 'productos' : 'fundas';
-      setStatus(`⚠ Sin ítems con ese criterio. De ${r.fundas_total ?? '?'} ${grupo}: ${r.pass_vendidos ?? '?'} con vendidas ≥ ${r.vendidos_min}, ${r.pass_stock ?? '?'} con stock ≤ ${r.stock_max}. Aflojá los umbrales o tildá "todas".`, false);
-      renderParams();   // refleja el criterio efectivo (puede haberse relajado)
-      btn.disabled = false; btn.innerHTML = orig; return;
-    }
-    const keepId = draft.draft_id, keepCreado = draft.creado;
-    draft = data.draft; draft.draft_id = keepId; draft.creado = keepCreado;
-    try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {}
-    dirty = false; $('oc-dirty').classList.remove('show');
-    renderParams(); renderRows(); recompute();
-    const relax = (draft.diagnostico || {}).relaxed_used ? ' (umbrales relajados automáticamente)' : '';
-    setStatus(`✓ Recalculado con el nuevo criterio: ${draft.items.length} ítems${relax}.`, true);
-  } catch (e) {
-    setStatus(`✕ ${esc(e.message)}`, false);
-  } finally {
-    btn.disabled = false; btn.innerHTML = orig;
-  }
-}
-
 const PRIO = { critico: ['err', 'Crítico'], bajo: ['low', 'Bajo'] };
+
+/* demanda mensual estimada = vendidas / 4 (mismo proxy que usa el cálculo de cant. ajustada) */
+function demandaMensual(it) { return Math.max(0, (+it.vendidas || 0) / 4); }
+function coberturaMeses(it) {
+  const dm = demandaMensual(it);
+  if (dm <= 0) return null;
+  return ((+it.stock_actual || 0) + (+it.cant_ajustada || 0)) / dm;
+}
+function covBadge(it) {
+  const m = coberturaMeses(it);
+  if (m === null) return `<span class="oc-badge oc-cov-na" title="Sin ventas registradas">—</span>`;
+  const cls = m < 1 ? 'oc-cov-low' : m < 2 ? 'oc-cov-mid' : m <= 8 ? 'oc-cov-ok' : 'oc-cov-over';
+  const txt = m < 10 ? m.toFixed(1) : Math.round(m);
+  const tip = m > 8 ? 'Podría ser sobrestock' : (m < 1 ? 'Cubre menos de un mes' : '');
+  return `<span class="oc-badge ${cls}" title="≈ ${txt} meses (asume venta mensual ≈ vendidas÷4)${tip ? ' · ' + tip : ''}">≈ ${txt}m</span>`;
+}
+function margenPct(it) {
+  const p = +it.precio || 0, c = +it.costo_unit || 0;
+  if (p <= 0) return null;
+  return (p - c) / p * 100;
+}
+function mgCell(it) {
+  const m = margenPct(it);
+  if (m === null) return `<span style="color:var(--text-3)">—</span>`;
+  const cls = m < 15 ? 'oc-mg-low' : m < 30 ? 'oc-mg-mid' : 'oc-mg-ok';
+  return `<span class="${cls}" title="Precio ${ars(it.precio)} − costo ${ars(it.costo_unit)}">${m.toFixed(0)}%</span>`;
+}
+function usdDe(it) {
+  const tc = +((draft.params||{}).tc) || 0, fu = +((draft.params||{}).flete_unit) || 0;
+  if (tc <= 0) return 0;
+  return Math.max(0, ((+it.costo_unit || 0) - fu) / tc);
+}
 
 function renderRows() {
   const tb = $('oc-tbody');
+  const fu = +((draft.params||{}).flete_unit) || 0;
   tb.innerHTML = draft.items.map((it, i) => {
     const [cls, lbl] = PRIO[it.prioridad] || ['neu', '—'];
     const foto = it.foto
       ? `<img class="adm-prod-thumb" src="${esc(it.foto)}" onerror="this.style.visibility='hidden'" alt="">`
       : `<div class="adm-prod-thumb"></div>`;
     const meta = [it.color, it.modelo].filter(Boolean).join(' · ') || it.variante || it.item_id || '';
+    const stockFinal = (+it.stock_actual || 0) + (+it.cant_ajustada || 0);
+    const usd = usdDe(it);
     return `
-      <tr data-i="${i}" class="${it.incluido === false ? 'excluded' : ''}">
+      <tr data-i="${i}" class="${it.incluido === false ? 'excluded' : ''} ${it.manual ? 'manual' : ''}">
         <td>
           <div class="adm-prod">
             ${foto}
             <div style="min-width:0">
-              <div class="adm-prod-title">${esc(it.producto)}</div>
+              <div class="adm-prod-title">${esc(it.producto)}${it.manual ? ' <span class="oc-badge oc-cov-over" style="font-size:9px">manual</span>' : ''}</div>
               <div class="adm-prod-meta">${esc(meta)}</div>
             </div>
           </div>
         </td>
         <td><span class="adm-state ${cls}">${lbl}</span></td>
-        <td class="right hide-sm" style="font-variant-numeric:tabular-nums${(+it.stock_actual) <= 4 ? ';color:var(--red);font-weight:600' : ''}">${it.stock_actual}</td>
+        <td class="right hide-sm oc-stockfinal" style="${(+it.stock_actual) <= 4 ? 'color:var(--red)' : 'color:var(--text-3)'}">${it.stock_actual} → <b id="sf-${i}">${stockFinal}</b></td>
         <td class="right hide-sm" style="font-variant-numeric:tabular-nums">${it.vendidas}</td>
-        <td class="right hide-sm" style="font-variant-numeric:tabular-nums;color:var(--text-3)">${it.cant_sugerida}</td>
-        <td class="right"><input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="cant_ajustada" data-i="${i}" value="${it.cant_ajustada}"></td>
-        <td class="right"><span class="oc-inp-pre">$</span><input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="costo_unit" data-i="${i}" value="${it.costo_unit}"></td>
+        <td class="right hide-sm" id="cov-${i}">${covBadge(it)}</td>
+        <td class="right">
+          <input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="cant_ajustada" data-i="${i}" value="${it.cant_ajustada}">
+          <div class="oc-sub">sug. ${it.cant_sugerida}</div>
+        </td>
+        <td class="right">
+          <div class="oc-cost-cell">
+            <div><span class="oc-inp-pre">$</span><input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="costo_unit" data-i="${i}" value="${it.costo_unit}"></div>
+            <div class="oc-cost-usd"><span class="oc-inp-pre">u$</span><input class="oc-inp usd" type="number" min="0" step="0.01" inputmode="decimal" data-f="usd" data-i="${i}" value="${usd ? usd.toFixed(2) : ''}" title="Costo FOB en USD (recalcula el ARS con TC + flete/u)"></div>
+          </div>
+        </td>
+        <td class="right hide-sm" id="mg-${i}">${mgCell(it)}</td>
         <td class="right"><span class="oc-rowtot" id="rt-${i}">$0</span></td>
         <td class="right" style="white-space:nowrap">
           <button class="oc-iconbtn oc-prov" disabled title="Links de proveedor (próximamente)">
@@ -325,20 +404,43 @@ function renderRows() {
   tb.querySelectorAll('.oc-toggle').forEach(btn => btn.addEventListener('click', onToggle));
 }
 
+function refreshRowDerived(i) {
+  const it = draft.items[i];
+  const sf = $('sf-' + i); if (sf) sf.textContent = (+it.stock_actual || 0) + (+it.cant_ajustada || 0);
+  const cov = $('cov-' + i); if (cov) cov.innerHTML = covBadge(it);
+  const mg = $('mg-' + i); if (mg) mg.innerHTML = mgCell(it);
+}
+
 function onEdit(e) {
   const i = +e.target.dataset.i, f = e.target.dataset.f;
   const raw = e.target.value.trim();
   const num = raw === '' ? NaN : Number(raw);
   const valid = Number.isFinite(num) && num >= 0;
   e.target.classList.toggle('invalid', !valid);
-  if (valid) draft.items[i][f] = num;
+  if (valid) {
+    if (f === 'usd') {
+      // costo USD editado → recalcular ARS = usd*tc + flete/u
+      const tc = +((draft.params||{}).tc) || 0, fu = +((draft.params||{}).flete_unit) || 0;
+      draft.items[i].costo_unit = Math.round(num * tc + fu);
+      const arsInp = document.querySelector(`input[data-f="costo_unit"][data-i="${i}"]`);
+      if (arsInp) { arsInp.value = draft.items[i].costo_unit; arsInp.classList.remove('invalid'); }
+    } else {
+      draft.items[i][f] = num;
+      if (f === 'costo_unit') {
+        const usd = usdDe(draft.items[i]);
+        const usdInp = document.querySelector(`input[data-f="usd"][data-i="${i}"]`);
+        if (usdInp) { usdInp.value = usd ? usd.toFixed(2) : ''; usdInp.classList.remove('invalid'); }
+      }
+    }
+  }
+  refreshRowDerived(i);
   markDirty();
   recompute();
 }
 
 function onToggle(e) {
   const i = +e.currentTarget.dataset.i;
-  draft.items[i].incluido = draft.items[i].incluido === false;   // flip (default true → false)
+  draft.items[i].incluido = draft.items[i].incluido === false;
   document.querySelector(`tr[data-i="${i}"]`).classList.toggle('excluded', draft.items[i].incluido === false);
   markDirty();
   recompute();
@@ -362,8 +464,6 @@ function recompute() {
   $('oc-total').textContent = ars(inv);
   $('oc-items').textContent = items;
   $('oc-units').textContent = units;
-
-  // inputs con valor inválido (vacío / negativo) en filas incluidas → bloquean export
   const invalid = document.querySelectorAll('#oc-tbody tr:not(.excluded) .oc-inp.invalid').length;
   const btn = $('oc-export');
   if (invalid > 0) { btn.disabled = true; btn.title = `Revisá ${invalid} campo(s) inválido(s)`; }
@@ -377,6 +477,194 @@ function setStatus(msg, ok) {
   el.innerHTML = msg;
 }
 
+/* ───── ajustes masivos ───── */
+function applyMass(fn) {
+  let n = 0;
+  draft.items.forEach(it => { if (it.incluido !== false) { it.cant_ajustada = Math.max(0, fn(+it.cant_ajustada || 0)); n++; } });
+  markDirty(); renderRows(); recompute();
+  setStatus(`✓ Ajuste aplicado a ${n} ítem(s).`, true);
+}
+$('ma-set-btn').addEventListener('click', () => { const v = parseInt($('ma-set').value); if (Number.isFinite(v) && v >= 0) applyMass(() => v); });
+$('ma-pct-btn').addEventListener('click', () => { const p = parseFloat($('ma-pct').value); if (Number.isFinite(p)) applyMass(c => Math.round(c * (1 + p / 100))); });
+$('ma-r5').addEventListener('click', () => applyMass(c => Math.ceil(c / 5) * 5));
+$('ma-r10').addEventListener('click', () => applyMass(c => Math.ceil(c / 10) * 10));
+
+/* ───── recalcular criterio ───── */
+async function recalcular() {
+  let csv = null;
+  try { csv = sessionStorage.getItem('oc_csv'); } catch(e) {}
+  if (!csv) { setStatus('No tengo el inventario para recalcular. Volvé a generar la orden desde Analytics.', false); return; }
+  if (dirty && !confirm('Recalcular vuelve a calcular la orden con el nuevo criterio y descarta tus ediciones manuales. ¿Continuar?')) return;
+  const btn = $('cp-recalc'); btn.disabled = true; const orig = btn.innerHTML; btn.textContent = 'Recalculando…';
+  try {
+    const fd = new FormData();
+    fd.append('file', new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }), 'inventario.csv');
+    fd.append('tc',    String(parseInt($('cp-tc').value)    || 1421));
+    fd.append('flete', String(parseInt($('cp-flete').value) || 800000));
+    fd.append('units', String(parseInt($('cp-units').value) || 415));
+    const vmin = $('cp-vmin').value.trim(), smax = $('cp-smax').value.trim();
+    if (vmin !== '') fd.append('vendidos_min', String(parseInt(vmin)));
+    if (smax !== '') fd.append('stock_max',    String(parseInt(smax)));
+    if ($('cp-all').checked) fd.append('all_products', '1');
+    const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+    if (!data.draft.items || !data.draft.items.length) {
+      const r = data.draft.diagnostico || {};
+      const grupo = r.all_products ? 'productos' : 'fundas';
+      setStatus(`⚠ Sin ítems con ese criterio. De ${r.fundas_total ?? '?'} ${grupo}: ${r.pass_vendidos ?? '?'} con vendidas ≥ ${r.vendidos_min}, ${r.pass_stock ?? '?'} con stock ≤ ${r.stock_max}. Aflojá los umbrales o tildá "todas".`, false);
+      renderParams(); btn.disabled = false; btn.innerHTML = orig; return;
+    }
+    const keepId = draft.draft_id, keepCreado = draft.creado;
+    draft = data.draft; draft.draft_id = keepId; draft.creado = keepCreado;
+    try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {}
+    dirty = false; $('oc-dirty').classList.remove('show');
+    renderAll();
+    const relax = (draft.diagnostico || {}).relaxed_used ? ' (umbrales relajados automáticamente)' : '';
+    setStatus(`✓ Recalculado con el nuevo criterio: ${draft.items.length} ítems${relax}.`, true);
+  } catch (e) {
+    setStatus(`✕ ${esc(e.message)}`, false);
+  } finally {
+    btn.disabled = false; if ($('cp-recalc').innerHTML.includes('Recalculando')) $('cp-recalc').innerHTML = orig;
+  }
+}
+$('cp-recalc').addEventListener('click', recalcular);
+
+/* ───── agregar producto manual (parsea oc_csv) ───── */
+function parseCSV(text) {
+  const rows = []; let i = 0, field = '', row = [], inQ = false;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') { if (text[i+1] === '"') { field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') {}
+      else field += c;
+    }
+    i++;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+function getCatalog() {
+  if (catalog) return catalog;
+  let csv = null;
+  try { csv = sessionStorage.getItem('oc_csv'); } catch(e) {}
+  if (!csv) { catalog = []; return catalog; }
+  const rows = parseCSV(csv.replace(/^﻿/, ''));
+  if (!rows.length) { catalog = []; return catalog; }
+  const head = rows[0].map(h => h.trim());
+  const ix = n => head.indexOf(n);
+  catalog = rows.slice(1).filter(r => r.length >= head.length && (r[ix('Variante')] || '') !== '(total)' && r[ix('Item ID')])
+    .map(r => ({
+      item_id: r[ix('Item ID')], titulo: r[ix('Título')], variante: r[ix('Variante')] || '',
+      stock: parseInt(r[ix('Stock')]) || 0, vendidos: parseInt(r[ix('Vendidos')]) || 0,
+      precio: Math.round(parseFloat(r[ix('Precio')]) || 0), foto: r[ix('Foto')] || '',
+      categoria: r[ix('Categoría')] || '',
+    }));
+  return catalog;
+}
+function cantSug(stock, vend) { const t = Math.max(10, Math.ceil(vend * 0.8 / 5) * 5); return Math.max(0, t - stock); }
+function cantAdj(vend) { return Math.max(5, Math.ceil(vend / 4 / 5) * 5); }
+function costoMedio() {
+  const cs = draft.items.map(it => +it.costo_unit || 0).filter(c => c > 0).sort((a, b) => a - b);
+  return cs.length ? cs[Math.floor(cs.length / 2)] : 0;
+}
+$('add-toggle').addEventListener('click', () => {
+  const s = $('add-search');
+  const show = s.style.display === 'none';
+  s.style.display = show ? 'inline-block' : 'none';
+  if (show) s.focus(); else { $('add-results').classList.remove('show'); }
+});
+$('add-search').addEventListener('input', () => {
+  const q = $('add-search').value.trim().toLowerCase();
+  const box = $('add-results');
+  if (q.length < 2) { box.classList.remove('show'); return; }
+  const have = new Set(draft.items.map(it => it.id));
+  const matches = getCatalog().filter(c => {
+    const id = c.item_id + '::' + c.variante;
+    return !have.has(id) && (c.titulo + ' ' + c.variante + ' ' + c.item_id).toLowerCase().includes(q);
+  }).slice(0, 30);
+  if (!matches.length) { box.innerHTML = `<div class="oc-res-empty">Sin coincidencias nuevas</div>`; box.classList.add('show'); return; }
+  box.innerHTML = matches.map((c, k) => `
+    <div class="oc-res-item" data-k="${k}">
+      <div class="adm-prod-thumb" style="width:30px;height:30px">${c.foto ? `<img src="${esc(c.foto)}" style="width:100%;height:100%;object-fit:cover;border-radius:5px" onerror="this.style.display='none'">` : ''}</div>
+      <div style="min-width:0">
+        <div class="oc-res-title">${esc(c.titulo)}</div>
+        <div class="oc-res-meta">${esc(c.variante || c.item_id)} · stock ${c.stock} · vend ${c.vendidos}</div>
+      </div>
+    </div>`).join('');
+  box._matches = matches;
+  box.classList.add('show');
+  box.querySelectorAll('.oc-res-item').forEach(el => el.addEventListener('click', () => addManual(matches[+el.dataset.k])));
+});
+document.addEventListener('click', e => { if (!e.target.closest('.oc-addbox')) $('add-results').classList.remove('show'); });
+
+function addManual(c) {
+  const color = c.variante.includes('·') ? c.variante.split('·')[0].replace('Color:', '').trim() : '';
+  const modelo = c.variante.includes('·') ? (c.variante.split('·')[1] || '').replace('Nombre del diseño:', '').trim() : c.variante;
+  // hereda costo de un ítem del mismo producto, si no usa la mediana
+  const same = draft.items.find(it => it.producto === c.titulo && +it.costo_unit > 0);
+  const costo = same ? +same.costo_unit : costoMedio();
+  draft.items.unshift({
+    id: c.item_id + '::' + c.variante, item_id: c.item_id, producto: c.titulo, variante: c.variante,
+    color, modelo, categoria: c.categoria, foto: c.foto,
+    prioridad: c.stock <= 4 ? 'critico' : 'bajo',
+    stock_actual: c.stock, vendidas: c.vendidos, precio: c.precio,
+    cant_sugerida: cantSug(c.stock, c.vendidos), cant_ajustada: cantAdj(c.vendidos),
+    costo_unit: costo, incluido: true, manual: true,
+  });
+  markDirty(); renderRows(); recompute();
+  $('add-search').value = ''; $('add-results').classList.remove('show');
+  setStatus(`✓ Agregado: ${esc(c.titulo)} — revisá la cantidad y el costo.`, true);
+}
+
+/* ───── guardar / cargar borradores (localStorage) ───── */
+function getSaved() { try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '{}'); } catch(e) { return {}; } }
+function refreshSavedList() {
+  const saved = getSaved();
+  const sel = $('oc-saved');
+  const names = Object.keys(saved).sort();
+  sel.innerHTML = '<option value="">Borradores…</option>' +
+    names.map(n => `<option value="${esc(n)}">${esc(n)} (${saved[n].items?.length || 0})</option>`).join('') +
+    (names.length ? '<option value="__del">— Eliminar guardado…</option>' : '');
+}
+$('oc-save').addEventListener('click', () => {
+  const def = draft.draft_id || ('Orden ' + new Date().toLocaleDateString('es-AR'));
+  const name = prompt('Nombre del borrador:', def);
+  if (!name) return;
+  const saved = getSaved();
+  saved[name] = { savedAt: new Date().toISOString(), items: draft.items, params: draft.params, diagnostico: draft.diagnostico, draft_id: draft.draft_id, creado: draft.creado };
+  try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch(e) { setStatus('✕ No se pudo guardar (almacenamiento lleno).', false); return; }
+  dirty = false; $('oc-dirty').classList.remove('show');
+  refreshSavedList();
+  setStatus(`✓ Borrador "${esc(name)}" guardado.`, true);
+});
+$('oc-saved').addEventListener('change', e => {
+  const v = e.target.value;
+  if (!v) return;
+  if (v === '__del') {
+    const saved = getSaved(); const names = Object.keys(saved);
+    const n = prompt('¿Cuál eliminar? Escribí el nombre exacto:\n' + names.join('\n'));
+    if (n && saved[n]) { delete saved[n]; localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); refreshSavedList(); setStatus(`✓ "${esc(n)}" eliminado.`, true); }
+    e.target.value = ''; return;
+  }
+  if (dirty && !confirm('Cargar este borrador descarta los cambios actuales sin guardar. ¿Continuar?')) { e.target.value = ''; return; }
+  const saved = getSaved();
+  if (!saved[v]) { e.target.value = ''; return; }
+  draft = JSON.parse(JSON.stringify(saved[v]));
+  try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(err) {}
+  dirty = false; $('oc-dirty').classList.remove('show');
+  renderAll();
+  setStatus(`✓ Borrador "${esc(v)}" cargado.`, true);
+  e.target.value = '';
+});
+
+/* ───── export ───── */
 $('oc-export').addEventListener('click', async () => {
   const btn = $('oc-export');
   btn.disabled = true; const orig = btn.innerHTML; btn.textContent = 'Generando…';
@@ -387,7 +675,6 @@ $('oc-export').addEventListener('click', async () => {
     });
     const data = await resp.json();
     if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
-    // descargar
     const bytes = atob(data.file_b64);
     const arr = new Uint8Array(bytes.length);
     for (let k = 0; k < bytes.length; k++) arr[k] = bytes.charCodeAt(k);
@@ -404,7 +691,6 @@ $('oc-export').addEventListener('click', async () => {
   }
 });
 
-$('cp-recalc').addEventListener('click', recalcular);
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 loadDraft();
