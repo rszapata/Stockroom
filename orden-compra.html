@@ -30,14 +30,26 @@
 .oc-dirty { display: none; font-size: 11px; color: var(--yellow); font-weight: 600; }
 .oc-dirty.show { display: inline; }
 
-/* ── Chips de parámetros ── */
-.oc-params { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.oc-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 11px; border-radius: 99px; font-size: 12px;
-  background: var(--bg-card); border: 1px solid var(--border); color: var(--text-2);
+/* ── Criterio editable ── */
+.oc-criteria {
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
+  padding: 12px 16px; margin-bottom: 16px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg);
 }
-.oc-chip b { color: var(--text); font-variant-numeric: tabular-nums; }
+.oc-cri-field { display: flex; flex-direction: column; gap: 4px; }
+.oc-cri-field label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); font-weight: 600; }
+.oc-cri-field input[type=number] {
+  width: 96px; height: 32px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text);
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  font-variant-numeric: tabular-nums; transition: border-color .12s, box-shadow .12s;
+}
+.oc-cri-field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,113,95,.12); }
+.oc-cri-check { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); cursor: pointer; height: 32px; }
+.oc-cri-check input { accent-color: var(--blue); width: 15px; height: 15px; }
+.oc-cri-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 2px; }
+.oc-cri-recalc { margin-left: auto; }
 
 /* ── Inputs inline de la grilla ── */
 .oc-inp {
@@ -137,7 +149,19 @@ tr.excluded .oc-inp { pointer-events: none; }
         </div>
       </div>
 
-      <div class="oc-params" id="oc-params"></div>
+      <div class="oc-criteria">
+        <div class="oc-cri-field"><label>Stock ≤</label><input id="cp-smax" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="oc-cri-field"><label>Vendidas ≥</label><input id="cp-vmin" type="number" min="0" step="1" inputmode="numeric"></div>
+        <label class="oc-cri-check"><input id="cp-all" type="checkbox"> Todas las publicaciones</label>
+        <div class="oc-cri-sep"></div>
+        <div class="oc-cri-field"><label>TC (ARS/USD)</label><input id="cp-tc" type="number" min="1" step="1" inputmode="numeric"></div>
+        <div class="oc-cri-field"><label>Flete total</label><input id="cp-flete" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="oc-cri-field"><label>Unidades ref.</label><input id="cp-units" type="number" min="1" step="1" inputmode="numeric"></div>
+        <button id="cp-recalc" class="btn btn-ghost oc-cri-recalc">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Recalcular
+        </button>
+      </div>
 
       <div class="adm-card">
         <div class="adm-card-body-flush">
@@ -207,15 +231,55 @@ function renderHeader() {
 
 function renderParams() {
   const p = draft.params || {};
-  const dg = draft.diagnostico || {};
-  const chips = [
-    ['TC', '$' + Math.round(p.tc || 0).toLocaleString('es-AR')],
-    ['Flete/u', '$' + Math.round(p.flete_unit || 0).toLocaleString('es-AR')],
-    ['Criterio', 'Vendidas ≥ ' + (p.vendidos_min ?? '?') + ' · Stock ≤ ' + (p.stock_max ?? '?')],
-    ['Universo', p.all_products ? 'Todas las publicaciones' : 'Solo fundas'],
-  ];
-  if (dg.relaxed_used) chips.push(['⚠', 'Umbrales relajados automáticamente']);
-  $('oc-params').innerHTML = chips.map(([k, v]) => `<span class="oc-chip">${esc(k)} <b>${esc(v)}</b></span>`).join('');
+  $('cp-smax').value  = p.stock_max ?? '';
+  $('cp-vmin').value  = p.vendidos_min ?? '';
+  $('cp-all').checked = !!p.all_products;
+  $('cp-tc').value    = p.tc ?? '';
+  $('cp-flete').value = p.flete ?? '';
+  $('cp-units').value = p.units ?? '';
+}
+
+/* Recalcular: re-corre el cálculo con el criterio editado (usa el CSV guardado) */
+async function recalcular() {
+  let csv = null;
+  try { csv = sessionStorage.getItem('oc_csv'); } catch(e) {}
+  if (!csv) { setStatus('No tengo el inventario para recalcular. Volvé a generar la orden desde Analytics.', false); return; }
+  if (dirty && !confirm('Recalcular vuelve a calcular la orden con el nuevo criterio y descarta tus ediciones manuales. ¿Continuar?')) return;
+
+  const btn = $('cp-recalc'); btn.disabled = true; const orig = btn.innerHTML; btn.textContent = 'Recalculando…';
+  try {
+    const fd = new FormData();
+    fd.append('file', new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }), 'inventario.csv');
+    fd.append('tc',    String(parseInt($('cp-tc').value)    || 1421));
+    fd.append('flete', String(parseInt($('cp-flete').value) || 800000));
+    fd.append('units', String(parseInt($('cp-units').value) || 415));
+    const vmin = $('cp-vmin').value.trim(), smax = $('cp-smax').value.trim();
+    if (vmin !== '') fd.append('vendidos_min', String(parseInt(vmin)));
+    if (smax !== '') fd.append('stock_max',    String(parseInt(smax)));
+    if ($('cp-all').checked) fd.append('all_products', '1');
+
+    const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+    if (!data.draft.items || !data.draft.items.length) {
+      const r = data.draft.diagnostico || {};
+      const grupo = r.all_products ? 'productos' : 'fundas';
+      setStatus(`⚠ Sin ítems con ese criterio. De ${r.fundas_total ?? '?'} ${grupo}: ${r.pass_vendidos ?? '?'} con vendidas ≥ ${r.vendidos_min}, ${r.pass_stock ?? '?'} con stock ≤ ${r.stock_max}. Aflojá los umbrales o tildá "todas".`, false);
+      renderParams();   // refleja el criterio efectivo (puede haberse relajado)
+      btn.disabled = false; btn.innerHTML = orig; return;
+    }
+    const keepId = draft.draft_id, keepCreado = draft.creado;
+    draft = data.draft; draft.draft_id = keepId; draft.creado = keepCreado;
+    try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {}
+    dirty = false; $('oc-dirty').classList.remove('show');
+    renderParams(); renderRows(); recompute();
+    const relax = (draft.diagnostico || {}).relaxed_used ? ' (umbrales relajados automáticamente)' : '';
+    setStatus(`✓ Recalculado con el nuevo criterio: ${draft.items.length} ítems${relax}.`, true);
+  } catch (e) {
+    setStatus(`✕ ${esc(e.message)}`, false);
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig;
+  }
 }
 
 const PRIO = { critico: ['err', 'Crítico'], bajo: ['low', 'Bajo'] };
@@ -340,6 +404,7 @@ $('oc-export').addEventListener('click', async () => {
   }
 });
 
+$('cp-recalc').addEventListener('click', recalcular);
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 loadDraft();

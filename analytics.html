@@ -1055,7 +1055,10 @@ async function previsualizarOrden() {
       setOrdenStatus(`⚠ Sin ítems con los criterios. De ${r.fundas_total ?? '?'} ${grupo}: ${r.pass_vendidos ?? '?'} con vendidas≥${r.vendidos_min}, ${r.pass_stock ?? '?'} con stock≤${r.stock_max}.<br><span style="color:var(--text-3)">Probá bajar los umbrales o tildar "todas las publicaciones".</span>`, false);
       btn.disabled = false; btn.innerHTML = orig; return;
     }
-    try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {}
+    try {
+      sessionStorage.setItem('oc_draft', JSON.stringify(draft));
+      sessionStorage.setItem('oc_csv', csv);   // para recalcular el criterio en la página
+    } catch(e) {}
     window.location.href = '/orden-compra.html';
   } catch (e) {
     setOrdenStatus(`❌ ${esc(e.message)}`, false);
