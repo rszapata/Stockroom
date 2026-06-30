@@ -479,6 +479,12 @@ input, select, textarea { font-family: var(--font); }
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: border-color .14s, transform .14s, box-shadow .14s;
+}
+.adm-kpi:hover {
+  border-color: var(--border-2);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 .adm-kpi-label {
   font-size: 11px;
@@ -489,9 +495,10 @@ input, select, textarea { font-family: var(--font); }
 }
 .adm-kpi-value {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.1;
+  letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
 }
 .adm-kpi-value.blue   { color: var(--blue); }
@@ -530,6 +537,7 @@ input, select, textarea { font-family: var(--font); }
 }
 .btn svg { flex-shrink: 0; width: 15px; height: 15px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.btn:active:not(:disabled) { transform: scale(.985); }
 
 .btn-primary   { background: var(--blue);        color: #fff;           border-color: var(--blue); }
 .btn-primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
@@ -587,10 +595,12 @@ input, select, textarea { font-family: var(--font); }
 .adm-table th.right,
 .adm-table td.right { text-align: right; }
 .adm-table td {
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
   vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  transition: background-color .1s;
 }
 .adm-table tbody tr:last-child td { border-bottom: none; }
 .adm-table tbody tr:hover td      { background: var(--bg); }
