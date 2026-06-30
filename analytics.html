@@ -778,6 +778,10 @@ function finishLoad() {
   fCat.innerHTML = '<option value="">Todas las categorías</option>';
   cats.forEach(c => fCat.add(new Option(c, c)));
   updateKPIs(); buildAlerts(); applyFilters();
+  // Deep-link: ?status=low|critical|velocity abre la vista ya filtrada
+  // (ej. desde la card "Alertas de stock" del dashboard).
+  const urlStatus = new URLSearchParams(location.search).get('status');
+  if (urlStatus) { filterByStatus(urlStatus); updateKPIActive(); }
 }
 
 /* ═════ KPIs ═════ */
