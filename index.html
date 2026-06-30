@@ -568,7 +568,10 @@ const fmt    = v => v != null ? '$ ' + Math.round(v).toLocaleString('es-AR') :
 const fmtNum = v => v != null ? String(v) : '—';
 
 /* ── sparkline ── */
-function sparkline(container, data, { color = '#3483FA', fill = true } = {}) {
+// Colores de gráficos leídos de los tokens del tema (matchean light/dark).
+const cssVar = (n, fb) => (getComputedStyle(document.documentElement).getPropertyValue(n) || fb).trim();
+const ACCENT = cssVar('--blue', '#15715F');
+function sparkline(container, data, { color = ACCENT, fill = true } = {}) {
   if (!container || !data || data.length < 2) { container && (container.innerHTML = ''); return; }
   const w = 200, h = 40, pad = 3;
   const min = Math.min(...data), max = Math.max(...data);
@@ -701,9 +704,9 @@ async function loadVentas() {
 
     const buckets = new Array(24).fill(0);
     d.orders.forEach(o => { if (!o.date_created) return; buckets[new Date(o.date_created).getHours()] += o.total_amount || 0; });
-    sparkline($('spark-ventas'), buckets.slice(8, 24), { color: '#3483FA' });
-    sparkline($('spark-neto'),   buckets.slice(8, 24).map(v => v / 1.21 * 0.82), { color: '#00A650' });
-    sparkline($('spark-ticket'), buckets.slice(8, 24).map(v => v ? Math.min(v, ticket * 3) : 0), { color: '#F5A623' });
+    sparkline($('spark-ventas'), buckets.slice(8, 24), { color: ACCENT });
+    sparkline($('spark-neto'),   buckets.slice(8, 24).map(v => v / 1.21 * 0.82), { color: cssVar('--green', '#1F8A5B') });
+    sparkline($('spark-ticket'), buckets.slice(8, 24).map(v => v ? Math.min(v, ticket * 3) : 0), { color: cssVar('--yellow', '#E5A21E') });
 
     // Comparación real con ayer (ML API)
     loadComparacionAyer(d.total_ventas, d.count, ticket).catch(e => console.warn('cmp ayer:', e));
@@ -797,7 +800,7 @@ async function loadDespachos() {
     else badge.style.display = 'none';
 
     const perOrder = d.orders.map(o => o.items.reduce((a,i) => a+(i.quantity||0), 0));
-    sparkline($('spark-desp'), perOrder.length >= 2 ? perOrder : [0, units, 0], { color: '#3483FA' });
+    sparkline($('spark-desp'), perOrder.length >= 2 ? perOrder : [0, units, 0], { color: ACCENT });
 
     // nav badge
     const navBadge = $('nav-desp-badge');
@@ -863,8 +866,9 @@ function renderHourChart() {
   const ttBody  = isDark ? '#888'   : '#666';
 
   const grad = ctx.createLinearGradient(0, 0, 0, 190);
-  grad.addColorStop(0, 'rgba(52,131,250,.28)');
-  grad.addColorStop(1, 'rgba(52,131,250,0)');
+  const _ah = ACCENT.replace('#',''); const _ar = parseInt(_ah.slice(0,2),16), _ag = parseInt(_ah.slice(2,4),16), _ab = parseInt(_ah.slice(4,6),16);
+  grad.addColorStop(0, `rgba(${_ar},${_ag},${_ab},.28)`);
+  grad.addColorStop(1, `rgba(${_ar},${_ag},${_ab},0)`);
 
   state.chartHours = new Chart(ctx, {
     type: 'line',
@@ -872,14 +876,14 @@ function renderHourChart() {
       labels: Array.from({length:24}, (_,i) => String(i).padStart(2,'0') + 'h'),
       datasets: [{
         data,
-        borderColor: '#3483FA',
+        borderColor: ACCENT,
         backgroundColor: grad,
         borderWidth: 2,
         fill: true,
         tension: 0.42,
         pointRadius: 0,
         pointHoverRadius: 5,
-        pointHoverBackgroundColor: '#3483FA',
+        pointHoverBackgroundColor: ACCENT,
         pointHoverBorderColor: isDark ? '#1a1a1a' : '#fff',
         pointHoverBorderWidth: 2,
       }],
