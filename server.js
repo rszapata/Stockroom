@@ -6002,16 +6002,20 @@ async function handleTgCallback(cb) {
   // (editMessageText falla en mensajes-foto). Telegram nos lo indica con
   // cb.message.photo.
   const _isPhoto = !!cb.message?.photo;
-  // Edita el mensaje original (quita botones); si no hay contexto, manda uno nuevo
   // Edita el mensaje original in-place; si el edit falla (ok:false / red), cae a
-  // un mensaje NUEVO para no dejar el aviso colgado en "Aplicando…" sin resultado.
-  const reply = async (text, keyboard) => {
+  // un mensaje NUEVO para no dejar el aviso colgado sin resultado.
+  // opts.editOnly = true → NO manda mensaje nuevo si el edit falla. Se usa para los
+  // avisos de progreso ("🔄 Aplicando…"): son transitorios y el mensaje de resultado
+  // (que sí cae a mensaje nuevo) siempre llega. Evita el "Aplicando…" huérfano que
+  // quedaba pegado cuando su edit fallaba y se mandaba como mensaje aparte.
+  const reply = async (text, keyboard, opts = {}) => {
     if (_chatId && _msgId) {
       const r = await (_isPhoto
         ? tgEditCaption(_chatId, _msgId, text, keyboard)
         : tgEdit(_chatId, _msgId, text, keyboard));
       if (r) return r;
     }
+    if (opts.editOnly) return null;
     return tgSend(text, keyboard);
   };
 
@@ -6024,7 +6028,7 @@ async function handleTgCallback(cb) {
       const allAccounts = fullConfig.accounts || [];
 
       // Feedback inmediato in-place (quita botones → no se puede re-tocar)
-      reply(`🔄 Sincronizando ${adj.changes.length} item(s) en ML...`).catch(() => {});
+      reply(`🔄 Sincronizando ${adj.changes.length} item(s) en ML...`, null, { editOnly: true }).catch(() => {});
 
       // Procesar items en PARALELO (Promise.allSettled para que un fallo no aborte el resto).
       // Antes era serial: por cada item refresh + GET + PUT (3 HTTPs) × N items.
@@ -6111,7 +6115,7 @@ async function handleTgCallback(cb) {
       const srcLabel = srcAcct.label || srcAcct.id;
 
       // Feedback inmediato in-place
-      reply(`🔄 Sincronizando ${targets.length} item(s) desde ${_shortAcct(srcLabel)} (x${srcTotal})...`).catch(() => {});
+      reply(`🔄 Sincronizando ${targets.length} item(s) desde ${_shortAcct(srcLabel)} (x${srcTotal})...`, null, { editOnly: true }).catch(() => {});
 
       // Procesar items destino en PARALELO
       const results = await Promise.allSettled(targets.map(async it => {
@@ -6171,7 +6175,7 @@ async function handleTgCallback(cb) {
       adj.variantMismatches = adj.variantMismatches.map((m, i) => i === mmIdx ? updatedMm : m);
       adj.changes = buildVariantChangesFromMismatches(adj.variantMismatches);
 
-      reply('🔄 Aplicando...').catch(() => {});
+      reply('🔄 Aplicando...', null, { editOnly: true }).catch(() => {});
 
       const allAccounts = fullConfig.accounts || [];
       const results = await Promise.allSettled(adj.changes.map(async ch => {
@@ -6226,7 +6230,7 @@ async function handleTgCallback(cb) {
         ? adj.changes
         : buildVariantChangesFromMismatches(adj.variantMismatches || []);
 
-      reply(`🔄 Aplicando ${(adj.variantMismatches || []).length} variante(s)...`).catch(() => {});
+      reply(`🔄 Aplicando ${(adj.variantMismatches || []).length} variante(s)...`, null, { editOnly: true }).catch(() => {});
 
       const allAccounts = fullConfig.accounts || [];
       const results = await Promise.allSettled(changes.map(async ch => {
@@ -6300,7 +6304,7 @@ async function handleTgCallback(cb) {
         return;
       }
 
-      reply(`🔄 Copiando stock de ${_shortAcct(srcLabel)}...`).catch(() => {});
+      reply(`🔄 Copiando stock de ${_shortAcct(srcLabel)}...`, null, { editOnly: true }).catch(() => {});
 
       const allAccounts = fullConfig.accounts || [];
       const results = await Promise.allSettled(adj.changes.map(async ch => {
@@ -6352,7 +6356,7 @@ async function handleTgCallback(cb) {
       const isCancel = adj.type === 'cancel';
       const allAccounts = fullConfig.accounts || [];
 
-      reply(`🔄 Aplicando ajuste de ${isCancel ? 'cancelación' : 'venta'}...`).catch(() => {});
+      reply(`🔄 Aplicando ajuste de ${isCancel ? 'cancelación' : 'venta'}...`, null, { editOnly: true }).catch(() => {});
 
       const results = await Promise.allSettled(adj.changes.map(async ch => {
         const acct = allAccounts.find(a => a.id === ch.accountId);
@@ -6488,7 +6492,7 @@ async function handleTgCallback(cb) {
       const allAccts = (fullConfig.accounts && fullConfig.accounts.length) ? fullConfig.accounts : [config];
       const acct = allAccts.find(a => a.id === ctx.acctId) || allAccts[0];
       if (!acct) { await reply('⚠️ Cuenta ML no encontrada.'); return; }
-      reply(`🔄 Actualizando stock de ${ctx.itemTitle} a ${ctx.webStock} en ML...`).catch(() => {});
+      reply(`🔄 Actualizando stock de ${ctx.itemTitle} a ${ctx.webStock} en ML...`, null, { editOnly: true }).catch(() => {});
       try {
         await refreshAccountToken(acct);
         const mlData = await mlGetAuth(acct, '/items/' + ctx.itemId);
