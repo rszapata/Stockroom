@@ -6018,6 +6018,10 @@ async function handleTgCallback(cb) {
     if (opts.editOnly) return null;
     return tgSend(text, keyboard);
   };
+  // Ícono del mensaje de resultado: ✅ sólo si se aplicó TODO limpio; ⚠️ si hubo
+  // fallas o variantes no encontradas (partial) → que no pase desapercibido un
+  // sync incompleto (evita sobreventa por stock desalineado que quedó sin avisar).
+  const okIcon = (applied, failed = 0, noMatch = 0) => (applied > 0 && !failed && !noMatch) ? '✅' : '⚠️';
 
   try {
     if (action === 'apply') {
@@ -6076,11 +6080,12 @@ async function handleTgCallback(cb) {
         }
       });
 
-      adj.status = 'applied'; adj.appliedAt = new Date().toISOString();
+      adj.status = (applied > 0 && failed === 0) ? 'applied' : 'error';
+      adj.appliedAt = new Date().toISOString();
       savePendingAdjustments(allAdj);
-      appendVincLog({ action: 'applied', source: 'telegram', adjId: adj.id, groupId: adj.groupId, triggerAcctLabel: adj.trigger?.acctLabel, targetStock: adj.targetStock, itemsApplied: applied, variantDeltas: adj.trigger?.variantDeltas || [] });
+      appendVincLog({ action: adj.status, source: 'telegram', adjId: adj.id, groupId: adj.groupId, triggerAcctLabel: adj.trigger?.acctLabel, targetStock: adj.targetStock, itemsApplied: applied, variantDeltas: adj.trigger?.variantDeltas || [] });
       const failMsg = failed ? ` · ${failed} fallido(s)` : '';
-      await reply(`✅ <b>${adj.groupName}</b>\nStock sincronizado a ${adj.targetStock} u. en ${applied} publicación(es)${failMsg}.`);
+      await reply(`${okIcon(applied, failed)} <b>${adj.groupName}</b>\nStock sincronizado a ${adj.targetStock} u. en ${applied} publicación(es)${failMsg}.`);
 
     } else if (action === 'sf') {
       // Sync desde un item específico (ese item es la fuente de verdad)
@@ -6148,11 +6153,12 @@ async function handleTgCallback(cb) {
         }
       });
 
-      adj.status = 'applied'; adj.appliedAt = new Date().toISOString();
+      adj.status = (applied > 0 && failed === 0) ? 'applied' : 'error';
+      adj.appliedAt = new Date().toISOString();
       savePendingAdjustments(allAdj);
-      appendVincLog({ action: 'sync-from', source: 'telegram', adjId: adj.id, groupId: adj.groupId, syncFromLabel: srcLabel, syncFromStock: srcTotal, itemsApplied: applied });
+      appendVincLog({ action: adj.status === 'applied' ? 'sync-from' : 'error', source: 'telegram', adjId: adj.id, groupId: adj.groupId, syncFromLabel: srcLabel, syncFromStock: srcTotal, itemsApplied: applied });
       const failMsg = failed ? ` · ${failed} fallido(s)` : '';
-      await reply(`✅ <b>${adj.groupName}</b>\nStock sincronizado a ${srcTotal} u. (desde ${_shortAcct(srcLabel)}) en ${applied} publicación(es)${failMsg}.`);
+      await reply(`${okIcon(applied, failed)} <b>${adj.groupName}</b>\nStock sincronizado a ${srcTotal} u. (desde ${_shortAcct(srcLabel)}) en ${applied} publicación(es)${failMsg}.`);
 
     } else if (action === 'vc') {
       // Elegir, para la única variante desalineada de un ajuste tipo "variant",
@@ -6217,7 +6223,7 @@ async function handleTgCallback(cb) {
         await reply(`⚠️ <b>${adj.groupName}</b>\n${mm.label}: no se pudo ajustar (${noMatch ? 'variante no encontrada en la otra cuenta' : 'falló'}). Revisá manualmente.`);
       } else {
         const extra = [failed ? `${failed} fallido(s)` : '', noMatch ? `${noMatch} sin variante` : ''].filter(Boolean).join(' · ');
-        await reply(`✅ <b>${adj.groupName}</b>\n${mm.label}: ajustado a x${chosen.qty} (${_shortAcct(chosen.acctLabel)})${extra ? ' · ' + extra : ''}.`);
+        await reply(`${okIcon(applied, failed, noMatch)} <b>${adj.groupName}</b>\n${mm.label}: ajustado a x${chosen.qty} (${_shortAcct(chosen.acctLabel)})${extra ? ' · ' + extra : ''}.`);
       }
 
     } else if (action === 'apvarall') {
@@ -6280,7 +6286,7 @@ async function handleTgCallback(cb) {
         await reply(`⚠️ <b>${adj.groupName}</b>\nNo se pudo aplicar ninguna variante (${noMatch ? 'no encontradas en las publicaciones' : 'fallaron'}). Revisá manualmente.`);
       } else {
         const extra = [failed ? `${failed} fallido(s)` : '', noMatch ? `${noMatch} sin variante` : ''].filter(Boolean).join(' · ');
-        await reply(`✅ <b>${adj.groupName}</b>\nVariantes recomendadas aplicadas (${applied} item(s))${extra ? ' · ' + extra : ''}.`);
+        await reply(`${okIcon(applied, failed, noMatch)} <b>${adj.groupName}</b>\nVariantes recomendadas aplicadas (${applied} item(s))${extra ? ' · ' + extra : ''}.`);
       }
 
     } else if (action === 'vsrc') {
@@ -6343,7 +6349,7 @@ async function handleTgCallback(cb) {
         await reply(`⚠️ <b>${adj.groupName}</b>\nNo se pudo copiar: ${noMatch ? 'no encontré la variante en la(s) publicación(es)' : 'todos los intentos fallaron'}. Revisá manualmente.`);
       } else {
         const extra = [failed ? `${failed} fallido(s)` : '', noMatch ? `${noMatch} sin variante` : ''].filter(Boolean).join(' · ');
-        await reply(`✅ <b>${adj.groupName}</b>\nStock copiado desde ${_shortAcct(srcLabel)} en ${applied} publicación(es)${extra ? ' · ' + extra : ''}.`);
+        await reply(`${okIcon(applied, failed, noMatch)} <b>${adj.groupName}</b>\nStock copiado desde ${_shortAcct(srcLabel)} en ${applied} publicación(es)${extra ? ' · ' + extra : ''}.`);
       }
 
     } else if (action === 'apsync') {
@@ -6437,7 +6443,7 @@ async function handleTgCallback(cb) {
           noMatch ? `${noMatch} sin variante` : '',
         ].filter(Boolean).join(' · ');
         const suf = extra ? ` · ${extra}` : '';
-        await reply(`✅ <b>${adj.groupName}</b>\n${verbo} stock vinculado en ${applied} publicación(es)${suf}.`);
+        await reply(`${okIcon(applied, failed, noMatch)} <b>${adj.groupName}</b>\n${verbo} stock vinculado en ${applied} publicación(es)${suf}.`);
       }
 
     } else if (action === 'dis') {
