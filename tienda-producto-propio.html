@@ -334,8 +334,8 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
           <!-- Drop hint (empty state) -->
           <div id="media-drop-hint" class="media-drop-hint" style="margin:12px 14px 0;">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3);opacity:.6;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>Arrastrá fotos o <button class="link-btn" id="btn-browse-fotos-hint">elegí archivos</button></span>
-            <span style="font-size:11px;">JPG, PNG, WEBP · máx. 15MB · hasta 10 fotos</span>
+            <span>Arrastrá fotos, pegá con <b>Ctrl+V</b> o <button class="link-btn" id="btn-browse-fotos-hint">elegí archivos</button></span>
+            <span style="font-size:11px;">JPG, PNG, WEBP · máx. 15MB · hasta 10 fotos · Ctrl+V pega imagen o enlace</span>
           </div>
           <!-- Grid -->
           <div id="media-grid-wrap" style="display:none;">
@@ -873,6 +873,36 @@ mediaZone.addEventListener('drop', async (e) => {
   e.preventDefault(); mediaZone.classList.remove('drag-active');
   const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
   if (files.length) await subirMultiplesArchivos(files);
+});
+
+// Pegar del portapapeles (Ctrl+V): imagen copiada/screenshot → sube; enlace de imagen → agrega por URL.
+document.addEventListener('paste', async (e) => {
+  // Sólo con el editor de producto abierto
+  if (document.getElementById('edit-layout')?.style.display === 'none') return;
+  const t = e.target;
+  const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+
+  // 1) Archivo de imagen en el portapapeles (screenshot o "copiar imagen")
+  const imgFiles = [...(e.clipboardData?.items || [])]
+    .filter(it => it.type && it.type.startsWith('image/'))
+    .map(it => it.getAsFile())
+    .filter(Boolean);
+  if (imgFiles.length) {
+    e.preventDefault();
+    await subirMultiplesArchivos(imgFiles);
+    return;
+  }
+
+  // 2) Texto = enlace directo a una imagen (no interferir si estás escribiendo en un campo)
+  if (!typing) {
+    const text = (e.clipboardData?.getData('text') || '').trim();
+    if (/^https?:\/\/\S+\.(jpe?g|png|webp|gif|avif)(\?\S*)?$/i.test(text)) {
+      e.preventDefault();
+      if (allImages.filter(i => !i.pending).length >= 10) { toast('Máximo 10 fotos', 'err'); return; }
+      allImages.push({ url: text }); renderMediaGrid(); markDirty();
+      toast('Imagen agregada desde el enlace pegado', 'ok');
+    }
+  }
 });
 
 // URL externa
