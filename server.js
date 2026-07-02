@@ -35,7 +35,6 @@ const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincL
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
-const { stripeApiCall } = require('./lib/stripe');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
 const { HTTP_TIMEOUT_MS, applyHttpTimeout, httpsRequestJson } = require('./lib/http-client');
 const { mlOauthToken, mlGet, mlPut, mlPost } = require('./lib/ml-api');
@@ -274,11 +273,6 @@ const { getMpTokenFresh, getCuotasTasas, isMpSandbox } = createMpHelpers({
  * (opt-in: la validación se activa al configurar el secret en config.json,
  * se obtiene en MP Panel → Tu aplicación → Webhooks → Clave secreta).
  */
-// ── Stripe helpers ────────────────────────────────────────────
-function getStripeConfig() {
-  return fullConfig.stripe || {};
-}
-
 // Cupones → extraídos a lib/cupones.js (getCupones/saveCupones/
 // guardarCuponFidelidad/SOFT_LAUNCH_COUPON se importan arriba).
 
@@ -3096,121 +3090,6 @@ const server = http.createServer((req, res) => {
           console.warn('[webhook/mp] Error procesando:', e.message);
         }
       })();
-      return;
-    }
-
-    // ── GET /api/tienda/pago/stripe/config ──────────────────────
-    // Devuelve la clave pública para inicializar Stripe.js en el frontend.
-    if (pathname === '/api/tienda/pago/stripe/config' && req.method === 'GET') {
-      const stripeConf = getStripeConfig();
-      if (!stripeConf.publishable_key) {
-        res.writeHead(503);
-        res.end(JSON.stringify({ error: 'Stripe no configurado' }));
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ publishable_key: stripeConf.publishable_key }));
-      return;
-    }
-
-    // ── POST /api/tienda/pago/stripe/crear-intent ────────────────
-    // Body: { orden_id }  →  Respuesta: { client_secret }
-    if (pathname === '/api/tienda/pago/stripe/crear-intent' && req.method === 'POST') {
-      let body = '';
-      req.on('data', c => { body += c; });
-      req.on('end', async () => {
-        try {
-          const { orden_id } = JSON.parse(body || '{}');
-          if (!orden_id) { res.writeHead(400); res.end(JSON.stringify({ error: 'orden_id requerido' })); return; }
-          const orden = await db.getOrdenById(orden_id);
-          if (!orden) { res.writeHead(404); res.end(JSON.stringify({ error: 'Orden no encontrada' })); return; }
-          const stripeConf = getStripeConfig();
-          if (!stripeConf.secret_key) { res.writeHead(503); res.end(JSON.stringify({ error: 'Stripe no configurado' })); return; }
-
-          const amountCents = Math.round((orden.total || 0) * 100);
-          if (amountCents < 100) { res.writeHead(400); res.end(JSON.stringify({ error: 'Monto inválido' })); return; }
-
-          const intent = await stripeApiCall(stripeConf.secret_key, 'POST', '/payment_intents', {
-            amount:   amountCents,
-            currency: 'ars',
-            'metadata[orden_id]': orden_id,
-            description: `Orden #${String(orden_id).slice(-8).toUpperCase()} - WZMALLAS`,
-          });
-
-          await db.updateOrdenStatus(orden.id, 'pendiente_pago', {
-            stripe_payment_intent_id: intent.id,
-          });
-
-          res.writeHead(200);
-          res.end(JSON.stringify({ client_secret: intent.client_secret }));
-        } catch(e) {
-          res.writeHead(e.status || 500);
-          res.end(JSON.stringify({ error: e.message }));
-        }
-      });
-      return;
-    }
-
-    // ── POST /api/tienda/pago/stripe/confirmar ───────────────────
-    // Body: { orden_id, payment_intent_id }
-    // Verifica con Stripe y actualiza la orden.
-    if (pathname === '/api/tienda/pago/stripe/confirmar' && req.method === 'POST') {
-      let body = '';
-      req.on('data', c => { body += c; });
-      req.on('end', async () => {
-        try {
-          const { orden_id, payment_intent_id } = JSON.parse(body || '{}');
-          if (!orden_id || !payment_intent_id) {
-            res.writeHead(400);
-            res.end(JSON.stringify({ error: 'orden_id y payment_intent_id requeridos' }));
-            return;
-          }
-          const orden = await db.getOrdenById(orden_id);
-          if (!orden) { res.writeHead(404); res.end(JSON.stringify({ error: 'Orden no encontrada' })); return; }
-
-          const stripeConf = getStripeConfig();
-          if (!stripeConf.secret_key) { res.writeHead(503); res.end(JSON.stringify({ error: 'Stripe no configurado' })); return; }
-
-          const intent = await stripeApiCall(stripeConf.secret_key, 'GET', '/payment_intents/' + payment_intent_id, null);
-          if (intent.status !== 'succeeded') {
-            res.writeHead(402);
-            res.end(JSON.stringify({ error: 'Pago no completado', stripe_status: intent.status }));
-            return;
-          }
-
-          const amount = (intent.amount_received || intent.amount || 0) / 100;
-          await db.updateOrdenStatus(orden_id, 'pagado', {
-            stripe_payment_intent_id: payment_intent_id,
-            stripe_payment_status:    intent.status,
-            stripe_amount_received:   amount,
-          });
-
-          // Notificaciones async
-          const cliente = orden.datos?.nombre || orden.datos?.email || 'Cliente';
-          const total   = `$${Number(amount || orden.total || 0).toLocaleString('es-AR')}`;
-          tgSend(`💳 <b>Pago Stripe aprobado</b> — ${total}\nOrden: <code>${orden_id}</code>\nCliente: ${cliente}\nPI: <code>${payment_intent_id}</code>`).catch(() => {});
-          sendVentaTiendaNotification(orden).catch(() => {});
-
-          const emailPago = orden.datos?.email || orden.cliente?.email;
-          if (emailPago) {
-            sendEmail({
-              to: emailPago,
-              subject: `💳 Pago recibido · Orden #${String(orden_id).slice(-8).toUpperCase()} · WZMALLAS`,
-              html: emailPagoConfirmado({ ...orden, total: amount || orden.total }),
-            }).then(r => {
-              if (r.ok) console.log(`  ✓ [email] Pago Stripe confirmado enviado a ${emailPago}`);
-              else if (!r.skipped) console.warn(`  ⚠ [email] Error email Stripe:`, r.error);
-            });
-          }
-
-          console.log(`  ✓ [stripe] Orden ${orden_id}: pagado ($${amount})`);
-          res.writeHead(200);
-          res.end(JSON.stringify({ ok: true, status: 'pagado' }));
-        } catch(e) {
-          res.writeHead(e.status || 500);
-          res.end(JSON.stringify({ error: e.message }));
-        }
-      });
       return;
     }
 
@@ -6564,7 +6443,7 @@ const _tgQuestionsCtx = new Map();
 const _tgVentaCtx = new Map();
 
 // ── Notificación Telegram: venta en tienda web (stock) ────────
-// Llamar después de confirmar un pago web (MP o Stripe).
+// Llamar después de confirmar un pago web (MercadoPago o transferencia).
 async function sendVentaTiendaNotification(orden) {
   const allAccts = (fullConfig.accounts && fullConfig.accounts.length)
     ? fullConfig.accounts
@@ -7719,8 +7598,5 @@ server.listen(PORT, BIND, () => {
     console.log(`         Para activar: agregá el bloque "email" en config.json`);
     console.log(`         (resend.com gratis hasta 3.000 emails/mes)`);
     console.log('');
-  }
-  if (!fullConfig.stripe?.secret_key) {
-    // Silencioso — Stripe no está disponible en AR todavía, no alarmar
   }
 });
