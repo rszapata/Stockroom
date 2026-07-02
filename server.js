@@ -2309,6 +2309,13 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ orden_id: orden.id, status: 'pendiente' }));
         } catch(e) {
           const status = e.status === 413 ? 413 : 400;
+          // Alerta de venta perdida: un comprador llegó a "Confirmar pedido" y la
+          // orden NO se pudo registrar. Nuestro checkout siempre manda JSON válido,
+          // así que caer acá casi seguro es un fallo interno (DB, etc.). Throttle 15'.
+          if (status !== 413) {
+            tgAlert('orden_web_error', `🛑 <b>Falla al registrar orden web</b>\nError: ${e.message}\n<i>Un comprador intentó confirmar y falló — posible venta perdida. Revisar logs/DB.</i>`, 15);
+          }
+          console.error('[orden] Error registrando orden:', e.message);
           res.writeHead(status);
           res.end(JSON.stringify({ error: status === 413 ? 'Cuerpo de la solicitud demasiado grande' : 'Body inválido' }));
         }
@@ -2907,8 +2914,9 @@ const server = http.createServer((req, res) => {
       let body = '';
       req.on('data', c => { body += c; });
       req.on('end', async () => {
+        let orden_id;   // fuera del try: el catch la usa en la alerta (adentro era ReferenceError)
         try {
-          const { orden_id } = JSON.parse(body || '{}');
+          ({ orden_id } = JSON.parse(body || '{}'));
           if (!orden_id) {
             res.writeHead(400);
             res.end(JSON.stringify({ error: 'orden_id requerido' }));
