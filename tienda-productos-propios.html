@@ -31,6 +31,15 @@
 
 /* ── Bulk selection ─────────────────────────────────────── */
 .row-chk-cell { width: 36px; text-align: center; }
+
+/* ── Edición inline desde la lista ── */
+button.stock-toggle { border: none; cursor: pointer; font: inherit; transition: transform .1s, box-shadow .12s; }
+button.stock-toggle:hover { transform: scale(1.05); box-shadow: 0 1px 6px rgba(0,0,0,.12); }
+button.stock-toggle:disabled { opacity: .5; cursor: wait; }
+.precio-cell { cursor: pointer; border-radius: 6px; display: inline-block; padding: 2px 6px; margin: -2px -6px; transition: background .12s; }
+.precio-cell:hover { background: var(--blue-light); }
+.precio-cell:not(:has(input)):hover::after { content: ' ✎'; font-size: 11px; color: var(--blue); }
+.precio-cell:has(input) { cursor: default; background: transparent; }
 .row-chk { width: 15px; height: 15px; cursor: pointer; accent-color: var(--blue); }
 tr.bulk-selected td { background: var(--blue-light) !important; }
 
@@ -944,7 +953,10 @@ async function loadProductos() {
   }
 }
 
+let _rowData = new Map();   // id → producto (para edición inline sin re-fetch)
+
 function renderTable(items, total) {
+  _rowData = new Map(items.map(p => [p.id, p]));
   const tbody = document.getElementById('items-tbody');
   if (!items.length) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:40px;">
@@ -970,9 +982,10 @@ function renderTable(items, total) {
     if (p.origen === 'whatsapp') flags.push('<span class="badge badge-blue" style="font-size:9px;">WA</span>');
     if (p.video_url) flags.push('<span class="badge badge-gray" style="font-size:9px;">▶ video</span>');
 
+    // Stock clickeable: alterna disponible ↔ agotado sin abrir el editor
     const stockBadge = p.stock_estado === 'disponible'
-      ? '<span class="adm-state ok">Stock</span>'
-      : '<span class="adm-state err">Agotado</span>';
+      ? `<button class="adm-state ok stock-toggle" data-id="${esc(p.id)}" data-estado="disponible" title="Clic para marcar AGOTADO">Stock</button>`
+      : `<button class="adm-state err stock-toggle" data-id="${esc(p.id)}" data-estado="agotado" title="Clic para marcar DISPONIBLE">Agotado</button>`;
 
     return `
       <tr data-id="${esc(p.id)}">
@@ -989,8 +1002,10 @@ function renderTable(items, total) {
         </td>
         <td><span class="badge badge-gray">${CAT_LABELS[p.categoria] || p.categoria}</span></td>
         <td style="font-weight:600;">
-          ${fmtArs(p.precio_ars)}
-          ${p.precio_usd != null ? `<div style="font-size:11px;color:var(--text-3);font-weight:400;">u$${p.precio_usd}${p.margen_pct != null ? ' · ' + p.margen_pct + '%' : ''}</div>` : ''}
+          <span class="precio-cell" data-id="${esc(p.id)}" title="Clic para editar el precio">
+            ${fmtArs(p.precio_ars)}
+            ${p.precio_usd != null ? `<div style="font-size:11px;color:var(--text-3);font-weight:400;">u$${p.precio_usd}${p.margen_pct != null ? ' · ' + p.margen_pct + '%' : ''}</div>` : ''}
+          </span>
         </td>
         <td>${stockBadge}</td>
         <td>
@@ -1043,6 +1058,90 @@ async function toggleActivo(id, activo) {
   } catch (e) { toast(e.message, 'err'); loadProductos(); }
 }
 window.toggleActivo = toggleActivo;
+
+/* ─── Edición inline desde la lista (stock y precio) ─────────────
+   Cambios del día a día sin abrir el editor completo. Delegación de
+   eventos sobre el tbody (sobrevive a los re-render de renderTable). */
+
+// Stock: clic en el badge alterna disponible ↔ agotado
+document.getElementById('items-tbody').addEventListener('click', async (e) => {
+  const stockBtn = e.target.closest('.stock-toggle');
+  if (stockBtn) {
+    const id = stockBtn.dataset.id;
+    const nuevo = stockBtn.dataset.estado === 'disponible' ? 'agotado' : 'disponible';
+    stockBtn.disabled = true;
+    try {
+      const resp = await fetch(`/api/tienda/admin/productos-propios/${encodeURIComponent(id)}`,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stock_estado: nuevo }) });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Error');
+      // Actualizar el badge in-place (sin recargar toda la tabla)
+      stockBtn.dataset.estado = nuevo;
+      stockBtn.className = 'adm-state ' + (nuevo === 'disponible' ? 'ok' : 'err') + ' stock-toggle';
+      stockBtn.textContent = nuevo === 'disponible' ? 'Stock' : 'Agotado';
+      stockBtn.title = nuevo === 'disponible' ? 'Clic para marcar AGOTADO' : 'Clic para marcar DISPONIBLE';
+      const p = _rowData.get(id); if (p) p.stock_estado = nuevo;
+      toast(nuevo === 'disponible' ? '✅ Marcado con stock' : '🔴 Marcado agotado', 'ok');
+    } catch (err) { toast(err.message, 'err'); loadProductos(); }
+    finally { stockBtn.disabled = false; }
+    return;
+  }
+
+  // Precio: clic abre input inline. Si el producto tiene precio en USD, se
+  // edita el USD (el server recalcula ARS con su margen y cotización — así no
+  // se desincroniza el modelo de pricing); si es carga manual, se edita el ARS.
+  const precioEl = e.target.closest('.precio-cell');
+  if (precioEl && !precioEl.querySelector('input')) {
+    const id = precioEl.dataset.id;
+    const p = _rowData.get(id);
+    if (!p) return;
+    const enUsd = p.precio_usd != null && p.cotizacion_usd != null;
+    const valorActual = enUsd ? p.precio_usd : p.precio_ars;
+    const original = precioEl.innerHTML;
+    precioEl.innerHTML = `
+      <span style="display:inline-flex;align-items:center;gap:4px;">
+        <span style="font-size:12px;color:var(--text-3);">${enUsd ? 'u$' : '$'}</span>
+        <input type="number" step="${enUsd ? '0.01' : '1'}" min="0" value="${valorActual}"
+               style="width:90px;height:30px;padding:0 8px;border:1px solid var(--blue);border-radius:7px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;font-weight:600;">
+      </span>`;
+    const inp = precioEl.querySelector('input');
+    inp.focus(); inp.select();
+    let done = false;
+    const cancelar = () => { if (done) return; done = true; precioEl.innerHTML = original; };
+    const guardar = async () => {
+      if (done) return; done = true;
+      const val = parseFloat(inp.value);
+      if (!Number.isFinite(val) || val < 0 || val === valorActual) { precioEl.innerHTML = original; return; }
+      const body = enUsd
+        ? { precio_usd: val, margen_pct: p.margen_pct || 0, cotizacion_usd: p.cotizacion_usd }
+        : { precio_ars: val };
+      try {
+        const resp = await fetch(`/api/tienda/admin/productos-propios/${encodeURIComponent(id)}`,
+          { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Error');
+        // Releer el producto actualizado para reflejar el ARS recalculado
+        const r2 = await fetch('/api/tienda/admin/productos-propios/' + encodeURIComponent(id));
+        const p2 = r2.ok ? await r2.json() : null;
+        const nuevoP = p2 && p2.producto ? p2.producto : p2;
+        if (nuevoP && nuevoP.precio_ars != null) {
+          _rowData.set(id, nuevoP);
+          precioEl.innerHTML = fmtArs(nuevoP.precio_ars) +
+            (nuevoP.precio_usd != null ? `<div style="font-size:11px;color:var(--text-3);font-weight:400;">u$${nuevoP.precio_usd}${nuevoP.margen_pct != null ? ' · ' + nuevoP.margen_pct + '%' : ''}</div>` : '');
+        } else {
+          precioEl.innerHTML = original;
+          loadProductos();
+        }
+        toast('💲 Precio actualizado', 'ok');
+      } catch (err) { precioEl.innerHTML = original; toast(err.message, 'err'); }
+    };
+    inp.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') { ev.preventDefault(); guardar(); }
+      else if (ev.key === 'Escape') cancelar();
+    });
+    inp.addEventListener('blur', guardar);
+  }
+});
 
 async function duplicarProducto(id) {
   try {
