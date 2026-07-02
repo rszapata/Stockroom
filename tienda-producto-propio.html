@@ -87,6 +87,26 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
 .media-thumb.pending { display: flex; align-items: center; justify-content: center; cursor: default; border-style: dashed; }
 .media-thumb.pending img { display: none; }
 
+/* ── Fotos por variante ── */
+.var-foto-thumb { width: 30px; height: 30px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0; }
+.var-foto-btn {
+  font-size: 11px; padding: 4px 9px; border-radius: 7px; cursor: pointer;
+  background: var(--bg); border: 1px dashed var(--border-2); color: var(--text-2);
+  transition: all .12s;
+}
+.var-foto-btn:hover { border-color: var(--blue); color: var(--blue); }
+.varfoto-ov { position: fixed; inset: 0; z-index: 9998; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.varfoto-modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; max-width: 480px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,.3); }
+.varfoto-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.varfoto-x { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+.varfoto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; overflow-y: auto; margin-bottom: 14px; }
+.varfoto-item { position: relative; aspect-ratio: 1; border: 2px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color .12s; }
+.varfoto-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.varfoto-item .varfoto-check { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 12px; font-weight: 700; display: none; align-items: center; justify-content: center; }
+.varfoto-item.on { border-color: var(--blue); }
+.varfoto-item.on .varfoto-check { display: flex; }
+.varfoto-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
 /* ── Modal de recorte (detección de margen al subir) ── */
 .crop-ov { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 20px; animation: crop-in .12s ease; }
 @keyframes crop-in { from { opacity: 0; } to { opacity: 1; } }
@@ -1423,9 +1443,73 @@ function renderVariantesList() {
           onkeydown="if(event.key==='Enter'){event.preventDefault();varAddColor('${vid}',this);}"
           onblur="if(this.value.trim())varAddColor('${vid}',this)">
       </div>
+      <div class="var-colors-row">
+        <span class="var-colors-row-label" title="Fotos propias de esta variante">📷</span>
+        ${(Array.isArray(v.imagenes) ? v.imagenes : []).map(u =>
+          `<img class="var-foto-thumb" src="${esc(u)}" onerror="this.style.opacity='.2'" alt="">`).join('')}
+        <button class="var-foto-btn" type="button" onclick="varOpenFotos('${vid}')">
+          ${(v.imagenes && v.imagenes.length) ? '✎ ' + v.imagenes.length + ' foto' + (v.imagenes.length !== 1 ? 's' : '') : '+ Elegir fotos'}
+        </button>
+        ${(v.imagenes && v.imagenes.length) ? `<span style="font-size:10px;color:var(--text-3);">la tienda muestra estas al elegir la variante</span>` : ''}
+      </div>
     </div>`;
   }).join('');
 }
+
+/* ── Fotos por variante: picker sobre el pool de fotos del producto ──
+   Cada variante puede tener su propia galería (ej. iPhone usado con fotos
+   reales del equipo, o CPO con fotos del sellado). Vacío = fotos generales. */
+window.varOpenFotos = (vid) => {
+  const v = allVariantes.find(x => x.id === vid);
+  if (!v) return;
+  const pool = allImages.filter(i => !i.pending && i.url);
+  if (!pool.length) { toast('Primero subí fotos al producto (panel Fotos)', 'err'); return; }
+  if (!Array.isArray(v.imagenes)) v.imagenes = [];
+  const sel = new Set(v.imagenes);
+
+  const ov = document.createElement('div');
+  ov.className = 'varfoto-ov';
+  const renderGrid = () => pool.map(i => `
+    <div class="varfoto-item${sel.has(i.url) ? ' on' : ''}" data-url="${esc(i.url)}">
+      <img src="${esc(i.url)}" alt="">
+      <span class="varfoto-check">✓</span>
+    </div>`).join('');
+  ov.innerHTML = `
+    <div class="varfoto-modal">
+      <div class="varfoto-head">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);">Fotos de “${esc(v.nombre || 'variante')}”</div>
+          <div style="font-size:11.5px;color:var(--text-3);margin-top:2px;">Tocá las fotos del producto que corresponden a esta variante. Sin selección = usa las fotos generales.</div>
+        </div>
+        <button class="varfoto-x" type="button">✕</button>
+      </div>
+      <div class="varfoto-grid">${renderGrid()}</div>
+      <div class="varfoto-actions">
+        <button class="btn btn-ghost btn-sm" data-act="none">Quitar todas</button>
+        <button class="btn btn-primary btn-sm" data-act="save">Guardar selección</button>
+      </div>
+    </div>`;
+  const close = () => ov.remove();
+  ov.addEventListener('click', (e) => {
+    if (e.target === ov || e.target.closest('.varfoto-x')) return close();
+    const item = e.target.closest('.varfoto-item');
+    if (item) {
+      const url = item.dataset.url;
+      if (sel.has(url)) sel.delete(url); else sel.add(url);
+      item.classList.toggle('on', sel.has(url));
+      return;
+    }
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'none') { sel.clear(); ov.querySelectorAll('.varfoto-item').forEach(el => el.classList.remove('on')); }
+    else if (act === 'save') {
+      // Mantener el orden del pool (el mismo de la galería del producto)
+      v.imagenes = pool.map(i => i.url).filter(u => sel.has(u));
+      markDirty(); renderVariantesList(); close();
+      toast(v.imagenes.length ? `📷 ${v.imagenes.length} foto(s) asignadas a la variante` : 'La variante usa las fotos generales', 'ok');
+    }
+  });
+  document.body.appendChild(ov);
+};
 
 window.varUpdateNombre = (id, val) => {
   const v = allVariantes.find(x => x.id === id);
@@ -1473,7 +1557,7 @@ window.varDelete = (id) => {
 };
 function varAgregar() {
   const id = 'v_' + Date.now();
-  allVariantes.push({ id, nombre: '', precio_usd: null, precio_ars: 0, stock: 'disponible', condicion: 'nuevo', colores: [] });
+  allVariantes.push({ id, nombre: '', precio_usd: null, precio_ars: 0, stock: 'disponible', condicion: 'nuevo', colores: [], imagenes: [] });
   renderVariantesList(); markDirty();
   setTimeout(() => {
     const cards = document.querySelectorAll('#variantes-list .var-card');
