@@ -2207,6 +2207,23 @@ const server = http.createServer((req, res) => {
           for (const it of orderItems) it.qty = sanQty(it);
           const subtotalCalc = orderItems.reduce((acc, it) => acc + Math.max(0, parseFloat(it.price) || 0) * it.qty, 0);
 
+          // ── Productos "solo transferencia" (pago_transferencia, ej. celulares:
+          // modelo costo+margen). Server-side autoritativo (no confía en el front):
+          // 1) NO reciben el 5% de descuento (el precio ya es final).
+          // 2) Un pedido que los contenga no puede pagarse con MercadoPago.
+          const subtotalSoloTransf = orderItems.reduce((acc, it) => {
+            const lp = esIdProductoPropio(it.id) ? propioMap[it.id] : null;
+            return acc + (lp && lp.pago_transferencia ? Math.max(0, parseFloat(it.price) || 0) * it.qty : 0);
+          }, 0);
+          if (subtotalSoloTransf > 0 && data.pago?.metodo === 'mercadopago') {
+            res.writeHead(400);
+            res.end(JSON.stringify({
+              error: 'solo_transferencia',
+              message: 'Este pedido contiene productos que se pagan únicamente por transferencia bancaria. Elegí "Transferencia" como método de pago.',
+            }));
+            return;
+          }
+
           let cuponDescuentoCalc = 0;
           let envioGratisCupon   = false;   // cupón type:'freeship' → envío bonificado
           const cuponCode = data.pago?.cupon;
@@ -2245,7 +2262,10 @@ const server = http.createServer((req, res) => {
             }
           }
           const esTransferencia = data.pago?.metodo === 'transferencia';
-          const descuentoCalc = esTransferencia ? Math.round((subtotalCalc - cuponDescuentoCalc) * 0.05) : 0;
+          // El 5% de transferencia NO aplica sobre los productos "solo transferencia"
+          // (su precio ya es el final del modelo costo+margen).
+          const baseDescuento = Math.max(0, subtotalCalc - subtotalSoloTransf - cuponDescuentoCalc);
+          const descuentoCalc = esTransferencia ? Math.round(baseDescuento * 0.05) : 0;
           // Cupón de envío gratis: se valida el precio real (arriba) y acá se
           // bonifica → el cliente paga 0 de envío. envioCalc real se guarda como
           // descuento_envio (lo que absorbe el negocio) y data.envio.precio=0.

@@ -1111,6 +1111,9 @@ async function ensureProductosPropiosTable() {
     )
   `);
   await pool.query(`ALTER TABLE tienda_productos_propios ADD COLUMN IF NOT EXISTS eliminado BOOLEAN NOT NULL DEFAULT FALSE`);
+  // Productos que se pagan ÚNICAMENTE por transferencia (modelo costo+margen,
+  // ej. celulares): sin cuotas, sin 5% de descuento, y el checkout oculta MP.
+  await pool.query(`ALTER TABLE tienda_productos_propios ADD COLUMN IF NOT EXISTS pago_transferencia BOOLEAN NOT NULL DEFAULT FALSE`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_tpp_activo    ON tienda_productos_propios(activo)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_tpp_eliminado ON tienda_productos_propios(eliminado) WHERE eliminado = TRUE`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_tpp_destacado ON tienda_productos_propios(destacado) WHERE destacado = TRUE`);
@@ -1123,6 +1126,7 @@ const PRODUCTO_PROPIO_FIELDS = [
   'video_url', 'video_fuente', 'video_thumb_url',
   'destacado', 'activo', 'notas_admin', 'origen',
   'envio_gratis', 'costo_envio', 'dias_envio', 'a_pedido',
+  'pago_transferencia',
 ];
 
 // Fields that are JSONB arrays and need explicit JSON serialization

@@ -582,6 +582,13 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
               </div>
               <label class="tswitch"><input type="checkbox" id="chk-a-pedido"><span class="slider"></span></label>
             </div>
+            <div class="toggle-row">
+              <div>
+                <div class="l">🏦 Solo transferencia</div>
+                <div class="d">Modelo costo+margen: sin cuotas, sin 5% de descuento y el checkout oculta MercadoPago. El precio publicado es el final.</div>
+              </div>
+              <label class="tswitch"><input type="checkbox" id="chk-solo-transf"><span class="slider"></span></label>
+            </div>
           </div>
         </div>
 
@@ -1219,6 +1226,7 @@ function limpiarFormulario() {
   document.getElementById('chk-stock').checked        = true;
   document.getElementById('chk-destacado').checked    = false;
   document.getElementById('chk-a-pedido').checked     = false;
+  document.getElementById('chk-solo-transf').checked  = false;
   document.getElementById('chk-envio-gratis').checked = false;
   document.getElementById('inp-costo-envio').value    = '';
   document.getElementById('inp-dias-envio').value     = '';
@@ -1255,6 +1263,7 @@ function cargarFormulario(p) {
   document.getElementById('chk-stock').checked     = p.stock_estado === 'disponible';
   document.getElementById('chk-destacado').checked = !!p.destacado;
   document.getElementById('chk-a-pedido').checked  = !!p.a_pedido;
+  document.getElementById('chk-solo-transf').checked = !!p.pago_transferencia;
   document.getElementById('chk-envio-gratis').checked = !!p.envio_gratis;
   document.getElementById('inp-costo-envio').value    = p.costo_envio != null ? p.costo_envio : '';
   document.getElementById('inp-dias-envio').value     = p.dias_envio || '';
@@ -1307,6 +1316,7 @@ document.getElementById('btn-guardar').addEventListener('click', async () => {
     destacado:         document.getElementById('chk-destacado').checked,
     activo:            document.getElementById('chk-activo').checked,
     a_pedido:          document.getElementById('chk-a-pedido').checked,
+    pago_transferencia: document.getElementById('chk-solo-transf').checked,
     descripcion:       document.getElementById('inp-descripcion').value.trim(),
     video_url:         videoState.url    || '',
     video_fuente:      videoState.fuente || '',
