@@ -97,7 +97,9 @@
 .pg .kpi-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 
 @media(max-width:640px){
-  .pg .kpi-row{flex-wrap:wrap}
+  /* KPIs en grid: 2 pills iguales, sin el hueco del margin-left:auto */
+  .pg .kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pg .kpi-pill{min-width:0;padding:10px 12px;margin-left:0!important}
   .pg .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
   .pg .quick-btn{flex-shrink:0}
   .pg .q-textarea{min-height:60px}

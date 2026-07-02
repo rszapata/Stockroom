@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v7'; // v4: excluye /tienda/ del scope
+const CACHE_NAME = 'stockroom-v9'; // v9: cards mobile productos-propios + bulk cuotas + sidebar OC + contraste bulk
 const STATIC_ASSETS = [
   '/',
   '/index.html',

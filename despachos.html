@@ -116,8 +116,10 @@
 
 @media(max-width:640px){
   .pg .btn-group{flex-wrap:wrap}
-  .pg .kpi-row{flex-wrap:wrap}
-  .pg .kpi-pill{min-width:0;flex:1}
+  /* KPIs en grid de 3 columnas: 6 pills → 2 filas prolijas (antes flex:1 los
+     comprimía a ~55px en una sola fila = ilegibles). */
+  .pg .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pg .kpi-pill{min-width:0;padding:10px 12px;margin-left:0!important}
   .pg .action-bar{flex-direction:column;align-items:flex-start}
 }
 

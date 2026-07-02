@@ -81,7 +81,7 @@
 .pg .daterange-field:hover,.pg .daterange.open .daterange-field{border-color:var(--ac,var(--t2))}
 .pg .daterange-field svg{flex-shrink:0;opacity:.6}
 .pg .daterange-label{letter-spacing:.04em;white-space:nowrap}
-.pg .daterange-pop{position:fixed;z-index:200;background:var(--s1);border:1px solid var(--b2);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:12px;display:none;width:300px}
+.pg .daterange-pop{position:fixed;z-index:200;background:var(--s1);border:1px solid var(--b2);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:12px;display:none;width:min(300px,calc(100vw - 24px))}
 .pg .daterange-pop.open{display:block;animation:pg-fadeUp .15s ease both}
 .pg .dr-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--b1)}
 .pg .dr-preset{font-family:var(--mono);font-size:9px;letter-spacing:.05em;padding:5px 9px;background:var(--s2);border:1px solid var(--b1);color:var(--t2);border-radius:6px;cursor:pointer;transition:all .12s}

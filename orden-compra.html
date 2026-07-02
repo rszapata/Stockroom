@@ -135,7 +135,7 @@ tr.excluded .oc-inp { pointer-events: none; }
 tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 
 /* ── Popover de links de proveedor (Alibaba) ── */
-#prov-pop { position: absolute; z-index: 60; width: 320px; background: var(--bg-card); border: 1px solid var(--border-2); border-radius: 12px; box-shadow: var(--shadow-md); padding: 12px; display: none; }
+#prov-pop { position: absolute; z-index: 60; width: min(320px, calc(100vw - 24px)); background: var(--bg-card); border: 1px solid var(--border-2); border-radius: 12px; box-shadow: var(--shadow-md); padding: 12px; display: none; }
 #prov-pop.show { display: block; }
 .pp-head { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
 .pp-list { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; margin-bottom: 10px; }

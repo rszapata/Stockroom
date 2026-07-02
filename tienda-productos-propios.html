@@ -47,7 +47,10 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 .bulk-toolbar {
   position: fixed; bottom: 28px; left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: var(--text); color: #fff;
+  /* Fondo oscuro FIJO (no var(--text): en dark mode se aclara y el texto blanco
+     desaparecía). Estilo snackbar: oscuro en ambos modos. */
+  background: #23262d; color: #fff;
+  border: 1px solid rgba(255,255,255,.09);
   border-radius: var(--r-lg); padding: 11px 20px;
   display: flex; align-items: center; gap: 14px;
   box-shadow: 0 8px 32px rgba(0,0,0,.28); z-index: 600;
@@ -72,6 +75,52 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 .bulk-btn.danger:hover { background: #ef4444; color: #fff; }
 .bulk-btn-close { color: rgba(255,255,255,.5); font-size: 16px; padding: 2px 4px; }
 .bulk-btn-close:hover { color: #fff; background: rgba(255,255,255,.12); }
+
+/* ── Vista de tarjetas en mobile (evita el scroll horizontal de la tabla) ── */
+.mobile-selall { display: none; }
+@media (max-width: 700px) {
+  .mobile-selall {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 2px 12px; font-size: 13px; color: var(--text-2);
+  }
+  .mobile-selall input { width: 18px; height: 18px; accent-color: var(--blue); }
+
+  .adm-table-wrap { overflow-x: visible; border: none; background: transparent; }
+  .adm-table thead { display: none; }
+  #items-tbody, #items-tbody > tr, #items-tbody > tr > td { display: block; }
+  #items-tbody > tr {
+    position: relative;
+    border: 1px solid var(--border); border-radius: 12px;
+    margin-bottom: 12px; padding: 12px 14px; background: var(--bg-card);
+  }
+  #items-tbody > tr > td {
+    border: none !important; padding: 7px 0 !important;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 30px;
+  }
+  #items-tbody > tr > td[data-label]::before {
+    content: attr(data-label);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-3); font-weight: 600; flex-shrink: 0;
+  }
+  /* Producto: bloque completo arriba, sin label, título sin truncar */
+  #items-tbody > tr > td.td-producto {
+    display: block; padding: 2px 36px 6px 0 !important;
+    border-bottom: 1px solid var(--border) !important; margin-bottom: 4px;
+  }
+  #items-tbody > tr > td.td-producto .adm-prod-title { max-width: none !important; white-space: normal !important; }
+  /* Checkbox de selección: esquina superior derecha */
+  #items-tbody > tr > td.td-chk {
+    position: absolute; top: 12px; right: 12px; padding: 0 !important;
+  }
+  #items-tbody > tr > td.td-chk .row-chk { width: 20px; height: 20px; }
+  /* Acciones: fila propia con separador */
+  #items-tbody > tr > td.td-actions {
+    justify-content: flex-end; padding-top: 10px !important;
+    border-top: 1px solid var(--border) !important; margin-top: 4px;
+  }
+  #items-tbody > tr > td.td-actions > div { width: 100%; }
+}
 
 /* ── Drawer ─────────────────────────────────────────────── */
 .drawer-overlay {
@@ -457,6 +506,9 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 
     <!-- TABLA -->
     <div class="adm-card" id="table-card" style="padding:0;overflow:hidden;">
+      <label class="mobile-selall">
+        <input type="checkbox" id="chk-all-m"> Seleccionar todos
+      </label>
       <div class="adm-table-wrap">
         <table class="adm-table">
           <thead>
@@ -846,6 +898,9 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
   <button class="bulk-btn" id="bulk-btn-publicar" type="button">🌐 Publicar</button>
   <button class="bulk-btn" id="bulk-btn-pausar" type="button">⏸ Pausar</button>
   <div class="bulk-sep"></div>
+  <button class="bulk-btn" id="bulk-btn-sin-cuotas" type="button" title="Solo transferencia — oculta las cuotas">🏦 Sin cuotas</button>
+  <button class="bulk-btn" id="bulk-btn-con-cuotas" type="button" title="Habilita cuotas (MercadoPago)">💳 Con cuotas</button>
+  <div class="bulk-sep"></div>
   <button class="bulk-btn danger" id="bulk-btn-eliminar" type="button">🗑 Eliminar</button>
   <div class="bulk-sep"></div>
   <button class="bulk-btn bulk-btn-close" id="bulk-btn-cerrar" type="button" title="Cancelar selección">✕</button>
@@ -989,8 +1044,8 @@ function renderTable(items, total) {
 
     return `
       <tr data-id="${esc(p.id)}">
-        <td class="row-chk-cell"><input type="checkbox" class="row-chk" data-id="${esc(p.id)}" title="Seleccionar"></td>
-        <td>
+        <td class="row-chk-cell td-chk"><input type="checkbox" class="row-chk" data-id="${esc(p.id)}" title="Seleccionar"></td>
+        <td class="td-producto">
           <div class="adm-prod">
             ${thumbHtml}
             <div style="min-width:0">
@@ -1000,15 +1055,15 @@ function renderTable(items, total) {
             </div>
           </div>
         </td>
-        <td><span class="badge badge-gray">${CAT_LABELS[p.categoria] || p.categoria}</span></td>
-        <td style="font-weight:600;">
+        <td data-label="Categoría"><span class="badge badge-gray">${CAT_LABELS[p.categoria] || p.categoria}</span></td>
+        <td data-label="Precio" style="font-weight:600;">
           <span class="precio-cell" data-id="${esc(p.id)}" title="Clic para editar el precio">
             ${fmtArs(p.precio_ars)}
             ${p.precio_usd != null ? `<div style="font-size:11px;color:var(--text-3);font-weight:400;">u$${p.precio_usd}${p.margen_pct != null ? ' · ' + p.margen_pct + '%' : ''}</div>` : ''}
           </span>
         </td>
-        <td>${stockBadge}</td>
-        <td>
+        <td data-label="Stock">${stockBadge}</td>
+        <td data-label="Estado">
           <div style="display:flex;align-items:center;gap:6px;">
             <label class="tswitch tswitch-sm" title="${p.activo ? 'Publicado — clic para pausar' : 'Pausado — clic para publicar'}">
               <input type="checkbox" ${p.activo ? 'checked' : ''} onchange="toggleActivo('${esc(p.id)}', this.checked)">
@@ -1017,7 +1072,7 @@ function renderTable(items, total) {
             <span style="font-size:11px;color:var(--text-3);">${p.activo ? 'Publicado' : 'Pausado'}</span>
           </div>
         </td>
-        <td style="text-align:right;">
+        <td class="td-actions" style="text-align:right;">
           <div style="display:flex;gap:6px;justify-content:flex-end;">
             <button class="btn btn-sm btn-ghost" onclick="duplicarProducto('${esc(p.id)}')" title="Duplicar producto">⎘</button>
             <a class="btn btn-sm btn-ghost" href="/tienda-producto-propio.html?id=${esc(p.id)}">Editar</a>
@@ -1920,13 +1975,13 @@ function updateBulkUI() {
   document.getElementById('bulk-count').textContent = count;
   toolbar.classList.toggle('show', count > 0);
 
-  // Sync "select all" checkbox
-  const chkAll = document.getElementById('chk-all');
-  if (chkAll) {
-    const allChks = document.querySelectorAll('#items-tbody .row-chk');
-    chkAll.checked = allChks.length > 0 && [...allChks].every(c => c.checked);
-    chkAll.indeterminate = count > 0 && !chkAll.checked;
-  }
+  // Sync "select all" (header de tabla + el de mobile)
+  const allChks = document.querySelectorAll('#items-tbody .row-chk');
+  const allChecked = allChks.length > 0 && [...allChks].every(c => c.checked);
+  ['chk-all', 'chk-all-m'].forEach(cid => {
+    const el = document.getElementById(cid);
+    if (el) { el.checked = allChecked; el.indeterminate = count > 0 && !allChecked; }
+  });
   // Highlight rows
   document.querySelectorAll('#items-tbody tr[data-id]').forEach(tr => {
     tr.classList.toggle('bulk-selected', selectedIds.has(tr.dataset.id));
@@ -1941,9 +1996,9 @@ document.getElementById('items-tbody').addEventListener('change', (e) => {
   updateBulkUI();
 });
 
-// Select all
+// Select all (checkbox del header de tabla o el de mobile)
 document.addEventListener('change', (e) => {
-  if (e.target.id !== 'chk-all') return;
+  if (e.target.id !== 'chk-all' && e.target.id !== 'chk-all-m') return;
   document.querySelectorAll('#items-tbody .row-chk').forEach(chk => {
     chk.checked = e.target.checked;
     if (e.target.checked) selectedIds.add(chk.dataset.id); else selectedIds.delete(chk.dataset.id);
@@ -2003,8 +2058,30 @@ async function bulkEliminar() {
   clearBulkSelection(); loadProductos();
 }
 
+// Bulk edit: "solo transferencia" ON/OFF = saca / pone las cuotas en todos los seleccionados
+async function bulkSetTransferencia(soloTransf) {
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  const btn = document.getElementById(soloTransf ? 'bulk-btn-sin-cuotas' : 'bulk-btn-con-cuotas');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳…';
+  let ok = 0, fail = 0;
+  for (const id of ids) {
+    try {
+      const resp = await fetch(`/api/tienda/admin/productos-propios/${encodeURIComponent(id)}`,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pago_transferencia: soloTransf }) });
+      if (resp.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  btn.disabled = false; btn.textContent = orig;
+  toast(`${soloTransf ? 'Cuotas quitadas (solo transferencia)' : 'Cuotas habilitadas'} en ${ok}${fail ? ` (${fail} con error)` : ''}`, fail ? 'err' : 'ok');
+  clearBulkSelection(); loadProductos();
+}
+
 document.getElementById('bulk-btn-publicar').addEventListener('click', () => bulkToggleActivo(true));
 document.getElementById('bulk-btn-pausar').addEventListener('click', () => bulkToggleActivo(false));
+document.getElementById('bulk-btn-sin-cuotas').addEventListener('click', () => bulkSetTransferencia(true));
+document.getElementById('bulk-btn-con-cuotas').addEventListener('click', () => bulkSetTransferencia(false));
 document.getElementById('bulk-btn-eliminar').addEventListener('click', bulkEliminar);
 
 // Reset selection on search/filter change
