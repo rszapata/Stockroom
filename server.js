@@ -28,7 +28,7 @@ const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item')
 const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock } = require('./lib/email-templates');
+const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
@@ -7787,6 +7787,7 @@ db.ensureProductosPropiosTable().catch(e => console.log('[tienda-productos-propi
 db.ensureCarritosAbandonadosTable().catch(e => console.log('[carrito-abandonado] Error en init de tabla:', e.message));
 db.ensureStockAlertsTable().catch(e => console.log('[stock-alert] Error en init de tabla:', e.message));
 db.ensureFavoritosTable().catch(e => console.log('[favoritos] Error en init de tabla:', e.message));
+db.ensureItemWatchTable().catch(e => console.log('[fav-watch] Error en init de tabla:', e.message));
 db.ensureEmailLogTable().catch(e => console.log('[email-log] Error en init de tabla:', e.message));
 
 // Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado
@@ -7856,6 +7857,61 @@ setInterval(() => {
   checkStockAlerts().catch(e => console.log('[stock-alert] Error en check periódico:', e.message));
 }, STOCK_ALERT_CHECK_INTERVAL);
 setTimeout(() => { checkStockAlerts().catch(() => {}); }, 60 * 1000); // 1ª corrida diferida del boot
+
+// ── Gancho de favoritos: avisar cuando VOLVIÓ EL STOCK o BAJÓ EL PRECIO ──
+// Job periódico read-only sobre el cache. Compara el estado actual de cada
+// item favoriteado contra el último conocido (tienda_item_watch) y, ante una
+// transición agotado→disponible o una baja de precio ≥5%, mailea a los que lo
+// tienen en favoritos (usuarios logueados con email). El estado se actualiza
+// tras observar → no re-notifica. Guard: en la 1ª observación de un item NO
+// avisa (sólo siembra el estado) para no disparar falsos positivos.
+const FAV_CHECK_INTERVAL = 30 * 60 * 1000;  // cada 30 min
+const FAV_PRICE_DROP_MIN = 0.05;            // baja mínima 5% para avisar (filtra ruido FX)
+async function checkFavoritosChanges() {
+  const itemIds = await db.getFavoritedItemIds();
+  if (!itemIds.length) return;
+  const byId = {};
+  for (const p of getProductCache()) byId[p.id] = p;
+  const watch = await db.getAllItemWatch();
+
+  for (const itemId of itemIds) {
+    const prod = byId[itemId];
+    if (!prod) continue;  // pausado/borrado → no observar
+    const inStock = mlStock(prod) > 0;
+    const price   = Number(prod.price) || null;
+    const prev    = watch[itemId];   // undefined si es la 1ª vez que lo vemos
+
+    // 1ª observación → sembrar estado sin avisar
+    if (!prev) { await db.upsertItemWatch(itemId, inStock, price); continue; }
+
+    const backInStock = prev.last_in_stock === false && inStock;
+    const priceDrop   = price != null && prev.last_price != null && price < prev.last_price * (1 - FAV_PRICE_DROP_MIN);
+
+    if (backInStock || priceDrop) {
+      const emails = await db.getFavoritersEmails(itemId);
+      const titulo = prod.title || 'tu producto';
+      const url = `https://wzmallas.com/tienda/producto.html?id=${encodeURIComponent(itemId)}`;
+      for (const email of emails) {
+        try {
+          if (backInStock) {
+            await sendEmail({ to: email, subject: `💚 Volvió el stock de tu favorito · ${String(titulo).slice(0, 55)}`, html: emailFavBackInStock({ titulo, url }) });
+          } else {
+            await sendEmail({ to: email, subject: `📉 Bajó de precio tu favorito · ${String(titulo).slice(0, 55)}`, html: emailFavPriceDrop({ titulo, url, precioViejo: prev.last_price, precioNuevo: price }) });
+          }
+          console.log(`  ✓ [fav-hook] Avisado ${email} — ${itemId} (${backInStock ? 'stock' : 'precio'})`);
+        } catch (e) {
+          console.warn(`  ⚠ [fav-hook] No se pudo avisar a ${email}: ${e.message}`);
+        }
+      }
+    }
+    // Actualizar el estado observado (avisado o no) → dedup de la próxima corrida
+    await db.upsertItemWatch(itemId, inStock, price);
+  }
+}
+setInterval(() => {
+  checkFavoritosChanges().catch(e => console.log('[fav-hook] Error en check periódico:', e.message));
+}, FAV_CHECK_INTERVAL);
+setTimeout(() => { checkFavoritosChanges().catch(() => {}); }, 90 * 1000); // 1ª corrida diferida del boot
 
 // ── Alerta Telegram: órdenes pending +24hs (Fase 2 — monitoreo) ──────
 // Una vez por día manda UN solo mensaje resumen con la cantidad de órdenes

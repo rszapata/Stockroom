@@ -1435,6 +1435,51 @@ async function mergeFavoritos(userId, itemIds) {
   return getFavoritos(userId);
 }
 
+// Item_ids distintos que algún usuario tiene en favoritos (para el gancho de retención).
+async function getFavoritedItemIds() {
+  const { rows } = await pool.query(`SELECT DISTINCT item_id FROM tienda_favoritos`);
+  return rows.map(r => r.item_id);
+}
+
+// Emails de los usuarios que tienen un item en favoritos (para avisar cambios).
+async function getFavoritersEmails(itemId) {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT u.email
+       FROM tienda_favoritos f JOIN users u ON u.id = f.user_id
+      WHERE f.item_id = $1 AND u.email IS NOT NULL AND u.email <> ''`,
+    [itemId]);
+  return rows.map(r => r.email);
+}
+
+// ── Watch de estado por item (último stock/precio conocido) ────────
+// Alimenta el gancho de favoritos: detecta transiciones agotado→disponible
+// y bajas de precio SIN re-notificar (el estado se actualiza tras avisar).
+async function ensureItemWatchTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tienda_item_watch (
+      item_id       TEXT PRIMARY KEY,
+      last_in_stock BOOLEAN,
+      last_price    NUMERIC,
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+async function getAllItemWatch() {
+  const { rows } = await pool.query(`SELECT item_id, last_in_stock, last_price FROM tienda_item_watch`);
+  const map = {};
+  for (const r of rows) map[r.item_id] = { last_in_stock: r.last_in_stock, last_price: r.last_price == null ? null : Number(r.last_price) };
+  return map;
+}
+
+async function upsertItemWatch(itemId, inStock, price) {
+  await pool.query(
+    `INSERT INTO tienda_item_watch (item_id, last_in_stock, last_price, updated_at)
+       VALUES ($1, $2, $3, NOW())
+     ON CONFLICT (item_id) DO UPDATE SET last_in_stock = $2, last_price = $3, updated_at = NOW()`,
+    [itemId, inStock, price == null ? null : Number(price)]);
+}
+
 // Item_ids que tienen al menos una alerta pendiente (para el job de reposición).
 async function getItemsWithPendingAlerts() {
   const { rows } = await pool.query(
@@ -1590,6 +1635,11 @@ module.exports = {
   addFavorito,
   removeFavorito,
   mergeFavoritos,
+  getFavoritedItemIds,
+  getFavoritersEmails,
+  ensureItemWatchTable,
+  getAllItemWatch,
+  upsertItemWatch,
   getItemsWithPendingAlerts,
   getPendingStockAlerts,
   markStockAlertsNotified,
