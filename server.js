@@ -30,6 +30,7 @@ const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
 const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
+const TOPE_CUPON_DESCUENTO = 10000; // tope máximo de descuento por cupón (ARS)
 const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
 const { loadSessions, saveSessions } = require('./lib/session-store');
@@ -2309,6 +2310,9 @@ const server = http.createServer((req, res) => {
                 ? Math.round(base * cupon.value / 100)
                 : Math.min(cupon.value, base);
               if (cupon.max_descuento > 0) cuponDescuentoCalc = Math.min(cuponDescuentoCalc, cupon.max_descuento);
+              // Tope global de descuento por cupón: $10.000 (evita descuentos
+              // enormes de un % sobre productos caros, ej. iPhones).
+              cuponDescuentoCalc = Math.min(cuponDescuentoCalc, TOPE_CUPON_DESCUENTO);
             } else if (cupon && cupon.type === 'freeship') {
               envioGratisCupon = true;
             }
