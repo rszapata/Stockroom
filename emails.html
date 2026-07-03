@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Emails enviados — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=9">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.em-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.em-stat { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 16px; }
+.em-stat-label { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-bottom:4px; }
+.em-stat-value { font-size:1.5rem; font-weight:700; font-family:var(--font-mono); color:var(--text); }
+.em-filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+.em-filters input, .em-filters select { height:36px; }
+.em-filters input { flex:1; min-width:180px; }
+.em-time { font-family:var(--font-mono); font-size:12px; color:var(--text-2); white-space:nowrap; }
+.em-subject { max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.em-pager { display:flex; align-items:center; justify-content:center; gap:12px; margin-top:16px; }
+@media (max-width:700px) {
+  .em-stats { grid-template-columns:repeat(3,1fr); gap:8px; }
+  .em-stat { padding:10px 12px; }
+  .em-stat-value { font-size:1.2rem; }
+  .em-subject { max-width:150px; }
+}
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/stockroom-sidebar.js?v=3"></script>
+
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Emails enviados</div>
+        <div class="adm-page-sub"><span id="page-sub">Registro de todos los correos automáticos</span></div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="btn btn-ghost btn-sm" id="btn-refresh" onclick="loadLog()">Actualizar</button>
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <div class="em-stats">
+      <div class="em-stat"><div class="em-stat-label">Últimas 24 h</div><div class="em-stat-value" id="st-d1">—</div></div>
+      <div class="em-stat"><div class="em-stat-label">Últimos 7 días</div><div class="em-stat-value" id="st-d7">—</div></div>
+      <div class="em-stat"><div class="em-stat-label">Fallidos</div><div class="em-stat-value" id="st-fail" style="color:var(--red)">—</div></div>
+    </div>
+
+    <div class="adm-card">
+      <div class="adm-card-body">
+        <div class="em-filters">
+          <input type="text" id="f-q" placeholder="Buscar por email del cliente…">
+          <select id="f-tipo">
+            <option value="">Todos los tipos</option>
+            <option value="back_in_stock">🔔 Volvió stock</option>
+            <option value="carrito">🛒 Carrito abandonado</option>
+            <option value="orden">📦 Orden</option>
+            <option value="pago">💳 Pago</option>
+            <option value="envio">🚚 Envío</option>
+            <option value="entregado">✅ Entregado</option>
+            <option value="cancelado">✖ Cancelado</option>
+            <option value="reembolso">↩ Reembolso</option>
+            <option value="bienvenida">👋 Bienvenida</option>
+            <option value="arrepentimiento">⚖ Arrepentimiento</option>
+            <option value="otro">Otro</option>
+          </select>
+          <select id="f-status">
+            <option value="">Todos los estados</option>
+            <option value="sent">Enviado</option>
+            <option value="failed">Fallido</option>
+            <option value="skipped">Omitido</option>
+          </select>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table class="adm-table" style="width:100%">
+            <thead><tr>
+              <th style="width:150px">Fecha / hora</th>
+              <th>Para</th>
+              <th style="width:150px">Tipo</th>
+              <th>Asunto</th>
+              <th style="width:90px">Estado</th>
+            </tr></thead>
+            <tbody id="log-tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:30px">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="em-pager" id="pager"></div>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /adm-main -->
+</div><!-- /adm-wrap -->
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+<div id="toast"></div>
+
+<script>
+document.getElementById('btn-theme').addEventListener('click', function(e){
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch {}
+});
+const hamburger = document.getElementById('btn-hamburger');
+const sidebar   = document.getElementById('sidebar');
+const sidebarOv = document.getElementById('sidebar-overlay');
+hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); sidebarOv.classList.toggle('open'); });
+sidebarOv.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOv.classList.remove('open'); });
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const TIPO_LABEL = {
+  back_in_stock:'🔔 Volvió stock', carrito:'🛒 Carrito', orden:'📦 Orden', pago:'💳 Pago',
+  envio:'🚚 Envío', entregado:'✅ Entregado', cancelado:'✖ Cancelado', reembolso:'↩ Reembolso',
+  bienvenida:'👋 Bienvenida', arrepentimiento:'⚖ Arrepentimiento', otro:'Otro'
+};
+function statusBadge(s){
+  if (s==='sent')    return '<span class="badge badge-green">Enviado</span>';
+  if (s==='failed')  return '<span class="badge badge-red">Fallido</span>';
+  if (s==='skipped') return '<span class="badge badge-gray">Omitido</span>';
+  return '<span class="badge badge-gray">'+esc(s)+'</span>';
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleString('es-AR',{ day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+let page = 1;
+async function loadLog(){
+  const q      = document.getElementById('f-q').value.trim();
+  const tipo   = document.getElementById('f-tipo').value;
+  const status = document.getElementById('f-status').value;
+  const params = new URLSearchParams({ page });
+  if (q) params.set('q', q);
+  if (tipo) params.set('tipo', tipo);
+  if (status) params.set('status', status);
+
+  const tbody = document.getElementById('log-tbody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:30px">Cargando…</td></tr>';
+  try {
+    const r = await fetch('/api/tienda/admin/email-log?' + params.toString());
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Error');
+    const st = d.stats || {};
+    document.getElementById('st-d1').textContent   = st.d1 ?? 0;
+    document.getElementById('st-d7').textContent   = st.d7 ?? 0;
+    document.getElementById('st-fail').textContent = st.fallidos ?? 0;
+
+    const rows = d.rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:40px">Sin emails para este filtro.</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map(function(e){
+        const tipo = TIPO_LABEL[e.tipo] || esc(e.tipo);
+        const err = e.error ? ' title="'+esc(e.error)+'"' : '';
+        return '<tr'+err+'>'
+          + '<td class="em-time">'+fmtDate(e.created_at)+'</td>'
+          + '<td class="mono">'+esc(e.to_email)+'</td>'
+          + '<td>'+tipo+'</td>'
+          + '<td class="em-subject" title="'+esc(e.subject)+'">'+esc(e.subject)+'</td>'
+          + '<td>'+statusBadge(e.status)+'</td>'
+          + '</tr>';
+      }).join('');
+    }
+    renderPager(d.total || 0, d.page || 1, d.limit || 50);
+  } catch(e){
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:30px">Error: '+esc(e.message)+'</td></tr>';
+  }
+}
+
+function renderPager(total, cur, limit){
+  const pages = Math.max(1, Math.ceil(total / limit));
+  const pg = document.getElementById('pager');
+  if (pages <= 1) { pg.innerHTML = total ? '<span style="font-size:12px;color:var(--text-3)">'+total+' email'+(total===1?'':'s')+'</span>' : ''; return; }
+  pg.innerHTML =
+      '<button class="btn btn-ghost btn-sm" '+(cur<=1?'disabled':'')+' onclick="page='+(cur-1)+';loadLog()">←</button>'
+    + '<span style="font-size:12px;color:var(--text-2)">Página '+cur+' de '+pages+' · '+total+' emails</span>'
+    + '<button class="btn btn-ghost btn-sm" '+(cur>=pages?'disabled':'')+' onclick="page='+(cur+1)+';loadLog()">→</button>';
+}
+
+let _deb;
+document.getElementById('f-q').addEventListener('input', () => { clearTimeout(_deb); _deb = setTimeout(() => { page=1; loadLog(); }, 350); });
+['f-tipo','f-status'].forEach(id => document.getElementById(id).addEventListener('change', () => { page=1; loadLog(); }));
+
+loadLog();
+</script>
+</body>
+</html>

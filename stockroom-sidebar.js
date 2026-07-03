@@ -25,6 +25,7 @@
     if (p.includes('migracion'))                 return 'migracion';
     if (p.includes('alibaba'))                   return 'alibaba';
     if (p.includes('preguntas'))                 return 'preguntas';
+    if (p.includes('emails'))                    return 'emails';
     if (p.includes('tienda-admin'))              return 'tienda';
     return '';
   }
@@ -102,6 +103,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         <span>Preguntas</span>
         <span class="adm-item-badge" id="nav-preg-badge" style="display:none">0</span>
+      </a>
+      <a href="/emails.html" class="${A('emails')}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+        <span>Emails</span>
       </a>
     </div>
     <div class="adm-group">

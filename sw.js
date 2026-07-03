@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v10'; // v10: badge back-in-stock en productos-propios
+const CACHE_NAME = 'stockroom-v11'; // v11: página Emails (log de envíos) + sidebar
 const STATIC_ASSETS = [
   '/',
   '/index.html',

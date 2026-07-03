@@ -249,8 +249,42 @@ setInterval(() => {
 // Resend: https://resend.com — free 3000 emails/mes, sin NPM
 // Brevo:  https://brevo.com  — free 300 emails/día
 //
+// Clasifica el email por su asunto (para filtrar el log). Se puede pasar opts.tipo explícito.
+function _inferEmailTipo(subject) {
+  const s = String(subject || '').toLowerCase();
+  if (s.includes('volvió el stock') || s.includes('volvio el stock')) return 'back_in_stock';
+  if (s.includes('carrito'))        return 'carrito';
+  if (s.includes('pago'))           return 'pago';
+  if (s.includes('camino') || s.includes('envío') || s.includes('envio') || s.includes('seguimiento') || s.includes('tracking')) return 'envio';
+  if (s.includes('entregad'))       return 'entregado';
+  if (s.includes('cancelad'))       return 'cancelado';
+  if (s.includes('reembols'))       return 'reembolso';
+  if (s.includes('arrepentimiento'))return 'arrepentimiento';
+  if (s.includes('bienvenid'))      return 'bienvenida';
+  if (s.includes('orden') || s.includes('recibimos') || s.includes('compra')) return 'orden';
+  return 'otro';
+}
+
 function sendEmail(opts) {
-  return sendEmailWith(fullConfig.email, opts);
+  const p = sendEmailWith(fullConfig.email, opts);
+  // Log de auditoría (fire-and-forget, no bloquea ni rompe el envío)
+  Promise.resolve(p).then(r => {
+    const status = (r && r.ok) ? 'sent' : (r && r.skipped) ? 'skipped' : 'failed';
+    return db.logEmail({
+      to_email: opts && opts.to,
+      subject:  opts && opts.subject,
+      tipo:     (opts && opts.tipo) || _inferEmailTipo(opts && opts.subject),
+      status,
+      error:    r && r.error ? String(r.error) : null,
+    });
+  }).catch(err => {
+    db.logEmail({
+      to_email: opts && opts.to, subject: opts && opts.subject,
+      tipo: _inferEmailTipo(opts && opts.subject), status: 'failed',
+      error: String((err && err.message) || err),
+    }).catch(() => {});
+  });
+  return p;
 }
 
 
@@ -1667,6 +1701,28 @@ const server = http.createServer((req, res) => {
         res.writeHead(200); res.end(JSON.stringify({ ok: true }));
       } catch (e) {
         res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
+      } })();
+      return;
+    }
+
+    // ── GET /api/tienda/admin/email-log ───────────────────────
+    // Registro de emails enviados (auditoría / detectar sobre-envío).
+    if (pathname === '/api/tienda/admin/email-log' && req.method === 'GET') {
+      (async () => { try {
+        const p = new URL(req.url, 'http://localhost').searchParams;
+        const page  = Math.max(1, parseInt(p.get('page') || '1', 10) || 1);
+        const limit = 50;
+        const out = await db.getEmailLog({
+          q:      (p.get('q') || '').trim(),
+          tipo:   (p.get('tipo') || '').trim(),
+          status: (p.get('status') || '').trim(),
+          limit, offset: (page - 1) * limit,
+        });
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true, page, limit, ...out }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'internal_error', message: e.message }));
       } })();
       return;
     }
@@ -7553,6 +7609,7 @@ db.ensureProductosPropiosTable().catch(e => console.log('[tienda-productos-propi
 // ── Inicializar tabla de carritos abandonados + cron de recordatorio ──
 db.ensureCarritosAbandonadosTable().catch(e => console.log('[carrito-abandonado] Error en init de tabla:', e.message));
 db.ensureStockAlertsTable().catch(e => console.log('[stock-alert] Error en init de tabla:', e.message));
+db.ensureEmailLogTable().catch(e => console.log('[email-log] Error en init de tabla:', e.message));
 
 // Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado
 // y manda UN email "tu carrito te espera" con deep-link de restauración.

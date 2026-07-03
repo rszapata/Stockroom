@@ -1427,6 +1427,51 @@ async function countPendingStockAlertsByItem() {
   return map;
 }
 
+// ── Log de emails enviados (auditoría / detectar sobre-envío al cliente) ──
+async function ensureEmailLogTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tienda_email_log (
+      id         SERIAL PRIMARY KEY,
+      to_email   TEXT NOT NULL DEFAULT '',
+      subject    TEXT NOT NULL DEFAULT '',
+      tipo       TEXT NOT NULL DEFAULT 'otro',
+      status     TEXT NOT NULL DEFAULT 'sent',
+      error      TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_log_created ON tienda_email_log (created_at DESC)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_log_to ON tienda_email_log (LOWER(to_email))`);
+}
+
+async function logEmail({ to_email, subject, tipo, status, error }) {
+  await pool.query(
+    `INSERT INTO tienda_email_log (to_email, subject, tipo, status, error) VALUES ($1, $2, $3, $4, $5)`,
+    [ (to_email || '').slice(0, 200), (subject || '').slice(0, 300), (tipo || 'otro').slice(0, 40),
+      (status || 'sent').slice(0, 20), error ? String(error).slice(0, 400) : null ]);
+}
+
+// Listado paginado con filtros (q por email, tipo, status) + stats (24h/7d/fallidos).
+async function getEmailLog({ q = '', tipo = '', status = '', limit = 50, offset = 0 } = {}) {
+  const where = [], args = [];
+  if (q)      { args.push('%' + String(q).toLowerCase() + '%'); where.push(`LOWER(to_email) LIKE $${args.length}`); }
+  if (tipo)   { args.push(tipo);   where.push(`tipo = $${args.length}`); }
+  if (status) { args.push(status); where.push(`status = $${args.length}`); }
+  const wsql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const lim = Math.min(200, Math.max(1, limit | 0));
+  const off = Math.max(0, offset | 0);
+  const totalRes = await pool.query(`SELECT COUNT(*)::int AS n FROM tienda_email_log ${wsql}`, args);
+  const rowsRes  = await pool.query(
+    `SELECT id, to_email, subject, tipo, status, error, created_at
+       FROM tienda_email_log ${wsql} ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}`, args);
+  const stats = (await pool.query(`
+    SELECT COUNT(*) FILTER (WHERE created_at > NOW() - interval '24 hours')::int AS d1,
+           COUNT(*) FILTER (WHERE created_at > NOW() - interval '7 days')::int  AS d7,
+           COUNT(*) FILTER (WHERE status = 'failed')::int                        AS fallidos
+      FROM tienda_email_log`)).rows[0];
+  return { rows: rowsRes.rows, total: totalRes.rows[0].n, stats };
+}
+
 module.exports = {
   pool,   // expuesto para queries puntuales en server.js
   // Users
@@ -1502,4 +1547,8 @@ module.exports = {
   getPendingStockAlerts,
   markStockAlertsNotified,
   countPendingStockAlertsByItem,
+  // Log de emails enviados
+  ensureEmailLogTable,
+  logEmail,
+  getEmailLog,
 };
