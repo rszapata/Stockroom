@@ -999,6 +999,11 @@ async function loadProductos() {
     const resp = await fetch('/api/tienda/admin/productos-propios?' + params.toString());
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Error al cargar');
+    // Conteo de "esperan reposición" (back-in-stock) por producto
+    try {
+      const cResp = await fetch('/api/tienda/admin/stock-alerts/counts');
+      _stockAlertCounts = cResp.ok ? ((await cResp.json()).counts || {}) : {};
+    } catch { _stockAlertCounts = {}; }
     renderTable(data.productos || [], data.total || 0);
     setBadge(`${data.total} producto${data.total === 1 ? '' : 's'}`, 'blue');
     setStatus(`${data.total} producto${data.total === 1 ? '' : 's'} propio${data.total === 1 ? '' : 's'}`);
@@ -1009,6 +1014,7 @@ async function loadProductos() {
 }
 
 let _rowData = new Map();   // id → producto (para edición inline sin re-fetch)
+let _stockAlertCounts = {}; // id → nº de clientes esperando reposición (back-in-stock)
 
 function renderTable(items, total) {
   _rowData = new Map(items.map(p => [p.id, p]));
@@ -1036,6 +1042,8 @@ function renderTable(items, total) {
     if (p.destacado) flags.push('<span class="badge badge-yellow">★</span>');
     if (p.origen === 'whatsapp') flags.push('<span class="badge badge-blue" style="font-size:9px;">WA</span>');
     if (p.video_url) flags.push('<span class="badge badge-gray" style="font-size:9px;">▶ video</span>');
+    const _nEsperan = _stockAlertCounts[p.id] || 0;
+    if (_nEsperan > 0) flags.push(`<span class="badge badge-blue" style="font-size:9px;" title="${_nEsperan} cliente/s piden aviso cuando vuelva el stock">🔔 ${_nEsperan}</span>`);
 
     // Stock clickeable: alterna disponible ↔ agotado sin abrir el editor
     const stockBadge = p.stock_estado === 'disponible'

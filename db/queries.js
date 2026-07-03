@@ -1393,6 +1393,40 @@ async function addStockAlert({ item_id, variant, titulo, email }) {
   return { created: true };
 }
 
+// Item_ids que tienen al menos una alerta pendiente (para el job de reposición).
+async function getItemsWithPendingAlerts() {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT item_id FROM tienda_stock_alerts WHERE notified_at IS NULL`);
+  return rows.map(r => r.item_id);
+}
+
+// Alertas pendientes de un item.
+async function getPendingStockAlerts(itemId) {
+  const { rows } = await pool.query(
+    `SELECT id, email, variant, titulo FROM tienda_stock_alerts
+      WHERE item_id = $1 AND notified_at IS NULL`,
+    [itemId]);
+  return rows;
+}
+
+// Marca alertas como avisadas (para no re-enviar).
+async function markStockAlertsNotified(ids) {
+  if (!ids || !ids.length) return;
+  await pool.query(
+    `UPDATE tienda_stock_alerts SET notified_at = NOW() WHERE id = ANY($1::int[])`,
+    [ids]);
+}
+
+// Conteo de alertas pendientes por item (para el badge "🔔 N esperan" del admin).
+async function countPendingStockAlertsByItem() {
+  const { rows } = await pool.query(
+    `SELECT item_id, COUNT(*)::int AS n FROM tienda_stock_alerts
+      WHERE notified_at IS NULL GROUP BY item_id`);
+  const map = {};
+  for (const r of rows) map[r.item_id] = r.n;
+  return map;
+}
+
 module.exports = {
   pool,   // expuesto para queries puntuales en server.js
   // Users
@@ -1464,4 +1498,8 @@ module.exports = {
   // Alertas de stock (back-in-stock)
   ensureStockAlertsTable,
   addStockAlert,
+  getItemsWithPendingAlerts,
+  getPendingStockAlerts,
+  markStockAlertsNotified,
+  countPendingStockAlertsByItem,
 };

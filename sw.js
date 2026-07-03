@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v9'; // v9: cards mobile productos-propios + bulk cuotas + sidebar OC + contraste bulk
+const CACHE_NAME = 'stockroom-v10'; // v10: badge back-in-stock en productos-propios
 const STATIC_ASSETS = [
   '/',
   '/index.html',

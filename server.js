@@ -28,7 +28,7 @@ const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item')
 const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta } = require('./lib/email-templates');
+const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
@@ -1667,6 +1667,20 @@ const server = http.createServer((req, res) => {
         res.writeHead(200); res.end(JSON.stringify({ ok: true }));
       } catch (e) {
         res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
+      } })();
+      return;
+    }
+
+    // ── GET /api/tienda/admin/stock-alerts/counts ─────────────
+    // Conteo de alertas de reposición pendientes por item (badge "🔔 N esperan").
+    if (pathname === '/api/tienda/admin/stock-alerts/counts' && req.method === 'GET') {
+      (async () => { try {
+        const counts = await db.countPendingStockAlertsByItem();
+        res.writeHead(200);
+        res.end(JSON.stringify({ ok: true, counts }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'internal_error', message: e.message }));
       } })();
       return;
     }
@@ -7562,6 +7576,51 @@ async function checkCarritosAbandonados() {
 setInterval(() => {
   checkCarritosAbandonados().catch(e => console.log('[carrito-abandonado] Error en check periódico:', e.message));
 }, CARRITO_ABANDONADO_CHECK_INTERVAL);
+
+// ── Back-in-stock: avisar a los que dejaron su email cuando vuelve el stock ──
+// Job periódico (read-only sobre el stock, no toca el código de escritura de ML):
+// busca items con alertas pendientes, y si ya tienen stock en el cache → mailea
+// y marca notified_at. Dedup por email. Cubre productos propios Y de ML.
+const STOCK_ALERT_CHECK_INTERVAL = 10 * 60 * 1000; // cada 10 min
+async function checkStockAlerts() {
+  const itemIds = await db.getItemsWithPendingAlerts();
+  if (!itemIds.length) return;
+  const byId = {};
+  for (const p of getProductCache()) byId[p.id] = p;
+
+  for (const itemId of itemIds) {
+    const prod = byId[itemId];
+    if (!prod) continue;               // no está en el cache (pausado/borrado) → no avisar
+    if (mlStock(prod) <= 0) continue;  // sigue sin stock
+    const alerts = await db.getPendingStockAlerts(itemId);
+    if (!alerts.length) continue;
+
+    const titulo = prod.title || alerts[0].titulo || 'tu producto';
+    const url = `https://wzmallas.com/tienda/producto.html?id=${encodeURIComponent(itemId)}`;
+
+    // Un solo mail por persona aunque tenga alertas en varias variantes.
+    const byEmail = {};
+    for (const a of alerts) (byEmail[a.email] = byEmail[a.email] || []).push(a);
+
+    for (const [email, list] of Object.entries(byEmail)) {
+      try {
+        await sendEmail({
+          to:      email,
+          subject: `🔔 Volvió el stock · ${String(titulo).slice(0, 60)} · WZMALLAS`,
+          html:    emailBackInStock({ titulo, variant: list.length === 1 ? list[0].variant : '', url }),
+        });
+        await db.markStockAlertsNotified(list.map(a => a.id));
+        console.log(`  ✓ [stock-alert] Avisado ${email} — ${itemId} (${list.length} alerta/s)`);
+      } catch (e) {
+        console.warn(`  ⚠ [stock-alert] No se pudo avisar a ${email}: ${e.message}`);
+      }
+    }
+  }
+}
+setInterval(() => {
+  checkStockAlerts().catch(e => console.log('[stock-alert] Error en check periódico:', e.message));
+}, STOCK_ALERT_CHECK_INTERVAL);
+setTimeout(() => { checkStockAlerts().catch(() => {}); }, 60 * 1000); // 1ª corrida diferida del boot
 
 // ── Alerta Telegram: órdenes pending +24hs (Fase 2 — monitoreo) ──────
 // Una vez por día manda UN solo mensaje resumen con la cantidad de órdenes
