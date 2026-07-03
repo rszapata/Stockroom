@@ -1435,6 +1435,108 @@ async function mergeFavoritos(userId, itemIds) {
   return getFavoritos(userId);
 }
 
+// ── Reseñas propias del storefront (FASE C) ───────────────────────
+// Reseñas dejadas en la web (no ML), con moderación. Las aprobadas se muestran
+// en la PDP junto a las de ML. Si traen foto, se premia con un cupón.
+async function ensureReviewsPropiasTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tienda_reviews_propias (
+      id              SERIAL PRIMARY KEY,
+      producto_id     TEXT NOT NULL,
+      producto_titulo TEXT NOT NULL DEFAULT '',
+      nombre          TEXT NOT NULL DEFAULT '',
+      email           TEXT,
+      rating          INT  NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      texto           TEXT NOT NULL DEFAULT '',
+      foto_url        TEXT,
+      cupon_code      TEXT,
+      orden_id        TEXT,
+      estado          TEXT NOT NULL DEFAULT 'pendiente',
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_resenas_item_aprob ON tienda_reviews_propias (producto_id) WHERE estado = 'aprobada'`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_resenas_estado ON tienda_reviews_propias (estado, created_at DESC)`);
+}
+
+async function addResenaPropia(d) {
+  const { rows } = await pool.query(
+    `INSERT INTO tienda_reviews_propias
+       (producto_id, producto_titulo, nombre, email, rating, texto, foto_url, cupon_code, orden_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    [ String(d.producto_id).slice(0,80), String(d.producto_titulo||'').slice(0,200),
+      String(d.nombre||'').slice(0,80), d.email ? String(d.email).slice(0,120) : null,
+      Math.max(1, Math.min(5, parseInt(d.rating)||0)), String(d.texto||'').slice(0,2000),
+      d.foto_url || null, d.cupon_code || null, d.orden_id ? String(d.orden_id).slice(0,60) : null ]);
+  return rows[0].id;
+}
+
+// Reseñas aprobadas de un item (para mostrar en la PDP).
+async function getResenasAprobadas(itemId) {
+  const { rows } = await pool.query(
+    `SELECT id, nombre, rating, texto, foto_url, created_at
+       FROM tienda_reviews_propias
+      WHERE producto_id = $1 AND estado = 'aprobada'
+      ORDER BY (foto_url IS NOT NULL) DESC, created_at DESC`,
+    [itemId]);
+  return rows;
+}
+
+// Reseñas para moderar en el admin (por estado).
+async function getResenasModeracion({ estado = 'pendiente', limit = 100, offset = 0 } = {}) {
+  const { rows } = await pool.query(
+    `SELECT * FROM tienda_reviews_propias
+      ${estado === 'todas' ? '' : 'WHERE estado = $3'}
+      ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+    estado === 'todas' ? [limit, offset] : [limit, offset, estado]);
+  return rows;
+}
+
+async function moderarResena(id, estado) {
+  const ok = ['aprobada', 'rechazada', 'pendiente'].includes(estado) ? estado : 'pendiente';
+  await pool.query(`UPDATE tienda_reviews_propias SET estado = $2 WHERE id = $1`, [parseInt(id), ok]);
+}
+
+async function countResenasModeracionPendientes() {
+  const { rows } = await pool.query(`SELECT count(*)::int c FROM tienda_reviews_propias WHERE estado = 'pendiente'`);
+  return rows[0].c;
+}
+
+// Órdenes pagadas hace [diasMin, diasMax] días con al menos un item sin invitación
+// de reseña enviada → 1 fila por orden (el primer item) para mandar 1 mail.
+async function getOrdenesParaResena({ diasMin = 4, diasMax = 30 } = {}) {
+  const { rows } = await pool.query(`
+    SELECT DISTINCT ON (o.id)
+           o.id AS orden_id, o.customer_email AS email, o.customer_name AS nombre,
+           COALESCE(oi.ml_item_id, oi.product_sku, oi.product_id::text) AS producto_id,
+           oi.product_name AS producto_titulo
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+     WHERE (o.status IN ('paid','delivered','completed') OR o.payment_status = 'paid')
+       AND o.created_at BETWEEN NOW() - ($2 || ' days')::interval AND NOW() - ($1 || ' days')::interval
+       AND oi.review_invitation_sent_at IS NULL
+       AND o.customer_email IS NOT NULL AND o.customer_email <> ''
+     ORDER BY o.id, oi.created_at ASC`,
+    [diasMin, diasMax]);
+  return rows;
+}
+
+// Marca todos los items de una orden como "invitación de reseña enviada".
+async function markResenaInvitada(ordenId) {
+  await pool.query(
+    `UPDATE order_items SET review_invitation_sent_at = NOW()
+      WHERE order_id = $1 AND review_invitation_sent_at IS NULL`, [ordenId]);
+}
+
+// Anti-spam: ¿este email ya dejó reseña de este item? (dedup)
+async function yaResenoItem(email, itemId) {
+  if (!email) return false;
+  const { rows } = await pool.query(
+    `SELECT 1 FROM tienda_reviews_propias WHERE LOWER(email) = LOWER($1) AND producto_id = $2 LIMIT 1`,
+    [email, itemId]);
+  return rows.length > 0;
+}
+
 // Item_ids distintos que algún usuario tiene en favoritos (para el gancho de retención).
 async function getFavoritedItemIds() {
   const { rows } = await pool.query(`SELECT DISTINCT item_id FROM tienda_favoritos`);
@@ -1640,6 +1742,15 @@ module.exports = {
   ensureItemWatchTable,
   getAllItemWatch,
   upsertItemWatch,
+  ensureReviewsPropiasTable,
+  addResenaPropia,
+  getResenasAprobadas,
+  getResenasModeracion,
+  moderarResena,
+  countResenasModeracionPendientes,
+  yaResenoItem,
+  getOrdenesParaResena,
+  markResenaInvitada,
   getItemsWithPendingAlerts,
   getPendingStockAlerts,
   markStockAlertsNotified,

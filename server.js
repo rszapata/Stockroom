@@ -28,7 +28,7 @@ const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item')
 const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop } = require('./lib/email-templates');
+const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
@@ -868,6 +868,7 @@ const server = http.createServer((req, res) => {
       // Archivos estáticos subidos (imágenes y videos de productos propios)
       pathname.startsWith('/uploads/productos-propios/') ||
       pathname.startsWith('/uploads/videos/') ||
+      pathname.startsWith('/uploads/resenas/') ||
       pathname === '/robots.txt' ||
       pathname === '/sitemap.xml';
     if (!isPublic) {
@@ -4125,6 +4126,78 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── Reseñas propias del storefront (FASE C) ──────────────
+    // POST /api/tienda/resena/foto → sube la foto de la reseña (multipart "file").
+    if (pathname === '/api/tienda/resena/foto' && req.method === 'POST') {
+      const ct = req.headers['content-type'] || '';
+      const bm = ct.match(/multipart\/form-data;\s*boundary=(.+)/i);
+      if (!bm) { res.writeHead(400); res.end(JSON.stringify({ error: 'Se espera multipart con campo "file"' })); return; }
+      (async () => {
+        try {
+          const MAX_BYTES = 12 * 1024 * 1024;
+          const body = await new Promise((resolve, reject) => {
+            const chunks = []; let size = 0;
+            req.on('data', c => { size += c.length; if (size > MAX_BYTES) { req.destroy(); return reject(Object.assign(new Error('Foto demasiado grande (máx 12MB)'), { status: 413 })); } chunks.push(c); });
+            req.on('end', () => resolve(Buffer.concat(chunks))); req.on('error', reject);
+          });
+          const file = parseMultipart(body, bm[1])['file'];
+          if (!file?.data) { res.writeHead(400); res.end(JSON.stringify({ error: 'Foto no recibida' })); return; }
+          const ext = detectImageExt(file.data);
+          if (!ext) { res.writeHead(415); res.end(JSON.stringify({ error: 'El archivo no es una imagen válida' })); return; }
+          const dir = path.join(__dirname, 'uploads', 'resenas');
+          fs.mkdirSync(dir, { recursive: true });
+          const fname = `rv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext === '.gif' ? '.jpg' : ext}`;
+          let out = file.data;
+          try { out = await sharp(file.data).rotate().resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80, mozjpeg: true }).toBuffer(); } catch {}
+          fs.writeFileSync(path.join(dir, fname.replace(/\.\w+$/, '.jpg')), out);
+          res.writeHead(200); res.end(JSON.stringify({ ok: true, url: `/uploads/resenas/${fname.replace(/\.\w+$/, '.jpg')}` }));
+        } catch (e) { res.writeHead(e.status || 500); res.end(JSON.stringify({ error: e.message })); }
+      })();
+      return;
+    }
+
+    // POST /api/tienda/resena → registrar una reseña (queda pendiente de moderación).
+    // Honeypot 'website' + dedup por email+item. Si trae foto → cupón de recompensa.
+    if (pathname === '/api/tienda/resena' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', async () => {
+        try {
+          const d = JSON.parse(body || '{}');
+          if (d.website) { res.writeHead(200); res.end(JSON.stringify({ ok: true })); return; } // honeypot → descartar en silencio
+          const producto_id = String(d.producto_id || '').trim();
+          const rating = parseInt(d.rating) || 0;
+          if (!producto_id || rating < 1 || rating > 5) { res.writeHead(400); res.end(JSON.stringify({ error: 'Datos inválidos (producto y calificación 1-5 requeridos)' })); return; }
+          if (!String(d.nombre || '').trim()) { res.writeHead(400); res.end(JSON.stringify({ error: 'Falta tu nombre' })); return; }
+          const email = String(d.email || '').trim();
+          if (email && await db.yaResenoItem(email, producto_id)) {
+            res.writeHead(409); res.end(JSON.stringify({ error: 'Ya dejaste una reseña de este producto. ¡Gracias!' })); return;
+          }
+          const fotoUrl = (typeof d.foto_url === 'string' && /^\/uploads\/resenas\//.test(d.foto_url)) ? d.foto_url : null;
+
+          // Recompensa: si la reseña trae foto, generar un cupón 10% off (60 días).
+          let cupon = null;
+          if (fotoUrl) {
+            try {
+              cupon = 'RESENA' + Math.random().toString(36).slice(2, 7).toUpperCase();
+              const list = getCupones();
+              list.push({ code: cupon, type: 'percent', value: 10, label: 'Gracias por tu reseña con foto', active: true,
+                expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), createdAt: new Date().toISOString() });
+              saveCupones(list);
+            } catch (e) { cupon = null; }
+          }
+
+          await db.addResenaPropia({
+            producto_id, producto_titulo: d.producto_titulo, nombre: d.nombre, email: email || null,
+            rating, texto: d.texto, foto_url: fotoUrl, cupon_code: cupon, orden_id: d.orden_id,
+          });
+          try { tgAlert('resena_nueva', `📝 <b>Nueva reseña para moderar</b>\n${String(d.nombre).slice(0,40)} · ${rating}★${fotoUrl ? ' · con foto' : ''}\n${String(d.producto_titulo||producto_id).slice(0,60)}`, 30); } catch {}
+          res.writeHead(200); res.end(JSON.stringify({ ok: true, cupon }));
+        } catch (e) { console.error('[resena] POST:', e.message); res.writeHead(500); res.end(JSON.stringify({ error: 'Error interno' })); }
+      });
+      return;
+    }
+
     // ── GET /api/tienda/reviews/:itemId ─────────────────────
     if (pathname.match(/^\/api\/tienda\/reviews\/[^/]+$/) && req.method === 'GET') {
       (async () => {
@@ -4133,22 +4206,48 @@ const server = http.createServer((req, res) => {
         const offset = parseInt(params.get('offset') || '0', 10);
         const limit  = parseInt(params.get('limit')  || '10', 10);
 
-        // Productos locales (no-ML) no tienen reseñas en ML — devolver vacío
+        // Reseñas propias APROBADAS (aplican a ML y a productos locales). Se
+        // mergean sobre las de ML; el nombre del cliente va en el slot "title".
+        let ownMapped = [], ownCount = 0, ownSum = 0;
+        try {
+          const own = await db.getResenasAprobadas(itemId);
+          ownMapped = own.map(r => ({
+            id: 'own-' + r.id, title: r.nombre || '', content: r.texto || '', rate: r.rating,
+            date_created: r.created_at,
+            photos: r.foto_url ? [{ thumb: r.foto_url, full: r.foto_url }] : [], _own: true,
+          }));
+          ownCount = ownMapped.length;
+          ownSum = own.reduce((s, r) => s + (r.rating || 0), 0);
+        } catch {}
+        // Mezcla las reseñas propias (primero, solo en la 1ª página) con un resultado ML.
+        const mergeOwn = (ml) => {
+          const mlTotal = ml.total || 0, mlAvg = ml.rating_average || 0;
+          const total = mlTotal + ownCount;
+          const avg = total ? (mlAvg * mlTotal + ownSum) / total : 0;
+          const reviews = offset === 0 ? [...ownMapped, ...(ml.reviews || [])] : (ml.reviews || []);
+          return { ...ml, rating_average: avg, total, offset, limit, reviews };
+        };
+
+        // Productos locales (no-ML) no tienen reseñas en ML → solo las propias.
         // ML IDs siguen el formato: prefijo de país (MLA, MLB, MLM...) + dígitos
         if (!/^ML[A-Z]\d+$/.test(itemId)) {
           res.writeHead(200);
           res.end(JSON.stringify({
-            rating_average: 0, total: 0, offset, limit, reviews: [], _local: true,
+            rating_average: ownCount ? ownSum / ownCount : 0,
+            total: ownCount, offset, limit,
+            reviews: offset === 0 ? ownMapped : [],
+            _local: true,
           }));
           return;
         }
 
         try {
-          // Revisar caché persistente (TTL: 10 minutos)
+          // Revisar caché persistente (TTL: 10 minutos) — se cachea SOLO lo de ML;
+          // las reseñas propias se mergean fresco en cada request.
           const cached = await db.getReviewsCache(itemId, offset, limit, 10 * 60 * 1000);
           if (cached) {
             res.writeHead(200);
-            res.end(JSON.stringify(cached));
+            res.end(JSON.stringify(mergeOwn(cached)));
             return;
           }
           // Intentar con la cuenta activa; si falla por permisos probar las demás
@@ -4183,10 +4282,10 @@ const server = http.createServer((req, res) => {
                                .filter(ph => ph.thumb),
             })),
           };
-          // Guardar en caché persistente
+          // Guardar en caché persistente (solo ML; las propias se mergean fresco)
           await db.setReviewsCache(itemId, offset, limit, result);
           res.writeHead(200);
-          res.end(JSON.stringify(result));
+          res.end(JSON.stringify(mergeOwn(result)));
         } catch(e) {
           console.error(`[tienda/reviews] Error ${itemId}:`, e.message);
           res.writeHead(500);
@@ -4831,6 +4930,33 @@ const server = http.createServer((req, res) => {
         writeJsonAtomic(COSTOS_PUB_PATH, store);
         json(res, 200, { ok: true });
       } catch (e) { json(res, 500, { error: 'No se pudo guardar', detail: e.message }); }
+    });
+    return;
+  }
+
+  // ── Moderación de reseñas propias (FASE C, admin) ────────────────
+  // GET /api/stockroom/resenas?estado=pendiente|aprobada|rechazada|todas
+  if (pathname === '/api/stockroom/resenas' && req.method === 'GET') {
+    (async () => {
+      const estado = new URL(req.url, 'http://localhost').searchParams.get('estado') || 'pendiente';
+      const filas = await db.getResenasModeracion({ estado });
+      const pendientes = await db.countResenasModeracionPendientes();
+      json(res, 200, { ok: true, resenas: filas, pendientes });
+    })().catch(e => { console.error('[resenas] GET admin:', e.message); json(res, 500, { error: 'Error interno' }); });
+    return;
+  }
+  // POST /api/stockroom/resenas/moderar { id, estado: aprobada|rechazada }
+  if (pathname === '/api/stockroom/resenas/moderar' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', async () => {
+      try {
+        const b = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+        if (!b.id) { json(res, 400, { error: 'falta id' }); return; }
+        await db.moderarResena(b.id, b.estado);
+        // Al aprobar/rechazar, invalidar el cache de reviews del item para que se re-mergee.
+        json(res, 200, { ok: true });
+      } catch (e) { json(res, 500, { error: 'No se pudo moderar', detail: e.message }); }
     });
     return;
   }
@@ -7788,6 +7914,7 @@ db.ensureCarritosAbandonadosTable().catch(e => console.log('[carrito-abandonado]
 db.ensureStockAlertsTable().catch(e => console.log('[stock-alert] Error en init de tabla:', e.message));
 db.ensureFavoritosTable().catch(e => console.log('[favoritos] Error en init de tabla:', e.message));
 db.ensureItemWatchTable().catch(e => console.log('[fav-watch] Error en init de tabla:', e.message));
+db.ensureReviewsPropiasTable().catch(e => console.log('[resenas] Error en init de tabla:', e.message));
 db.ensureEmailLogTable().catch(e => console.log('[email-log] Error en init de tabla:', e.message));
 
 // Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado
@@ -7912,6 +8039,35 @@ setInterval(() => {
   checkFavoritosChanges().catch(e => console.log('[fav-hook] Error en check periódico:', e.message));
 }, FAV_CHECK_INTERVAL);
 setTimeout(() => { checkFavoritosChanges().catch(() => {}); }, 90 * 1000); // 1ª corrida diferida del boot
+
+// ── Pedido de reseña post-entrega (FASE C) ──────────────────────
+// Busca órdenes pagadas hace 4-30 días con items sin invitación de reseña
+// enviada → manda 1 mail por orden con link al form (?producto&titulo&orden) y
+// marca los items como invitados (review_invitation_sent_at). Corre 1×/día.
+const RESENA_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
+async function checkPedidosResena() {
+  const ordenes = await db.getOrdenesParaResena({ diasMin: 4, diasMax: 30 });
+  if (!ordenes.length) return;
+  for (const o of ordenes) {
+    try {
+      const qs = new URLSearchParams({ producto: o.producto_id || '', titulo: o.producto_titulo || '', orden: o.orden_id });
+      const url = `https://wzmallas.com/tienda/dejar-resena.html?${qs.toString()}`;
+      await sendEmail({
+        to: o.email,
+        subject: `¿Cómo te fue con tu compra? Dejá tu reseña y ganá 10% OFF · WZMALLAS`,
+        html: emailPedirResena({ nombre: o.nombre, producto: o.producto_titulo, url }),
+      });
+      await db.markResenaInvitada(o.orden_id);
+      console.log(`  ✓ [resena-req] Invitación enviada a ${o.email} — orden ${o.orden_id}`);
+    } catch (e) {
+      console.warn(`  ⚠ [resena-req] No se pudo invitar a ${o.email}: ${e.message}`);
+    }
+  }
+}
+setInterval(() => {
+  checkPedidosResena().catch(e => console.log('[resena-req] Error en check periódico:', e.message));
+}, RESENA_CHECK_INTERVAL);
+setTimeout(() => { checkPedidosResena().catch(() => {}); }, 2 * 60 * 1000); // 1ª corrida diferida del boot
 
 // ── Alerta Telegram: órdenes pending +24hs (Fase 2 — monitoreo) ──────
 // Una vez por día manda UN solo mensaje resumen con la cantidad de órdenes

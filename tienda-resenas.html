@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Reseñas — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=9">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.rs-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.rs-tab { padding:7px 14px; border:1px solid var(--border); border-radius:9px; background:var(--bg-card); cursor:pointer; font-size:13px; font-weight:600; color:var(--text-2); }
+.rs-tab.active { border-color:var(--blue); background:var(--blue-light); color:var(--blue); }
+.rs-tab .rs-badge { display:inline-block; margin-left:6px; padding:0 6px; border-radius:99px; background:var(--yellow); color:#fff; font-size:11px; }
+.rs-card { display:flex; gap:14px; padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--bg-card); margin-bottom:12px; }
+.rs-foto { width:88px; height:88px; object-fit:cover; border-radius:10px; border:1px solid var(--border); flex-shrink:0; cursor:pointer; }
+.rs-foto-none { width:88px; height:88px; border-radius:10px; border:1px dashed var(--border-2); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--text-3); font-size:11px; text-align:center; }
+.rs-body { flex:1; min-width:0; }
+.rs-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:5px; }
+.rs-stars { color:#f5a623; font-size:15px; letter-spacing:1px; }
+.rs-nombre { font-weight:700; font-size:14px; }
+.rs-prod { font-size:12px; color:var(--text-3); }
+.rs-texto { font-size:13.5px; color:var(--text-2); line-height:1.5; margin:6px 0; white-space:pre-wrap; }
+.rs-meta { font-size:11.5px; color:var(--text-3); font-family:var(--font-mono); }
+.rs-cupon { display:inline-block; padding:1px 7px; border-radius:6px; background:var(--green-light); color:var(--green); font-family:var(--font-mono); font-size:11px; font-weight:700; }
+.rs-actions { display:flex; flex-direction:column; gap:8px; justify-content:center; }
+.rs-empty { text-align:center; padding:56px 20px; color:var(--text-3); }
+.rs-estado { font-size:10px; text-transform:uppercase; letter-spacing:.04em; font-weight:700; padding:2px 8px; border-radius:99px; }
+.rs-estado.aprobada { background:var(--green-light); color:var(--green); }
+.rs-estado.rechazada { background:var(--red-light); color:var(--red); }
+.rs-estado.pendiente { background:var(--yellow-light); color:var(--yellow); }
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/admin-sidebar.js?v=4"></script>
+
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Reseñas</div>
+        <div class="adm-page-sub"><span>Moderá las reseñas que dejan los clientes en la web</span></div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="btn btn-ghost btn-sm" onclick="cargar()">Actualizar</button>
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+    <div class="rs-tabs" id="rs-tabs">
+      <button class="rs-tab active" data-estado="pendiente">Pendientes <span class="rs-badge" id="rs-pend-badge" style="display:none">0</span></button>
+      <button class="rs-tab" data-estado="aprobada">Aprobadas</button>
+      <button class="rs-tab" data-estado="rechazada">Rechazadas</button>
+      <button class="rs-tab" data-estado="todas">Todas</button>
+    </div>
+    <div id="rs-list"></div>
+    <div class="rs-empty" id="rs-empty" style="display:none">No hay reseñas en este estado.</div>
+  </main>
+</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const stars = n => '★★★★★☆☆☆☆☆'.slice(5 - n, 10 - n);
+let estado = 'pendiente';
+
+$('btn-theme').addEventListener('click', () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('adminTheme', t); } catch(e){}
+});
+$('btn-hamburger')?.addEventListener('click', () => $('sidebar')?.classList.toggle('open'));
+
+document.querySelectorAll('.rs-tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.rs-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active'); estado = t.dataset.estado; cargar();
+}));
+
+function fecha(iso) { try { return new Date(iso).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' }); } catch { return ''; } }
+
+async function cargar() {
+  try {
+    const r = await fetch('/api/stockroom/resenas?estado=' + estado);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    const b = $('rs-pend-badge');
+    if (d.pendientes > 0) { b.textContent = d.pendientes; b.style.display = 'inline-block'; } else b.style.display = 'none';
+    render(d.resenas || []);
+  } catch (e) { $('rs-list').innerHTML = `<p style="color:var(--red)">✕ ${esc(e.message)}</p>`; }
+}
+
+function render(rows) {
+  $('rs-empty').style.display = rows.length ? 'none' : 'block';
+  $('rs-list').innerHTML = rows.map(r => {
+    const foto = r.foto_url
+      ? `<img class="rs-foto" src="${esc(r.foto_url)}" alt="" onclick="window.open('${esc(r.foto_url)}','_blank')">`
+      : `<div class="rs-foto-none">sin foto</div>`;
+    const acciones = estado === 'pendiente'
+      ? `<button class="btn btn-primary btn-sm" onclick="moderar(${r.id},'aprobada')">✓ Aprobar</button>
+         <button class="btn btn-ghost btn-sm" onclick="moderar(${r.id},'rechazada')">✕ Rechazar</button>`
+      : `<span class="rs-estado ${esc(r.estado)}">${esc(r.estado)}</span>
+         ${r.estado !== 'aprobada' ? `<button class="btn btn-ghost btn-sm" onclick="moderar(${r.id},'aprobada')">Aprobar</button>` : ''}
+         ${r.estado !== 'rechazada' ? `<button class="btn btn-ghost btn-sm" onclick="moderar(${r.id},'rechazada')">Rechazar</button>` : ''}`;
+    return `<div class="rs-card">
+      ${foto}
+      <div class="rs-body">
+        <div class="rs-top">
+          <span class="rs-stars">${stars(r.rating)}</span>
+          <span class="rs-nombre">${esc(r.nombre || 'Anónimo')}</span>
+          ${r.cupon_code ? `<span class="rs-cupon">🎁 ${esc(r.cupon_code)}</span>` : ''}
+        </div>
+        <div class="rs-prod">${esc(r.producto_titulo || r.producto_id)}</div>
+        ${r.texto ? `<p class="rs-texto">${esc(r.texto)}</p>` : ''}
+        <div class="rs-meta">${fecha(r.created_at)}${r.email ? ' · ' + esc(r.email) : ''}${r.orden_id ? ' · orden ' + esc(r.orden_id) : ''}</div>
+      </div>
+      <div class="rs-actions">${acciones}</div>
+    </div>`;
+  }).join('');
+}
+
+async function moderar(id, nuevo) {
+  try {
+    const r = await fetch('/api/stockroom/resenas/moderar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, estado: nuevo }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'error');
+    cargar();
+  } catch (e) { alert('No se pudo: ' + e.message); }
+}
+
+cargar();
+</script>
+</body>
+</html>

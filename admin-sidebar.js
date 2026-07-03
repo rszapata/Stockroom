@@ -22,6 +22,7 @@
     if (p.includes('tienda-ordenes'))            return 'ordenes';
     if (p.includes('tienda-clientes'))           return 'clientes';
     if (p.includes('emails'))                    return 'emails';
+    if (p.includes('tienda-resenas'))            return 'resenas';
     if (p.includes('tienda-sync'))               return 'sync';
     if (p.includes('tienda-admin'))              return 'dashboard';
     return '';
@@ -85,6 +86,11 @@
       <a href="/emails.html" class="${A('emails')}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
         <span>Emails</span>
+      </a>
+      <a href="/tienda-resenas.html" class="${A('resenas')}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>Reseñas</span>
+        <span class="adm-item-badge" id="nav-resenas-badge" style="display:none">0</span>
       </a>
     </div>
 
