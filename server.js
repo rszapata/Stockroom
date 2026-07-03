@@ -3410,6 +3410,48 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── Favoritos / lista de deseos (FASE E) ──────────────────
+    // GET lista, POST agrega, DELETE quita, POST /merge fusiona el localStorage.
+    // Todos requieren sesión (los invitados usan localStorage en el cliente).
+    if (pathname === '/api/tienda/favoritos' && req.method === 'GET') {
+      (async () => {
+        const session = await getTiendaUserFromReq(req);
+        if (!session) { res.writeHead(401); res.end(JSON.stringify({ error: 'No autenticado' })); return; }
+        const ids = await db.getFavoritos(session.user_id);
+        res.writeHead(200); res.end(JSON.stringify({ ok: true, ids }));
+      })().catch(e => { console.error('[favoritos] GET:', e.message); res.writeHead(500); res.end(JSON.stringify({ error: 'Error interno' })); });
+      return;
+    }
+    if (pathname === '/api/tienda/favoritos' && (req.method === 'POST' || req.method === 'DELETE')) {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', async () => {
+        try {
+          const session = await getTiendaUserFromReq(req);
+          if (!session) { res.writeHead(401); res.end(JSON.stringify({ error: 'No autenticado' })); return; }
+          const itemId = String((JSON.parse(body || '{}').item_id) || '').trim();
+          if (!itemId) { res.writeHead(400); res.end(JSON.stringify({ error: 'falta item_id' })); return; }
+          if (req.method === 'POST') await db.addFavorito(session.user_id, itemId);
+          else await db.removeFavorito(session.user_id, itemId);
+          res.writeHead(200); res.end(JSON.stringify({ ok: true }));
+        } catch (e) { console.error('[favoritos] mutate:', e.message); res.writeHead(500); res.end(JSON.stringify({ error: 'Error interno' })); }
+      });
+      return;
+    }
+    if (pathname === '/api/tienda/favoritos/merge' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', async () => {
+        try {
+          const session = await getTiendaUserFromReq(req);
+          if (!session) { res.writeHead(401); res.end(JSON.stringify({ error: 'No autenticado' })); return; }
+          const ids = await db.mergeFavoritos(session.user_id, JSON.parse(body || '{}').ids || []);
+          res.writeHead(200); res.end(JSON.stringify({ ok: true, ids }));
+        } catch (e) { console.error('[favoritos] merge:', e.message); res.writeHead(500); res.end(JSON.stringify({ error: 'Error interno' })); }
+      });
+      return;
+    }
+
     // ── GET /api/tienda/me ───────────────────────────────────
     if (pathname === '/api/tienda/me' && req.method === 'GET') {
       (async () => {
@@ -7744,6 +7786,7 @@ db.ensureProductosPropiosTable().catch(e => console.log('[tienda-productos-propi
 // ── Inicializar tabla de carritos abandonados + cron de recordatorio ──
 db.ensureCarritosAbandonadosTable().catch(e => console.log('[carrito-abandonado] Error en init de tabla:', e.message));
 db.ensureStockAlertsTable().catch(e => console.log('[stock-alert] Error en init de tabla:', e.message));
+db.ensureFavoritosTable().catch(e => console.log('[favoritos] Error en init de tabla:', e.message));
 db.ensureEmailLogTable().catch(e => console.log('[email-log] Error en init de tabla:', e.message));
 
 // Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado

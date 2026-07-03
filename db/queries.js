@@ -1393,6 +1393,48 @@ async function addStockAlert({ item_id, variant, titulo, email }) {
   return { created: true };
 }
 
+// ── Favoritos / lista de deseos (FASE E) ──────────────────────────
+// Un favorito = (user_id, item_id). Los invitados usan localStorage; al
+// loguearse se hace merge del localStorage a la DB (idempotente).
+async function ensureFavoritosTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tienda_favoritos (
+      user_id    UUID NOT NULL,
+      item_id    TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, item_id)
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_favoritos_user ON tienda_favoritos (user_id)`);
+}
+
+async function getFavoritos(userId) {
+  const { rows } = await pool.query(
+    `SELECT item_id FROM tienda_favoritos WHERE user_id = $1 ORDER BY created_at DESC`,
+    [userId]);
+  return rows.map(r => r.item_id);
+}
+
+async function addFavorito(userId, itemId) {
+  await pool.query(
+    `INSERT INTO tienda_favoritos (user_id, item_id) VALUES ($1, $2)
+       ON CONFLICT (user_id, item_id) DO NOTHING`,
+    [userId, String(itemId).slice(0, 80)]);
+}
+
+async function removeFavorito(userId, itemId) {
+  await pool.query(
+    `DELETE FROM tienda_favoritos WHERE user_id = $1 AND item_id = $2`,
+    [userId, String(itemId)]);
+}
+
+// Merge de una lista de item_ids (del localStorage) a la DB. Devuelve la lista final.
+async function mergeFavoritos(userId, itemIds) {
+  const ids = [...new Set((Array.isArray(itemIds) ? itemIds : []).map(x => String(x).slice(0, 80)).filter(Boolean))].slice(0, 500);
+  for (const id of ids) await addFavorito(userId, id);
+  return getFavoritos(userId);
+}
+
 // Item_ids que tienen al menos una alerta pendiente (para el job de reposición).
 async function getItemsWithPendingAlerts() {
   const { rows } = await pool.query(
@@ -1543,6 +1585,11 @@ module.exports = {
   // Alertas de stock (back-in-stock)
   ensureStockAlertsTable,
   addStockAlert,
+  ensureFavoritosTable,
+  getFavoritos,
+  addFavorito,
+  removeFavorito,
+  mergeFavoritos,
   getItemsWithPendingAlerts,
   getPendingStockAlerts,
   markStockAlertsNotified,
