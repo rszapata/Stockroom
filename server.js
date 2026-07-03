@@ -4380,6 +4380,9 @@ const server = http.createServer((req, res) => {
       label:      a.label  || a.seller_name || a.user_id || 'Cuenta',
       user_id:    a.user_id || '',
       has_token:  !!a.access_token,
+      // Condición fiscal: 'monotributo' (no descuenta IVA, ej. RZ-ZETTAI) o
+      // 'responsable' (descuenta IVA, default). Setea en config.json por cuenta.
+      fiscal:     a.fiscal === 'monotributo' ? 'monotributo' : 'responsable',
       active:     a.id === (fullConfig.active || 'default') || (!fullConfig.accounts),
     }));
     json(res, 200, { accounts, active: fullConfig.active || 'default' });
@@ -4521,6 +4524,8 @@ const server = http.createServer((req, res) => {
       const desde    = String(parts['desde']   || '').trim();
       const hasta    = String(parts['hasta']    || '').trim();
       const modo     = String(parts['modo']     || 'fundas').trim();
+      // Cuenta monotributista (RZ-ZETTAI): no descontar IVA del neto.
+      const sinIva   = String(parts['sin_iva'] || '') === '1' || String(parts['sin_iva'] || '').toLowerCase() === 'true';
 
       if (!fileData?.data) { json(res, 400, { error: 'Archivo no recibido' }); return; }
 
@@ -4539,6 +4544,7 @@ const server = http.createServer((req, res) => {
       const args = [scriptPath, tmpIn, '--output', tmpOut, '--modo', modo];
       if (desde) args.push('--desde', desde);
       if (hasta) args.push('--hasta', hasta);
+      if (sinIva) args.push('--sin-iva');
 
       // Windows usa 'py -3.12' (Python Launcher), Linux/Mac usa 'python3'
       const PYTHON = process.platform === 'win32' ? 'py' : 'python3';
@@ -4631,6 +4637,12 @@ const server = http.createServer((req, res) => {
           nombre:   String(body.nombre || '').slice(0, 120) || 'Cobro sin nombre',
           modo:     body.modo === 'otros' ? 'otros' : (body.modo === 'flex' ? 'flex' : 'fundas'),
           periodo:  String(body.periodo || body.resumen?.periodo || ''),
+          // Cuenta ML de origen (para rentabilidad por cuenta). fiscal define el IVA.
+          cuenta:   body.cuenta ? {
+            id:     String(body.cuenta.id || '').slice(0, 40),
+            label:  String(body.cuenta.label || '').slice(0, 80),
+            fiscal: body.cuenta.fiscal === 'monotributo' ? 'monotributo' : 'responsable',
+          } : null,
           resumen:  body.resumen,
           ventas:   Array.isArray(body.ventas) ? body.ventas : [],
           file_b64: String(body.file_b64),
@@ -4669,51 +4681,34 @@ const server = http.createServer((req, res) => {
     try { return JSON.parse(fs.readFileSync(COSTOS_PUB_PATH, 'utf8')); } catch (e) { return {}; }
   };
 
-  // GET /api/stockroom/rentabilidad?tc=&flete_unit=&cobros=id1,id2 (o todos)
-  if (pathname === '/api/stockroom/rentabilidad' && req.method === 'GET') {
-    const qp = new URL(req.url, 'http://localhost').searchParams;
-    const tc        = parseFloat(qp.get('tc')) || 1421;
-    const fleteUnit = parseFloat(qp.get('flete_unit')) || 1928;
-    const soloIds   = (qp.get('cobros') || '').split(',').map(s => s.trim()).filter(Boolean);
+  // Cuenta de un cobro (legacy sin tag → WZ, que es de donde vienen los históricos).
+  const _cobroCuenta = c => (c.cuenta && c.cuenta.id) ? c.cuenta.id : 'wz';
+  const _cobroCuentaLabel = c => (c.cuenta && c.cuenta.label) ? c.cuenta.label : 'WZ — WZMALLAS';
 
-    const overrides = leerCostosPub();
-    let cobros = leerCobrosGuardados().filter(c => c.modo === 'fundas');
-    if (soloIds.length) cobros = cobros.filter(c => soloIds.includes(c.id));
-
-    // Agregar por publicación (título) a través de los períodos elegidos.
+  // Agrega una lista de cobros a {publicaciones, totales} cruzando neto × costo.
+  function agregarCobros(cobros, tc, fleteUnit, overrides) {
     const porPub = new Map();
-    let sinNeto = 0;
     for (const c of cobros) {
       for (const v of (c.ventas || [])) {
         if (v.excluida) continue;
         const titulo = v.titulo || '(sin título)';
-        const neto = Number(v.neto) || 0;
-        const ingresos = Number(v.ingresos) || 0;
-        if (!neto) { sinNeto++; }
-        const sug = costoSugerido(titulo, tc, fleteUnit);   // {costo,tipo,unidades,confiable} | null
+        const neto = Number(v.neto) || 0, ingresos = Number(v.ingresos) || 0;
+        const sug = costoSugerido(titulo, tc, fleteUnit);
         let row = porPub.get(titulo);
         if (!row) {
           const ov = overrides[titulo];
           row = {
-            titulo,
-            unidades: 0, ingresos: 0, neto: 0,
-            // costo unitario: override del usuario > sugerido > null (sin costo)
+            titulo, unidades: 0, ingresos: 0, neto: 0,
             costo_unit: (ov && ov.costo_ars != null) ? Number(ov.costo_ars)
                       : (sug ? Math.round(sug.costo / (sug.unidades || 1)) : null),
             costo_editado: !!(ov && ov.costo_ars != null),
-            tipo: sug ? sug.tipo : null,
-            es_funda: !!sug,
-            confiable: sug ? sug.confiable : false,
+            tipo: sug ? sug.tipo : null, es_funda: !!sug, confiable: sug ? sug.confiable : false,
           };
           porPub.set(titulo, row);
         }
-        row.unidades  += sug ? sug.unidades : 1;
-        row.ingresos  += ingresos;
-        row.neto      += neto;
+        row.unidades += sug ? sug.unidades : 1; row.ingresos += ingresos; row.neto += neto;
       }
     }
-
-    // Calcular ganancia por publicación + totales
     let totNeto = 0, totCosto = 0, totGan = 0, totIngresos = 0, netoConCosto = 0, itemsSinCosto = 0;
     const publicaciones = [...porPub.values()].map(r => {
       const costoTotal = (r.costo_unit != null) ? r.costo_unit * r.unidades : null;
@@ -4724,19 +4719,51 @@ const server = http.createServer((req, res) => {
       else itemsSinCosto++;
       return { ...r, costo_total: costoTotal, ganancia, margen };
     }).sort((a, b) => (b.ganancia ?? -Infinity) - (a.ganancia ?? -Infinity));
+    return {
+      publicaciones,
+      totales: {
+        ingresos: totIngresos, neto: totNeto, costo: totCosto, ganancia: totGan,
+        margen: netoConCosto > 0 ? (totGan / netoConCosto * 100) : null,
+        neto_con_costo: netoConCosto, items_sin_costo: itemsSinCosto, publicaciones: publicaciones.length,
+      },
+    };
+  }
+
+  // GET /api/stockroom/rentabilidad?tc=&flete_unit=&cobros=&cuenta=
+  if (pathname === '/api/stockroom/rentabilidad' && req.method === 'GET') {
+    const qp = new URL(req.url, 'http://localhost').searchParams;
+    const tc        = parseFloat(qp.get('tc')) || 1421;
+    const fleteUnit = parseFloat(qp.get('flete_unit')) || 1928;
+    const soloIds   = (qp.get('cobros') || '').split(',').map(s => s.trim()).filter(Boolean);
+    const cuentaF   = (qp.get('cuenta') || '').trim();   // '' = todas
+
+    const overrides = leerCostosPub();
+    const todos = leerCobrosGuardados().filter(c => c.modo === 'fundas');
+
+    // Resumen por cuenta (siempre sobre TODOS los períodos, para las pestañas).
+    const cuentasMap = new Map();
+    for (const c of todos) {
+      const id = _cobroCuenta(c);
+      if (!cuentasMap.has(id)) cuentasMap.set(id, { id, label: _cobroCuentaLabel(c), fiscal: c.cuenta?.fiscal || 'responsable', cobros: [] });
+      cuentasMap.get(id).cobros.push(c);
+    }
+    const por_cuenta = [...cuentasMap.values()].map(cu => {
+      const { totales } = agregarCobros(cu.cobros, tc, fleteUnit, overrides);
+      return { id: cu.id, label: cu.label, fiscal: cu.fiscal, neto: totales.neto, costo: totales.costo, ganancia: totales.ganancia, margen: totales.margen };
+    });
+
+    // Set filtrado (por cuenta y/o períodos) → detalle de la vista actual.
+    let cobros = todos;
+    if (cuentaF) cobros = cobros.filter(c => _cobroCuenta(c) === cuentaF);
+    if (soloIds.length) cobros = cobros.filter(c => soloIds.includes(c.id));
+    const { publicaciones, totales } = agregarCobros(cobros, tc, fleteUnit, overrides);
 
     json(res, 200, {
       ok: true,
-      params: { tc, flete_unit: fleteUnit },
-      periodos: cobros.map(c => ({ id: c.id, nombre: c.nombre, periodo: c.periodo, total_neto: c.resumen?.total_neto ?? null })),
-      totales: {
-        ingresos: totIngresos, neto: totNeto, costo: totCosto, ganancia: totGan,
-        // margen sobre el neto de las publicaciones QUE TIENEN costo (no diluir con las sin costo)
-        margen: netoConCosto > 0 ? (totGan / netoConCosto * 100) : null,
-        neto_con_costo: netoConCosto,
-        items_sin_costo: itemsSinCosto,
-        publicaciones: publicaciones.length,
-      },
+      params: { tc, flete_unit: fleteUnit, cuenta: cuentaF || null },
+      por_cuenta,
+      periodos: cobros.map(c => ({ id: c.id, nombre: c.nombre, periodo: c.periodo, cuenta: _cobroCuenta(c), total_neto: c.resumen?.total_neto ?? null })),
+      totales,
       publicaciones,
     });
     return;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v12'; // v11: página Emails (log de envíos) + sidebar
+const CACHE_NAME = 'stockroom-v13'; // v11: página Emails (log de envíos) + sidebar
 const STATIC_ASSETS = [
   '/',
   '/index.html',

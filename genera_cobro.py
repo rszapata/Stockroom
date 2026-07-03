@@ -631,10 +631,18 @@ if __name__ == '__main__':
     ap.add_argument('--hasta',    default=None, help='Fecha fin   YYYY-MM-DD (inclusive)')
     ap.add_argument('--output',   default=None)
     ap.add_argument('--modo',     default='fundas', choices=['fundas','otros'])
+    ap.add_argument('--sin-iva',  action='store_true',
+                    help='Cuenta monotributista: NO descontar IVA del neto (ingreso pleno)')
     args = ap.parse_args()
 
     archivo = args.archivo
     modo    = args.modo
+
+    # Monotributo (ej. RZ-ZETTAI, a nombre del titular): las ventas NO llevan IVA,
+    # así que el neto NO se divide por 1.21. Se ajusta el global que usan calc_neto()
+    # y la estimación de netos mixtos.
+    if args.sin_iva:
+        IVA = 1.0   # scope de módulo: reasigna el global que usan calc_neto/neto_est
 
     # Parsear rango de fechas
     desde_dt = hasta_dt = None

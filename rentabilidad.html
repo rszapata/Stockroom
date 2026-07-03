@@ -56,6 +56,21 @@ th.rt-sortable:hover { color: var(--text); }
 #rt-status.ok { background: var(--green-light); color: var(--green); }
 #rt-status.err { background: var(--red-light); color: var(--red); }
 .rt-empty { text-align: center; padding: 56px 20px; color: var(--text-3); }
+
+/* Pestañas por cuenta */
+.rt-acct-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.rt-acct-tab {
+  display: flex; flex-direction: column; gap: 2px; min-width: 130px;
+  padding: 9px 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg-card); cursor: pointer; transition: all .12s; text-align: left;
+}
+.rt-acct-tab:hover { border-color: var(--border-2); }
+.rt-acct-tab.active { border-color: var(--blue); background: var(--blue-light); }
+.rt-acct-tab .t-name { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.rt-acct-tab .t-gan { font-size: 15px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }
+.rt-acct-tab .t-fiscal { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; padding: 1px 6px; border-radius: 99px; }
+.rt-acct-tab .t-fiscal.mono { background: var(--yellow-light); color: var(--yellow); }
+.rt-acct-tab .t-fiscal.resp { background: var(--bg); color: var(--text-3); }
 </style>
 </head>
 <body>
@@ -100,6 +115,8 @@ th.rt-sortable:hover { color: var(--text); }
       </div>
       <button class="btn btn-ghost" id="rt-recalc" style="height:34px">↻ Recalcular</button>
     </div>
+
+    <div class="rt-acct-tabs" id="rt-acct-tabs" style="display:none"></div>
 
     <div class="rt-kpis" id="rt-kpis" style="display:none">
       <div class="rt-kpi"><div class="rt-kpi-lbl">Neto (ML deposita)</div><div class="rt-kpi-val" id="k-neto">$0</div><div class="rt-kpi-sub" id="k-neto-sub"></div></div>
@@ -154,6 +171,7 @@ $('btn-hamburger')?.addEventListener('click', () => $('sidebar')?.classList.togg
 
 let data = null;
 let sortKey = 'ganancia', sortDir = -1;
+let cuentaSel = '';   // '' = todas
 
 function setStatus(msg, ok) { const el = $('rt-status'); el.className = 'show ' + (ok ? 'ok' : 'err'); el.textContent = msg; }
 
@@ -163,6 +181,7 @@ async function cargar() {
   const cobros = $('rt-periodo').value;
   const qs = new URLSearchParams({ tc, flete_unit: flete });
   if (cobros) qs.set('cobros', cobros);
+  if (cuentaSel) qs.set('cuenta', cuentaSel);
   try {
     const r = await fetch('/api/stockroom/rentabilidad?' + qs.toString());
     data = await r.json();
@@ -182,6 +201,7 @@ async function cargar() {
 
 function render() {
   const t = data.totales;
+  renderAcctTabs();
   if (!data.publicaciones.length) {
     $('rt-kpis').style.display = 'none'; $('rt-card').style.display = 'none';
     $('rt-empty').style.display = 'block'; $('rt-warn').classList.remove('show');
@@ -211,6 +231,30 @@ function render() {
 
   renderRows();
   markSortHeader();
+}
+
+function renderAcctTabs() {
+  const cuentas = data.por_cuenta || [];
+  const tabs = $('rt-acct-tabs');
+  // Solo mostrar pestañas si hay más de una cuenta con datos
+  if (cuentas.length < 2) { tabs.style.display = 'none'; return; }
+  tabs.style.display = 'flex';
+  const totalGan = cuentas.reduce((s, c) => s + (c.ganancia || 0), 0);
+  const chip = (id, name, gan, fiscal, active) => {
+    const fx = fiscal === 'monotributo'
+      ? `<span class="t-fiscal mono" title="Monotributo — neto sin IVA">sin IVA</span>`
+      : `<span class="t-fiscal resp" title="Responsable inscripto — neto con IVA">con IVA</span>`;
+    return `<button class="rt-acct-tab${active ? ' active' : ''}" data-cuenta="${id}">
+      <span class="t-name">${esc(name)} ${id ? fx : ''}</span>
+      <span class="t-gan">${ars(gan)}</span>
+    </button>`;
+  };
+  tabs.innerHTML =
+    chip('', 'Todas las cuentas', totalGan, null, cuentaSel === '') +
+    cuentas.map(c => chip(c.id, c.label.split('—').pop().trim() || c.label, c.ganancia, c.fiscal, cuentaSel === c.id)).join('');
+  tabs.querySelectorAll('.rt-acct-tab').forEach(b => b.addEventListener('click', () => {
+    cuentaSel = b.dataset.cuenta; cargar();
+  }));
 }
 
 function renderRows() {

@@ -538,6 +538,7 @@ async function loadAccounts(){
     const d = await r.json();
     const list = Array.isArray(d) ? d : (d.accounts||[]);
     const active = list.find(a=>a.active) || list[0];
+    window._cobroAcct = active || null;   // cuenta activa (id/label/fiscal) para tag + IVA del cobro
     if(active){
       const init = $I('acc-initial'); const lbl = $I('acc-label');
       const act = $I('acc-active'); const actId = $I('acc-active-id');
@@ -809,11 +810,14 @@ async function generar(modo) {
   res.style.display = 'none';
 
   try {
+    const acct = window._cobroAcct || null;
+    const sinIva = acct && acct.fiscal === 'monotributo';   // RZ-ZETTAI: sin IVA
     const fd = new FormData();
     fd.append('file',  s.file);
     fd.append('desde', s.desde || '');
     fd.append('hasta', s.hasta || '');
     fd.append('modo',  modo);
+    if (sinIva) fd.append('sin_iva', '1');
 
     const resp = await fetch(`${HOST}/cobro`, { method: 'POST', body: fd });
     const data = await resp.json();
@@ -930,9 +934,11 @@ async function guardarCobro(modo) {
   const nombre = prompt('Nombre para guardar este cobro:', def);
   if (nombre === null) return;
   try {
+    const acct = window._cobroAcct || null;
+    const cuenta = acct ? { id: acct.id, label: acct.label, fiscal: acct.fiscal || 'responsable' } : null;
     const resp = await fetch(`${HOST}/cobro/guardar`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, modo, periodo: s.resumen.periodo || '', resumen: s.resumen, ventas: s.ventas || [], file_b64: s.b64 }),
+      body: JSON.stringify({ nombre, modo, periodo: s.resumen.periodo || '', resumen: s.resumen, ventas: s.ventas || [], file_b64: s.b64, cuenta }),
     });
     const data = await resp.json();
     if (!data.ok) throw new Error(data.detail || data.error || 'Error');
