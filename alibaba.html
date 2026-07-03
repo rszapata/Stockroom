@@ -640,6 +640,32 @@
     </div>
   </div>
 
+  <!-- ── Registrar costos (del recibo → Rentabilidad) ──── -->
+  <div class="adm-card" id="card-costos" style="display:none">
+    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span class="adm-card-title">💲 Registrar costos del recibo</span>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600">TC</label>
+          <input id="cst-tc" type="number" value="1421" style="width:78px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:12px;text-align:right">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600">Flete/u</label>
+          <input id="cst-flete" type="number" value="1928" style="width:78px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:12px;text-align:right">
+        </div>
+        <button class="adm-btn adm-btn-sm" id="btn-save-costos" style="background:var(--blue);color:#fff;border-color:var(--blue)">Guardar costos</button>
+      </div>
+      <span id="costos-status" style="display:none;font-size:12px;font-weight:600"></span>
+    </div>
+    <div class="adm-card-body">
+      <p style="margin:0 0 12px;font-size:12px;color:var(--text-3)">
+        El recibo trae el costo FOB en USD por producto. Asigná cada uno a su publicación de la tienda; el costo ARS = FOB×TC + flete/u alimenta el dashboard de <b>Rentabilidad</b>. (Los costos de ML ya están en el neto.)
+      </p>
+      <datalist id="titulos-datalist"></datalist>
+      <div id="costos-list"></div>
+    </div>
+  </div>
+
   <!-- ── Paso 3: Resultados ──────────────────────────── -->
   <div class="adm-card" id="card-results" style="display:none">
     <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between">
@@ -921,6 +947,7 @@ async function processFile(file) {
 
     showParseState('ok', file.name, data.totalPages, parsedRows.length, data.usedOcr);
     renderItemsTable();
+    renderCostos();
     $('card-items').style.display = '';
     $('card-items').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
@@ -938,6 +965,7 @@ async function processHtmlFile(file, imgMap = {}) {
     parsedRows = rows;
     showParseState('ok', file.name, null, rows.length, false);
     renderItemsTable();
+    renderCostos();
     $('card-items').style.display = '';
     $('card-items').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
@@ -1143,6 +1171,69 @@ async function loadMappings() {
 // ══════════════════════════════════════════════════════════
 //  TABLA DE ITEMS
 // ══════════════════════════════════════════════════════════
+// ── Registrar costos del recibo → Rentabilidad ─────────────────
+let _titulosCache = null;
+async function cargarTitulos() {
+  if (_titulosCache) return _titulosCache;
+  try {
+    const r = await fetch('/api/stockroom/rentabilidad');
+    const d = await r.json();
+    _titulosCache = (d.ok && Array.isArray(d.publicaciones)) ? d.publicaciones.map(p => p.titulo) : [];
+  } catch (e) { _titulosCache = []; }
+  return _titulosCache;
+}
+
+async function renderCostos() {
+  const conCosto = parsedRows.filter(r => r.unit_usd != null && r.unit_usd > 0);
+  const card = $('card-costos');
+  if (!conCosto.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const titulos = await cargarTitulos();
+  $('titulos-datalist').innerHTML = titulos.map(t => `<option value="${escAttr(t)}">`).join('');
+
+  const tc = parseFloat($('cst-tc').value) || 1421;
+  const flete = parseFloat($('cst-flete').value) || 1928;
+  $('costos-list').innerHTML = conCosto.map((r, i) => {
+    const costoArs = Math.round(r.unit_usd * tc + flete);
+    const nombre = r.title || r.name || '(sin nombre)';
+    return `
+      <div class="costo-row" data-i="${i}" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(nombre)}">${escHtml(nombre)}</div>
+          <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">FOB u$${r.unit_usd} × ${r.qty} u · costo ARS/u: <b>$${costoArs.toLocaleString('es-AR')}</b></div>
+        </div>
+        <input class="cst-titulo" list="titulos-datalist" data-usd="${r.unit_usd}" placeholder="→ Publicación de la tienda…"
+               style="flex:1.4;min-width:0;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px">
+      </div>`;
+  }).join('');
+}
+async function guardarCostos() {
+  const tc = parseFloat($('cst-tc').value) || 1421;
+  const flete = parseFloat($('cst-flete').value) || 1928;
+  const filas = [...document.querySelectorAll('#costos-list .costo-row')];
+  const asignados = filas.map(f => {
+    const inp = f.querySelector('.cst-titulo');
+    return { titulo: inp.value.trim(), usd: parseFloat(inp.dataset.usd) };
+  }).filter(a => a.titulo && Number.isFinite(a.usd));
+  const st = $('costos-status');
+  const showSt = (msg, color) => { st.style.display = 'inline'; st.style.color = color; st.textContent = msg; };
+  if (!asignados.length) { showSt('Asigná al menos un producto a una publicación.', 'var(--red,#dc2626)'); return; }
+  const btn = $('btn-save-costos'); btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Guardando…';
+  let ok = 0;
+  for (const a of asignados) {
+    try {
+      const r = await fetch('/api/stockroom/costos-publicacion', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo: a.titulo, costo_ars: Math.round(a.usd * tc + flete) }),
+      });
+      if (r.ok) ok++;
+    } catch (e) {}
+  }
+  btn.disabled = false; btn.textContent = orig;
+  showSt(`✓ ${ok} costo(s) guardado(s) — ya se reflejan en Rentabilidad.`, 'var(--green,#16a34a)');
+}
+
 function renderItemsTable() {
   rowId = 0;
   const tbody = $('items-tbody');
@@ -2014,9 +2105,14 @@ function toggleActlog(e) {
     : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 }
 
+$('btn-save-costos').addEventListener('click', guardarCostos);
+$('cst-tc').addEventListener('input', () => { if ($('card-costos').style.display !== 'none') renderCostos(); });
+$('cst-flete').addEventListener('input', () => { if ($('card-costos').style.display !== 'none') renderCostos(); });
+
 $('btn-new-upload').addEventListener('click', () => {
   $('card-results').style.display = 'none';
   $('card-items').style.display   = 'none';
+  $('card-costos').style.display  = 'none';
   $('parse-state-wrap').style.display = 'none';
   $('file-input').value = '';
   parsedRows = [];
