@@ -35,6 +35,7 @@ const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincL
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
+const { costoSugerido } = require('./lib/costos-fundas');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
 const { HTTP_TIMEOUT_MS, applyHttpTimeout, httpsRequestJson } = require('./lib/http-client');
 const { mlOauthToken, mlGet, mlPut, mlPost } = require('./lib/ml-api');
@@ -4655,6 +4656,113 @@ const server = http.createServer((req, res) => {
     lista.splice(idx, 1);
     writeJsonAtomic(COBROS_GUARDADOS_PATH, lista);
     json(res, 200, { ok: true });
+    return;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // RENTABILIDAD (FASE B) — ganancia real de fundas: neto (de los
+  // cobros guardados, ya con IVA/comisiones ML descontados) − costo
+  // (clasificador de fundas, pre-lleno y editable/persistido por título).
+  // ══════════════════════════════════════════════════════════════
+  const COSTOS_PUB_PATH = path.join(__dirname, 'costos-publicacion.json');
+  const leerCostosPub = () => {
+    try { return JSON.parse(fs.readFileSync(COSTOS_PUB_PATH, 'utf8')); } catch (e) { return {}; }
+  };
+
+  // GET /api/stockroom/rentabilidad?tc=&flete_unit=&cobros=id1,id2 (o todos)
+  if (pathname === '/api/stockroom/rentabilidad' && req.method === 'GET') {
+    const qp = new URL(req.url, 'http://localhost').searchParams;
+    const tc        = parseFloat(qp.get('tc')) || 1421;
+    const fleteUnit = parseFloat(qp.get('flete_unit')) || 1928;
+    const soloIds   = (qp.get('cobros') || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    const overrides = leerCostosPub();
+    let cobros = leerCobrosGuardados().filter(c => c.modo === 'fundas');
+    if (soloIds.length) cobros = cobros.filter(c => soloIds.includes(c.id));
+
+    // Agregar por publicación (título) a través de los períodos elegidos.
+    const porPub = new Map();
+    let sinNeto = 0;
+    for (const c of cobros) {
+      for (const v of (c.ventas || [])) {
+        if (v.excluida) continue;
+        const titulo = v.titulo || '(sin título)';
+        const neto = Number(v.neto) || 0;
+        const ingresos = Number(v.ingresos) || 0;
+        if (!neto) { sinNeto++; }
+        const sug = costoSugerido(titulo, tc, fleteUnit);   // {costo,tipo,unidades,confiable} | null
+        let row = porPub.get(titulo);
+        if (!row) {
+          const ov = overrides[titulo];
+          row = {
+            titulo,
+            unidades: 0, ingresos: 0, neto: 0,
+            // costo unitario: override del usuario > sugerido > null (sin costo)
+            costo_unit: (ov && ov.costo_ars != null) ? Number(ov.costo_ars)
+                      : (sug ? Math.round(sug.costo / (sug.unidades || 1)) : null),
+            costo_editado: !!(ov && ov.costo_ars != null),
+            tipo: sug ? sug.tipo : null,
+            es_funda: !!sug,
+            confiable: sug ? sug.confiable : false,
+          };
+          porPub.set(titulo, row);
+        }
+        row.unidades  += sug ? sug.unidades : 1;
+        row.ingresos  += ingresos;
+        row.neto      += neto;
+      }
+    }
+
+    // Calcular ganancia por publicación + totales
+    let totNeto = 0, totCosto = 0, totGan = 0, totIngresos = 0, netoConCosto = 0, itemsSinCosto = 0;
+    const publicaciones = [...porPub.values()].map(r => {
+      const costoTotal = (r.costo_unit != null) ? r.costo_unit * r.unidades : null;
+      const ganancia   = (costoTotal != null) ? (r.neto - costoTotal) : null;
+      const margen     = (ganancia != null && r.neto > 0) ? (ganancia / r.neto * 100) : null;
+      totNeto += r.neto; totIngresos += r.ingresos;
+      if (costoTotal != null) { totCosto += costoTotal; totGan += ganancia; netoConCosto += r.neto; }
+      else itemsSinCosto++;
+      return { ...r, costo_total: costoTotal, ganancia, margen };
+    }).sort((a, b) => (b.ganancia ?? -Infinity) - (a.ganancia ?? -Infinity));
+
+    json(res, 200, {
+      ok: true,
+      params: { tc, flete_unit: fleteUnit },
+      periodos: cobros.map(c => ({ id: c.id, nombre: c.nombre, periodo: c.periodo, total_neto: c.resumen?.total_neto ?? null })),
+      totales: {
+        ingresos: totIngresos, neto: totNeto, costo: totCosto, ganancia: totGan,
+        // margen sobre el neto de las publicaciones QUE TIENEN costo (no diluir con las sin costo)
+        margen: netoConCosto > 0 ? (totGan / netoConCosto * 100) : null,
+        neto_con_costo: netoConCosto,
+        items_sin_costo: itemsSinCosto,
+        publicaciones: publicaciones.length,
+      },
+      publicaciones,
+    });
+    return;
+  }
+
+  // POST /api/stockroom/costos-publicacion  { titulo, costo_ars }  → persiste el costo confirmado
+  if (pathname === '/api/stockroom/costos-publicacion' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      try {
+        const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+        const titulo = String(body.titulo || '').trim();
+        if (!titulo) { json(res, 400, { error: 'falta titulo' }); return; }
+        const store = leerCostosPub();
+        if (body.costo_ars == null || body.costo_ars === '') {
+          delete store[titulo];   // limpiar override → vuelve al sugerido
+        } else {
+          const c = Number(body.costo_ars);
+          if (!Number.isFinite(c) || c < 0) { json(res, 400, { error: 'costo_ars inválido' }); return; }
+          store[titulo] = { costo_ars: Math.round(c), updated: new Date().toISOString() };
+        }
+        writeJsonAtomic(COSTOS_PUB_PATH, store);
+        json(res, 200, { ok: true });
+      } catch (e) { json(res, 500, { error: 'No se pudo guardar', detail: e.message }); }
+    });
     return;
   }
 

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Rentabilidad — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=9">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.rt-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+.rt-field { display: flex; flex-direction: column; gap: 4px; }
+.rt-field label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); font-weight: 600; }
+.rt-field select, .rt-field input {
+  height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-mono); font-weight: 600;
+}
+.rt-field input[type=number] { width: 96px; text-align: right; }
+.rt-field select { min-width: 220px; font-family: var(--font-sans, inherit); }
+
+.rt-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 760px) { .rt-kpis { grid-template-columns: repeat(2, 1fr); } }
+.rt-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; transition: transform .12s; }
+.rt-kpi:hover { transform: translateY(-1px); }
+.rt-kpi-lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; margin-bottom: 5px; }
+.rt-kpi-val { font-size: 24px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.05; }
+.rt-kpi-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.rt-kpi.gan .rt-kpi-val { color: var(--green); }
+.rt-kpi.costo .rt-kpi-val { color: var(--red); }
+
+.rt-warn { background: var(--yellow-light); color: var(--yellow); border: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 16px; display: none; }
+.rt-warn.show { display: block; }
+
+.rt-costo-inp {
+  width: 84px; height: 30px; padding: 0 8px; text-align: right;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text);
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.rt-costo-inp:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,113,95,.12); }
+.rt-costo-inp.editado { border-color: var(--blue); background: var(--blue-light); }
+.rt-flag { color: var(--yellow); cursor: help; margin-left: 4px; }
+.rt-num { font-variant-numeric: tabular-nums; text-align: right; }
+.rt-gan-pos { color: var(--green); font-weight: 600; }
+.rt-gan-neg { color: var(--red); font-weight: 600; }
+.rt-sincosto { color: var(--text-3); font-style: italic; font-size: 11.5px; }
+th.rt-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.rt-sortable:hover { color: var(--text); }
+.rt-sort-ind { opacity: .5; font-size: 9px; }
+#rt-status { font-size: 12.5px; padding: 8px 12px; border-radius: 8px; margin-top: 12px; display: none; font-family: var(--font-mono); }
+#rt-status.show { display: block; }
+#rt-status.ok { background: var(--green-light); color: var(--green); }
+#rt-status.err { background: var(--red-light); color: var(--red); }
+.rt-empty { text-align: center; padding: 56px 20px; color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/stockroom-sidebar.js?v=5"></script>
+
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Rentabilidad</div>
+        <div class="adm-page-sub"><span>Ganancia real de fundas: neto (cobros) − costo</span></div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+
+    <div class="rt-tools">
+      <div class="rt-field">
+        <label>Período (cobros)</label>
+        <select id="rt-periodo"><option value="">Todos los períodos</option></select>
+      </div>
+      <div class="rt-field">
+        <label>TC (ARS/USD)</label>
+        <input id="rt-tc" type="number" min="1" step="1" value="1421" inputmode="numeric">
+      </div>
+      <div class="rt-field">
+        <label>Flete/u (ARS)</label>
+        <input id="rt-flete" type="number" min="0" step="1" value="1928" inputmode="numeric">
+      </div>
+      <button class="btn btn-ghost" id="rt-recalc" style="height:34px">↻ Recalcular</button>
+    </div>
+
+    <div class="rt-kpis" id="rt-kpis" style="display:none">
+      <div class="rt-kpi"><div class="rt-kpi-lbl">Neto (ML deposita)</div><div class="rt-kpi-val" id="k-neto">$0</div><div class="rt-kpi-sub" id="k-neto-sub"></div></div>
+      <div class="rt-kpi costo"><div class="rt-kpi-lbl">Costo mercadería</div><div class="rt-kpi-val" id="k-costo">$0</div><div class="rt-kpi-sub" id="k-costo-sub"></div></div>
+      <div class="rt-kpi gan"><div class="rt-kpi-lbl">Ganancia</div><div class="rt-kpi-val" id="k-gan">$0</div><div class="rt-kpi-sub">neto − costo</div></div>
+      <div class="rt-kpi"><div class="rt-kpi-lbl">Margen s/ neto</div><div class="rt-kpi-val" id="k-margen">—</div><div class="rt-kpi-sub" id="k-margen-sub"></div></div>
+    </div>
+
+    <div class="rt-warn" id="rt-warn"></div>
+
+    <div class="adm-card" id="rt-card" style="display:none">
+      <div class="adm-card-body-flush">
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead><tr>
+              <th class="rt-sortable" data-sort="titulo">Publicación</th>
+              <th class="rt-sortable right" data-sort="unidades">Unid.</th>
+              <th class="rt-sortable right" data-sort="neto">Neto</th>
+              <th class="right">Costo/u <span style="font-weight:400;color:var(--text-3);font-size:10px">(editable)</span></th>
+              <th class="rt-sortable right" data-sort="costo_total">Costo total</th>
+              <th class="rt-sortable right" data-sort="ganancia">Ganancia</th>
+              <th class="rt-sortable right" data-sort="margen">Margen</th>
+            </tr></thead>
+            <tbody id="rt-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="rt-empty" id="rt-empty" style="display:none">
+      No hay períodos de cobros de fundas guardados todavía. Generá y guardá un cobro en la página <b>Cobros</b> y volvé acá.
+    </div>
+
+    <div id="rt-status"></div>
+
+  </main>
+</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ars = n => (n == null ? '—' : '$' + Math.round(n).toLocaleString('es-AR'));
+const pct = n => (n == null ? '—' : Math.round(n) + '%');
+
+$('btn-theme').addEventListener('click', () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('adminTheme', t); } catch(e) {}
+});
+$('btn-hamburger')?.addEventListener('click', () => $('sidebar')?.classList.toggle('open'));
+
+let data = null;
+let sortKey = 'ganancia', sortDir = -1;
+
+function setStatus(msg, ok) { const el = $('rt-status'); el.className = 'show ' + (ok ? 'ok' : 'err'); el.textContent = msg; }
+
+async function cargar() {
+  const tc = parseInt($('rt-tc').value) || 1421;
+  const flete = parseInt($('rt-flete').value) || 1928;
+  const cobros = $('rt-periodo').value;
+  const qs = new URLSearchParams({ tc, flete_unit: flete });
+  if (cobros) qs.set('cobros', cobros);
+  try {
+    const r = await fetch('/api/stockroom/rentabilidad?' + qs.toString());
+    data = await r.json();
+    if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    // poblar selector de períodos (una vez)
+    const sel = $('rt-periodo');
+    if (sel.options.length <= 1 && data.periodos.length) {
+      data.periodos.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = `${p.periodo} (${ars(p.total_neto)})`;
+        sel.appendChild(o);
+      });
+    }
+    render();
+  } catch (e) { setStatus('✕ ' + e.message, false); }
+}
+
+function render() {
+  const t = data.totales;
+  if (!data.publicaciones.length) {
+    $('rt-kpis').style.display = 'none'; $('rt-card').style.display = 'none';
+    $('rt-empty').style.display = 'block'; $('rt-warn').classList.remove('show');
+    return;
+  }
+  $('rt-empty').style.display = 'none';
+  $('rt-kpis').style.display = 'grid'; $('rt-card').style.display = 'block';
+
+  $('k-neto').textContent = ars(t.neto);
+  $('k-neto-sub').textContent = `${t.publicaciones} publicaciones`;
+  $('k-costo').textContent = ars(t.costo);
+  $('k-costo-sub').textContent = `costo de la mercadería vendida`;
+  $('k-gan').textContent = ars(t.ganancia);
+  $('k-margen').textContent = pct(t.margen);
+  $('k-margen-sub').textContent = t.items_sin_costo ? `sobre ${ars(t.neto_con_costo)} con costo` : 'sobre el neto total';
+
+  const warn = $('rt-warn');
+  const inciertos = data.publicaciones.filter(p => p.es_funda && !p.confiable && !p.costo_editado).length;
+  const sinCosto  = data.publicaciones.filter(p => p.costo_unit == null).length;
+  if (inciertos || sinCosto) {
+    warn.classList.add('show');
+    const partes = [];
+    if (inciertos) partes.push(`<b>${inciertos}</b> con costo <b>estimado a confirmar</b> (⚠ Samsung premium o packs): el costo mostrado es una estimación, revisalo`);
+    if (sinCosto)  partes.push(`<b>${sinCosto}</b> sin costo (excluidas de la ganancia)`);
+    warn.innerHTML = `⚠️ ${partes.join(' · ')}. Editá el costo en la columna "Costo/u" para fijarlo.`;
+  } else warn.classList.remove('show');
+
+  renderRows();
+  markSortHeader();
+}
+
+function renderRows() {
+  const rows = [...data.publicaciones].sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (sortKey === 'titulo') return sortDir * String(av).localeCompare(String(bv), 'es');
+    av = av ?? -Infinity; bv = bv ?? -Infinity;
+    return sortDir * (av - bv);
+  });
+  $('rt-tbody').innerHTML = rows.map(p => {
+    const flag = (p.es_funda && !p.confiable && !p.costo_editado)
+      ? `<span class="rt-flag" title="Clasificación incierta (Samsung premium o pack) — confirmá el costo">⚠</span>` : '';
+    const ganCls = p.ganancia == null ? '' : (p.ganancia >= 0 ? 'rt-gan-pos' : 'rt-gan-neg');
+    return `
+      <tr>
+        <td><div class="adm-prod-title" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.titulo)}">${esc(p.titulo)}${flag}</div></td>
+        <td class="rt-num">${p.unidades}</td>
+        <td class="rt-num">${ars(p.neto)}</td>
+        <td class="right">
+          <input class="rt-costo-inp${p.costo_editado ? ' editado' : ''}" type="number" min="0" step="1"
+                 value="${p.costo_unit != null ? p.costo_unit : ''}" placeholder="sin costo"
+                 data-titulo="${esc(p.titulo)}" title="Costo unitario ARS — Enter para guardar">
+        </td>
+        <td class="rt-num">${p.costo_total != null ? ars(p.costo_total) : '<span class="rt-sincosto">sin costo</span>'}</td>
+        <td class="rt-num ${ganCls}">${p.ganancia != null ? ars(p.ganancia) : '—'}</td>
+        <td class="rt-num ${ganCls}">${pct(p.margen)}</td>
+      </tr>`;
+  }).join('');
+
+  $('rt-tbody').querySelectorAll('.rt-costo-inp').forEach(inp => {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); guardarCosto(inp); } });
+    inp.addEventListener('blur', () => guardarCosto(inp, true));
+  });
+}
+
+async function guardarCosto(inp, soloSiCambio) {
+  const titulo = inp.dataset.titulo;
+  const raw = inp.value.trim();
+  const pub = data.publicaciones.find(p => p.titulo === titulo);
+  if (!pub) return;
+  const nuevo = raw === '' ? null : parseInt(raw);
+  if (soloSiCambio && nuevo === (pub.costo_unit ?? null)) return;
+  if (raw !== '' && (!Number.isFinite(nuevo) || nuevo < 0)) { inp.value = pub.costo_unit ?? ''; return; }
+  try {
+    const r = await fetch('/api/stockroom/costos-publicacion', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, costo_ars: nuevo }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'error');
+    setStatus('✓ Costo guardado — recalculando…', true);
+    await cargar();   // recalcula totales/ganancia con el costo confirmado
+  } catch (e) { setStatus('✕ ' + e.message, false); }
+}
+
+function markSortHeader() {
+  document.querySelectorAll('th.rt-sortable').forEach(th => {
+    const k = th.dataset.sort;
+    th.innerHTML = th.innerHTML.replace(/\s*<span class="rt-sort-ind">.*<\/span>/, '');
+    if (k === sortKey) th.innerHTML += ` <span class="rt-sort-ind">${sortDir < 0 ? '▼' : '▲'}</span>`;
+  });
+}
+document.querySelectorAll('th.rt-sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = k === 'titulo' ? 1 : -1; }
+    renderRows(); markSortHeader();
+  });
+});
+
+$('rt-recalc').addEventListener('click', cargar);
+$('rt-periodo').addEventListener('change', cargar);
+['rt-tc', 'rt-flete'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') cargar(); }));
+
+cargar();
+</script>
+</body>
+</html>

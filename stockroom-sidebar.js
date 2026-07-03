@@ -19,6 +19,7 @@
     if (p.includes('orden-compra'))              return 'orden';
     if (p.includes('despachos'))                 return 'despachos';
     if (p.includes('cobros'))                    return 'cobros';
+    if (p.includes('rentabilidad'))              return 'rentabilidad';
     if (p.includes('verificar-envios'))          return 'verificar';
     if (p.includes('publicaciones'))             return 'publicaciones';
     if (p.includes('vinculaciones'))             return 'vinculaciones';
@@ -69,6 +70,10 @@
       <a href="/cobros.html" class="${A('cobros')}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
         <span>Cobros</span>
+      </a>
+      <a href="/rentabilidad.html" class="${A('rentabilidad')}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span>Rentabilidad</span>
       </a>
       <a href="/verificar-envios.html" class="${A('verificar')}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>

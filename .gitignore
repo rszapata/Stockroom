@@ -63,3 +63,6 @@ test_*.pdf
 
 # ── Estado operativo (no commitear, no pisar en deploy) ───────
 proveedor-links.json
+
+# Costos confirmados por publicación (estado operativo)
+costos-publicacion.json
