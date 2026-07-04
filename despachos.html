@@ -392,6 +392,7 @@ function imprimirFlyer() {
       <img class="fl-qr" src="${qr}" alt="QR a la tienda">
       <div class="fl-cupon">${FLYER_CUPON}</div>
       <div class="fl-off">10% OFF en tu primera compra</div>
+      <div class="fl-wsp">¿Algún inconveniente con tu pedido?<br><strong>Escribinos y lo resolvemos al toque 📱 2304 216009</strong></div>
       <p class="fl-foot">wzmallas.com · Envíos a todo el país · Más modelos y mejores precios que en ML</p>
     </div>`;
   const win = window.open('', '_blank');
@@ -407,6 +408,8 @@ function imprimirFlyer() {
       .fl-qr{width:44mm;height:44mm;margin:2mm 0}
       .fl-cupon{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;letter-spacing:2px;color:#15715f;border:2px dashed #15715f;border-radius:10px;padding:6px 16px}
       .fl-off{font-size:13px;font-weight:700;color:#15715f}
+      .fl-wsp{font-size:11.5px;color:#333;max-width:82mm;line-height:1.45;margin-top:3mm;background:#eafaf1;border:1px solid #bfe6d2;border-radius:8px;padding:6px 10px}
+      .fl-wsp strong{color:#1a8a5f}
       .fl-foot{font-size:10.5px;color:#777;max-width:80mm;line-height:1.4;margin-top:3mm}
       @media print{ .fl{border-color:#ddd} @page{margin:0;size:A4} }
       .print-hint{position:fixed;top:8px;left:0;right:0;text-align:center;font-size:13px;color:#555}
