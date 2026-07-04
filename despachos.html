@@ -202,6 +202,9 @@
       <button onclick="generar('zpl2')" class="btn btn-zpl" id="btn-zpl" disabled>
         ↓ Etiquetas · todas
       </button>
+      <button onclick="imprimirFlyer()" class="btn btn-ghost" id="btn-flyer" title="Imprimir flyer con QR + cupón para meter en los paquetes">
+        🖨 Flyer
+      </button>
     </div>
   </div>
 
@@ -371,6 +374,49 @@ function fmtNow() {
 }
 function setStatus(msg, loading=false) {
   $I('status-bar').innerHTML = (loading ? '<span class="spinner" style="margin-right:8px"></span>' : '') + msg;
+}
+
+// ── Flyer imprimible (FASE F) ──────────────────────────────────
+// Genera una hoja A4 con 4 flyers (QR a la tienda + cupón GENÉRICO fijo) para
+// meter en cada paquete de ML → llevar compradores de ML a la web propia (sin
+// comisión). El cupón es fijo (BIENVENIDA10), no se genera uno por venta.
+const FLYER_CUPON = 'BIENVENIDA10';
+const FLYER_URL   = 'https://wzmallas.com/tienda/catalogo.html?utm_source=flyer&cupon=' + FLYER_CUPON;
+function imprimirFlyer() {
+  const qr = `/api/stockroom/qr?size=420&text=${encodeURIComponent(FLYER_URL)}`;
+  const uno = `
+    <div class="fl">
+      <div class="fl-top">WZMALLAS</div>
+      <div class="fl-h1">Comprá directo<br>y ahorrá 🎁</div>
+      <p class="fl-p">Escaneá el QR, entrá a nuestra tienda oficial y usá el cupón en tu compra:</p>
+      <img class="fl-qr" src="${qr}" alt="QR a la tienda">
+      <div class="fl-cupon">${FLYER_CUPON}</div>
+      <div class="fl-off">10% OFF en tu primera compra</div>
+      <p class="fl-foot">wzmallas.com · Envíos a todo el país · Más modelos y mejores precios que en ML</p>
+    </div>`;
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Flyer WZMALLAS</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:'Inter',system-ui,sans-serif}
+      .sheet{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:210mm;height:297mm}
+      .fl{border:1px dashed #bbb;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14mm 10mm;gap:3mm}
+      .fl-top{font-weight:800;letter-spacing:2px;font-size:15px;color:#111}
+      .fl-h1{font-size:26px;font-weight:800;line-height:1.15;color:#111;margin-top:4mm}
+      .fl-p{font-size:12.5px;color:#444;max-width:78mm;line-height:1.45}
+      .fl-qr{width:44mm;height:44mm;margin:2mm 0}
+      .fl-cupon{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;letter-spacing:2px;color:#15715f;border:2px dashed #15715f;border-radius:10px;padding:6px 16px}
+      .fl-off{font-size:13px;font-weight:700;color:#15715f}
+      .fl-foot{font-size:10.5px;color:#777;max-width:80mm;line-height:1.4;margin-top:3mm}
+      @media print{ .fl{border-color:#ddd} @page{margin:0;size:A4} }
+      .print-hint{position:fixed;top:8px;left:0;right:0;text-align:center;font-size:13px;color:#555}
+      @media print{.print-hint{display:none}}
+    </style></head><body>
+    <div class="print-hint">Se abre el diálogo de impresión… (guardá como PDF o imprimí). 4 flyers por hoja.</div>
+    <div class="sheet">${uno}${uno}${uno}${uno}</div>
+    <script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script>
+    </body></html>`);
+  win.document.close();
 }
 
 // ── render ─────────────────────────────────────────────────────

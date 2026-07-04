@@ -31,6 +31,7 @@ const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = requi
 const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const TOPE_CUPON_DESCUENTO = 10000; // tope máximo de descuento por cupón (ARS)
+let QRCode = null; try { QRCode = require('qrcode'); } catch { /* QR opcional (flyer) */ }
 const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
 const { loadSessions, saveSessions } = require('./lib/session-store');
@@ -4935,6 +4936,23 @@ const server = http.createServer((req, res) => {
         json(res, 200, { ok: true });
       } catch (e) { json(res, 500, { error: 'No se pudo guardar', detail: e.message }); }
     });
+    return;
+  }
+
+  // ── QR PNG (FASE F, para el flyer de despachos) ──────────────────
+  // GET /api/stockroom/qr?text=<url>&size=<px> → imagen PNG del código QR.
+  if (pathname === '/api/stockroom/qr' && req.method === 'GET') {
+    (async () => {
+      if (!QRCode) { res.writeHead(500); res.end('QR no disponible'); return; }
+      const qp = new URL(req.url, 'http://localhost').searchParams;
+      const text = (qp.get('text') || 'https://wzmallas.com').slice(0, 500);
+      const size = Math.min(1200, Math.max(80, parseInt(qp.get('size')) || 360));
+      try {
+        const buf = await QRCode.toBuffer(text, { width: size, margin: 1, errorCorrectionLevel: 'M' });
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+        res.end(buf);
+      } catch (e) { res.writeHead(500); res.end('QR error'); }
+    })();
     return;
   }
 
