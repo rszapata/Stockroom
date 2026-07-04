@@ -554,6 +554,7 @@ const _contactRateLimit = new Map(); // ip -> [timestamp1, timestamp2...]
 const _newsletterRL     = new Map(); // ip -> [timestamp1, timestamp2...] — máx 5 altas/hora
 const _stockAlertRL     = new Map(); // ip -> [...] — máx 10 alertas de stock/hora
 const _ordenRateLimit   = new Map(); // ip -> [timestamp1, timestamp2...] — máx 10 órdenes/hora
+const _resenaRateLimit  = new Map(); // ip -> [...] — máx 8 reseñas/hora (in-memory)
 const _tiendaLoginRL    = new Map(); // ip -> { count, since } — rate limit login tienda clientes
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 días
 
@@ -590,6 +591,7 @@ setInterval(() => {
   for (const [ip, e] of _loginAttempts)   { if (now - e.since > 15 * 60 * 1000) _loginAttempts.delete(ip); }
   for (const [ip, ts] of _contactRateLimit) { const v = ts.filter(t => now - t < 3600 * 1000); if (!v.length) _contactRateLimit.delete(ip); else _contactRateLimit.set(ip, v); }
   for (const [ip, ts] of _ordenRateLimit)   { const v = ts.filter(t => now - t < 3600 * 1000); if (!v.length) _ordenRateLimit.delete(ip); else _ordenRateLimit.set(ip, v); }
+  for (const [ip, ts] of _resenaRateLimit)  { const v = ts.filter(t => now - t < 3600 * 1000); if (!v.length) _resenaRateLimit.delete(ip); else _resenaRateLimit.set(ip, v); }
   _saveRateLimits();
 }, 5 * 60 * 1000);
 
@@ -4170,6 +4172,12 @@ const server = http.createServer((req, res) => {
         try {
           const d = JSON.parse(body || '{}');
           if (d.website) { res.writeHead(200); res.end(JSON.stringify({ ok: true })); return; } // honeypot → descartar en silencio
+          // Rate-limit por IP: máx 8 reseñas/hora (evita spam de pendientes).
+          const _ip = getClientIP(req) || 'unknown';
+          const _hits = (_resenaRateLimit.get(_ip) || []).filter(t => Date.now() - t < 3600 * 1000);
+          if (_hits.length >= 8) { res.writeHead(429); res.end(JSON.stringify({ error: 'Demasiadas reseñas desde esta conexión. Probá más tarde.' })); return; }
+          _hits.push(Date.now()); _resenaRateLimit.set(_ip, _hits);
+
           const producto_id = String(d.producto_id || '').trim();
           const rating = parseInt(d.rating) || 0;
           if (!producto_id || rating < 1 || rating > 5) { res.writeHead(400); res.end(JSON.stringify({ error: 'Datos inválidos (producto y calificación 1-5 requeridos)' })); return; }
@@ -4179,22 +4187,29 @@ const server = http.createServer((req, res) => {
             res.writeHead(409); res.end(JSON.stringify({ error: 'Ya dejaste una reseña de este producto. ¡Gracias!' })); return;
           }
           const fotoUrl = (typeof d.foto_url === 'string' && /^\/uploads\/resenas\//.test(d.foto_url)) ? d.foto_url : null;
+          const ordenId = d.orden_id ? String(d.orden_id).trim() : '';
 
-          // Recompensa: si la reseña trae foto, generar un cupón 10% off (60 días).
+          // Recompensa: cupón 10% off (60 días) SOLO si la reseña trae foto Y
+          // corresponde a una ORDEN REAL aún no premiada (1 cupón por orden).
+          // Así el cupón no se puede farmear con reseñas sueltas sin compra.
           let cupon = null;
-          if (fotoUrl) {
+          if (fotoUrl && ordenId) {
             try {
-              cupon = 'RESENA' + Math.random().toString(36).slice(2, 7).toUpperCase();
-              const list = getCupones();
-              list.push({ code: cupon, type: 'percent', value: 10, label: 'Gracias por tu reseña con foto', active: true,
-                expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), createdAt: new Date().toISOString() });
-              saveCupones(list);
+              const orden = await db.getOrdenById(ordenId);
+              const yaPremiada = await db.ordenPremiadaConResena(ordenId);
+              if (orden && !yaPremiada) {
+                cupon = 'RESENA' + Math.random().toString(36).slice(2, 7).toUpperCase();
+                const list = getCupones();
+                list.push({ code: cupon, type: 'percent', value: 10, label: 'Gracias por tu reseña con foto', active: true,
+                  expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(), createdAt: new Date().toISOString() });
+                saveCupones(list);
+              }
             } catch (e) { cupon = null; }
           }
 
           await db.addResenaPropia({
             producto_id, producto_titulo: d.producto_titulo, nombre: d.nombre, email: email || null,
-            rating, texto: d.texto, foto_url: fotoUrl, cupon_code: cupon, orden_id: d.orden_id,
+            rating, texto: d.texto, foto_url: fotoUrl, cupon_code: cupon, orden_id: ordenId || null,
           });
           try { tgAlert('resena_nueva', `📝 <b>Nueva reseña para moderar</b>\n${String(d.nombre).slice(0,40)} · ${rating}★${fotoUrl ? ' · con foto' : ''}\n${String(d.producto_titulo||producto_id).slice(0,60)}`, 30); } catch {}
           res.writeHead(200); res.end(JSON.stringify({ ok: true, cupon }));

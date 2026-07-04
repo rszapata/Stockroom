@@ -1528,6 +1528,15 @@ async function markResenaInvitada(ordenId) {
       WHERE order_id = $1 AND review_invitation_sent_at IS NULL`, [ordenId]);
 }
 
+// Anti-abuso del cupón: ¿esta orden ya generó un cupón por reseña? (1 por orden)
+async function ordenPremiadaConResena(ordenId) {
+  if (!ordenId) return true; // sin orden → no se premia
+  const { rows } = await pool.query(
+    `SELECT 1 FROM tienda_reviews_propias WHERE orden_id = $1 AND cupon_code IS NOT NULL LIMIT 1`,
+    [String(ordenId)]);
+  return rows.length > 0;
+}
+
 // Anti-spam: ¿este email ya dejó reseña de este item? (dedup)
 async function yaResenoItem(email, itemId) {
   if (!email) return false;
@@ -1749,6 +1758,7 @@ module.exports = {
   moderarResena,
   countResenasModeracionPendientes,
   yaResenoItem,
+  ordenPremiadaConResena,
   getOrdenesParaResena,
   markResenaInvitada,
   getItemsWithPendingAlerts,
