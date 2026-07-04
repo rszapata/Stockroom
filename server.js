@@ -2402,7 +2402,7 @@ const server = http.createServer((req, res) => {
           if (emailCliente) {
             sendEmail({
               to:      emailCliente,
-              subject: `✅ Pedido confirmado #${String(orden.id).slice(-8).toUpperCase()} · WZMALLAS`,
+              subject: `Pedido confirmado #${String(orden.id).slice(-8).toUpperCase()} · WZMALLAS`,
               html:    emailConfirmacionOrden(orden),
             }).then(r => {
               if (r.ok) console.log(`  ✓ [email] Confirmación enviada a ${emailCliente}`);
@@ -2691,7 +2691,7 @@ const server = http.createServer((req, res) => {
           const escAdm = s => String(s ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           sendEmail({
             to: fullConfig.email?.admin_email,
-            subject: `⚠️ Arrepentimiento ${ticket} — Pedido ${pedido}`,
+            subject: `Arrepentimiento ${ticket} — Pedido ${pedido}`,
             html: `<p>Ticket: <b>${escAdm(ticket)}</b><br>`
               + `Fecha: ${escAdm(ts)}<br>`
               + `Nombre: ${escAdm(nombre)}<br>`
@@ -3220,7 +3220,7 @@ const server = http.createServer((req, res) => {
               if (emailPago) {
                 sendEmail({
                   to: emailPago,
-                  subject: `💳 Pago recibido · Orden #${String(orden.id).slice(-8).toUpperCase()} · WZMALLAS`,
+                  subject: `Pago recibido · Orden #${String(orden.id).slice(-8).toUpperCase()} · WZMALLAS`,
                   html: emailPagoConfirmado({ ...orden, total: pago.transaction_amount || orden.total }),
                 }).then(r => {
                   if (r.ok) console.log(`  ✓ [email] Pago confirmado enviado a ${emailPago}`);
@@ -3779,7 +3779,7 @@ const server = http.createServer((req, res) => {
             if (newStatus === 'pagado' && cliente.email && prevStatus !== 'pagado') {
               sendEmail({
                 to:      cliente.email,
-                subject: `💳 Pago recibido · Orden #${String(o.id).slice(-8).toUpperCase()} · WZMALLAS`,
+                subject: `Pago recibido · Orden #${String(o.id).slice(-8).toUpperCase()} · WZMALLAS`,
                 html:    emailPagoConfirmado(o),
               }).catch(() => {});
             }
@@ -8059,7 +8059,7 @@ async function checkCarritosAbandonados() {
     try {
       await sendEmail({
         to:      c.email,
-        subject: '🛒 Tu carrito te espera · WZMALLAS',
+        subject: 'Tu carrito te espera · WZMALLAS',
         html:    emailCarritoAbandonado({ nombre: c.nombre, items: c.items, total: c.total, token: c.token }),
       });
       await db.marcarCarritoEmailEnviado(c.id);
@@ -8102,7 +8102,7 @@ async function checkStockAlerts() {
       try {
         await sendEmail({
           to:      email,
-          subject: `🔔 Volvió el stock · ${String(titulo).slice(0, 60)} · WZMALLAS`,
+          subject: `Volvió el stock · ${String(titulo).slice(0, 60)} · WZMALLAS`,
           html:    emailBackInStock({ titulo, variant: list.length === 1 ? list[0].variant : '', url }),
         });
         await db.markStockAlertsNotified(list.map(a => a.id));
@@ -8154,9 +8154,9 @@ async function checkFavoritosChanges() {
       for (const email of emails) {
         try {
           if (backInStock) {
-            await sendEmail({ to: email, subject: `💚 Volvió el stock de tu favorito · ${String(titulo).slice(0, 55)}`, html: emailFavBackInStock({ titulo, url }) });
+            await sendEmail({ to: email, subject: `Volvió el stock de tu favorito · ${String(titulo).slice(0, 55)}`, html: emailFavBackInStock({ titulo, url }) });
           } else {
-            await sendEmail({ to: email, subject: `📉 Bajó de precio tu favorito · ${String(titulo).slice(0, 55)}`, html: emailFavPriceDrop({ titulo, url, precioViejo: prev.last_price, precioNuevo: price }) });
+            await sendEmail({ to: email, subject: `Bajó de precio tu favorito · ${String(titulo).slice(0, 55)}`, html: emailFavPriceDrop({ titulo, url, precioViejo: prev.last_price, precioNuevo: price }) });
           }
           console.log(`  ✓ [fav-hook] Avisado ${email} — ${itemId} (${backInStock ? 'stock' : 'precio'})`);
         } catch (e) {
