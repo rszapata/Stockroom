@@ -383,41 +383,48 @@ function setStatus(msg, loading=false) {
 const FLYER_CUPON = 'BIENVENIDA10';
 const FLYER_URL   = 'https://wzmallas.com/tienda/catalogo.html?utm_source=flyer&cupon=' + FLYER_CUPON;
 function imprimirFlyer() {
-  const qr = `/api/stockroom/qr?size=420&text=${encodeURIComponent(FLYER_URL)}`;
+  const qr = `/api/stockroom/qr?size=360&text=${encodeURIComponent(FLYER_URL)}`;
+  const WSP_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>';
   const uno = `
     <div class="fl">
       <div class="fl-top">WZMALLAS</div>
-      <div class="fl-h1">Comprá directo<br>y ahorrá 🎁</div>
-      <p class="fl-p">Escaneá el QR, entrá a nuestra tienda oficial y usá el cupón en tu compra:</p>
+      <div class="fl-h1">Comprá directo y ahorrá 🎁</div>
+      <p class="fl-p">Escaneá el QR y usá el cupón en tu compra:</p>
       <img class="fl-qr" src="${qr}" alt="QR a la tienda">
       <div class="fl-cupon">${FLYER_CUPON}</div>
       <div class="fl-off">10% OFF en tu primera compra</div>
-      <div class="fl-wsp">¿Algún inconveniente con tu pedido?<br><strong>Escribinos y lo resolvemos al toque 📱 2304 216009</strong></div>
+      <div class="fl-wsp">
+        <span class="fl-wsp-q">¿Algún inconveniente con tu pedido? Escribinos y lo resolvemos:</span>
+        <span class="fl-wsp-n">${WSP_SVG}<strong>2304216009</strong></span>
+      </div>
       <p class="fl-foot">wzmallas.com · Envíos a todo el país · Más modelos y mejores precios que en ML</p>
     </div>`;
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Flyer WZMALLAS</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      html,body{width:210mm}
       body{font-family:'Inter',system-ui,sans-serif}
-      .sheet{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:210mm;height:297mm}
-      .fl{border:1px dashed #bbb;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14mm 10mm;gap:3mm}
-      .fl-top{font-weight:800;letter-spacing:2px;font-size:15px;color:#111}
-      .fl-h1{font-size:26px;font-weight:800;line-height:1.15;color:#111;margin-top:4mm}
-      .fl-p{font-size:12.5px;color:#444;max-width:78mm;line-height:1.45}
-      .fl-qr{width:44mm;height:44mm;margin:2mm 0}
-      .fl-cupon{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;letter-spacing:2px;color:#15715f;border:2px dashed #15715f;border-radius:10px;padding:6px 16px}
-      .fl-off{font-size:13px;font-weight:700;color:#15715f}
-      .fl-wsp{font-size:11.5px;color:#333;max-width:82mm;line-height:1.45;margin-top:3mm;background:#eafaf1;border:1px solid #bfe6d2;border-radius:8px;padding:6px 10px}
-      .fl-wsp strong{color:#1a8a5f}
-      .fl-foot{font-size:10.5px;color:#777;max-width:80mm;line-height:1.4;margin-top:3mm}
-      @media print{ .fl{border-color:#ddd} @page{margin:0;size:A4} }
-      .print-hint{position:fixed;top:8px;left:0;right:0;text-align:center;font-size:13px;color:#555}
+      .sheet{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:148.5mm 148.5mm;width:210mm;height:297mm}
+      .fl{border:1px dashed #ccc;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:7mm 8mm;gap:1.6mm}
+      .fl-top{font-weight:800;letter-spacing:2px;font-size:13px;color:#111}
+      .fl-h1{font-size:19px;font-weight:800;line-height:1.15;color:#111;margin-top:1mm;max-width:85mm}
+      .fl-p{font-size:11px;color:#444;max-width:80mm;line-height:1.35}
+      .fl-qr{width:30mm;height:30mm;margin:1mm 0}
+      .fl-cupon{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;letter-spacing:2px;color:#15715f;border:2px dashed #15715f;border-radius:8px;padding:4px 14px}
+      .fl-off{font-size:12px;font-weight:700;color:#15715f}
+      .fl-wsp{max-width:84mm;margin-top:1.5mm;background:#eafaf1;border:1px solid #bfe6d2;border-radius:8px;padding:5px 9px;display:flex;flex-direction:column;gap:2px}
+      .fl-wsp-q{font-size:10px;color:#333;line-height:1.35}
+      .fl-wsp-n{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:14px;color:#1a8a5f}
+      .fl-wsp-n strong{letter-spacing:.5px}
+      .fl-foot{font-size:9px;color:#777;max-width:82mm;line-height:1.35;margin-top:1mm}
+      @media print{ .fl{border-color:#e2e2e2} @page{margin:0;size:A4} }
+      .print-hint{position:fixed;top:6px;left:0;right:0;text-align:center;font-size:12px;color:#555}
       @media print{.print-hint{display:none}}
     </style></head><body>
     <div class="print-hint">Se abre el diálogo de impresión… (guardá como PDF o imprimí). 4 flyers por hoja.</div>
     <div class="sheet">${uno}${uno}${uno}${uno}</div>
-    <script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script>
+    <script>window.onload=function(){setTimeout(function(){window.print()},450)}<\/script>
     </body></html>`);
   win.document.close();
 }
