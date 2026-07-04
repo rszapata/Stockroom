@@ -1668,15 +1668,24 @@ async function ensureEmailLogTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  // Cuerpo HTML del mail (para previsualizarlo tal cual se recibió).
+  await pool.query(`ALTER TABLE tienda_email_log ADD COLUMN IF NOT EXISTS html TEXT`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_log_created ON tienda_email_log (created_at DESC)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_log_to ON tienda_email_log (LOWER(to_email))`);
 }
 
-async function logEmail({ to_email, subject, tipo, status, error }) {
+async function logEmail({ to_email, subject, tipo, status, error, html }) {
   await pool.query(
-    `INSERT INTO tienda_email_log (to_email, subject, tipo, status, error) VALUES ($1, $2, $3, $4, $5)`,
+    `INSERT INTO tienda_email_log (to_email, subject, tipo, status, error, html) VALUES ($1, $2, $3, $4, $5, $6)`,
     [ (to_email || '').slice(0, 200), (subject || '').slice(0, 300), (tipo || 'otro').slice(0, 40),
-      (status || 'sent').slice(0, 20), error ? String(error).slice(0, 400) : null ]);
+      (status || 'sent').slice(0, 20), error ? String(error).slice(0, 400) : null,
+      html ? String(html).slice(0, 200000) : null ]);
+}
+
+// HTML de un mail puntual (para la previsualización).
+async function getEmailHtml(id) {
+  const { rows } = await pool.query(`SELECT html, subject FROM tienda_email_log WHERE id = $1`, [parseInt(id) || 0]);
+  return rows[0] || null;
 }
 
 // Listado paginado con filtros (q por email, tipo, status) + stats (24h/7d/fallidos).
@@ -1800,6 +1809,7 @@ module.exports = {
   countPendingStockAlertsByItem,
   // Log de emails enviados
   ensureEmailLogTable,
+  getEmailHtml,
   logEmail,
   getEmailLog,
 };

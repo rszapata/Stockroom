@@ -279,6 +279,7 @@ function sendEmail(opts) {
       tipo:     (opts && opts.tipo) || _inferEmailTipo(opts && opts.subject),
       status,
       error:    r && r.error ? String(r.error) : null,
+      html:     opts && opts.html,
     });
   }).catch(err => {
     db.logEmail({
@@ -1730,6 +1731,23 @@ const server = http.createServer((req, res) => {
         res.writeHead(500);
         res.end(JSON.stringify({ error: 'internal_error', message: e.message }));
       } })();
+      return;
+    }
+
+    // ── GET /api/tienda/admin/email-log/:id/preview ───────────
+    // Devuelve el HTML del mail tal cual se envió (para previsualizarlo).
+    const mPrev = pathname.match(/^\/api\/tienda\/admin\/email-log\/(\d+)\/preview$/);
+    if (mPrev && req.method === 'GET') {
+      (async () => {
+        const row = await db.getEmailHtml(mPrev[1]);
+        if (!row || !row.html) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end('<div style="font-family:sans-serif;padding:40px;text-align:center;color:#888">No se guardó el contenido de este correo (se envió antes de esta función).</div>');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(row.html);
+      })().catch(() => { res.writeHead(500); res.end('Error'); });
       return;
     }
 

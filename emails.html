@@ -178,7 +178,9 @@ async function loadLog(){
           + '<td class="em-time">'+fmtDate(e.created_at)+'</td>'
           + '<td class="mono">'+esc(e.to_email)+'</td>'
           + '<td>'+tipo+'</td>'
-          + '<td class="em-subject" title="'+esc(e.subject)+'">'+esc(e.subject)+'</td>'
+          + '<td class="em-subject" title="'+esc(e.subject)+'">'
+          +   '<button class="em-eye" title="Ver el mail como lo recibió el cliente" onclick="verMail('+e.id+', this)">👁</button> '
+          +   esc(e.subject) + '</td>'
           + '<td>'+statusBadge(e.status)+'</td>'
           + '</tr>';
       }).join('');
@@ -204,6 +206,55 @@ document.getElementById('f-q').addEventListener('input', () => { clearTimeout(_d
 ['f-tipo','f-status'].forEach(id => document.getElementById(id).addEventListener('change', () => { page=1; loadLog(); }));
 
 loadLog();
+
+// ── Previsualización del mail (como lo recibió el cliente) ──────
+function verMail(id, btn) {
+  const ov = document.getElementById('mail-modal');
+  const fr = document.getElementById('mail-frame');
+  fr.src = '/api/tienda/admin/email-log/' + id + '/preview';
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function cerrarMail() {
+  const ov = document.getElementById('mail-modal');
+  ov.classList.remove('open');
+  document.getElementById('mail-frame').src = 'about:blank';
+  document.body.style.overflow = '';
+}
+function setMailWidth(w, btn) {
+  document.getElementById('mail-frame-wrap').style.maxWidth = w;
+  document.querySelectorAll('.mail-vw-btn').forEach(b => b.classList.toggle('active', b === btn));
+}
+document.getElementById('mail-modal').addEventListener('click', e => { if (e.target.id === 'mail-modal') cerrarMail(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarMail(); });
 </script>
+
+<!-- Modal de previsualización del correo -->
+<div id="mail-modal">
+  <div class="mail-modal-head">
+    <div class="mail-vw">
+      <button class="mail-vw-btn active" onclick="setMailWidth('420px', this)">📱 Celular</button>
+      <button class="mail-vw-btn" onclick="setMailWidth('680px', this)">💻 Escritorio</button>
+    </div>
+    <button class="mail-close" onclick="cerrarMail()" aria-label="Cerrar">✕</button>
+  </div>
+  <div id="mail-frame-wrap">
+    <iframe id="mail-frame" title="Previsualización del correo" src="about:blank"></iframe>
+  </div>
+</div>
+
+<style>
+.em-eye { background:none; border:none; cursor:pointer; font-size:14px; padding:0 2px; opacity:.6; }
+.em-eye:hover { opacity:1; }
+#mail-modal { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.55); display:none; flex-direction:column; align-items:center; padding:16px; }
+#mail-modal.open { display:flex; }
+.mail-modal-head { width:100%; max-width:680px; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.mail-vw { display:flex; gap:6px; }
+.mail-vw-btn { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
+.mail-vw-btn.active { background:#fff; color:#111; }
+.mail-close { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:8px; width:34px; height:34px; font-size:16px; cursor:pointer; }
+#mail-frame-wrap { width:100%; max-width:420px; flex:1; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.4); transition:max-width .2s; }
+#mail-frame { width:100%; height:100%; border:0; display:block; }
+</style>
 </body>
 </html>
