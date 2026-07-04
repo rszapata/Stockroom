@@ -225,7 +225,8 @@ function setMailWidth(w, btn) {
   document.getElementById('mail-frame-wrap').style.maxWidth = w;
   document.querySelectorAll('.mail-vw-btn').forEach(b => b.classList.toggle('active', b === btn));
 }
-document.getElementById('mail-modal').addEventListener('click', e => { if (e.target.id === 'mail-modal') cerrarMail(); });
+// Delegado en document (el modal se parsea más abajo; evita null al cargar).
+document.addEventListener('click', e => { if (e.target && e.target.id === 'mail-modal') cerrarMail(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarMail(); });
 </script>
 

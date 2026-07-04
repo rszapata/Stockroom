@@ -6202,7 +6202,7 @@ const server = http.createServer((req, res) => {
       "font-src 'self' https://fonts.gstatic.com; " +
       "img-src 'self' data: blob: https://*.mlstatic.com http://*.mlstatic.com https://mlstatic.com https://*.alicdn.com https://sc04.alicdn.com; " +
       "connect-src 'self' https://api.mercadolibre.com; " +
-      "frame-src https://www.google.com https://maps.google.com https://*.google.com; " +
+      "frame-src 'self' https://www.google.com https://maps.google.com https://*.google.com; " +
       "frame-ancestors 'none'; " +
       "base-uri 'self'; " +
       "form-action 'self' https://auth.mercadolibre.com.ar https://auth.mercadolibre.com"
