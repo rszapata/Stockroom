@@ -1528,6 +1528,36 @@ async function markResenaInvitada(ordenId) {
       WHERE order_id = $1 AND review_invitation_sent_at IS NULL`, [ordenId]);
 }
 
+// ── Newsletter / campañas (FASE G) ────────────────────────────────
+// Suscriptores activos para enviar campañas (id sirve de token de baja).
+async function getNewsletterActivos() {
+  const { rows } = await pool.query(
+    `SELECT id, email, nombre FROM newsletter_subscribers
+      WHERE status = 'subscribed' AND email IS NOT NULL AND email <> ''
+      ORDER BY created_at ASC`);
+  return rows;
+}
+
+async function countNewsletter() {
+  const { rows } = await pool.query(
+    `SELECT status, count(*)::int c FROM newsletter_subscribers GROUP BY status`);
+  const out = { subscribed: 0, unsubscribed: 0, total: 0 };
+  for (const r of rows) { out[r.status] = r.c; out.total += r.c; }
+  return out;
+}
+
+// Baja por token (el id del suscriptor). Idempotente.
+async function unsubscribeNewsletter(id, motivo) {
+  if (!/^[0-9a-f-]{16,}$/i.test(String(id || ''))) return { ok: false };
+  const { rows } = await pool.query(
+    `UPDATE newsletter_subscribers
+        SET status = 'unsubscribed', unsubscribed_at = NOW(),
+            unsubscribe_reason = COALESCE($2, unsubscribe_reason), updated_at = NOW()
+      WHERE id = $1 RETURNING email`,
+    [id, motivo ? String(motivo).slice(0, 200) : null]);
+  return { ok: rows.length > 0, email: rows[0]?.email };
+}
+
 // Anti-abuso del cupón: ¿esta orden ya generó un cupón por reseña? (1 por orden)
 async function ordenPremiadaConResena(ordenId) {
   if (!ordenId) return true; // sin orden → no se premia
@@ -1759,6 +1789,9 @@ module.exports = {
   countResenasModeracionPendientes,
   yaResenoItem,
   ordenPremiadaConResena,
+  getNewsletterActivos,
+  countNewsletter,
+  unsubscribeNewsletter,
   getOrdenesParaResena,
   markResenaInvitada,
   getItemsWithPendingAlerts,

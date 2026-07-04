@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Newsletter — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=9">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.nl-grid { display:grid; grid-template-columns: 1.2fr 1fr; gap:18px; align-items:start; }
+@media (max-width:900px){ .nl-grid{ grid-template-columns:1fr; } }
+.nl-stats { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+.nl-stat { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:12px 16px; flex:1; min-width:120px; }
+.nl-stat-lbl { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); }
+.nl-stat-val { font-size:22px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+.nl-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:18px; }
+.nl-field { margin-bottom:14px; }
+.nl-field label { display:block; font-size:12px; font-weight:600; margin-bottom:5px; color:var(--text-2); }
+.nl-field input, .nl-field textarea { width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:14px; font-family:inherit; }
+.nl-field textarea { min-height:180px; resize:vertical; line-height:1.5; }
+.nl-row { display:flex; gap:10px; }
+.nl-row .nl-field { flex:1; }
+.nl-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+.nl-preview { background:#f4f4f2; border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; }
+.nl-preview-mail { background:#fff; border-radius:10px; padding:22px; box-shadow:0 2px 12px rgba(0,0,0,.06); color:#222; }
+.nl-preview-mail h1 { font-size:20px; margin:0 0 12px; color:#111; }
+.nl-preview-mail p { font-size:14px; line-height:1.6; color:#444; margin:0 0 12px; }
+.nl-preview-cta { display:inline-block; background:#15715f; color:#fff; padding:11px 24px; border-radius:9px; font-size:13px; font-weight:600; text-decoration:none; }
+.nl-preview-foot { font-size:11px; color:#999; text-align:center; margin-top:20px; border-top:1px solid #eee; padding-top:14px; }
+#nl-status { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; display:none; }
+#nl-status.ok { background:var(--green-light); color:var(--green); display:block; }
+#nl-status.err { background:var(--red-light); color:var(--red); display:block; }
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/admin-sidebar.js?v=5"></script>
+
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Newsletter</div>
+        <div class="adm-page-sub"><span>Redactá y enviá campañas a tus suscriptores</span></div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="adm-content">
+    <div class="nl-stats">
+      <div class="nl-stat"><div class="nl-stat-lbl">Suscriptos</div><div class="nl-stat-val" id="st-sub">—</div></div>
+      <div class="nl-stat"><div class="nl-stat-lbl">Dados de baja</div><div class="nl-stat-val" id="st-unsub">—</div></div>
+    </div>
+
+    <div class="nl-grid">
+      <div class="nl-card">
+        <div class="nl-field"><label>Asunto del correo</label><input id="nl-asunto" maxlength="150" placeholder="Ej: Llegaron modelos nuevos 🎉" oninput="preview()"></div>
+        <div class="nl-field"><label>Título (dentro del mail, opcional)</label><input id="nl-titulo" maxlength="150" placeholder="Ej: Novedades de la semana" oninput="preview()"></div>
+        <div class="nl-field"><label>Cuerpo del mensaje</label><textarea id="nl-cuerpo" maxlength="8000" placeholder="Escribí tu mensaje. Dejá una línea en blanco para separar párrafos." oninput="preview()"></textarea></div>
+        <div class="nl-row">
+          <div class="nl-field"><label>Botón (texto, opcional)</label><input id="nl-cta-label" maxlength="40" placeholder="Ver catálogo" oninput="preview()"></div>
+          <div class="nl-field"><label>Botón (link)</label><input id="nl-cta-url" maxlength="300" placeholder="https://wzmallas.com/tienda/catalogo.html" oninput="preview()"></div>
+        </div>
+        <div class="nl-field"><label>Enviar prueba a (tu email)</label><input id="nl-test" type="email" placeholder="vos@ejemplo.com"></div>
+        <div class="nl-actions">
+          <button class="btn btn-ghost" onclick="enviar(true)">✉ Enviar prueba</button>
+          <button class="btn btn-primary" onclick="enviar(false)">📣 Enviar a todos</button>
+        </div>
+        <div id="nl-status"></div>
+      </div>
+
+      <div class="nl-preview">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px">Vista previa</div>
+        <div class="nl-preview-mail">
+          <h1 id="pv-titulo" style="display:none"></h1>
+          <div id="pv-cuerpo"><p style="color:#aaa">El mensaje aparecerá acá…</p></div>
+          <div style="text-align:center"><a class="nl-preview-cta" id="pv-cta" style="display:none"></a></div>
+          <div class="nl-preview-foot">Recibís este correo porque te suscribiste a WZMALLAS · <span style="text-decoration:underline">Darme de baja</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+$('btn-theme').addEventListener('click', () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('adminTheme', t); } catch(e){}
+});
+$('btn-hamburger')?.addEventListener('click', () => $('sidebar')?.classList.toggle('open'));
+
+function preview() {
+  const titulo = $('nl-titulo').value.trim();
+  const cuerpo = $('nl-cuerpo').value;
+  const ctaL = $('nl-cta-label').value.trim(), ctaU = $('nl-cta-url').value.trim();
+  const pvt = $('pv-titulo');
+  if (titulo) { pvt.textContent = titulo; pvt.style.display = 'block'; } else pvt.style.display = 'none';
+  const parras = cuerpo.split(/\n\s*\n/).filter(p => p.trim());
+  $('pv-cuerpo').innerHTML = parras.length
+    ? parras.map(p => `<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')
+    : '<p style="color:#aaa">El mensaje aparecerá acá…</p>';
+  const cta = $('pv-cta');
+  if (ctaL && ctaU) { cta.textContent = ctaL; cta.href = ctaU; cta.style.display = 'inline-block'; } else cta.style.display = 'none';
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/stockroom/newsletter/stats');
+    const d = await r.json();
+    if (d.ok) { $('st-sub').textContent = d.subscribed || 0; $('st-unsub').textContent = d.unsubscribed || 0; }
+  } catch {}
+}
+
+function setStatus(msg, ok) { const el = $('nl-status'); el.className = ok ? 'ok' : 'err'; el.textContent = msg; }
+
+async function enviar(esPrueba) {
+  const asunto = $('nl-asunto').value.trim();
+  const cuerpo = $('nl-cuerpo').value.trim();
+  if (!asunto) { setStatus('Poné un asunto.', false); return; }
+  if (!cuerpo) { setStatus('El cuerpo está vacío.', false); return; }
+  const payload = {
+    asunto, titulo: $('nl-titulo').value.trim(), cuerpo,
+    ctaLabel: $('nl-cta-label').value.trim(), ctaUrl: $('nl-cta-url').value.trim(),
+  };
+  if (esPrueba) {
+    const test = $('nl-test').value.trim();
+    if (!test) { setStatus('Poné tu email para la prueba.', false); return; }
+    payload.test_email = test;
+  } else {
+    const n = $('st-sub').textContent;
+    if (!confirm(`¿Enviar esta campaña a los ${n} suscriptores? No se puede deshacer.`)) return;
+  }
+  try {
+    const r = await fetch('/api/stockroom/newsletter/enviar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'error');
+    if (esPrueba) setStatus('✓ Mail de prueba enviado. Revisá tu casilla.', true);
+    else if (d.total === 0) setStatus('No hay suscriptores activos todavía.', true);
+    else setStatus(`✓ Campaña en camino a ${d.total} suscriptores (se envía por lotes). Te avisamos por Telegram al terminar.`, true);
+  } catch (e) { setStatus('✕ ' + e.message, false); }
+}
+
+loadStats();
+preview();
+</script>
+</body>
+</html>

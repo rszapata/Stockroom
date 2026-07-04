@@ -28,7 +28,7 @@ const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item')
 const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena } = require('./lib/email-templates');
+const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena, emailCampania } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const TOPE_CUPON_DESCUENTO = 10000; // tope máximo de descuento por cupón (ARS)
 let QRCode = null; try { QRCode = require('qrcode'); } catch { /* QR opcional (flyer) */ }
@@ -2571,6 +2571,27 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // ── GET /api/tienda/desuscribir?u=<id> ───────────────────
+    // Baja del newsletter (link obligatorio en las campañas). Devuelve HTML.
+    if (pathname === '/api/tienda/desuscribir' && req.method === 'GET') {
+      (async () => {
+        const u = new URL(req.url, 'http://localhost').searchParams.get('u') || '';
+        let ok = false;
+        try { ok = (await db.unsubscribeNewsletter(u)).ok; } catch {}
+        const msg = ok
+          ? '<h1>Listo, te diste de baja</h1><p>No vas a recibir más correos de novedades. Podés volver a suscribirte cuando quieras desde el pie de nuestra web.</p>'
+          : '<h1>No encontramos tu suscripción</h1><p>Puede que ya te hayas dado de baja. Si seguís recibiendo correos, escribinos.</p>';
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Baja del newsletter — WZMALLAS</title>
+          <style>body{font-family:system-ui,sans-serif;background:#f7f7f5;color:#222;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:24px}
+          .card{background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:36px 32px;max-width:440px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+          h1{font-size:20px;margin:0 0 10px}p{color:#555;line-height:1.55;font-size:14.5px;margin:0 0 20px}
+          a{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:11px 22px;border-radius:10px;font-weight:600;font-size:14px}</style></head>
+          <body><div class="card">${msg}<a href="https://wzmallas.com/tienda/catalogo.html">Ir a la tienda</a></div></body></html>`);
+      })().catch(() => { res.writeHead(500); res.end('Error'); });
+      return;
+    }
+
     // ── POST /api/tienda/stock-alert ─────────────────────────
     // Back-in-stock: el cliente deja su email para que le avisen cuando
     // una variante agotada vuelva. Guarda + notifica al dueño por Telegram.
@@ -4994,6 +5015,63 @@ const server = http.createServer((req, res) => {
         // Al aprobar/rechazar, invalidar el cache de reviews del item para que se re-mergee.
         json(res, 200, { ok: true });
       } catch (e) { json(res, 500, { error: 'No se pudo moderar', detail: e.message }); }
+    });
+    return;
+  }
+
+  // ── Newsletter / campañas (FASE G, admin) ────────────────────────
+  // GET stats
+  if (pathname === '/api/stockroom/newsletter/stats' && req.method === 'GET') {
+    (async () => { json(res, 200, { ok: true, ...(await db.countNewsletter()) }); })()
+      .catch(e => json(res, 500, { error: e.message }));
+    return;
+  }
+  // POST enviar { titulo, cuerpo, ctaLabel, ctaUrl, test_email }
+  // test_email → manda 1 mail de prueba (sync). Sin él → envía a todos los
+  // suscriptos en segundo plano (por lotes con delay) y avisa por Telegram.
+  if (pathname === '/api/stockroom/newsletter/enviar' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', async () => {
+      try {
+        const b = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+        const titulo = String(b.titulo || '').slice(0, 150);
+        const cuerpo = String(b.cuerpo || '').slice(0, 8000);
+        if (!cuerpo.trim()) { json(res, 400, { error: 'El cuerpo del mail está vacío' }); return; }
+        const ctaLabel = b.ctaLabel ? String(b.ctaLabel).slice(0, 40) : '';
+        const ctaUrl   = b.ctaUrl ? String(b.ctaUrl).slice(0, 300) : '';
+        const asunto   = String(b.asunto || titulo || 'Novedades de WZMALLAS').slice(0, 150);
+        const unsubBase = 'https://wzmallas.com/api/tienda/desuscribir?u=';
+
+        // Modo prueba: 1 mail sincrónico al email indicado.
+        if (b.test_email) {
+          const html = emailCampania({ titulo, cuerpo, ctaLabel, ctaUrl, unsubUrl: unsubBase + 'PRUEBA' });
+          await sendEmail({ to: String(b.test_email).slice(0, 120), subject: '[PRUEBA] ' + asunto, html });
+          json(res, 200, { ok: true, test: true });
+          return;
+        }
+
+        const subs = await db.getNewsletterActivos();
+        if (!subs.length) { json(res, 200, { ok: true, total: 0, message: 'No hay suscriptores activos' }); return; }
+
+        // Envío en segundo plano por lotes (delay 300ms) → respeta el SMTP y no
+        // bloquea el request. Cada mail lleva su propio link de baja.
+        json(res, 200, { ok: true, total: subs.length, background: true });
+        (async () => {
+          let okN = 0, failN = 0;
+          for (const s of subs) {
+            try {
+              const html = emailCampania({ titulo, cuerpo, ctaLabel, ctaUrl, unsubUrl: unsubBase + encodeURIComponent(s.id) });
+              await sendEmail({ to: s.email, subject: asunto, html });
+              okN++;
+            } catch { failN++; }
+            await new Promise(r => setTimeout(r, 300));
+          }
+          console.log(`  ✓ [newsletter] Campaña enviada: ${okN} ok, ${failN} fallos de ${subs.length}`);
+          try { tgAlert('newsletter_campania', `📣 <b>Campaña enviada</b>\n${okN}/${subs.length} correos OK${failN ? ` · ${failN} fallos` : ''}\n"${asunto.slice(0,50)}"`, 0); } catch {}
+        })().catch(e => console.error('[newsletter] envío bg:', e.message));
+        return;
+      } catch (e) { json(res, 500, { error: 'No se pudo enviar', detail: e.message }); }
     });
     return;
   }
