@@ -6106,8 +6106,22 @@ const server = http.createServer((req, res) => {
           // de tracking) → Google elegía otra canónica y marcaba "Duplicada".
           const canonical = 'https://wzmallas.com/tienda/producto.html?id=' + encodeURIComponent(parsed.query.id);
           const escAttr   = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-          const headTags  = '<link rel="canonical" href="' + escAttr(canonical) + '">\n' + tag;
+          // Título ÚNICO por producto: antes todas las fichas compartían el
+          // genérico "Producto · WZMALLAS" en el HTML server-side → Google las
+          // veía como casi-duplicadas y no las indexaba. Ahora cada una lleva su
+          // nombre. Imagen para Open Graph (redes + señal SEO).
+          const tituloProd = escAttr(String(prod.title || 'Producto').replace(/\s+/g, ' ').trim().slice(0, 68));
+          const ogImg = (prod.pictures && prod.pictures[0] && (prod.pictures[0].secure_url || prod.pictures[0].url)) || prod.thumbnail || '';
+          const ogTags =
+            '<meta property="og:type" content="product">\n' +
+            '<meta property="og:title" content="' + tituloProd + ' · WZMALLAS">\n' +
+            '<meta property="og:description" content="' + escAttr(desc) + '">\n' +
+            '<meta property="og:url" content="' + escAttr(canonical) + '">\n' +
+            (ogImg ? '<meta property="og:image" content="' + escAttr(ogImg) + '">\n' : '');
+          const headTags  = '<link rel="canonical" href="' + escAttr(canonical) + '">\n' + ogTags + tag;
           let html = fs.readFileSync(resolvedNorm, 'utf8');
+          // Título específico del producto
+          html = html.replace(/<title>[^<]*<\/title>/i, '<title>' + tituloProd + ' · WZMALLAS</title>');
           // Reemplazar la meta description genérica por una específica del producto
           html = html.replace(/<meta\s+name="description"[^>]*>/i,
             '<meta name="description" content="' + escAttr(desc) + '">');
