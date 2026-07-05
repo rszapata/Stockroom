@@ -903,14 +903,17 @@ const server = http.createServer((req, res) => {
   // ── robots.txt ─────────────────────────────────────────────────
   if (pathname === '/robots.txt') {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=86400' });
+    // Whitelist: solo la tienda pública (+ sus uploads e imágenes) es indexable.
+    // Antes era un blacklist de páginas admin que quedaba desactualizado con
+    // cada página nueva (emails, rentabilidad, orden-compra…). En robots.txt
+    // la regla MÁS ESPECÍFICA (path más largo) gana → Allow /tienda/ pisa al
+    // Disallow / para todo lo público.
     res.end([
       'User-agent: *',
       'Allow: /tienda/',
-      'Disallow: /api/', 'Disallow: /api-as/', 'Disallow: /api-public/',
-      'Disallow: /login', 'Disallow: /analytics.html', 'Disallow: /cobros.html',
-      'Disallow: /despachos.html', 'Disallow: /publicaciones.html',
-      'Disallow: /vinculaciones.html', 'Disallow: /migracion.html',
-      'Disallow: /tienda-admin.html', 'Disallow: /tienda-ordenes.html',
+      'Allow: /uploads/',
+      'Allow: /sitemap.xml',
+      'Disallow: /',
       '', 'Sitemap: https://wzmallas.com/sitemap.xml',
     ].join('\n'));
     return;
@@ -2748,7 +2751,7 @@ const server = http.createServer((req, res) => {
           const escAdm = s => String(s ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           sendEmail({
             to: fullConfig.email?.admin_email,
-            subject: `Arrepentimiento ${ticket} — Pedido ${pedido}`,
+            subject: `Arrepentimiento ${ticket} · Pedido ${pedido}`,
             html: `<p>Ticket: <b>${escAdm(ticket)}</b><br>`
               + `Fecha: ${escAdm(ts)}<br>`
               + `Nombre: ${escAdm(nombre)}<br>`

@@ -127,4 +127,15 @@
 
   const el = document.getElementById('sidebar');
   if (el) el.innerHTML = html;
+
+  // Badge de reseñas pendientes de moderar (auto-contenido: corre en todas
+  // las páginas que usan este sidebar; silencioso si falla o no hay sesión).
+  fetch('/api/stockroom/resenas?estado=pendiente')
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      const n = d && d.pendientes;
+      const b = document.getElementById('nav-resenas-badge');
+      if (b && n > 0) { b.textContent = n; b.style.display = ''; }
+    })
+    .catch(() => {});
 })();
