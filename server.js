@@ -1208,11 +1208,57 @@ const server = http.createServer((req, res) => {
         'date_created','last_updated','buying_mode','listing_type_id','site_id',
         'family_name','condition','location','shipping','descriptions','video_id',
         'accepts_mercadopago','thumbnail_id','base_price','original_price','currency_id'];
-      const safePaged = paged.map(p => {
+      let safePaged = paged.map(p => {
         const out = { ...p };
         for (const f of STRIP_FIELDS) delete out[f];
         return out;
       });
+
+      // ── fields=card: proyección mínima para listados (grids/carruseles) ──
+      // pictures+variations son el 94% del payload (~2.8MB de 3MB). Las cards
+      // solo usan: la 1ª foto + la foto de cada variante + la que matchea el
+      // thumbnail (getImg), available_quantity por variante, value_name de los
+      // atributos y struct.number de BAND_WIDTH (sub-filtro de medidas del
+      // catálogo). Medido: 2.97MB→0.66MB raw, 160KB→45KB brotli (−72%).
+      // La PDP sigue usando /api/tienda/productos/:id (completo).
+      if (params.get('fields') === 'card') {
+        safePaged = safePaged.map(p => {
+          const out = { ...p };
+          delete out.permalink;
+          delete out.family_id;
+          delete out._family_members;
+          delete out._family_merged;
+          if (Array.isArray(p.pictures) && p.pictures.length) {
+            const keep = new Set([p.pictures[0].id]);
+            for (const v of (p.variations || [])) {
+              const pid = (v.picture_ids || [])[0];
+              if (pid) keep.add(pid);
+            }
+            // getImg matchea el ID del thumbnail contra las URLs de pictures
+            const m = (p.thumbnail || '').match(/\/D_([^\/]+?)(?:-I\.|_[A-Z]\.)/);
+            if (m) {
+              const t = p.pictures.find(pic => ((pic.secure_url || pic.url || '').includes(m[1])));
+              if (t) keep.add(t.id);
+            }
+            out.pictures = p.pictures
+              .filter(pic => keep.has(pic.id))
+              .map(pic => ({ id: pic.id, secure_url: pic.secure_url || pic.url }));
+          }
+          if (Array.isArray(p.variations)) {
+            out.variations = p.variations.map(v => ({
+              available_quantity: v.available_quantity,
+              picture_ids: (v.picture_ids || []).slice(0, 1),
+              attribute_combinations: (v.attribute_combinations || []).map(ac => {
+                const o = { id: ac.id, value_name: ac.value_name };
+                const num = ac.values && ac.values[0] && ac.values[0].struct && ac.values[0].struct.number;
+                if (num != null) o.values = [{ struct: { number: num } }];
+                return o;
+              }),
+            }));
+          }
+          return out;
+        });
+      }
 
       res.writeHead(200);
       res.end(JSON.stringify({ productos: safePaged, total, page, limit }));
