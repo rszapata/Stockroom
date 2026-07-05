@@ -31,6 +31,12 @@ const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = requi
 const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena, emailCampania } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const TOPE_CUPON_DESCUENTO = 10000; // tope máximo de descuento por cupón (ARS)
+// Cupón utilizable: activo y no vencido (comparte criterio con /validar y checkout).
+function _cuponVigente(c) {
+  if (!c || c.active === false) return false;
+  if (c.expiresAt) { const t = new Date(c.expiresAt).getTime(); if (Number.isFinite(t) && Date.now() > t) return false; }
+  return true;
+}
 let QRCode = null; try { QRCode = require('qrcode'); } catch { /* QR opcional (flyer) */ }
 const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
 const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
@@ -556,6 +562,7 @@ const _newsletterRL     = new Map(); // ip -> [timestamp1, timestamp2...] — m�
 const _stockAlertRL     = new Map(); // ip -> [...] — máx 10 alertas de stock/hora
 const _ordenRateLimit   = new Map(); // ip -> [timestamp1, timestamp2...] — máx 10 órdenes/hora
 const _resenaRateLimit  = new Map(); // ip -> [...] — máx 8 reseñas/hora (in-memory)
+const _cuponRateLimit   = new Map(); // ip -> [...] — máx 20 validaciones/hora (anti fuerza bruta)
 const _tiendaLoginRL    = new Map(); // ip -> { count, since } — rate limit login tienda clientes
 const SESSION_TTL = 7 * 24 * 60 * 60 * 1000; // 7 días
 
@@ -593,6 +600,7 @@ setInterval(() => {
   for (const [ip, ts] of _contactRateLimit) { const v = ts.filter(t => now - t < 3600 * 1000); if (!v.length) _contactRateLimit.delete(ip); else _contactRateLimit.set(ip, v); }
   for (const [ip, ts] of _ordenRateLimit)   { const v = ts.filter(t => now - t < 3600 * 1000); if (!v.length) _ordenRateLimit.delete(ip); else _ordenRateLimit.set(ip, v); }
   for (const [ip, ts] of _resenaRateLimit)  { const v = ts.filter(t => now - t < 3600 * 1000); if (!v.length) _resenaRateLimit.delete(ip); else _resenaRateLimit.set(ip, v); }
+  for (const [ip, ts] of _cuponRateLimit)   { const v = ts.filter(t => now - t < 3600 * 1000); if (!v.length) _cuponRateLimit.delete(ip); else _cuponRateLimit.set(ip, v); }
   _saveRateLimits();
 }, 5 * 60 * 1000);
 
@@ -642,9 +650,12 @@ function isAuthExempt(pathname) {
     || pathname.startsWith('/tienda/')
     // Archivos estáticos subidos (imágenes de productos propios, videos)
     || pathname.startsWith('/uploads/')
-    // /api/tienda/* es público — EXCEPTO /sync y /admin/* (requieren auth del admin)
+    // /api/tienda/* es público — EXCEPTO /sync, /admin/* y la LISTA de cupones
+    // (que exponía todos los códigos). El público valida un código puntual vía
+    // POST /api/tienda/cupones/validar (path distinto, sigue exento).
     || (pathname.startsWith('/api/tienda/')
         && pathname !== '/api/tienda/sync'
+        && pathname !== '/api/tienda/cupones'
         && !pathname.startsWith('/api/tienda/admin/'));
 }
 
@@ -3994,9 +4005,37 @@ const server = http.createServer((req, res) => {
     // ─────────────────────────────────────────────────────────
 
     // GET /api/tienda/cupones — público (para carrito.html)
+    // GET /api/tienda/cupones — LISTA COMPLETA (ahora admin-only: la exención de
+    // auth se quitó para este path en isAuthExempt; el público usa /validar).
     if (pathname === '/api/tienda/cupones' && req.method === 'GET') {
       res.writeHead(200);
       res.end(JSON.stringify(getCupones()));
+      return;
+    }
+
+    // POST /api/tienda/cupones/validar { code } — público. Valida UN código y
+    // devuelve solo ese cupón saneado (no revela la lista). Rate-limit por IP.
+    if (pathname === '/api/tienda/cupones/validar' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', () => {
+        try {
+          const ip = getClientIP(req) || 'unknown';
+          const hits = (_cuponRateLimit.get(ip) || []).filter(t => Date.now() - t < 3600 * 1000);
+          if (hits.length >= 20) { res.writeHead(429); res.end(JSON.stringify({ error: 'Demasiados intentos. Probá más tarde.' })); return; }
+          hits.push(Date.now()); _cuponRateLimit.set(ip, hits);
+
+          const code = String((JSON.parse(body || '{}').code) || '').trim().toUpperCase();
+          if (!code) { res.writeHead(400); res.end(JSON.stringify({ error: 'falta code' })); return; }
+          const cup = getCupones().find(c => _cuponVigente(c) && String(c.code).toUpperCase() === code);
+          if (!cup) { res.writeHead(404); res.end(JSON.stringify({ ok: false, error: 'Cupón inválido o vencido' })); return; }
+          res.writeHead(200);
+          res.end(JSON.stringify({ ok: true, cupon: {
+            code: cup.code, type: cup.type, value: cup.value, label: cup.label || cup.code,
+            max_descuento: cup.max_descuento > 0 ? cup.max_descuento : 0, categoria: cup.categoria || null,
+          } }));
+        } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: 'Error interno' })); }
+      });
       return;
     }
 
