@@ -5705,6 +5705,23 @@ const server = http.createServer((req, res) => {
         if (isNaN(t)) return null;
         return new Date(t - 3 * 3600000).toISOString().slice(0, 10);
       };
+      // Hora del día (0-23) en AR de un ISO
+      const arHour = (iso) => {
+        if (!iso) return null;
+        const t = new Date(iso).getTime();
+        if (isNaN(t)) return null;
+        return new Date(t - 3 * 3600000).getUTCHours();
+      };
+      // Próximo día de despacho a partir de 'YYYY-MM-DD': +1 día, salteando
+      // domingos. (Feriados AR no se contemplan — sería una lista a mantener;
+      // en el peor caso la etiqueta muestra un día antes, no rompe el conteo.)
+      const nextDispatchDay = (ymd) => {
+        const [y, m, dd] = ymd.split('-').map(Number);
+        const dt = new Date(Date.UTC(y, m - 1, dd));
+        dt.setUTCDate(dt.getUTCDate() + 1);
+        if (dt.getUTCDay() === 0) dt.setUTCDate(dt.getUTCDate() + 1);
+        return dt.toISOString().slice(0, 10);
+      };
 
       try {
         let orders = [];
@@ -5731,6 +5748,9 @@ const server = http.createServer((req, res) => {
                 // Fecha límite de despacho de ML (handling). Si es a futuro, la
                 // venta todavía no hay que prepararla (ej. sábado → lunes).
                 handling: sh.lead_time?.estimated_handling_limit?.date || null,
+                // 'self_service' = Flex. ML NO manda lead_time para Flex, así que
+                // el corte de las 12 se aplica a mano (ver más abajo).
+                logistic_type: sh.logistic_type || null,
               };
             } catch(e) { /* si falla, caemos al status del order */ }
           }));
@@ -5761,10 +5781,28 @@ const server = http.createServer((req, res) => {
             const sid = o.shipping?.id;
             const sh = sid ? shipmentStatus[sid] : null;
             const handling = sh?.handling || null;
-            const handlingDate = arDate(handling);            // 'YYYY-MM-DD' AR o null
-            // "Programado" = el plazo de despacho es un día POSTERIOR a hoy.
-            // Sin fecha (null) → se trata como para hoy (no ocultar trabajo).
-            const scheduled = !!(handlingDate && handlingDate > _arToday);
+            const isFlex = (sh?.logistic_type === 'self_service');
+
+            // Clasificación "programado" (se despacha a futuro) vs "para hoy":
+            let scheduled, handlingDate;
+            if (isFlex) {
+              // ML no da lead_time para Flex → regla del corte: comprada HOY a
+              // las 12:00 o después → se despacha el próximo día hábil.
+              const cDate = arDate(o.date_created);
+              const cHour = arHour(o.date_created);
+              if (cDate === _arToday && cHour != null && cHour >= 12) {
+                scheduled = true;
+                handlingDate = nextDispatchDay(_arToday);
+              } else {
+                scheduled = false;
+                handlingDate = null;
+              }
+            } else {
+              // No-Flex (correo/agencia): ML sí manda el plazo de despacho.
+              // "Programado" = plazo POSTERIOR a hoy. Sin fecha → para hoy.
+              handlingDate = arDate(handling);
+              scheduled = !!(handlingDate && handlingDate > _arToday);
+            }
             return {
               id: o.id,
               account_id: acct.id,
