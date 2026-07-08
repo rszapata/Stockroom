@@ -591,6 +591,15 @@ const $$ = sel => document.querySelectorAll(sel);
 const esc = s  => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt    = v => v != null ? '$ ' + Math.round(v).toLocaleString('es-AR') : '—';
 const fmtNum = v => v != null ? String(v) : '—';
+// 'YYYY-MM-DD' → 'lun 10/7' (día de despacho programado)
+const fmtDispatchDay = ymd => {
+  if (!ymd) return '';
+  const [y,m,dd] = ymd.split('-').map(Number);
+  const dt = new Date(y, m-1, dd);
+  if (isNaN(dt)) return ymd;
+  const wd = dt.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '');
+  return `${wd} ${dd}/${m}`;
+};
 
 /* ── sparkline ── */
 // Colores de gráficos leídos de los tokens del tema (matchean light/dark).
@@ -830,52 +839,76 @@ async function loadDespachos() {
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error');
 
-    const units = d.orders.reduce((s, o) => s + o.items.reduce((a, i) => a + (i.quantity||0), 0), 0);
-    $('kpi-desp-value').textContent = fmtNum(d.count);
-    $('kpi-desp-sub').textContent   = `${fmtNum(units)} unidades`;
+    // Separar lo que hay que despachar HOY de lo PROGRAMADO (plazo a futuro,
+    // ej. compras de finde que recién se despachan el lunes hábil).
+    const parahoy    = d.orders.filter(o => !o.scheduled);
+    const programado = d.orders.filter(o => o.scheduled);
+    const countHoy = (typeof d.count_today === 'number') ? d.count_today : parahoy.length;
+
+    const unitsHoy = parahoy.reduce((s, o) => s + o.items.reduce((a, i) => a + (i.quantity||0), 0), 0);
+    $('kpi-desp-value').textContent = fmtNum(countHoy);
+    $('kpi-desp-sub').textContent   = `${fmtNum(unitsHoy)} unidades`;
 
     const badge = $('desp-filtered-badge');
-    if (d.filtered > 0) { badge.textContent = '−' + d.filtered + ' ya en camino'; badge.style.display = ''; }
+    if (programado.length > 0) { badge.textContent = '+' + programado.length + ' programada' + (programado.length===1?'':'s'); badge.style.display = ''; }
+    else if (d.filtered > 0)   { badge.textContent = '−' + d.filtered + ' ya en camino'; badge.style.display = ''; }
     else badge.style.display = 'none';
 
-    const perOrder = d.orders.map(o => o.items.reduce((a,i) => a+(i.quantity||0), 0));
-    sparkline($('spark-desp'), perOrder.length >= 2 ? perOrder : [0, units, 0], { color: ACCENT });
+    const perOrder = parahoy.map(o => o.items.reduce((a,i) => a+(i.quantity||0), 0));
+    sparkline($('spark-desp'), perOrder.length >= 2 ? perOrder : [0, unitsHoy, 0], { color: ACCENT });
 
-    // nav badge
+    // nav badge → solo lo de hoy (trabajo accionable)
     const navBadge = $('nav-desp-badge');
-    if (d.count > 0) { navBadge.textContent = d.count; navBadge.style.display = ''; }
+    if (countHoy > 0) { navBadge.textContent = countHoy; navBadge.style.display = ''; }
     else navBadge.style.display = 'none';
 
-    // aggregate
-    const agg = new Map();
-    d.orders.forEach(o => o.items.forEach(i => {
-      const variant = (i.variation_attributes||[]).map(v => v.value_name||v.value_id||'').filter(Boolean).join(' · ');
-      const key = i.title + '::' + variant;
-      if (!agg.has(key)) agg.set(key, { title: i.title, variant, picture: i.picture, qty: 0 });
-      agg.get(key).qty += (i.quantity || 0);
-    }));
-    const rows = [...agg.values()].sort((a,b) => b.qty - a.qty);
-
-    if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="2"><div class="adm-empty">✓ Nada para despachar</div></td></tr>';
-      $('btn-flex-todos').disabled = true;
-      $('btn-zpl-all').disabled = true;
-    } else {
-      tbody.innerHTML = rows.map(row => `
+    // Agrega ítems por producto+variante
+    const aggregate = (list, keyDate) => {
+      const agg = new Map();
+      list.forEach(o => o.items.forEach(i => {
+        const variant = (i.variation_attributes||[]).map(v => v.value_name||v.value_id||'').filter(Boolean).join(' · ');
+        const key = i.title + '::' + variant + (keyDate ? '::' + (o.handling_date||'') : '');
+        if (!agg.has(key)) agg.set(key, { title: i.title, variant, picture: i.picture, qty: 0, date: o.handling_date });
+        agg.get(key).qty += (i.quantity || 0);
+      }));
+      return [...agg.values()].sort((a,b) => b.qty - a.qty);
+    };
+    const productRow = (row, dateBadge) => `
         <tr>
           <td>
             <div style="display:flex;align-items:center;gap:10px">
               ${row.picture ? `<img src="${esc(row.picture)}" class="tbl-img" loading="lazy" onclick="openDashImg(this.src)"/>` : '<div class="tbl-img"></div>'}
               <div style="min-width:0">
-                <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px" title="${esc(row.title)}">${esc(row.title)}</div>
+                <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px" title="${esc(row.title)}">${esc(row.title)}${dateBadge && row.date ? ` <span class="var-chip" style="background:var(--yellow-soft,rgba(229,162,30,.15));color:var(--yellow,#E5A21E)">despachar ${esc(fmtDispatchDay(row.date))}</span>` : ''}</div>
                 ${row.variant ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px">${esc(row.variant)}</div>` : ''}
               </div>
             </div>
           </td>
           <td class="right"><span class="qty-pill">${row.qty}</span></td>
-        </tr>`).join('');
-      $('btn-flex-todos').disabled = false;
-      $('btn-zpl-all').disabled = false;
+        </tr>`;
+
+    const rowsHoy  = aggregate(parahoy, false);
+    const rowsProg = aggregate(programado, true);
+
+    let html = '';
+    if (rowsHoy.length) html += rowsHoy.map(r => productRow(r, false)).join('');
+    else if (rowsProg.length) html += '<tr><td colspan="2"><div class="adm-empty" style="padding:14px">Nada para despachar hoy</div></td></tr>';
+
+    if (rowsProg.length) {
+      html += `<tr><td colspan="2" style="padding:8px 12px 4px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);border-top:1px solid var(--border)">Programado · ${programado.length} venta${programado.length===1?'':'s'} a futuro</td></tr>`;
+      html += rowsProg.map(r => productRow(r, true)).join('');
+    }
+
+    if (!rowsHoy.length && !rowsProg.length) {
+      tbody.innerHTML = '<tr><td colspan="2"><div class="adm-empty">✓ Nada para despachar</div></td></tr>';
+      $('btn-flex-todos').disabled = true;
+      $('btn-zpl-all').disabled = true;
+    } else {
+      tbody.innerHTML = html;
+      // Los botones de impresión imprimen TODO lo ready_to_ship (incluye
+      // programadas): habilitados si hay algo.
+      $('btn-flex-todos').disabled = !d.orders.length;
+      $('btn-zpl-all').disabled = !d.orders.length;
     }
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="2"><div class="adm-empty adm-status error">Error: ${esc(e.message)}</div></td></tr>`;

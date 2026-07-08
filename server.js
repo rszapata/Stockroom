@@ -5696,6 +5696,16 @@ const server = http.createServer((req, res) => {
         'ready_to_print', 'printed', 'stale', 'regenerating', 'invoice_pending',
       ]);
 
+      // "Hoy" en Argentina (UTC-3) para decidir qué se despacha hoy vs a futuro.
+      const _arToday = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+      // Fecha (AR) de un ISO cualquiera → 'YYYY-MM-DD'
+      const arDate = (iso) => {
+        if (!iso) return null;
+        const t = new Date(iso).getTime();
+        if (isNaN(t)) return null;
+        return new Date(t - 3 * 3600000).toISOString().slice(0, 10);
+      };
+
       try {
         let orders = [];
         let totalRaw = 0;
@@ -5715,7 +5725,13 @@ const server = http.createServer((req, res) => {
             if (!sid) return;
             try {
               const sh = await mlGetAuth(acct, '/shipments/' + sid);
-              shipmentStatus[sid] = { status: sh.status, substatus: sh.substatus };
+              shipmentStatus[sid] = {
+                status: sh.status,
+                substatus: sh.substatus,
+                // Fecha límite de despacho de ML (handling). Si es a futuro, la
+                // venta todavía no hay que prepararla (ej. sábado → lunes).
+                handling: sh.lead_time?.estimated_handling_limit?.date || null,
+              };
             } catch(e) { /* si falla, caemos al status del order */ }
           }));
 
@@ -5744,11 +5760,19 @@ const server = http.createServer((req, res) => {
           const mapped = validOrders.map(o => {
             const sid = o.shipping?.id;
             const sh = sid ? shipmentStatus[sid] : null;
+            const handling = sh?.handling || null;
+            const handlingDate = arDate(handling);            // 'YYYY-MM-DD' AR o null
+            // "Programado" = el plazo de despacho es un día POSTERIOR a hoy.
+            // Sin fecha (null) → se trata como para hoy (no ocultar trabajo).
+            const scheduled = !!(handlingDate && handlingDate > _arToday);
             return {
               id: o.id,
               account_id: acct.id,
               account_label: label,
               date_created: o.date_created,
+              handling_limit: handling,
+              handling_date: handlingDate,
+              scheduled,
               buyer: o.buyer?.nickname || o.buyer?.id || '—',
               shipping_id: o.shipping?.id || null,
               shipping_status: sh?.status ?? o.shipping?.status ?? null,
@@ -5782,8 +5806,11 @@ const server = http.createServer((req, res) => {
           orders = orders.concat(mapped);
         }
         orders.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
+        const count_today     = orders.filter(o => !o.scheduled).length;
+        const count_scheduled = orders.length - count_today;
         json(res, 200, {
           ok: true, orders, count: orders.length,
+          count_today, count_scheduled,
           totalRaw, filtered: totalRaw - orders.length,
           scope: (parsed.query.account || 'all'),
         });
