@@ -385,6 +385,16 @@ const { refreshAccountToken, mlGetAuth, mlPutAuth, mlPutVerified, mlPostAuth, ge
   getFullConfig: () => fullConfig,
 });
 
+// ── Dashboard multi-cuenta: resolver qué cuentas consultar ────────
+// param 'all' (o vacío) → todas las cuentas con token+user_id (suma);
+// un id concreto → solo esa cuenta. Se usa en /ventas-hoy, /ventas-rango
+// y /despachos-hoy para que los KPIs sumen ambas cuentas por default.
+function resolveDashAccounts(param) {
+  const acctParam = String(param || 'all');
+  const pool = (fullConfig.accounts || [config]).filter(a => a.access_token && a.user_id);
+  return acctParam === 'all' ? pool : pool.filter(a => a.id === acctParam);
+}
+
 // ── Estado del sistema (recursos + salud) → /api/stockroom/system, /estado (TG)
 const { getSystemStatus } = createSystemStatus({
   pool: require('./db/pool'),
@@ -5669,48 +5679,42 @@ const server = http.createServer((req, res) => {
   }
 
   // ── /despachos-hoy GET → órdenes ready_to_ship (para armar paquetes) ──
+  // ?account=all (default) suma las cuentas; ?account=<id> filtra una.
   if (pathname === '/despachos-hoy' && req.method === 'GET') {
-    const userId = config.user_id;
-    if (!userId) { json(res, 400, { error: 'user_id no configurado' }); return; }
+    (async () => {
+      const targets = resolveDashAccounts(parsed.query.account);
+      if (!targets.length) { json(res, 400, { error: 'Sin cuentas con token/user_id para ese filtro' }); return; }
 
-    const mlPath = `/orders/search?seller=${userId}&shipping.status=ready_to_ship&order.status=paid&sort=date_desc&limit=50`;
-    console.log(`[despachos-hoy] Consultando ML: ${mlPath}`);
+      // Substatuses que indican "ya despachado / en camino" — filtrarlos
+      const DISPATCHED_SUBSTATUS = new Set([
+        'picked_up', 'dropped_off', 'in_hub', 'in_packing_list',
+        'shipped', 'delivered', 'not_delivered', 'cancelled',
+        'returning_to_sender', 'returned', 'forwarded_to_third',
+      ]);
+      // Substatuses VÁLIDOS para "para despachar" (ready_to_print, printed, etc.)
+      const PENDING_SUBSTATUS = new Set([
+        'ready_to_print', 'printed', 'stale', 'regenerating', 'invoice_pending',
+      ]);
 
-    const opts = {
-      hostname: ML_BASE, path: mlPath, method: 'GET',
-      headers: { 'Authorization': `Bearer ${config.access_token}`, 'Content-Type': 'application/json' }
-    };
-    const pReq = https.request(opts, pRes => {
-      let body = '';
-      pRes.on('data', c => body += c);
-      pRes.on('end', async () => {
-        try {
-          const data = JSON.parse(body);
-          if (pRes.statusCode !== 200) {
-            json(res, 502, { error: `ML API error ${pRes.statusCode}`, detail: body.slice(0, 300) });
-            return;
-          }
-
-          // Substatuses que indican "ya despachado / en camino" — filtrarlos
-          const DISPATCHED_SUBSTATUS = new Set([
-            'picked_up', 'dropped_off', 'in_hub', 'in_packing_list',
-            'shipped', 'delivered', 'not_delivered', 'cancelled',
-            'returning_to_sender', 'returned', 'forwarded_to_third',
-          ]);
-          // Substatuses VÁLIDOS para "para despachar" (ready_to_print, printed, etc.)
-          const PENDING_SUBSTATUS = new Set([
-            'ready_to_print', 'printed', 'stale', 'regenerating', 'invoice_pending',
-          ]);
-
-          // Verificar en paralelo el estado real del shipment (la flag a nivel order
-          // a veces queda desactualizada — el shipment endpoint es la fuente de verdad)
+      try {
+        let orders = [];
+        let totalRaw = 0;
+        for (const acct of targets) {
+          const label = acct.label || acct.seller_name || acct.user_id;
+          const mlPath = `/orders/search?seller=${acct.user_id}&shipping.status=ready_to_ship&order.status=paid&sort=date_desc&limit=50`;
+          console.log(`[despachos-hoy] Consultando ML (${label}): ${mlPath}`);
+          const data = await mlGetAuth(acct, mlPath);
           const rawOrders = data.results || [];
+          totalRaw += rawOrders.length;
+
+          // Verificar en paralelo el estado real del shipment con el token de ESA cuenta
+          // (la flag a nivel order a veces queda desactualizada — el shipment es la verdad)
           const shipmentStatus = {};
           await Promise.all(rawOrders.map(async (o) => {
             const sid = o.shipping?.id;
             if (!sid) return;
             try {
-              const sh = await mlGet('/shipments/' + sid, config.access_token);
+              const sh = await mlGetAuth(acct, '/shipments/' + sid);
               shipmentStatus[sid] = { status: sh.status, substatus: sh.substatus };
             } catch(e) { /* si falla, caemos al status del order */ }
           }));
@@ -5721,183 +5725,172 @@ const server = http.createServer((req, res) => {
             const sh = sid ? shipmentStatus[sid] : null;
             const status = sh?.status ?? o.shipping?.status;
             const substatus = sh?.substatus ?? o.shipping?.substatus;
-            if (status !== 'ready_to_ship') {
-              console.log(`[despachos-hoy] Filtrado ${o.id}: status=${status}, sub=${substatus}`);
-              return false;
-            }
-            if (substatus && DISPATCHED_SUBSTATUS.has(substatus)) {
-              console.log(`[despachos-hoy] Filtrado ${o.id} ya despachado: substatus=${substatus}`);
-              return false;
-            }
-            // Si el substatus es null/desconocido pero status=ready_to_ship → keep
-            if (substatus && !PENDING_SUBSTATUS.has(substatus)) {
-              console.log(`[despachos-hoy] Substatus desconocido ${o.id}: ${substatus} (lo dejo pasar)`);
-            }
+            if (status !== 'ready_to_ship') return false;
+            if (substatus && DISPATCHED_SUBSTATUS.has(substatus)) return false;
             return true;
           });
 
-          // Collect unique item IDs to fetch pictures (sólo de las órdenes válidas)
+          // Fotos de las variantes (con el token de la cuenta)
           const itemIds = new Set();
-          for (const o of validOrders) {
-            for (const i of (o.order_items || [])) {
+          for (const o of validOrders)
+            for (const i of (o.order_items || []))
               if (i.item?.id) itemIds.add(i.item.id);
-            }
-          }
-
-          // Fetch item details to get variant pictures
           const itemCache = {};
           await Promise.all([...itemIds].map(async (itemId) => {
-            try {
-              const itemData = await mlGet('/items/' + itemId, config.access_token);
-              itemCache[itemId] = itemData;
-            } catch(e) { console.log(`[despachos-hoy] Error fetch item ${itemId}: ${e.message}`); }
+            try { itemCache[itemId] = await mlGetAuth(acct, '/items/' + itemId); }
+            catch(e) { console.log(`[despachos-hoy] Error fetch item ${itemId}: ${e.message}`); }
           }));
 
-          const orders = validOrders.map(o => {
+          const mapped = validOrders.map(o => {
             const sid = o.shipping?.id;
             const sh = sid ? shipmentStatus[sid] : null;
-            return ({
-            id: o.id,
-            date_created: o.date_created,
-            buyer: o.buyer?.nickname || o.buyer?.id || '—',
-            shipping_id: o.shipping?.id || null,
-            shipping_status: sh?.status ?? o.shipping?.status ?? null,
-            shipping_substatus: sh?.substatus ?? o.shipping?.substatus ?? null,
-            items: (o.order_items || []).map(i => {
-              const itemId = i.item?.id;
-              const varId  = i.item?.variation_id;
-              let picture  = null;
-
-              if (itemId && itemCache[itemId]) {
-                const full = itemCache[itemId];
-                const pics = full.pictures || [];
-                // Find picture for the specific variation
-                if (varId && full.variations) {
-                  const variation = full.variations.find(v => v.id === varId);
-                  if (variation && variation.picture_ids?.length && pics.length) {
-                    const pic = pics.find(p => p.id === variation.picture_ids[0]);
-                    if (pic) picture = pic.secure_url || pic.url;
+            return {
+              id: o.id,
+              account_id: acct.id,
+              account_label: label,
+              date_created: o.date_created,
+              buyer: o.buyer?.nickname || o.buyer?.id || '—',
+              shipping_id: o.shipping?.id || null,
+              shipping_status: sh?.status ?? o.shipping?.status ?? null,
+              shipping_substatus: sh?.substatus ?? o.shipping?.substatus ?? null,
+              items: (o.order_items || []).map(i => {
+                const itemId = i.item?.id;
+                const varId  = i.item?.variation_id;
+                let picture  = null;
+                if (itemId && itemCache[itemId]) {
+                  const full = itemCache[itemId];
+                  const pics = full.pictures || [];
+                  if (varId && full.variations) {
+                    const variation = full.variations.find(v => v.id === varId);
+                    if (variation && variation.picture_ids?.length && pics.length) {
+                      const pic = pics.find(p => p.id === variation.picture_ids[0]);
+                      if (pic) picture = pic.secure_url || pic.url;
+                    }
                   }
+                  if (!picture && pics.length) picture = pics[0].secure_url || pics[0].url;
+                  if (!picture) picture = full.thumbnail;
                 }
-                // Fallback: first picture or thumbnail
-                if (!picture && pics.length) picture = pics[0].secure_url || pics[0].url;
-                if (!picture) picture = full.thumbnail;
-              }
-
-              return {
-                title: i.item?.title || '—',
-                quantity: i.quantity,
-                variation_attributes: i.item?.variation_attributes || [],
-                picture,
-              };
-            }),
+                return {
+                  title: i.item?.title || '—',
+                  quantity: i.quantity,
+                  variation_attributes: i.item?.variation_attributes || [],
+                  picture,
+                };
+              }),
+            };
           });
-          });
-          json(res, 200, { ok: true, orders, count: orders.length, totalRaw: rawOrders.length, filtered: rawOrders.length - validOrders.length });
-        } catch(e) {
-          json(res, 500, { error: 'Error parseando respuesta ML', detail: e.message });
+          orders = orders.concat(mapped);
         }
-      });
-    });
-    pReq.on('error', e => json(res, 502, { error: e.message }));
-    pReq.end();
+        orders.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
+        json(res, 200, {
+          ok: true, orders, count: orders.length,
+          totalRaw, filtered: totalRaw - orders.length,
+          scope: (parsed.query.account || 'all'),
+        });
+      } catch(e) {
+        json(res, 500, { error: 'Error consultando ML', detail: e.message });
+      }
+    })();
     return;
   }
 
   // ── /ventas-rango?from=YYYY-MM-DD&to=YYYY-MM-DD → ventas de un rango ──
   if (pathname === '/ventas-rango' && req.method === 'GET') {
-    const userId = config.user_id;
-    if (!userId) { json(res, 400, { error: 'user_id no configurado' }); return; }
     const from = String(parsed.query.from || '').slice(0, 10);
     const to   = String(parsed.query.to   || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
       json(res, 400, { error: 'from/to deben ser YYYY-MM-DD' }); return;
     }
-    const fromStr = `${from}T00:00:00.000-0300`;
-    const toStr   = `${to}T23:59:59.000-0300`;
-    const mlPath  = `/orders/search?seller=${userId}&order.status=paid&order.date_created.from=${encodeURIComponent(fromStr)}&order.date_created.to=${encodeURIComponent(toStr)}&sort=date_desc&limit=50`;
-
-    const opts = {
-      hostname: ML_BASE, path: mlPath, method: 'GET',
-      headers: { 'Authorization': `Bearer ${config.access_token}`, 'Content-Type': 'application/json' }
-    };
-    const pReq = https.request(opts, pRes => {
-      let body = '';
-      pRes.on('data', c => body += c);
-      pRes.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          if (pRes.statusCode !== 200) {
-            json(res, 502, { error: `ML API error ${pRes.statusCode}`, detail: body.slice(0, 300) });
-            return;
-          }
-          const orders = (data.results || []).map(o => ({
+    (async () => {
+      const fromStr = `${from}T00:00:00.000-0300`;
+      const toStr   = `${to}T23:59:59.000-0300`;
+      const targets = resolveDashAccounts(parsed.query.account);
+      if (!targets.length) { json(res, 400, { error: 'Sin cuentas con token/user_id para ese filtro' }); return; }
+      try {
+        let orders = [];
+        let total_neto = 0;
+        for (const acct of targets) {
+          const mlPath = `/orders/search?seller=${acct.user_id}&order.status=paid&order.date_created.from=${encodeURIComponent(fromStr)}&order.date_created.to=${encodeURIComponent(toStr)}&sort=date_desc&limit=50`;
+          const data = await mlGetAuth(acct, mlPath);
+          const accOrders = (data.results || []).map(o => ({
             id: o.id,
+            account_id: acct.id,
             date_created: o.date_created,
             total_amount: o.total_amount || 0,
           }));
-          const total_ventas = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
-          json(res, 200, { ok: true, from, to, orders, total_ventas, count: orders.length });
-        } catch(e) {
-          json(res, 500, { error: 'Error parseando respuesta ML', detail: e.message });
+          orders = orders.concat(accOrders);
+          const accTotal = accOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+          total_neto += acct.fiscal === 'monotributo' ? (accTotal * 0.82) : (accTotal / 1.21 * 0.82);
         }
-      });
-    });
-    pReq.on('error', e => json(res, 502, { error: e.message }));
-    pReq.end();
+        const total_ventas = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
+        json(res, 200, { ok: true, from, to, orders, total_ventas, total_neto: Math.round(total_neto), count: orders.length, scope: (parsed.query.account || 'all') });
+      } catch(e) {
+        json(res, 500, { error: 'Error consultando ML', detail: e.message });
+      }
+    })();
     return;
   }
 
   // ── /ventas-hoy GET → órdenes pagadas de hoy con totales ────────
+  // ?account=all (default) suma TODAS las cuentas; ?account=<id> filtra una.
   if (pathname === '/ventas-hoy' && req.method === 'GET') {
-    const userId = config.user_id;
-    if (!userId) { json(res, 400, { error: 'user_id no configurado' }); return; }
+    (async () => {
+      const now = new Date();
+      const localNow  = new Date(now.getTime() - 3 * 3600000); // Argentina = UTC-3
+      const today = localNow.toISOString().slice(0, 10);
+      const fromStr = `${today}T00:00:00.000-0300`;
+      const toStr   = `${today}T23:59:59.000-0300`;
 
-    const now = new Date();
-    const localNow  = new Date(now.getTime() - 3 * 3600000); // Argentina = UTC-3
-    const today = localNow.toISOString().slice(0, 10);
-    const fromStr = `${today}T00:00:00.000-0300`;
-    const toStr   = `${today}T23:59:59.000-0300`;
-    const mlPath = `/orders/search?seller=${userId}&order.status=paid&order.date_created.from=${encodeURIComponent(fromStr)}&order.date_created.to=${encodeURIComponent(toStr)}&sort=date_desc&limit=50`;
-    console.log(`[ventas-hoy] Consultando ML: ${mlPath}`);
+      const targets = resolveDashAccounts(parsed.query.account);
+      if (!targets.length) { json(res, 400, { error: 'Sin cuentas con token/user_id para ese filtro' }); return; }
 
-    const opts = {
-      hostname: ML_BASE, path: mlPath, method: 'GET',
-      headers: { 'Authorization': `Bearer ${config.access_token}`, 'Content-Type': 'application/json' }
-    };
-    const pReq = https.request(opts, pRes => {
-      let body = '';
-      pRes.on('data', c => body += c);
-      pRes.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          if (pRes.statusCode !== 200) {
-            json(res, 502, { error: `ML API error ${pRes.statusCode}`, detail: body.slice(0, 300) });
-            return;
+      try {
+        let orders = [];
+        let total_neto = 0;
+        const errors = [];
+        for (const acct of targets) {
+          const mlPath = `/orders/search?seller=${acct.user_id}&order.status=paid&order.date_created.from=${encodeURIComponent(fromStr)}&order.date_created.to=${encodeURIComponent(toStr)}&sort=date_desc&limit=50`;
+          try {
+            const data = await mlGetAuth(acct, mlPath);
+            const label = acct.label || acct.seller_name || acct.user_id;
+            const accOrders = (data.results || []).map(o => ({
+              id: o.id,
+              account_id: acct.id,
+              account_label: label,
+              date_created: o.date_created,
+              total_amount: o.total_amount || 0,
+              buyer: o.buyer?.nickname || o.buyer?.id || '—',
+              shipping_id: o.shipping?.id || null,
+              shipping_status: o.shipping?.status || null,
+              items: (o.order_items || []).map(i => ({
+                title: i.item?.title || '—',
+                quantity: i.quantity,
+                unit_price: i.unit_price,
+                variation_attributes: i.item?.variation_attributes || [],
+              })),
+            }));
+            orders = orders.concat(accOrders);
+            // Neto estimado respetando la condición fiscal de cada cuenta:
+            // monotributo NO descuenta IVA; responsable divide por 1.21.
+            const accTotal = accOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+            total_neto += acct.fiscal === 'monotributo' ? (accTotal * 0.82) : (accTotal / 1.21 * 0.82);
+          } catch(e) {
+            errors.push({ account: acct.label || acct.id, error: e.message });
           }
-          const orders = (data.results || []).map(o => ({
-            id: o.id,
-            date_created: o.date_created,
-            total_amount: o.total_amount || 0,
-            buyer: o.buyer?.nickname || o.buyer?.id || '—',
-            shipping_id: o.shipping?.id || null,
-            shipping_status: o.shipping?.status || null,
-            items: (o.order_items || []).map(i => ({
-              title: i.item?.title || '—',
-              quantity: i.quantity,
-              unit_price: i.unit_price,
-              variation_attributes: i.item?.variation_attributes || [],
-            })),
-          }));
-          const total_ventas = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
-          json(res, 200, { ok: true, today, orders, total_ventas, count: orders.length });
-        } catch(e) {
-          json(res, 500, { error: 'Error parseando respuesta ML', detail: e.message });
         }
-      });
-    });
-    pReq.on('error', e => json(res, 502, { error: e.message }));
-    pReq.end();
+        orders.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
+        const total_ventas = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+        json(res, 200, {
+          ok: true, today, orders,
+          total_ventas, total_neto: Math.round(total_neto), count: orders.length,
+          scope: (parsed.query.account || 'all'),
+          accounts: targets.map(a => ({ id: a.id, label: a.label || a.user_id })),
+          errors,
+        });
+      } catch(e) {
+        json(res, 500, { error: 'Error consultando ML', detail: e.message });
+      }
+    })();
     return;
   }
 

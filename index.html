@@ -290,6 +290,14 @@
   <!-- CONTENT -->
   <main class="adm-content">
 
+    <!-- SCOPE: qué cuenta(s) alimentan los KPIs (default: ambas sumadas) -->
+    <div id="dash-scope-row" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--text-3)">Datos de</span>
+      <select id="dash-scope" style="font-family:inherit;font-size:13px;font-weight:600;color:var(--text);background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer">
+        <option value="all">Ambas cuentas</option>
+      </select>
+    </div>
+
     <!-- KPI ROW -->
     <div class="adm-kpi-grid" id="kpi-row">
       <!-- Ventas -->
@@ -622,7 +630,7 @@ function setBadge(el, pct) {
 }
 
 /* ── state ── */
-const state = { ventasData: null, chartHours: null, hourMetric: 'revenue' };
+const state = { ventasData: null, chartHours: null, hourMetric: 'revenue', scope: 'all' };
 
 /* ── sidebar mobile ── */
 const sidebar  = $('sidebar');
@@ -699,6 +707,18 @@ async function loadAccounts() {
         location.reload();
       });
     });
+
+    // Selector de scope de los KPIs: "Ambas cuentas" (default) + una por cuenta.
+    // Independiente del switcher global (que gobierna operaciones de cuenta única).
+    const scopeSel = $('dash-scope');
+    if (scopeSel) {
+      const prev = state.scope;
+      scopeSel.innerHTML = '<option value="all">Ambas cuentas</option>' +
+        d.accounts.filter(a => a.has_token).map(a =>
+          `<option value="${esc(a.id)}">${esc(a.label)}</option>`).join('');
+      scopeSel.value = prev;                 // conservar selección si ya había
+      if (scopeSel.value !== prev) { state.scope = 'all'; scopeSel.value = 'all'; }
+    }
   } catch(e) { console.error('accounts', e); }
 }
 
@@ -707,14 +727,15 @@ async function loadVentas() {
   const tbody = $('tbl-ventas');
   tbody.innerHTML = '<tr><td colspan="4"><div class="adm-empty" style="padding:24px"><span class="spinner"></span></div></td></tr>';
   try {
-    const r = await fetch('/ventas-hoy');
+    const r = await fetch('/ventas-hoy?account=' + encodeURIComponent(state.scope));
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error');
     state.ventasData = d;
 
     $('kpi-ventas-value').textContent = fmt(d.total_ventas);
     $('kpi-ventas-sub').textContent   = `${d.count} ${d.count === 1 ? 'orden' : 'órdenes'}`;
-    const neto   = Math.round(d.total_ventas / 1.21 * 0.82);
+    // Neto: usa el del backend (respeta condición fiscal por cuenta) si viene.
+    const neto   = (d.total_neto != null) ? d.total_neto : Math.round(d.total_ventas / 1.21 * 0.82);
     const ticket = d.count ? Math.round(d.total_ventas / d.count) : 0;
     $('kpi-neto-value').textContent   = fmt(neto);
     $('kpi-ticket-value').textContent = fmt(ticket);
@@ -725,7 +746,7 @@ async function loadVentas() {
     sparkline($('spark-neto'),   buckets.slice(8, 24).map(v => v / 1.21 * 0.82), { color: cssVar('--green', '#1F8A5B') });
     sparkline($('spark-ticket'), buckets.slice(8, 24).map(v => v ? Math.min(v, ticket * 3) : 0), { color: cssVar('--yellow', '#E5A21E') });
 
-    // Comparación real con ayer (ML API)
+    // Comparación real con ayer (ML API) — mismo scope de cuenta
     loadComparacionAyer(d.total_ventas, d.count, ticket).catch(e => console.warn('cmp ayer:', e));
 
     if (d.today) {
@@ -736,10 +757,11 @@ async function loadVentas() {
     if (!d.orders.length) {
       tbody.innerHTML = '<tr><td colspan="4"><div class="adm-empty">Sin ventas todavía hoy</div></td></tr>';
     } else {
+      const showAcct = state.scope === 'all';
       tbody.innerHTML = d.orders.map(o => `
         <tr>
           <td class="mono muted">#${esc(String(o.id).slice(-6))}</td>
-          <td>${esc(o.buyer || '—')}</td>
+          <td>${esc(o.buyer || '—')}${showAcct && o.account_label ? `<span class="var-chip" style="margin-left:6px">${esc(o.account_label)}</span>` : ''}</td>
           <td>${o.items.map(i => `
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
               <span style="font-size:13px">${i.quantity}× ${esc(i.title)}</span>
@@ -766,7 +788,7 @@ async function loadComparacionAyer(hoyTotal, hoyCount, hoyTicket) {
   yest.setDate(yest.getDate() - 1);
   const ystr = yest.toISOString().slice(0, 10);
 
-  const r = await fetch(`/ventas-rango?from=${ystr}&to=${ystr}`);
+  const r = await fetch(`/ventas-rango?from=${ystr}&to=${ystr}&account=${encodeURIComponent(state.scope)}`);
   const d = await r.json();
   if (!d.ok) return;
 
@@ -804,7 +826,7 @@ async function loadDespachos() {
   const tbody = $('tbl-despachos');
   tbody.innerHTML = '<tr><td colspan="2"><div class="adm-empty" style="padding:24px"><span class="spinner"></span></div></td></tr>';
   try {
-    const r = await fetch('/despachos-hoy');
+    const r = await fetch('/despachos-hoy?account=' + encodeURIComponent(state.scope));
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'error');
 
@@ -1038,6 +1060,12 @@ $$('.chart-tab').forEach(tab => {
 /* ── Buttons ── */
 $('btn-refresh-ventas').addEventListener('click', loadVentas);
 $('btn-refresh-despachos').addEventListener('click', loadDespachos);
+// Cambio de scope (ambas / una cuenta) → recargar los KPIs
+$('dash-scope').addEventListener('change', (e) => {
+  state.scope = e.target.value || 'all';
+  loadVentas();
+  loadDespachos();
+});
 $('btn-flex-todos').addEventListener('click', generateFlexTodas);
 $('btn-zpl-all').addEventListener('click', generateZplAll);
 
