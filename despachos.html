@@ -226,10 +226,6 @@
       <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Agencia</div>
       <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--or)" id="kpi-agencia">—</div>
     </div>
-    <div class="kpi-pill">
-      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Correo</div>
-      <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--t2)" id="kpi-correo">—</div>
-    </div>
     <div class="kpi-pill" style="margin-left:auto">
       <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Actualizado</div>
       <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--t2)" id="kpi-updated">—</div>
@@ -438,11 +434,9 @@ function renderData(d, ts) {
   $I('kpi-units').textContent  = d.totalUnits;
   const allOrders = d.accounts.flatMap(a => (a.orders||[]).map(o => ({ ...o, _acct: a.accountId })));
   const flexCount    = allOrders.filter(o => o.is_flex).length;
-  const agenciaCount = allOrders.filter(o => !o.is_flex && getDispatchType(o._acct) === 'agencia').length;
-  const correoCount  = allOrders.filter(o => !o.is_flex && getDispatchType(o._acct) === 'correo').length;
+  const agenciaCount = allOrders.filter(o => !o.is_flex).length;   // no-Flex = Agencia
   $I('kpi-flex').textContent    = flexCount;
   $I('kpi-agencia').textContent = agenciaCount;
-  $I('kpi-correo').textContent  = correoCount;
   const timeStr = ts ? new Date(ts).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }) : fmtNow();
   $I('kpi-updated').textContent = timeStr;
   $I('hdr-updated').textContent = 'Última carga: ' + timeStr;
@@ -483,16 +477,6 @@ function renderData(d, ts) {
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0" class="btn-group">
           <button class="sel-btn" onclick="selectAll('${esc(acct.accountId)}')">SEL ✓</button>
           <button class="sel-btn" onclick="deselectAll('${esc(acct.accountId)}')">DESEL ✗</button>
-          <div style="display:flex;border:1px solid var(--b2);border-radius:8px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em">
-            <button onclick="setDispatchType('${esc(acct.accountId)}','correo')"
-              style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s;${dispType==='correo' ? 'background:var(--b2);color:var(--tx)' : 'background:transparent;color:var(--t3)'}">
-              CORREO
-            </button>
-            <button onclick="setDispatchType('${esc(acct.accountId)}','agencia')"
-              style="padding:3px 10px;border:none;cursor:pointer;transition:all .15s;${dispType==='agencia' ? 'background:color-mix(in srgb,var(--or) 25%,transparent);color:var(--or)' : 'background:transparent;color:var(--t3)'}">
-              AGENCIA
-            </button>
-          </div>
           ${acctFlexCount ? `
             <button class="btn btn-primary" onclick="generarCuenta('${esc(acct.accountId)}','pdf')" style="height:30px;padding:0 12px;font-size:9px">
               ↓ PDF Flex (${acctFlexCount})
@@ -521,13 +505,9 @@ function renderData(d, ts) {
 }
 
 // ── Preferencia de despacho por cuenta (persiste en localStorage) ──
-function getDispatchType(accountId) {
-  try { return localStorage.getItem('dispatch_type_' + accountId) || 'correo'; } catch(e) { return 'correo'; }
-}
-function setDispatchType(accountId, type) {
-  try { localStorage.setItem('dispatch_type_' + accountId, type); } catch(e) {}
-  renderData(lastData, null); // re-render con la nueva preferencia
-}
+// Ambas cuentas usan Agencia — el correo ya no se usa (se sacó el toggle/pill).
+// Se deja la función para no tocar sus llamadores; siempre devuelve 'agencia'.
+function getDispatchType(accountId) { return 'agencia'; }
 
 function renderOrders(acct) {
   if (!acct.ok) return `<div class="error-row">❌ ${esc(acct.error || 'Error al cargar')}</div>`;
