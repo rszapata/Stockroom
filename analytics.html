@@ -706,11 +706,15 @@ async function loadFromAPI() {
     const rawItems = [];
     const chunks = [];
     for (let i = 0; i < allIds.length; i += 20) chunks.push(allIds.slice(i, i + 20));
+    // Pedir a ML SOLO los campos que usa analytics (processItems). El item
+    // completo trae descripción, todos los atributos, sale_terms, envío, etc.
+    // → con attributes= el payload baja ~46% (más rápido de bajar y parsear).
+    const ITEM_ATTRS = 'id,title,category_id,price,available_quantity,sold_quantity,thumbnail,pictures,variations';
     const PARALLEL = 5;
     let done = 0;
     for (let i = 0; i < chunks.length; i += PARALLEL) {
       const batch = chunks.slice(i, i + PARALLEL);
-      const results = await Promise.all(batch.map(chunk => API(`/items?ids=${chunk.join(',')}`)));
+      const results = await Promise.all(batch.map(chunk => API(`/items?ids=${chunk.join(',')}&attributes=${ITEM_ATTRS}`)));
       for (const data of results) {
         if (Array.isArray(data)) for (const e of data) if (e.code === 200) rawItems.push(e.body);
       }
