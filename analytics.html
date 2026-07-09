@@ -433,6 +433,11 @@
         <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Exportar CSV
       </button>
+      <!-- flyer imprimible (QR + cupón para meter en los paquetes) -->
+      <button id="btn-flyer" class="tb-control" title="Imprimir flyer con QR a la tienda + cupón, para incluir en los paquetes">
+        <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Flyer
+      </button>
       <!-- orden de compra -->
       <button id="btn-orden" style="background:var(--blue);color:#fff;border:none;border-radius:0.75rem;padding:0.5rem 1rem;font-size:0.875rem;font-weight:600;display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;box-shadow:0 10px 15px -3px rgba(21,113,95,.2)">
         <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
@@ -1005,6 +1010,76 @@ function exportCSV() {
   a.click();
 }
 
+/* ═════ flyer imprimible (QR + cupón para los paquetes) ═════
+   Diseño premium print-friendly: fondo blanco (imprimir en negro gasta
+   muchísima tinta y se ve mal en impresora hogareña), negro tinta + un solo
+   acento azul de marca, sin emojis. 4 flyers A6 por hoja A4. El QR lleva a la
+   tienda con el cupón ya embebido en el link. Para cambiar el % o el código:
+   editá el cupón en el panel y estas 3 constantes. */
+const FLYER_CUPON = 'BIENVENIDA10';
+const FLYER_OFF   = '10%';
+const FLYER_URL   = 'https://wzmallas.com/tienda/catalogo.html?utm_source=flyer&cupon=' + FLYER_CUPON;
+function imprimirFlyer() {
+  const qr = `/api/stockroom/qr?size=360&text=${encodeURIComponent(FLYER_URL)}`;
+  const WSP = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#0A0A0A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.5 9.5c0 3 2 5 5 5.5"/></svg>';
+  const CORNERS = '<svg class="fl-corners" viewBox="0 0 96 96" fill="none" stroke="#0A0A0A" stroke-width="2.4" stroke-linecap="round"><path d="M6 26V10a4 4 0 0 1 4-4h16"/><path d="M70 6h16a4 4 0 0 1 4 4v16"/><path d="M90 70v16a4 4 0 0 1-4 4H70"/><path d="M26 90H10a4 4 0 0 1-4-4V70"/></svg>';
+  const uno = `
+    <div class="fl">
+      <div class="fl-brand">WZMALLAS</div>
+      <div class="fl-rule"></div>
+      <div class="fl-h1">Gracias por elegirnos.</div>
+      <p class="fl-hook">La próxima vez, comprá directo en <b>wzmallas.com</b> y pagá menos por lo mismo: más modelos y stock que no publicamos en otros lados.</p>
+      <div class="fl-qrwrap">
+        <img class="fl-qr" src="${qr}" alt="QR a la tienda WZMALLAS">
+        ${CORNERS}
+      </div>
+      <div class="fl-scan">Escaneá para comprar</div>
+      <div class="fl-coupon">
+        <div class="fl-off">${FLYER_OFF} OFF<small>en tu próxima compra</small></div>
+        <div class="fl-code">${FLYER_CUPON}</div>
+      </div>
+      <div class="fl-support">
+        <div class="fl-support-t">¿Dudas de medida, instalación o algo no calza? <b>Lo resolvemos en el día por WhatsApp</b>, antes que cualquier reclamo.</div>
+        <div class="fl-wsp">${WSP}+54 9 2304 21-6009</div>
+      </div>
+      <div class="fl-foot">wzmallas.com · +8.800 ventas · Envíos a todo el país</div>
+    </div>`;
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Flyer WZMALLAS</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      html,body{width:210mm}
+      body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;color:#0A0A0A}
+      .sheet{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:148.5mm 148.5mm;width:210mm;height:297mm}
+      .fl{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;padding:13mm 11mm;background:#fff;border:1px dashed #e2e2e2}
+      .fl-brand{font-size:15px;font-weight:800;letter-spacing:3px}
+      .fl-rule{width:24mm;height:2px;background:#3D5AFE;margin:2.5mm 0 5mm}
+      .fl-h1{font-size:21px;font-weight:800;letter-spacing:-0.02em;line-height:1.1}
+      .fl-hook{font-size:10.5px;line-height:1.45;color:#54545A;max-width:76mm;margin-top:3mm}
+      .fl-hook b{color:#0A0A0A;font-weight:700}
+      .fl-qrwrap{position:relative;width:34mm;height:34mm;margin:5mm 0 3mm;display:flex;align-items:center;justify-content:center}
+      .fl-qr{width:29mm;height:29mm;display:block}
+      .fl-corners{position:absolute;inset:0;width:34mm;height:34mm}
+      .fl-scan{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#54545A}
+      .fl-coupon{margin-top:4mm;border:1.4px solid #3D5AFE;border-radius:10px;padding:5px 18px;display:flex;flex-direction:column;align-items:center}
+      .fl-off{font-size:15px;font-weight:800;line-height:1.05}
+      .fl-off small{display:block;font-size:9px;font-weight:600;color:#54545A;letter-spacing:.01em}
+      .fl-code{font-family:'Consolas','Courier New',monospace;font-size:16px;font-weight:800;letter-spacing:2px;color:#3D5AFE;margin-top:2px}
+      .fl-support{margin-top:5mm;width:82mm;border-top:1px solid #E2E2E2;padding-top:3.5mm;display:flex;flex-direction:column;align-items:center;gap:1.5mm}
+      .fl-support-t{font-size:9.5px;line-height:1.4;color:#54545A;max-width:80mm}
+      .fl-support-t b{color:#0A0A0A}
+      .fl-wsp{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;letter-spacing:.3px}
+      .fl-foot{margin-top:auto;font-size:8.5px;color:#8a8a8e;letter-spacing:.02em}
+      .print-hint{position:fixed;top:5px;left:0;right:0;text-align:center;font-size:12px;color:#555}
+      @media print{ .print-hint{display:none} .fl{border-color:#eee} @page{margin:0;size:A4} }
+    </style></head><body>
+    <div class="print-hint">Se abre el diálogo de impresión… (guardá como PDF o imprimí). 4 flyers por hoja A4.</div>
+    <div class="sheet">${uno}${uno}${uno}${uno}</div>
+    <script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script>
+    </body></html>`);
+  win.document.close();
+}
+
 /* ═════ orden de compra ═════ */
 function openOrden()  { $('orden-overlay').classList.add('show');  $('orden-status').classList.add('hidden'); const b=$('btn-orden-gen'); b.disabled=false; b.textContent='Generar Excel'; }
 function closeOrden() { $('orden-overlay').classList.remove('show'); }
@@ -1213,6 +1288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('btn-clear').addEventListener('click', clearFilters);
   $('btn-export').addEventListener('click', exportCSV);
+  $('btn-flyer').addEventListener('click', imprimirFlyer);
 
   $('btn-orden').addEventListener('click', openOrden);
   $('orden-close').addEventListener('click', closeOrden);
