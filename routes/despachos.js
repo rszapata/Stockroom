@@ -81,8 +81,16 @@ module.exports = function(ctx) {
       const sid = o.shipping?.id;
       if (!sid) return;
       try {
-        const sh = await mlGetAuth(acct, '/shipments/' + sid);
-        shipmentStatus[sid] = { status: sh.status, substatus: sh.substatus, logistic_type: sh.logistic_type };
+        // /sla → expected_date = fecha límite de despacho REAL de ML (contempla
+        // corte horario, días hábiles y feriados). Igual criterio que el dashboard.
+        const [sh, sla] = await Promise.all([
+          mlGetAuth(acct, '/shipments/' + sid),
+          mlGetAuth(acct, '/shipments/' + sid + '/sla').catch(() => null),
+        ]);
+        shipmentStatus[sid] = {
+          status: sh.status, substatus: sh.substatus, logistic_type: sh.logistic_type,
+          dispatch: sla?.expected_date || sh.lead_time?.estimated_handling_limit?.date || null,
+        };
       } catch(e) {}
     }));
 
@@ -103,13 +111,19 @@ module.exports = function(ctx) {
       try { itemCache[id] = await mlGetAuth(acct, '/items/' + id); } catch(e) {}
     }));
 
+    const _arToday = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+    const _arDate = iso => { if (!iso) return null; const t = new Date(iso).getTime(); return isNaN(t) ? null : new Date(t - 3 * 3600000).toISOString().slice(0, 10); };
+
     const orders = validOrders.map(o => {
       const sid = o.shipping?.id;
       const sh  = sid ? shipmentStatus[sid] : null;
       const logisticType = sh?.logistic_type || null;
       const isFlex = logisticType === 'self_service';
+      const handling_date = _arDate(sh?.dispatch);           // 'YYYY-MM-DD' AR o null
+      const scheduled = !!(handling_date && handling_date > _arToday); // se despacha a futuro
       return {
         id: o.id,
+        handling_date, scheduled,
         // pack_id: ML parte una compra de varios productos en varias órdenes que
         // comparten este id (y el mismo shipping_id). El front las agrupa en una
         // sola venta. Null/ausente → compra de un solo ítem.

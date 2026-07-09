@@ -74,6 +74,9 @@
 /* ── package view ── */
 .pg .pkg-card{border-bottom:1px solid var(--b1)}
 .pg .pkg-card:last-child{border-bottom:none}
+.pg .prog-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--ye) 12%,transparent);border:1px solid color-mix(in srgb,var(--ye) 35%,transparent);color:var(--ye);letter-spacing:.05em;font-weight:700;white-space:nowrap}
+.pg .prog-section .pkg-card{opacity:.72}
+.pg .pkg-subhead.sh-prog{color:var(--ye);background:color-mix(in srgb,var(--ye) 6%,transparent)}
 /* Venta multi-producto (pack): caja delimitada con margen, para que dos packs
    seguidos se vean como dos cajas separadas y no como un bloque continuo. */
 .pg .pkg-card.pkg-multi{background:color-mix(in srgb,var(--ye) 2.5%,transparent);border:1px solid color-mix(in srgb,var(--ye) 28%,transparent);border-left:3px solid var(--ye);border-radius:8px;margin:10px;overflow:hidden}
@@ -283,6 +286,14 @@
 const $I = id => document.getElementById(id);
 const $ = sel => document.querySelectorAll(sel);
 const esc = s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// 'YYYY-MM-DD' → 'vie 10/7' (día de despacho programado)
+const fmtDispatchDay = ymd => {
+  if (!ymd) return '';
+  const [y,m,dd] = ymd.split('-').map(Number);
+  const dt = new Date(y, m-1, dd);
+  if (isNaN(dt)) return ymd;
+  return `${dt.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','')} ${dd}/${m}`;
+};
 
 /* Clock */
 (function clock(){
@@ -429,12 +440,22 @@ function imprimirFlyer() {
 function renderData(d, ts) {
   lastData = d;
 
-  // KPIs globales
-  $I('kpi-orders').textContent = d.totalOrders;
-  $I('kpi-units').textContent  = d.totalUnits;
   const allOrders = d.accounts.flatMap(a => (a.orders||[]).map(o => ({ ...o, _acct: a.accountId })));
-  const flexCount    = allOrders.filter(o => o.is_flex).length;
-  const agenciaCount = allOrders.filter(o => !o.is_flex).length;   // no-Flex = Agencia
+  // Las ventas PROGRAMADAS (a futuro) se deseleccionan una sola vez, para que
+  // "imprimir/despachar todo" no las agarre. Si el usuario las selecciona a
+  // mano, no se vuelven a tocar en refrescos posteriores.
+  allOrders.forEach(o => {
+    if (o.scheduled && !autoDeselProg.has(String(o.id))) {
+      autoDeselProg.add(String(o.id));
+      deselectedOrders.add(String(o.id));
+    }
+  });
+  // KPIs globales → cuentan solo lo de HOY (lo accionable)
+  const hoyOrders = allOrders.filter(o => !o.scheduled);
+  $I('kpi-orders').textContent = hoyOrders.length;
+  $I('kpi-units').textContent  = hoyOrders.reduce((s,o) => s + (o.items||[]).reduce((a,i) => a + (i.quantity||1), 0), 0);
+  const flexCount    = hoyOrders.filter(o => o.is_flex).length;
+  const agenciaCount = hoyOrders.filter(o => !o.is_flex).length;   // no-Flex = Agencia
   $I('kpi-flex').textContent    = flexCount;
   $I('kpi-agencia').textContent = agenciaCount;
   const timeStr = ts ? new Date(ts).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }) : fmtNow();
@@ -443,7 +464,7 @@ function renderData(d, ts) {
 
   // Botones globales
   $I('btn-pdf').disabled = flexCount === 0;
-  $I('btn-zpl').disabled = allOrders.length === 0;
+  $I('btn-zpl').disabled = hoyOrders.length === 0;
 
   // Secciones por cuenta
   const container = $I('accounts-container');
@@ -563,6 +584,9 @@ function renderOrders(acct) {
 
     const idsAttr = orderIds.join(',');
     const sel = orderIds.every(id => isOrderSelected(id));
+    const progBadge = o0.scheduled
+      ? `<span class="prog-badge">🗓 despachar ${esc(fmtDispatchDay(o0.handling_date))}</span>`
+      : '';
     // Badge claro de la composición de la venta (lo que pidió el usuario).
     const ventaBadge = isMulti
       ? `<span class="pkg-multi-badge">📦 Venta de ${prodLines} productos</span>`
@@ -583,6 +607,7 @@ function renderOrders(acct) {
             onclick="togglePackSel('${esc(idsAttr)}')"
           />
           <span class="${cls}">${label}</span>
+          ${progBadge}
           <span class="pkg-id">${esc(ordChips)}</span>
           ${buyer ? `<span class="pkg-buyer">${esc(buyer)}</span>` : ''}
         </div>
@@ -596,9 +621,14 @@ function renderOrders(acct) {
   // Clasifica cada VENTA (no cada ítem). Una venta que mezcla fundas con
   // mallas/protectores va a "Combinadas" para no duplicarla ni esconderla:
   // así se despacha contemplando que tiene de ambas.
+  // Separar las ventas PROGRAMADAS (se despachan a futuro) de las de hoy, para
+  // que no se mezclen con lo que hay que preparar ya.
+  const hoyGroups  = groups.filter(g => !g.orders[0].scheduled);
+  const progGroups = groups.filter(g =>  g.orders[0].scheduled);
+
   const esFunda = t => /funda|carcasa|cover/i.test(t || '');
   const buckets = { malla: [], funda: [], mixta: [] };
-  for (const g of groups) {
+  for (const g of hoyGroups) {
     const titles = g.orders.flatMap(o => o.items).map(i => i.title || '');
     const hasFunda = titles.some(esFunda);
     const hasOtro  = titles.some(t => !esFunda(t));
@@ -607,14 +637,23 @@ function renderOrders(acct) {
   const sub = (label, arr, cls) => arr.length
     ? `<div class="pkg-subhead ${cls}"><span>${label}</span><span class="pkg-subcount">${arr.length}</span></div>` + arr.map(renderCard).join('')
     : '';
-  const html = sub('Mallas / Protectores', buckets.malla, 'sh-malla')
-             + sub('Fundas', buckets.funda, 'sh-funda')
-             + sub('Combinadas · fundas + mallas/protectores', buckets.mixta, 'sh-mixta');
-  return html || '<div class="empty-row">✓ Nada para despachar</div>';
+  let html = sub('Mallas / Protectores', buckets.malla, 'sh-malla')
+           + sub('Fundas', buckets.funda, 'sh-funda')
+           + sub('Combinadas · fundas + mallas/protectores', buckets.mixta, 'sh-mixta');
+  if (!html) html = '<div class="empty-row">✓ Nada para despachar hoy</div>';
+
+  if (progGroups.length) {
+    html += `<div class="prog-section">`
+          + `<div class="pkg-subhead sh-prog"><span>Programado · a despachar a futuro</span><span class="pkg-subcount">${progGroups.length}</span></div>`
+          + progGroups.map(renderCard).join('')
+          + `</div>`;
+  }
+  return html;
 }
 
 // ── Selección de órdenes ──────────────────────────────────────
 const deselectedOrders = new Set(); // IDs de órdenes deseleccionadas
+const autoDeselProg    = new Set(); // IDs de programadas ya auto-deseleccionadas (una vez)
 
 function isOrderSelected(orderId) {
   return !deselectedOrders.has(String(orderId));
@@ -638,7 +677,8 @@ function selectAll(accountId) {
   if (!lastData) return;
   const acct = lastData.accounts.find(a => a.accountId === accountId);
   if (!acct) return;
-  (acct.orders||[]).forEach(o => deselectedOrders.delete(String(o.id)));
+  // SEL ✓ selecciona solo lo de HOY; las programadas se dejan como están.
+  (acct.orders||[]).forEach(o => { if (!o.scheduled) deselectedOrders.delete(String(o.id)); });
   updateSelectionUI();
 }
 function deselectAll(accountId) {
