@@ -28,7 +28,7 @@ const { mlStock, mlCat, mlImg, applyProductOverride } = require('./lib/ml-item')
 const { PRODUCTO_PROPIO_PREFIX, CATEGORIAS_PROPIAS, generarIdProductoPropio, esIdProductoPropio, localProductoToItem, calcularPrecioArs, _cleanTxt, _cleanNum, _buildProductoPropioFields, _serializeProductoPropio } = require('./lib/productos-propios');
 const { decodeAscii85, extractPdfText, decodePdfString, extractStringsFromStream, parseValueString, parseSinergiaTable } = require('./lib/pdf-extract');
 const { RESUMEN_DIR, RESUMEN_INDEX, loadResumenIndex, saveResumenIndex } = require('./lib/resumenes');
-const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena, emailCampania } = require('./lib/email-templates');
+const { emailConfirmacionOrden, emailPagoConfirmado, emailEnvioTracking, emailArrepentimientoConfirmacion, emailPedidoEntregado, emailPedidoCancelado, emailPedidoReembolsado, emailCarritoAbandonado, emailBienvenidaCuenta, emailBackInStock, emailFavBackInStock, emailFavPriceDrop, emailPedirResena, emailCampania, emailNewsletterBienvenida } = require('./lib/email-templates');
 const { getCupones, saveCupones, guardarCuponFidelidad, SOFT_LAUNCH_COUPON } = require('./lib/cupones');
 const TOPE_CUPON_DESCUENTO = 10000; // tope máximo de descuento por cupón (ARS)
 // Cupón utilizable: activo y no vencido (comparte criterio con /validar y checkout).
@@ -2633,19 +2633,44 @@ const server = http.createServer((req, res) => {
           }
 
           // Upsert: si ya existe y estaba dado de baja, reactivar; si no, ignorar.
-          await db.pool.query(
+          // xmax=0 → fila INSERTADA (alta realmente nueva); reactivaciones y
+          // re-suscripciones NO reciben cupón (evita farmear el descuento
+          // dándose de baja y alta en loop).
+          const insRes = await db.pool.query(
             `INSERT INTO newsletter_subscribers (email, source, status)
              VALUES ($1, 'footer', 'subscribed')
              ON CONFLICT (email) DO UPDATE
                SET status     = 'subscribed',
                    updated_at = NOW()
-               WHERE newsletter_subscribers.status <> 'subscribed'`,
+               WHERE newsletter_subscribers.status <> 'subscribed'
+             RETURNING (xmax = 0) AS is_new`,
             [email]
           );
+          const isNew = !!(insRes.rows[0] && insRes.rows[0].is_new);
 
-          console.log(`  ✓ [tienda/newsletter] Alta/reactivación: ${email}`);
+          // Alta nueva → cupón de bienvenida 10% (30 días) + email con el código.
+          // Mismo mecanismo que el cupón de reseña-con-foto. No bloquea la
+          // respuesta: si el email falla, la suscripción queda igual.
+          let welcome = false;
+          if (isNew) {
+            try {
+              const cupon = 'HOLA' + Math.random().toString(36).slice(2, 7).toUpperCase();
+              const list = getCupones();
+              list.push({ code: cupon, type: 'percent', value: 10, label: 'Bienvenida newsletter', active: true,
+                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), createdAt: new Date().toISOString() });
+              saveCupones(list);
+              welcome = true;
+              sendEmail({
+                to: email,
+                subject: `Tu 10% OFF de bienvenida · ${cupon}`,
+                html: emailNewsletterBienvenida({ cupon, offPct: 10, dias: 30 }),
+              }).catch(e => console.error('[newsletter] email bienvenida:', e.message));
+            } catch (e) { console.error('[newsletter] cupón bienvenida:', e.message); }
+          }
+
+          console.log(`  ✓ [tienda/newsletter] ${isNew ? 'Alta nueva (+cupón)' : 'Reactivación/repetida'}: ${email}`);
           res.writeHead(201);
-          res.end(JSON.stringify({ ok: true }));
+          res.end(JSON.stringify({ ok: true, welcome }));
 
         } catch (e) {
           console.error('[newsletter] error:', e.message);
