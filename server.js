@@ -3703,7 +3703,7 @@ const server = http.createServer((req, res) => {
           status:          o.status,
           total:           o.total,
           items_count:     (o.items||[]).length,
-          items:           (o.items||[]).map(i => ({ title: i.title, qty: i.qty, price: i.price, img: i.img, variant: i.variant })),
+          items:           (o.items||[]).map(i => ({ id: i.id, title: i.title, qty: i.qty, price: i.price, img: i.img, variant: i.variant })),
           envio:           o.envio,
           pago:            o.pago,
           tracking_number: o.tracking_number || null,
