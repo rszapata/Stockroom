@@ -797,7 +797,12 @@ function _colNorm(c) {
   return n.replace(/\bnegra\b/, 'negro').replace(/\bmarron (claro|oscuro)\b/, 'marron').replace(/\bgris oscuro\b/, 'gris');
 }
 function renderOpps() {
-  const cat = getCatalog();
+  // Respetar el mismo alcance que la orden: si NO se pidió "todas las publicaciones",
+  // el borrador es solo fundas (es_funda del backend) → limitar Oportunidades a las
+  // categorías presentes en el borrador (así no aparecen mallas ni protectores).
+  const allProds = !!(draft.params || {}).all_products;
+  const draftCats = new Set((draft.items || []).map(it => it.categoria).filter(Boolean));
+  const cat = getCatalog().filter(c => allProds || draftCats.has(c.categoria));
   if (!cat.length) return;
   // demanda por color dentro de cada categoría + colores por producto
   const grupos = new Map();   // categoría → { colorVend: Map, total }
