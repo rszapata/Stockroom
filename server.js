@@ -5217,6 +5217,197 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── /orden-compra/ventas-extra GET → ventas de las OTRAS cuentas ──
+  //    Devuelve publicaciones activas de las cuentas no activas (ej. RZ-ZETTAI)
+  //    + el mapa de vinculaciones para que el cliente sume vendidas sin duplicar
+  //    stock (las vinculadas comparten stock físico sincronizado).
+  if (pathname === '/orden-compra/ventas-extra' && req.method === 'GET') {
+    (async () => {
+      try {
+        const activeId = config.id || 'default';
+        const others = (fullConfig.accounts || []).filter(a => a.id !== activeId && a.access_token);
+        if (!others.length) { json(res, 200, { ok: true, cuentas: [], links: {}, items: {} }); return; }
+
+        // Cache 10 min (la consulta a ML pagina todas las publicaciones de la otra cuenta)
+        if (global._ventasExtraCache && global._ventasExtraCache.activeId === activeId
+            && Date.now() - global._ventasExtraCache.at < 10 * 60 * 1000) {
+          json(res, 200, global._ventasExtraCache.data); return;
+        }
+
+        // Vinculaciones: itemId activo → [itemIds de otras cuentas]
+        const links = {};
+        try {
+          const vincFp = path.join(__dirname, 'vinculaciones.json');
+          if (fs.existsSync(vincFp)) {
+            const vinc = JSON.parse(fs.readFileSync(vincFp, 'utf8'));
+            for (const g of (vinc.groups || [])) {
+              const mine   = (g.items || []).filter(it => it.accountId === activeId).map(it => it.itemId);
+              const theirs = (g.items || []).filter(it => it.accountId !== activeId).map(it => it.itemId);
+              for (const m of mine) if (theirs.length) links[m] = (links[m] || []).concat(theirs);
+            }
+          }
+        } catch (e) { console.warn('[ventas-extra] vinculaciones no leídas:', e.message); }
+
+        const items = {};
+        const cuentas = [];
+        const ITEM_ATTRS = 'id,title,price,available_quantity,sold_quantity,variations';
+        for (const acct of others) {
+          try { await refreshAccountToken(acct); } catch (e) {}
+          const me = await mlGetAuth(acct, '/users/me');
+          const allIds = [];
+          let offset = 0, mlTotal = Infinity;
+          while (offset < mlTotal) {
+            const r = await mlGetAuth(acct, `/users/${me.id}/items/search?status=active&limit=50&offset=${offset}`);
+            mlTotal = (r.paging && r.paging.total != null) ? r.paging.total : 0;
+            const ids = r.results || [];
+            if (!ids.length) break;
+            allIds.push(...ids);
+            offset += 50;
+          }
+          for (let i = 0; i < allIds.length; i += 20) {
+            const details = await mlGetAuth(acct, `/items?ids=${allIds.slice(i, i + 20).join(',')}&attributes=${ITEM_ATTRS}`);
+            for (const entry of (Array.isArray(details) ? details : [])) {
+              if (entry.code !== 200 || !entry.body) continue;
+              const it = entry.body;
+              const vars = (it.variations && it.variations.length)
+                ? it.variations.map(v => ({
+                    label: (v.attribute_combinations || []).map(a => `${a.name}: ${a.value_name}`).join(' · ') || ('#' + v.id),
+                    vendidas: v.sold_quantity || 0,
+                    stock: v.available_quantity || 0,
+                    precio: v.price || it.price || 0,
+                  }))
+                : [{ label: '', vendidas: it.sold_quantity || 0, stock: it.available_quantity || 0, precio: it.price || 0 }];
+              items[it.id] = { title: it.title, cuenta: acct.label || acct.id, variantes: vars };
+            }
+          }
+          cuentas.push({ id: acct.id, label: acct.label || acct.id, publicaciones: allIds.length });
+          console.log(`[ventas-extra] ${acct.label || acct.id}: ${allIds.length} publicaciones activas`);
+        }
+
+        const data = { ok: true, cuentas, links, items };
+        global._ventasExtraCache = { at: Date.now(), activeId, data };
+        json(res, 200, data);
+      } catch (e) {
+        console.error('[ventas-extra] ERROR:', e.message);
+        json(res, 500, { ok: false, error: e.message });
+      }
+    })();
+    return;
+  }
+
+  // ── /orden-compra/ventas-recientes GET → ventas por variante últimos N días ──
+  //    Demanda REAL desde /orders/search (pagas), en vez del vendidas histórico
+  //    de la publicación. Clave de variante = valores de atributos normalizados
+  //    (mismo criterio que _vxKey del cliente). ?extra=1 suma las otras cuentas
+  //    (remapeando item vinculado → item de la cuenta activa).
+  if (pathname === '/orden-compra/ventas-recientes' && req.method === 'GET') {
+    (async () => {
+      try {
+        const q = parsed.query || {};
+        const dias = Math.min(180, Math.max(7, parseInt(q.dias) || 60));
+        const extra = String(q.extra || '') === '1';
+        const activeId = config.id || 'default';
+
+        const cacheKey = `${activeId}|${dias}|${extra ? 1 : 0}`;
+        if (global._ventasRecCache && global._ventasRecCache.key === cacheKey
+            && Date.now() - global._ventasRecCache.at < 10 * 60 * 1000) {
+          json(res, 200, global._ventasRecCache.data); return;
+        }
+
+        // normalización idéntica a _vxKey del cliente (valores, sin acentos, ordenados)
+        const vNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+        const keyOf = attrs => (attrs || []).map(a => vNorm(a.value_name)).filter(Boolean).sort().join('|');
+
+        // remap: itemId de otra cuenta → itemId de la cuenta activa (vinculaciones)
+        const remap = {};
+        try {
+          const vincFp = path.join(__dirname, 'vinculaciones.json');
+          if (fs.existsSync(vincFp)) {
+            const vinc = JSON.parse(fs.readFileSync(vincFp, 'utf8'));
+            for (const g of (vinc.groups || [])) {
+              const mine = (g.items || []).find(it => it.accountId === activeId);
+              if (!mine) continue;
+              for (const it of (g.items || [])) if (it.accountId !== activeId) remap[it.itemId] = mine.itemId;
+            }
+          }
+        } catch (e) {}
+
+        const desde = new Date(Date.now() - dias * 86400 * 1000).toISOString().replace('Z', '-00:00');
+        const cuentasSel = (fullConfig.accounts || [config]).filter(a =>
+          a.access_token && (extra || a.id === activeId));
+
+        // 1) Barrer órdenes: acumular entradas crudas (las variation_attributes de
+        //    la orden a veces vienen incompletas — se corrigen en el paso 2 con
+        //    los atributos REALES de la variante vía variation_id).
+        const entradas = [];   // { acct, rawId, vid, key, qty }
+        let ordenes = 0, unidades = 0;
+        for (const acct of cuentasSel) {
+          try { await refreshAccountToken(acct); } catch (e) {}
+          const me = await mlGetAuth(acct, '/users/me');
+          let offset = 0, total = Infinity;
+          while (offset < total && offset < 3000) {
+            const r = await mlGetAuth(acct,
+              `/orders/search?seller=${me.id}&order.status=paid&order.date_created.from=${encodeURIComponent(desde)}&sort=date_desc&limit=50&offset=${offset}`);
+            total = (r.paging && r.paging.total != null) ? r.paging.total : 0;
+            const results = r.results || [];
+            if (!results.length) break;
+            for (const ord of results) {
+              ordenes++;
+              for (const oi of (ord.order_items || [])) {
+                const rawId = oi.item?.id;
+                if (!rawId) continue;
+                entradas.push({ acct, rawId, vid: oi.item?.variation_id || null,
+                  key: keyOf(oi.item?.variation_attributes), qty: oi.quantity || 0 });
+                unidades += oi.quantity || 0;
+              }
+            }
+            offset += 50;
+          }
+          console.log(`[ventas-rec] ${acct.label || acct.id}: acumulado ${ordenes} órdenes / ${unidades} unidades (${dias}d)`);
+        }
+
+        // 2) Enriquecer: labels exactos por variation_id (los items vendidos, en lotes de 20)
+        const vidLabel = {};   // rawId → { vid: labelKey }
+        const porCuenta = new Map();
+        for (const e of entradas) {
+          if (!porCuenta.has(e.acct.id)) porCuenta.set(e.acct.id, { acct: e.acct, ids: new Set() });
+          porCuenta.get(e.acct.id).ids.add(e.rawId);
+        }
+        for (const { acct, ids } of porCuenta.values()) {
+          const arr = [...ids];
+          for (let i = 0; i < arr.length; i += 20) {
+            try {
+              const details = await mlGetAuth(acct, `/items?ids=${arr.slice(i, i + 20).join(',')}&attributes=id,variations`);
+              for (const entry of (Array.isArray(details) ? details : [])) {
+                if (entry.code !== 200 || !entry.body) continue;
+                const map = {};
+                for (const v of (entry.body.variations || [])) map[v.id] = keyOf(v.attribute_combinations);
+                vidLabel[entry.body.id] = map;
+              }
+            } catch (e) { /* si falla el lote, quedan las keys de la orden */ }
+          }
+        }
+
+        // 3) Agregar con la mejor clave disponible
+        const ventas = {};   // itemId → { labelKey: unidades }
+        for (const e of entradas) {
+          const itemId = remap[e.rawId] || e.rawId;
+          const exact = (e.vid != null && vidLabel[e.rawId] && vidLabel[e.rawId][e.vid] != null)
+            ? vidLabel[e.rawId][e.vid] : e.key;
+          (ventas[itemId] = ventas[itemId] || {})[exact] = (ventas[itemId][exact] || 0) + e.qty;
+        }
+
+        const data = { ok: true, dias, desde, ordenes, unidades, ventas };
+        global._ventasRecCache = { key: cacheKey, at: Date.now(), data };
+        json(res, 200, data);
+      } catch (e) {
+        console.error('[ventas-rec] ERROR:', e.message);
+        json(res, 500, { ok: false, error: e.message });
+      }
+    })();
+    return;
+  }
+
   // ── /orden-compra POST → genera Excel de orden de compra ──────
   if (pathname === '/orden-compra' && req.method === 'POST') {
     const ct = req.headers['content-type'] || '';
@@ -5236,6 +5427,8 @@ const server = http.createServer((req, res) => {
       const vendMin  = parseInt(parts['vendidos_min'] || '5');
       const stockMax = parseInt(parts['stock_max']    || '7');
       const allProds = String(parts['all_products'] || '') === '1' || String(parts['all_products'] || '') === 'true';
+      const cobertura = Math.max(0, parseFloat(parts['cobertura'] || '0') || 0);
+      const diasRec   = Math.max(0, parseInt(parts['dias_rec'] || '0') || 0);
 
       if (!fileData?.data) { json(res, 400, { error: 'CSV no recibido' }); return; }
 
@@ -5255,6 +5448,8 @@ const server = http.createServer((req, res) => {
       const args = [scriptPath, tmpIn, '--output', tmpOut, '--tc', String(tc), '--flete', String(flete), '--units', String(units),
         '--vendidos-min', String(vendMin), '--stock-max', String(stockMax)];
       if (allProds) args.push('--all-products');
+      if (cobertura > 0) args.push('--cobertura', String(cobertura));
+      if (diasRec > 0)   args.push('--dias-rec', String(diasRec));
       const py   = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
       let stdout = '', stderr = '';
       py.stdout.on('data', d => stdout += d);
@@ -5306,6 +5501,8 @@ const server = http.createServer((req, res) => {
       const vendMin  = parseInt(parts['vendidos_min'] || '5');
       const stockMax = parseInt(parts['stock_max']    || '7');
       const allProds = String(parts['all_products'] || '') === '1' || String(parts['all_products'] || '') === 'true';
+      const cobertura = Math.max(0, parseFloat(parts['cobertura'] || '0') || 0);
+      const diasRec   = Math.max(0, parseInt(parts['dias_rec'] || '0') || 0);
 
       if (!fileData?.data) { json(res, 400, { error: 'CSV no recibido' }); return; }
 
@@ -5327,6 +5524,8 @@ const server = http.createServer((req, res) => {
         '--tc', String(tc), '--flete', String(flete), '--units', String(units),
         '--vendidos-min', String(vendMin), '--stock-max', String(stockMax)];
       if (allProds) args.push('--all-products');
+      if (cobertura > 0) args.push('--cobertura', String(cobertura));
+      if (diasRec > 0)   args.push('--dias-rec', String(diasRec));
       const py   = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
       let stdout = '', stderr = '';
       py.stdout.on('data', d => stdout += d);

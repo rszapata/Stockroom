@@ -516,6 +516,11 @@
           <input type="checkbox" id="orden-allprods" style="accent-color:var(--blue)"/>
           <span>Incluir todas las publicaciones (no solo fundas)</span>
         </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:var(--text-2);margin-top:0.5rem;cursor:pointer"
+               title="Publicaciones vinculadas: suma las vendidas de la otra cuenta (el stock ya está sincronizado, no se duplica). Publicaciones solo de la otra cuenta: se agregan como filas [RZ].">
+          <input type="checkbox" id="orden-incext" style="accent-color:var(--blue)"/>
+          <span>Sumar ventas de la otra cuenta (RZ) — opcional</span>
+        </label>
       </div>
 
       <div id="orden-status" class="hidden" style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;padding:0.75rem;border-radius:0.5rem;margin-top:0.75rem"></div>
@@ -1092,6 +1097,92 @@ function setOrdenStatus(msg, ok) {
   el.style.border = '1px solid ' + (ok ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)');
 }
 
+/* ═════ ventas de otras cuentas (RZ) — opcional ═════ */
+const _vxNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+// Clave por VALORES de atributos (tolera "Color" vs "Color y Medida" entre clones)
+const _vxKey = label => _vxNorm(label).split('·')
+  .map(p => p.includes(':') ? p.slice(p.indexOf(':') + 1) : p)
+  .map(s => s.trim()).filter(Boolean).sort().join('|');
+
+/* Muta `rows` (el CSV de inventario): a las publicaciones VINCULADAS les suma
+   las vendidas de la otra cuenta (stock sincronizado → no se duplica); las
+   publicaciones que solo existen en la otra cuenta se agregan como filas [RZ]. */
+async function mergeVentasExtra(rows) {
+  const r = await fetch('/orden-compra/ventas-extra');
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'No se pudieron traer las ventas de la otra cuenta');
+  if (!d.cuentas.length) return { cuentas: [], sumadas: 0, unidades: 0, agregadas: 0, sinMatch: 0 };
+
+  // índice del CSV: itemId → (clave de variante → fila)
+  const byItem = new Map();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row[2] === '(total)') continue;
+    if (!byItem.has(row[0])) byItem.set(row[0], new Map());
+    byItem.get(row[0]).set(_vxKey(row[2]), row);
+  }
+
+  const linked = new Set();
+  for (const ids of Object.values(d.links)) ids.forEach(id => linked.add(id));
+
+  let sumadas = 0, unidades = 0, sinMatch = 0, agregadas = 0;
+  // 1) vinculadas: sumar vendidas variante a variante
+  for (const [myId, extIds] of Object.entries(d.links)) {
+    const mine = byItem.get(myId);
+    if (!mine) continue;                    // no está en el inventario actual (p.ej. pausada)
+    for (const extId of extIds) {
+      const ext = d.items[extId];
+      if (!ext) continue;
+      let hit = false;
+      for (const v of ext.variantes) {
+        const row = mine.get(_vxKey(v.label));
+        if (row) { row[5] = (parseInt(row[5]) || 0) + v.vendidas; unidades += v.vendidas; hit = true; }
+        else if (v.vendidas > 0) sinMatch++;
+      }
+      if (hit) sumadas++;
+    }
+  }
+  // 2) solo de la otra cuenta: agregar como filas propias (stock separado, no duplica)
+  for (const [extId, ext] of Object.entries(d.items)) {
+    if (linked.has(extId)) continue;
+    for (const v of ext.variantes) {
+      rows.push([extId, `${ext.title} [${ext.cuenta}]`, v.label, '', v.stock, v.vendidas, v.precio, 'active', '']);
+    }
+    agregadas++;
+  }
+  return { cuentas: d.cuentas, sumadas, unidades, agregadas, sinMatch };
+}
+
+/* Agrega la columna VendRec (ventas reales últimos N días desde /orders) al CSV.
+   Si el endpoint falla devuelve null y el cálculo cae al proxy histórico (vendidas/4). */
+const DIAS_REC = 60;
+async function addVentasRecientes(rows, incluirExtra) {
+  try {
+    const r = await fetch(`/orden-compra/ventas-recientes?dias=${DIAS_REC}&extra=${incluirExtra ? 1 : 0}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'ventas-recientes');
+    rows[0].push('VendRec');
+    // cuántas filas-variante tiene cada publicación (para el fallback de abajo)
+    const nVars = {};
+    for (let i = 1; i < rows.length; i++) if (rows[i][2] !== '(total)') nVars[rows[i][0]] = (nVars[rows[i][0]] || 0) + 1;
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row[2] === '(total)') { row.push(''); continue; }
+      const m = d.ventas[row[0]];
+      if (!m) { row.push(0); continue; }
+      let v = m[_vxKey(row[2])] || 0;
+      // publicación con UNA sola fila: atribuirle todas sus ventas aunque la
+      // variante vendida ya no exista (publicaciones reestructuradas)
+      if (nVars[row[0]] === 1) v = Object.values(m).reduce((a, b) => a + b, 0);
+      row.push(v);
+    }
+    return d;
+  } catch (e) {
+    console.warn('[orden] ventas recientes no disponibles:', e.message);
+    return null;
+  }
+}
+
 /* Previsualizar: calcula el borrador y abre la página de edición */
 async function previsualizarOrden() {
   const tc       = parseInt($('orden-tc').value)    || 1421;
@@ -1115,6 +1206,14 @@ async function previsualizarOrden() {
         rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, item.picture||'']);
       }
     });
+    if ($('orden-incext').checked) {
+      setOrdenStatus('⏳ Sumando ventas de la otra cuenta…', true);
+      const vx = await mergeVentasExtra(rows);
+      const quien = vx.cuentas.map(c => c.label).join(', ') || 'otra cuenta';
+      setOrdenStatus(`⏳ Ventas de ${esc(quien)} integradas: +${vx.unidades} vendidas en ${vx.sumadas} vinculadas · ${vx.agregadas} publicaciones propias agregadas${vx.sinMatch ? ` · ⚠ ${vx.sinMatch} variantes sin match` : ''}. Calculando…`, true);
+    }
+    setOrdenStatus('⏳ Consultando ventas reales de los últimos 60 días…', true);
+    const vrec = await addVentasRecientes(rows, $('orden-incext').checked);
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const csvBlob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const fd = new FormData();
@@ -1123,6 +1222,7 @@ async function previsualizarOrden() {
     if (Number.isFinite(vmin)) fd.append('vendidos_min', String(vmin));
     if (Number.isFinite(smax)) fd.append('stock_max',    String(smax));
     if (allProds)              fd.append('all_products', '1');
+    if (vrec)                  fd.append('dias_rec', String(vrec.dias));
 
     const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
     const data = await resp.json();
@@ -1167,6 +1267,17 @@ async function ejecutarOrden() {
       rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, picCell(item.picture)]);
     }
   });
+  if ($('orden-incext').checked) {
+    try {
+      setOrdenStatus('⏳ Sumando ventas de la otra cuenta…', true);
+      await mergeVentasExtra(rows);
+    } catch (e) {
+      setOrdenStatus(`❌ ${esc(e.message)}`, false);
+      btn.disabled = false; btn.textContent = 'Reintentar'; return;
+    }
+  }
+  setOrdenStatus('⏳ Consultando ventas reales de los últimos 60 días…', true);
+  const vrec = await addVentasRecientes(rows, $('orden-incext').checked);
   const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
   const csvBlob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
 
@@ -1178,6 +1289,7 @@ async function ejecutarOrden() {
   if (Number.isFinite(vmin)) fd.append('vendidos_min', String(vmin));
   if (Number.isFinite(smax)) fd.append('stock_max',    String(smax));
   if (allProds)              fd.append('all_products', '1');
+  if (vrec)                  fd.append('dias_rec', String(vrec.dias));
 
   try {
     const resp = await fetch('/orden-compra', { method: 'POST', body: fd });

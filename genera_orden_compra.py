@@ -20,12 +20,16 @@ def main():
     p.add_argument('--stock-max',    type=int, default=7,  help='Umbral máximo de stock para incluir (default 7)')
     p.add_argument('--all-products', action='store_true', help='Incluir todas las publicaciones, no solo fundas')
     p.add_argument('--json', action='store_true', help='Emitir las filas calculadas como JSON (modo borrador) en vez de generar xlsx')
+    p.add_argument('--cobertura', type=float, default=0, help='Meses de cobertura objetivo: si >0, pide lo necesario para cubrir N meses (demanda mensual ≈ vendidas/4) descontando el stock actual. 0 = heurística automática')
+    p.add_argument('--dias-rec', dest='dias_rec', type=int, default=0, help='Ventana en días de la columna VendRec (ventas reales recientes). Si >0 y el CSV trae VendRec, la demanda mensual se calcula como VendRec/(dias/30) en vez de Vendidos/4')
     args = p.parse_args()
 
     TC         = args.tc
     FLETE_UNIT = round(args.flete / args.units)
     VEND_MIN   = args.vendidos_min
     STOCK_MAX  = args.stock_max
+    COBERTURA  = args.cobertura   # meses objetivo (0 = auto)
+    DIAS_REC   = args.dias_rec    # ventana de VendRec (0 = sin datos reales)
 
     # Costos USD conocidos por línea de producto (fundas)
     COSTOS_USD = {
@@ -79,11 +83,28 @@ def main():
         tipo = clasificar(titulo)
         return round(COSTOS_USD[tipo] * TC + FLETE_UNIT)
 
-    def cant_sug(stock, vendidos):
+    def demanda_mensual(vendidos, vend_rec=None):
+        # Demanda REAL si hay ventana de ventas recientes (VendRec, /orders de ML);
+        # si no, proxy histórico: vendidas de vida / 4.
+        if DIAS_REC > 0 and vend_rec is not None:
+            return float(vend_rec) / (DIAS_REC / 30.0)
+        return vendidos / 4.0
+
+    def _cobertura_qty(stock, vendidos, vend_rec=None):
+        # Pedido para cubrir COBERTURA meses: objetivo = demanda*meses,
+        # descontando el stock actual, redondeado hacia arriba a pack de 5.
+        objetivo = demanda_mensual(vendidos, vend_rec) * COBERTURA
+        return max(0, math.ceil(max(0.0, objetivo - stock) / 5) * 5)
+
+    def cant_sug(stock, vendidos, vend_rec=None):
+        if COBERTURA > 0:
+            return _cobertura_qty(stock, vendidos, vend_rec)
         target = max(10, math.ceil(vendidos * 0.8 / 5) * 5)
         return max(0, target - stock)
 
-    def cant_adj(vendidos):
+    def cant_adj(vendidos, stock=0, vend_rec=None):
+        if COBERTURA > 0:
+            return _cobertura_qty(stock, vendidos, vend_rec)
         return max(5, math.ceil(vendidos / 4 / 5) * 5)
 
     if args.from_json:
@@ -129,6 +150,11 @@ def main():
             r['Stock']   = int(float(r['Stock']))
             r['Vendidos']= int(float(r['Vendidos']))
             r['Precio']  = round(float(r['Precio']))
+            # VendRec: ventas reales de los últimos DIAS_REC días (columna opcional)
+            try:
+                r['VendRec'] = int(float(r['VendRec'])) if (r.get('VendRec') or '') != '' else None
+            except (ValueError, KeyError):
+                r['VendRec'] = None
 
         fundas = variantes if args.all_products else [r for r in variantes if es_funda(r['Título'])]
         # Diagnóstico de filtros
@@ -178,9 +204,10 @@ def main():
                 color = pts[0].replace('Color:', '').strip()
                 modelo = pts[1].replace('Nombre del diseño:', '').strip() if len(pts) > 1 else ''
             stock = r['Stock']; vendidos = r['Vendidos']
+            vrec = r.get('VendRec')
             cu   = costo_unit(titulo)
-            csug = cant_sug(stock, vendidos)
-            cadj = cant_adj(vendidos)
+            csug = cant_sug(stock, vendidos, vrec)
+            cadj = cant_adj(vendidos, stock, vrec)
             items_out.append({
                 "id":             f"{r.get('Item ID', '')}::{variante}",
                 "item_id":        r.get('Item ID', ''),
@@ -193,6 +220,7 @@ def main():
                 "prioridad":      "critico" if stock <= 4 else "bajo",
                 "stock_actual":   stock,
                 "vendidas":       vendidos,
+                "vend_rec":       vrec,
                 "precio":         r.get('Precio', 0),
                 "cant_sugerida":  csug,
                 "cant_ajustada":  cadj,
@@ -204,6 +232,7 @@ def main():
             "params": {
                 "tc": TC, "flete": args.flete, "flete_unit": FLETE_UNIT, "units": args.units,
                 "vendidos_min": VEND_MIN, "stock_max": STOCK_MAX, "all_products": bool(args.all_products),
+                "cobertura": COBERTURA, "dias_rec": DIAS_REC,
             },
             "totales": {
                 "items":        len(items_out),
@@ -305,8 +334,8 @@ def main():
 
         # En modo --from-json usa los valores editados; en CSV los calcula (idéntico a antes)
         cu   = r.get('_cu',   costo_unit(titulo))
-        csug = r.get('_csug', cant_sug(stock, r['Vendidos']))
-        cadj = r.get('_cadj', cant_adj(r['Vendidos']))
+        csug = r.get('_csug', cant_sug(stock, r['Vendidos'], r.get('VendRec')))
+        cadj = r.get('_cadj', cant_adj(r['Vendidos'], stock, r.get('VendRec')))
 
         # Color de costo según línea
         if 'costura' in titulo.lower() or 's22' in titulo.lower() or 's25' in titulo.lower():

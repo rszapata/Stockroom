@@ -238,6 +238,16 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
         <div class="oc-cri-field"><label>Vendidas ≥</label><input id="cp-vmin" type="number" min="0" step="1" inputmode="numeric"></div>
         <label class="oc-cri-check"><input id="cp-all" type="checkbox"> Todas las publicaciones</label>
         <div class="oc-cri-sep"></div>
+        <div class="oc-cri-field"><label>Cobertura objetivo</label>
+          <select id="cp-cobertura" style="height:32px;border:1px solid var(--line,#d8dee9);border-radius:8px;padding:0 8px;font-family:inherit;font-weight:500;background:#fff">
+            <option value="0">Automático</option>
+            <option value="1">1 mes</option>
+            <option value="2">2 meses</option>
+            <option value="3">3 meses</option>
+            <option value="4">4 meses</option>
+          </select>
+        </div>
+        <div class="oc-cri-sep"></div>
         <div class="oc-cri-field"><label>TC (ARS/USD)</label><input id="cp-tc" type="number" min="1" step="1" inputmode="numeric"></div>
         <div class="oc-cri-field"><label>Flete total</label><input id="cp-flete" type="number" min="0" step="1" inputmode="numeric"></div>
         <div class="oc-cri-field"><label>Unidades ref.</label><input id="cp-units" type="number" min="1" step="1" inputmode="numeric"></div>
@@ -247,8 +257,21 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
         </button>
       </div>
 
+      <!-- Oportunidades de surtido (huecos de color por categoría) -->
+      <details id="oc-opps" style="display:none;margin-bottom:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg)">
+        <summary style="cursor:pointer;padding:10px 16px;font-size:13px;font-weight:600;color:var(--text);user-select:none">
+          💡 Oportunidades de surtido <span id="oc-opps-count" class="oc-badge oc-cov-mid" style="margin-left:6px"></span>
+          <span style="font-weight:400;color:var(--text-3);font-size:11px;margin-left:8px">colores que venden en la categoría y este producto no ofrece · quiebres</span>
+        </summary>
+        <div id="oc-opps-body" style="padding:0 16px 12px;font-size:12.5px;color:var(--text-2)"></div>
+      </details>
+
       <!-- Acciones masivas + agregar -->
       <div class="oc-tools">
+        <div class="oc-toolgrp">
+          <input id="oc-filter" class="oc-search" style="width:210px;height:28px" placeholder="Filtrar: producto, modelo, color…">
+          <span class="lbl" id="oc-filter-count" style="display:none"></span>
+        </div>
         <div class="oc-toolgrp">
           <span class="lbl">Cantidades:</span>
           <input id="ma-set" class="oc-mini" type="number" min="0" placeholder="X" title="Poner todas en…">
@@ -366,6 +389,7 @@ function loadDraft() {
   captureProdOrder(); applySort();
   renderAll();
   refreshSavedList();
+  try { renderOpps(); } catch(e) { console.warn('oportunidades:', e.message); }
 }
 
 function renderAll() { renderHeader(); renderParams(); renderRows(); recompute(); }
@@ -384,12 +408,19 @@ function renderParams() {
   $('cp-tc').value    = p.tc ?? '';
   $('cp-flete').value = p.flete ?? '';
   $('cp-units').value = p.units ?? '';
+  $('cp-cobertura').value = String(p.cobertura || 0);
 }
 
 const PRIO = { critico: ['err', 'Crítico'], bajo: ['low', 'Bajo'] };
 
-/* demanda mensual estimada = vendidas / 4 (mismo proxy que usa el cálculo de cant. ajustada) */
-function demandaMensual(it) { return Math.max(0, (+it.vendidas || 0) / 4); }
+/* demanda mensual: REAL (vend_rec de /orders, últimos dias_rec días) si está disponible;
+   si no, proxy histórico = vendidas de vida / 4 (mismo criterio que el Python) */
+function diasRec() { return +((draft.params || {}).dias_rec) || 0; }
+function demandaMensual(it) {
+  const dr = diasRec();
+  if (dr > 0 && it.vend_rec != null) return Math.max(0, (+it.vend_rec || 0) / (dr / 30));
+  return Math.max(0, (+it.vendidas || 0) / 4);
+}
 function coberturaMeses(it) {
   const dm = demandaMensual(it);
   if (dm <= 0) return null;
@@ -401,7 +432,11 @@ function covBadge(it) {
   const cls = m < 1 ? 'oc-cov-low' : m < 2 ? 'oc-cov-mid' : m <= 8 ? 'oc-cov-ok' : 'oc-cov-over';
   const txt = m < 10 ? m.toFixed(1) : Math.round(m);
   const tip = m > 8 ? 'Podría ser sobrestock' : (m < 1 ? 'Cubre menos de un mes' : '');
-  return `<span class="oc-badge ${cls}" title="≈ ${txt} meses (asume venta mensual ≈ vendidas÷4)${tip ? ' · ' + tip : ''}">≈ ${txt}m</span>`;
+  const dr = diasRec();
+  const base = (dr > 0 && it.vend_rec != null)
+    ? `demanda real: ${it.vend_rec} vendidas en ${dr} días`
+    : 'asume venta mensual ≈ vendidas÷4';
+  return `<span class="oc-badge ${cls}" title="≈ ${txt} meses (${base})${tip ? ' · ' + tip : ''}">≈ ${txt}m</span>`;
 }
 function margenPct(it) {
   const p = +it.precio || 0, c = +it.costo_unit || 0;
@@ -444,7 +479,7 @@ function renderRows() {
         </td>
         <td><span class="adm-state ${cls}">${lbl}</span></td>
         <td class="right hide-sm oc-stockfinal" style="${(+it.stock_actual) <= 4 ? 'color:var(--red)' : 'color:var(--text-3)'}">${it.stock_actual} → <b id="sf-${i}">${stockFinal}</b></td>
-        <td class="right hide-sm" style="font-variant-numeric:tabular-nums">${it.vendidas}</td>
+        <td class="right hide-sm" style="font-variant-numeric:tabular-nums">${it.vendidas}${(diasRec() > 0 && it.vend_rec != null) ? `<div class="oc-sub" title="Ventas reales de los últimos ${diasRec()} días (órdenes pagas de ML)">${it.vend_rec} en ${diasRec()}d</div>` : ''}</td>
         <td class="right hide-sm" id="cov-${i}">${covBadge(it)}</td>
         <td class="right">
           <input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="cant_ajustada" data-i="${i}" value="${it.cant_ajustada}">
@@ -473,7 +508,25 @@ function renderRows() {
   tb.querySelectorAll('.oc-inp').forEach(inp => inp.addEventListener('input', onEdit));
   tb.querySelectorAll('.oc-toggle').forEach(btn => btn.addEventListener('click', onToggle));
   tb.querySelectorAll('.oc-prov:not([disabled])').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openProv(btn.dataset.item, +btn.dataset.i, btn); }));
+  applyFilter();
 }
+
+/* ───── filtro de filas ───── */
+function applyFilter() {
+  const q = $('oc-filter').value.trim().toLowerCase();
+  let vis = 0, tot = 0;
+  document.querySelectorAll('#oc-tbody tr').forEach(tr => {
+    const it = draft.items[+tr.dataset.i];
+    if (!it) return;
+    tot++;
+    const show = !q || (`${it.producto} ${it.variante} ${it.color} ${it.modelo} ${it.item_id} ${it.prioridad}`).toLowerCase().includes(q);
+    tr.style.display = show ? '' : 'none';
+    if (show) vis++;
+  });
+  const c = $('oc-filter-count');
+  if (q) { c.style.display = ''; c.textContent = `${vis}/${tot}`; } else { c.style.display = 'none'; }
+}
+$('oc-filter').addEventListener('input', applyFilter);
 
 function refreshRowDerived(i) {
   const it = draft.items[i];
@@ -554,9 +607,17 @@ function setStatus(msg, ok) {
 /* ───── ajustes masivos ───── */
 function applyMass(fn) {
   let n = 0;
-  draft.items.forEach(it => { if (it.incluido !== false) { it.cant_ajustada = Math.max(0, fn(+it.cant_ajustada || 0)); n++; } });
+  const q = $('oc-filter').value.trim();
+  draft.items.forEach((it, i) => {
+    if (it.incluido === false) return;
+    if (q) {   // con filtro activo, el ajuste aplica SOLO a las filas visibles
+      const tr = document.querySelector(`tr[data-i="${i}"]`);
+      if (tr && tr.style.display === 'none') return;
+    }
+    it.cant_ajustada = Math.max(0, fn(+it.cant_ajustada || 0)); n++;
+  });
   markDirty(); renderRows(); recompute();
-  setStatus(`✓ Ajuste aplicado a ${n} ítem(s).`, true);
+  setStatus(`✓ Ajuste aplicado a ${n} ítem(s)${q ? ' (solo filas filtradas)' : ''}.`, true);
 }
 $('ma-set-btn').addEventListener('click', () => { const v = parseInt($('ma-set').value); if (Number.isFinite(v) && v >= 0) applyMass(() => v); });
 $('ma-pct-btn').addEventListener('click', () => { const p = parseFloat($('ma-pct').value); if (Number.isFinite(p)) applyMass(c => Math.round(c * (1 + p / 100))); });
@@ -568,7 +629,7 @@ async function recalcular() {
   let csv = null;
   try { csv = sessionStorage.getItem('oc_csv'); } catch(e) {}
   if (!csv) { setStatus('No tengo el inventario para recalcular. Volvé a generar la orden desde Analytics.', false); return; }
-  if (dirty && !confirm('Recalcular vuelve a calcular la orden con el nuevo criterio y descarta tus ediciones manuales. ¿Continuar?')) return;
+  if (dirty && !confirm('Recalcular vuelve a calcular la orden con el nuevo criterio y descarta tus ediciones de cantidades/costos. Los productos agregados a mano se conservan. ¿Continuar?')) return;
   const btn = $('cp-recalc'); btn.disabled = true; const orig = btn.innerHTML; btn.textContent = 'Recalculando…';
   try {
     const fd = new FormData();
@@ -580,6 +641,10 @@ async function recalcular() {
     if (vmin !== '') fd.append('vendidos_min', String(parseInt(vmin)));
     if (smax !== '') fd.append('stock_max',    String(parseInt(smax)));
     if ($('cp-all').checked) fd.append('all_products', '1');
+    const cob = parseFloat($('cp-cobertura').value) || 0;
+    if (cob > 0) fd.append('cobertura', String(cob));
+    const dr = diasRec();
+    if (dr > 0) fd.append('dias_rec', String(dr));   // el oc_csv ya trae la columna VendRec
     const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
     const data = await resp.json();
     if (!resp.ok || !data.ok) throw new Error(data.error || ('HTTP ' + resp.status));
@@ -590,7 +655,10 @@ async function recalcular() {
       renderParams(); btn.disabled = false; btn.innerHTML = orig; return;
     }
     const keepId = draft.draft_id, keepCreado = draft.creado;
+    const manuales = (draft.items || []).filter(it => it.manual);   // conservar agregados a mano
     draft = data.draft; draft.draft_id = keepId; draft.creado = keepCreado;
+    const have = new Set(draft.items.map(it => it.id));
+    manuales.filter(m => !have.has(m.id)).forEach(m => draft.items.unshift(m));
     captureProdOrder(); applySort();
     try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {}
     dirty = false; $('oc-dirty').classList.remove('show');
@@ -606,6 +674,7 @@ async function recalcular() {
 $('cp-recalc').addEventListener('click', recalcular);
 ['cp-smax', 'cp-vmin', 'cp-tc', 'cp-flete', 'cp-units'].forEach(id =>
   $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); recalcular(); } }));
+$('cp-cobertura').addEventListener('change', recalcular);
 $('oc-sort').addEventListener('change', e => { currentSort = e.target.value; applySort(); renderRows(); recompute(); });
 
 /* ───── agregar producto manual (parsea oc_csv) ───── */
@@ -637,12 +706,14 @@ function getCatalog() {
   if (!rows.length) { catalog = []; return catalog; }
   const head = rows[0].map(h => h.trim());
   const ix = n => head.indexOf(n);
+  const ixVR = ix('VendRec');
   catalog = rows.slice(1).filter(r => r.length >= head.length && (r[ix('Variante')] || '') !== '(total)' && r[ix('Item ID')])
     .map(r => ({
       item_id: r[ix('Item ID')], titulo: r[ix('Título')], variante: r[ix('Variante')] || '',
       stock: parseInt(r[ix('Stock')]) || 0, vendidos: parseInt(r[ix('Vendidos')]) || 0,
       precio: Math.round(parseFloat(r[ix('Precio')]) || 0), foto: r[ix('Foto')] || '',
       categoria: r[ix('Categoría')] || '',
+      vendRec: (ixVR >= 0 && r[ixVR] !== '' && r[ixVR] != null) ? (parseInt(r[ixVR]) || 0) : null,
     }));
   return catalog;
 }
@@ -692,17 +763,84 @@ function addManual(c) {
   // hereda costo de un ítem del mismo producto, si no usa la mediana
   const same = draft.items.find(it => it.producto === c.titulo && +it.costo_unit > 0);
   const costo = same ? +same.costo_unit : costoMedio();
+  // cantidad: respeta la cobertura objetivo activa (con demanda real si hay VendRec)
+  const p = draft.params || {};
+  const cob = +p.cobertura || 0, dr = +p.dias_rec || 0;
+  const dm = (dr > 0 && c.vendRec != null) ? c.vendRec / (dr / 30) : c.vendidos / 4;
+  const cAdj = cob > 0
+    ? Math.max(0, Math.ceil(Math.max(0, dm * cob - c.stock) / 5) * 5)
+    : cantAdj(c.vendidos);
   draft.items.unshift({
     id: c.item_id + '::' + c.variante, item_id: c.item_id, producto: c.titulo, variante: c.variante,
     color, modelo, categoria: c.categoria, foto: c.foto,
     prioridad: c.stock <= 4 ? 'critico' : 'bajo',
-    stock_actual: c.stock, vendidas: c.vendidos, precio: c.precio,
-    cant_sugerida: cantSug(c.stock, c.vendidos), cant_ajustada: cantAdj(c.vendidos),
+    stock_actual: c.stock, vendidas: c.vendidos, vend_rec: c.vendRec, precio: c.precio,
+    cant_sugerida: cantSug(c.stock, c.vendidos), cant_ajustada: cAdj,
     costo_unit: costo, incluido: true, manual: true,
   });
   markDirty(); renderRows(); recompute();
   $('add-search').value = ''; $('add-results').classList.remove('show');
   setStatus(`✓ Agregado: ${esc(c.titulo)} — revisá la cantidad y el costo.`, true);
+}
+
+/* ───── oportunidades de surtido (huecos de color por categoría) ───── */
+function _colorDe(variante) {
+  for (const part of String(variante || '').split('·')) {
+    const i = part.indexOf(':');
+    if (i < 0) continue;
+    if (part.slice(0, i).toLowerCase().includes('color')) return part.slice(i + 1).trim();
+  }
+  return '';
+}
+function _colNorm(c) {
+  let n = c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+  return n.replace(/\bnegra\b/, 'negro').replace(/\bmarron (claro|oscuro)\b/, 'marron').replace(/\bgris oscuro\b/, 'gris');
+}
+function renderOpps() {
+  const cat = getCatalog();
+  if (!cat.length) return;
+  // demanda por color dentro de cada categoría + colores por producto
+  const grupos = new Map();   // categoría → { colorVend: Map, total }
+  const prods  = new Map();   // título → { categoria, colores: Map(color → {v,s}), vend }
+  for (const c of cat) {
+    const col = _colNorm(_colorDe(c.variante));
+    if (!col) continue;
+    const g = c.categoria || 'otros';
+    if (!grupos.has(g)) grupos.set(g, { colorVend: new Map(), total: 0 });
+    const G = grupos.get(g);
+    G.colorVend.set(col, (G.colorVend.get(col) || 0) + c.vendidos);
+    G.total += c.vendidos;
+    if (!prods.has(c.titulo)) prods.set(c.titulo, { categoria: g, colores: new Map(), vend: 0 });
+    const P = prods.get(c.titulo);
+    if (!P.colores.has(col)) P.colores.set(col, { v: 0, s: 0 });
+    const pc = P.colores.get(col); pc.v += c.vendidos; pc.s += c.stock;
+    P.vend += c.vendidos;
+  }
+  const lineas = [];
+  for (const [titulo, P] of prods) {
+    if (P.vend < 10 || P.colores.size < 2) continue;          // poca señal
+    const G = grupos.get(P.categoria);
+    if (!G || G.total < 30) continue;
+    const faltan = [];   // colores fuertes de la categoría (≥8% y ≥10 vend) que el producto no tiene
+    for (const [col, v] of G.colorVend) {
+      if (v < 10 || v / G.total < 0.08) continue;
+      if (!P.colores.has(col)) faltan.push(`${col} (${v} vend. en la categoría)`);
+    }
+    const quiebres = [];   // colores propios que venden y están en 0
+    for (const [col, d] of P.colores) if (d.v > 0 && d.s === 0) quiebres.push(`${col} (${d.v} vend., sin stock)`);
+    if (faltan.length || quiebres.length) lineas.push({ titulo, vend: P.vend, faltan, quiebres });
+  }
+  lineas.sort((a, b) => b.vend - a.vend);
+  if (!lineas.length) return;
+  $('oc-opps').style.display = '';
+  $('oc-opps-count').textContent = lineas.length;
+  $('oc-opps-body').innerHTML = lineas.slice(0, 25).map(l => `
+    <div style="padding:7px 0;border-top:1px solid var(--border)">
+      <div style="font-weight:600;color:var(--text)">${esc(l.titulo)} <span style="color:var(--text-3);font-weight:400">(${l.vend} vend.)</span></div>
+      ${l.faltan.length ? `<div style="margin-top:2px">➕ No ofrece: ${esc(l.faltan.join(' · '))}</div>` : ''}
+      ${l.quiebres.length ? `<div style="margin-top:2px;color:var(--red)">⛔ Quiebre: ${esc(l.quiebres.join(' · '))}</div>` : ''}
+    </div>`).join('') +
+    `<div style="padding-top:8px;color:var(--text-3);font-size:11px">Calculado con el inventario cargado: ventas históricas por color dentro de cada categoría de ML. Para ofrecer un color nuevo hay que crear la variante en la publicación (y conseguir el producto).</div>`;
 }
 
 /* ───── guardar / cargar borradores (localStorage) ───── */
