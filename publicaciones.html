@@ -117,6 +117,18 @@
 .pg .toggle input:checked+.toggle-slider::before {transform:translateX(16px);background:var(--bg)}
 .pg .toggle-label {font-family:var(--sans);font-size:12px;color:var(--t2);letter-spacing:0}
 
+/* SIMULADOR DE COSTOS */
+.pg .cs-opt {border:1px solid var(--b1);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:all .15s;background:var(--bg)}
+.pg .cs-opt:hover {border-color:var(--b2)}
+.pg .cs-opt.sel {border-color:var(--ye);background:color-mix(in srgb,var(--ye) 5%,transparent)}
+.pg .cs-opt-hd {display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px;color:var(--tx);flex-wrap:wrap}
+.pg .cs-tag {font-size:9.5px;color:var(--gr);border:1px solid color-mix(in srgb,var(--gr) 40%,transparent);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.pg .cs-sel {margin-left:auto;font-size:10px;color:var(--ye);font-weight:600}
+.pg .cs-row {display:flex;justify-content:space-between;font-size:11.5px;color:var(--t2);padding:1px 0;font-variant-numeric:tabular-nums;gap:10px}
+.pg .cs-row.cs-net {border-top:1px dashed var(--b1);margin-top:4px;padding-top:5px;font-weight:600;color:var(--tx)}
+.pg .cs-dif {font-size:10px;color:var(--or);margin-top:4px}
+.pg .check-item {display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:2px 0;gap:8px}
+
 /* VARIATIONS */
 .pg .var-inputs {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .pg .var-table-wrap {margin-top:14px;overflow-x:auto;border:1px solid var(--b1);border-radius:12px;background:var(--bg)}
@@ -596,13 +608,8 @@
               </div>
               <div class="field" style="margin:0">
                 <label>Cuotas sin interés</label>
-                <select id="f-installments" onchange="preview()">
-                  <option value="0">No ofrecer</option>
-                  <option value="3">3 cuotas</option>
-                  <option value="6">6 cuotas</option>
-                  <option value="12">12 cuotas</option>
-                  <option value="18">18 cuotas</option>
-                </select>
+                <div id="cuotas-info" style="display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px;border:1px solid var(--b1);border-radius:10px;background:var(--bg);font-size:12px;color:var(--t2);flex-wrap:wrap"></div>
+                <div class="hint">En ML las cuotas sin interés las define el tipo de publicación (Premium), no un campo del formulario.</div>
               </div>
             </div>
           </div>
@@ -637,6 +644,13 @@
                 </div>
               </div>
             </div>
+            <div class="field" style="margin-top:14px;margin-bottom:0;max-width:300px">
+              <label>Tiempo de fabricación (opcional)</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="number" id="f-manuf" placeholder="—" min="1" style="width:90px" oninput="preview()">
+                <span class="hint" style="margin:0">días — solo si el producto se fabrica a pedido</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -646,11 +660,34 @@
       <div class="pub-sidebar">
 
         <div class="side-card">
+          <div class="side-card-hd">LISTO PARA PUBLICAR</div>
+          <div id="check-body" class="side-card-body"></div>
+        </div>
+
+        <div class="side-card">
           <div class="side-card-hd">ACCIONES</div>
           <div class="side-card-body" style="display:flex;flex-direction:column;gap:8px">
             <button class="btn btn-full" onclick="doValidate()">VALIDAR</button>
             <button class="btn primary btn-full" onclick="doCreate(false)">PUBLICAR ACTIVO</button>
             <button class="btn btn-full" onclick="doCreate(true)">PUBLICAR PAUSADO</button>
+          </div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-card-hd">SIMULADOR DE COSTOS</div>
+          <div class="side-card-body">
+            <div class="grid2" style="margin-bottom:10px">
+              <div class="field" style="margin:0">
+                <label>Costo unitario $</label>
+                <input type="number" id="cs-costo" min="0" placeholder="0" oninput="CostSim.saveInputs();CostSim.onFormChange()">
+              </div>
+              <div class="field" style="margin:0">
+                <label>Envío si es gratis $</label>
+                <input type="number" id="cs-envio" min="0" placeholder="0" oninput="CostSim.saveInputs();CostSim.onFormChange()">
+              </div>
+            </div>
+            <div id="cs-body"><div class="hint">Ingresá precio y categoría para simular comisiones y neto.</div></div>
+            <div class="hint" style="margin-top:8px">Comisiones reales de ML según precio y categoría. Clickeá una opción para elegir el tipo de publicación.</div>
           </div>
         </div>
 
@@ -775,13 +812,14 @@
               <div class="grid2">
                 <div class="field" style="margin:0">
                   <label>Precio <span class="req">*</span></label>
-                  <input type="number" id="bb-precio" placeholder="15000" min="0" step="0.01" oninput="bbSave()">
+                  <input type="number" id="bb-precio" placeholder="15000" min="0" step="0.01" oninput="bbSave();CostSim.bulkDebounced()">
                 </div>
                 <div class="field" style="margin:0">
                   <label>Cantidad <span class="req">*</span></label>
                   <input type="number" id="bb-qty" placeholder="10" min="0" oninput="bbSave()">
                 </div>
               </div>
+              <div id="cs-bulk" style="margin-top:10px"></div>
             </div>
           </div>
 
@@ -958,6 +996,10 @@
                   <option value="free">Gratuita — free</option>
                 </select>
               </div>
+            </div>
+            <div class="field">
+              <label>Simulador de costos</label>
+              <div id="cs-clone"><div class="hint">Cargá la publicación para simular comisiones (usa el costo/envío guardados en Nueva Publicación).</div></div>
             </div>
             <div class="field">
               <label>Estado al publicar</label>
@@ -1351,6 +1393,7 @@ async function cloneLoad() {
     document.getElementById('cl-edit-card').classList.remove('hidden');
     status.textContent = '✓ Cargado: ' + (item.title || itemId) + (allItems.length > 1 ? ' (+' + (allItems.length - 1) + ' variantes)' : '');
     status.style.color = 'var(--gr)';
+    try { CostSim.clone(); } catch(e) {}
   } catch(e) {
     status.textContent = '✗ ' + e.message;
     status.style.color = 'var(--re)';
@@ -1899,6 +1942,7 @@ async function loadAttrs(catId) {
       d.innerHTML = '<label>' + esc(a.name) + (isReq ? '<span class="req">*</span>' : '') + '</label>' + inp;
       body.appendChild(d);
     });
+    preview();   // refrescar checklist con los atributos requeridos recién cargados
   } catch(err) {
     badge.textContent = 'ERROR';
     body.innerHTML = '<div style="color:var(--re);font-family:var(--mono);font-size:10px">Error: ' + esc(err.message) + '</div>';
@@ -2268,7 +2312,7 @@ function buildItem(forceStatus) {
   const freeShip   = document.getElementById('f-shipping-cost').value === 'free';
   const localPick  = document.getElementById('f-local-pickup').value === 'yes';
   const flexOn     = document.getElementById('f-flex').value === 'yes';
-  const cuotas     = parseInt(document.getElementById('f-installments').value) || 0;
+  const manufDias  = parseInt(document.getElementById('f-manuf')?.value) || 0;
 
   const shipping = { mode:'not_specified', local_pick_up:localPick, free_shipping:freeShip };
   if (flexOn) shipping.tags = ['me2_available'];
@@ -2288,9 +2332,9 @@ function buildItem(forceStatus) {
   };
 
   if (garTime) item.sale_terms.push({ id:'WARRANTY_TIME', value_name:garTime });
-  if (cuotas > 0) {
-    item.sale_terms.push({ id:'INSTALLMENTS', value_name: cuotas + ' cuotas sin interés' });
-  }
+  // Nota: las cuotas sin interés NO son un sale_term en MLA — las define el
+  // listing_type (gold_pro = Premium). El viejo INSTALLMENTS era descartado por ML.
+  if (manufDias > 0) item.sale_terms.push({ id:'MANUFACTURING_TIME', value_name: manufDias + ' días' });
 
   // Attributes
   const attrList = [];
@@ -2348,6 +2392,131 @@ function buildItem(forceStatus) {
 }
 
 // ══════════════════════════════════════════════
+//  SIMULADOR DE COSTOS — /sites/MLA/listing_prices (comisiones reales de ML)
+// ══════════════════════════════════════════════
+const CostSim = {
+  cache: {}, _t: null, _t2: null, _t3: null,
+  fmt: n => '$' + Math.round(n || 0).toLocaleString('es-AR'),
+  inputs() {
+    return { costo: parseFloat($('cs-costo')?.value) || 0, envio: parseFloat($('cs-envio')?.value) || 0 };
+  },
+  saveInputs() { try { localStorage.setItem('pub_costsim', JSON.stringify({ costo: $('cs-costo').value, envio: $('cs-envio').value })); } catch(e) {} },
+  loadInputs() {
+    try {
+      const s = JSON.parse(localStorage.getItem('pub_costsim') || '{}');
+      if (s.costo != null && $('cs-costo')) $('cs-costo').value = s.costo;
+      if (s.envio != null && $('cs-envio')) $('cs-envio').value = s.envio;
+    } catch(e) {}
+  },
+  async prices(price, cat) {
+    const key = Math.round(price) + '|' + (cat || '');
+    if (this.cache[key]) return this.cache[key];
+    const r = await fetch('/api/sites/MLA/listing_prices?price=' + Math.round(price) + (cat ? '&category_id=' + encodeURIComponent(cat) : ''));
+    const d = await r.json();
+    if (!Array.isArray(d)) throw new Error(d.message || d.error || 'sin respuesta de ML');
+    this.cache[key] = d;
+    return d;
+  },
+  onFormChange() { clearTimeout(this._t); this._t = setTimeout(() => this.nueva(), 400); },
+  async nueva() {
+    const el = $('cs-body'); if (!el) return;
+    let price = parseFloat($('f-precio').value) || 0;
+    if (!price && typeof vars !== 'undefined' && vars.length) price = parseFloat(vars[0]?.price) || 0;
+    const free = $('f-shipping-cost').value === 'free';
+    await this.render(el, price, selCat?.id || '', $('f-tipo').value, free,
+      t => { $('f-tipo').value = t; renderCuotasInfo(); this.nueva(); });
+  },
+  cloneDebounced() { clearTimeout(this._t2); this._t2 = setTimeout(() => this.clone(), 400); },
+  async clone() {
+    const el = $('cs-clone'); if (!el || !clSrcItem) return;
+    const price = parseFloat($('cl-precio').value) || 0;
+    const free = !!(clSrcItem?.shipping?.free_shipping);
+    await this.render(el, price, clSrcItem?.category_id || '', $('cl-tipo').value, free,
+      t => { $('cl-tipo').value = t; this.clone(); });
+  },
+  bulkDebounced() { clearTimeout(this._t3); this._t3 = setTimeout(() => this.bulk(), 400); },
+  async bulk() {
+    const el = $('cs-bulk'); if (!el) return;
+    const price = parseFloat($('bb-precio').value) || 0;
+    const cat = ($('bb-cat').value || '').trim().toUpperCase();
+    await this.render(el, price, /^MLA\d+$/.test(cat) ? cat : '', $('b-tipo').value, false,
+      t => { $('b-tipo').value = t; this.bulk(); });
+  },
+  async render(el, price, cat, tipoSel, freeShip, onPick) {
+    if (!price || price <= 0) { el.innerHTML = '<div class="hint">Ingresá un precio para simular comisiones y neto.</div>'; return; }
+    el.innerHTML = '<div class="hint">Consultando comisiones de ML…</div>';
+    let list;
+    try { list = await this.prices(price, cat); }
+    catch(e) { el.innerHTML = '<div class="hint" style="color:var(--re)">No se pudo consultar: ' + esc(e.message) + '</div>'; return; }
+    const { costo, envio } = this.inputs();
+    const ship = freeShip ? envio : 0;
+    const opts = ['gold_special', 'gold_pro'].map(id => list.find(l => l.listing_type_id === id)).filter(Boolean);
+    if (!opts.length) { el.innerHTML = '<div class="hint">ML no devolvió tarifas para esta categoría.</div>'; return; }
+    const clasica = opts.find(o => o.listing_type_id === 'gold_special');
+    el.innerHTML = opts.map(o => {
+      const fee  = o.sale_fee_amount || 0;
+      const neto = price - fee - ship - costo;
+      const mg   = neto / price * 100;
+      const mgCol = mg < 15 ? 'var(--re)' : mg < 30 ? 'var(--or)' : 'var(--gr)';
+      const isPro = o.listing_type_id === 'gold_pro';
+      const dif   = (isPro && clasica) ? fee - (clasica.sale_fee_amount || 0) : 0;
+      const sel   = o.listing_type_id === tipoSel;
+      const det   = o.sale_fee_details || {};
+      return '<div class="cs-opt' + (sel ? ' sel' : '') + '" data-t="' + o.listing_type_id + '" title="Click para usar este tipo de publicación">' +
+        '<div class="cs-opt-hd"><b>' + (isPro ? 'Premium' : 'Clásica') + '</b>' +
+          (isPro ? '<span class="cs-tag">hasta 12 cuotas sin interés</span>'
+                 : '<span class="cs-tag" style="color:var(--t3);border-color:var(--b1)">cuotas con interés del comprador</span>') +
+          (sel ? '<span class="cs-sel">✓ elegida</span>' : '') + '</div>' +
+        '<div class="cs-row"><span>Comisión ML ' + (det.percentage_fee != null ? det.percentage_fee + '%' : '') +
+          (det.fixed_fee ? ' + ' + this.fmt(det.fixed_fee) + ' fijo' : '') + '</span><span>−' + this.fmt(fee) + '</span></div>' +
+        (ship  ? '<div class="cs-row"><span>Envío gratis (estimado)</span><span>−' + this.fmt(ship) + '</span></div>' : '') +
+        (costo ? '<div class="cs-row"><span>Costo del producto</span><span>−' + this.fmt(costo) + '</span></div>' : '') +
+        '<div class="cs-row cs-net"><span>' + (costo ? 'Ganancia' : 'Neto') + ' por venta</span>' +
+          '<span style="color:' + mgCol + '">' + this.fmt(neto) + ' <small style="font-weight:400">(' + mg.toFixed(0) + '%)</small></span></div>' +
+        (isPro && dif > 0 ? '<div class="cs-dif">Ofrecer cuotas te cuesta +' + this.fmt(dif) + ' por venta vs Clásica</div>' : '') +
+        '</div>';
+    }).join('');
+    el.querySelectorAll('.cs-opt').forEach(d => d.addEventListener('click', () => onPick(d.dataset.t)));
+  },
+};
+
+// Cuotas: reflejo del listing_type (el mecanismo real de ML)
+function renderCuotasInfo() {
+  const el = $('cuotas-info'); if (!el) return;
+  if ($('f-tipo').value === 'gold_pro') {
+    el.innerHTML = '<span style="color:var(--gr)">✓ Hasta 12 cuotas sin interés (Premium)</span>' +
+      '<button class="btn sm" onclick="$(\'f-tipo\').value=\'gold_special\';preview();CostSim.nueva()">VOLVER A CLÁSICA</button>';
+  } else {
+    el.innerHTML = '<span>No ofrece — es beneficio de Premium</span>' +
+      '<button class="btn sm" onclick="$(\'f-tipo\').value=\'gold_pro\';preview();CostSim.nueva()">USAR PREMIUM</button>';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CHECKLIST — LISTO PARA PUBLICAR
+// ══════════════════════════════════════════════
+function updateChecklist() {
+  const el = $('check-body'); if (!el) return;
+  const useVars = $('tog-vars').checked && typeof vars !== 'undefined' && vars.length > 0;
+  const attrsPend = $$('#attrs-body .attr-f').filter(d =>
+    d.querySelector('.req') && !(d.querySelector('input,select')?.value || '').trim()).length;
+  const items = [
+    ['Título',    $('f-titulo').value.trim().length >= 10, $('f-titulo').value.trim() ? 'muy corto' : 'falta'],
+    ['Categoría', !!selCat, 'falta elegir'],
+    ['Atributos requeridos', !!selCat && attrsPend === 0, selCat ? attrsPend + ' sin completar' : 'según categoría'],
+    ['Imágenes',  typeof imgs !== 'undefined' && imgs.length > 0, 'mínimo 1'],
+    [useVars ? 'Precio por variante' : 'Precio', useVars ? vars.every(v => (parseFloat(v.price) || 0) > 0) : (parseFloat($('f-precio').value) || 0) > 0, 'falta'],
+    [useVars ? 'Stock en variantes'  : 'Stock',  useVars ? vars.some(v => (parseInt(v.qty) || 0) > 0)      : (parseInt($('f-qty').value) || 0) > 0, 'falta'],
+  ];
+  const okAll = items.every(i => i[1]);
+  el.innerHTML = items.map(([n, ok, why]) =>
+    '<div class="check-item"><span style="color:' + (ok ? 'var(--gr)' : 'var(--t2)') + '">' + (ok ? '✓' : '○') + ' ' + n + '</span>' +
+    (ok ? '' : '<span style="color:var(--or);font-size:10.5px">' + esc(why) + '</span>') + '</div>').join('') +
+    '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--b1);font-size:11px;color:' + (okAll ? 'var(--gr)' : 'var(--t3)') + ';font-weight:' + (okAll ? '600' : '400') + '">' +
+    (okAll ? '✓ Todo listo para publicar' : 'Completá los pendientes antes de publicar') + '</div>';
+}
+
+// ══════════════════════════════════════════════
 //  PREVIEW JSON
 // ══════════════════════════════════════════════
 function toggleJson() {
@@ -2359,6 +2528,9 @@ function toggleJson() {
 }
 
 function preview() {
+  try { updateChecklist(); } catch(e) {}
+  try { renderCuotasInfo(); } catch(e) {}
+  try { CostSim.onFormChange(); } catch(e) {}
   const pre = document.getElementById('json-pre');
   if (!pre.classList.contains('on')) return;
   try { pre.textContent = JSON.stringify(buildItem().item, null, 2); } catch(e) {}
@@ -2986,6 +3158,14 @@ async function renameAcct(id, current) {
 
 initAccountLabel();
 initCatTree();
+
+// ── Init simulador de costos + checklist ──
+CostSim.loadInputs();
+updateChecklist();
+renderCuotasInfo();
+$('cl-tipo').addEventListener('change', () => CostSim.clone());
+$('cl-precio').addEventListener('input', () => CostSim.cloneDebounced());
+$('b-tipo').addEventListener('change', () => CostSim.bulk());
 
 // ══════════════════════════════════════════════
 //  UTILS
