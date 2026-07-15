@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v16'; // v16: rediseño checklist "Listo para publicar" (chips contenidos + progreso)
+const CACHE_NAME = 'stockroom-v17'; // v17: fix media query sin cerrar que anulaba el padding de las cards en desktop
 const STATIC_ASSETS = [
   '/',
   '/index.html',
