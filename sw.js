@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v15'; // v15: rediseño publicaciones (simulador costos, combobox categorías, espaciado) — fuerza refresh del precache
+const CACHE_NAME = 'stockroom-v16'; // v16: rediseño checklist "Listo para publicar" (chips contenidos + progreso)
 const STATIC_ASSETS = [
   '/',
   '/index.html',
