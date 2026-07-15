@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v14'; // v14: badge reseñas en admin-sidebar + robots whitelist
+const CACHE_NAME = 'stockroom-v15'; // v15: rediseño publicaciones (simulador costos, combobox categorías, espaciado) — fuerza refresh del precache
 const STATIC_ASSETS = [
   '/',
   '/index.html',
