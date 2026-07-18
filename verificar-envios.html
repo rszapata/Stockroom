@@ -248,6 +248,7 @@
     <div class="pdf-summary" id="pdf-summary" style="display:none; margin-bottom:16px">
       <div class="pdf-summary-meta" id="pdf-meta"></div>
       <div class="pdf-totals" id="pdf-totals"></div>
+      <div id="pdf-totals-note" style="display:none;margin-top:8px;font-size:11px;color:var(--yellow)"></div>
     </div>
 
     <!-- Action bar -->
@@ -444,19 +445,6 @@ function renderTotals() {
     { label:'Entregas',    value: `${pdfData.length}`, },
     { label:'Total',       value: `$${totalPdf.toLocaleString('es-AR')}`, yellow: true },
   ];
-  // Aviso si el PDF DECLARA más entregas o un total distinto al que se pudo leer
-  // (típico: una fila cuyo tracking quedó mal extraído del PDF y no se parseó).
-  const decN = lastParsed?.total_entregas || 0;
-  const decV = lastParsed?.total_valor_declarado || 0;
-  const faltanN = decN > pdfData.length ? decN - pdfData.length : 0;
-  const faltanV = decV && decV > totalPdf ? decV - totalPdf : 0;
-  if (faltanN || faltanV) {
-    items.push({
-      label: '⚠ El PDF declara ' + (decN || pdfData.length) + ' entregas' + (decV ? ' por $' + decV.toLocaleString('es-AR') : ''),
-      value: (faltanN ? faltanN + ' fila(s) no leída(s)' : '') + (faltanV ? (faltanN ? ' · ' : '') + '−$' + faltanV.toLocaleString('es-AR') : ''),
-      red: true,
-    });
-  }
   for (const [cuenta, val] of Object.entries(byAccount)) {
     items.push({ label: cuenta, value: `$${val.toLocaleString('es-AR')}` });
   }
@@ -478,6 +466,22 @@ function renderTotals() {
       <div class="pdf-tot-label">${esc(i.label)}</div>
       <div class="pdf-tot-value${i.yellow ? ' yellow' : ''}${i.red ? ' red' : ''}${i.green ? ' green' : ''}">${esc(i.value)}</div>
     </div>`).join('');
+
+  // Aviso CHICO solo si lo que declara el PDF no coincide con lo leído (raro con el
+  // parser por bloques de fecha; queda como red de seguridad).
+  const decN = lastParsed?.total_entregas || 0;
+  const decV = lastParsed?.total_valor_declarado || 0;
+  const faltanN = decN && decN !== pdfData.length ? decN - pdfData.length : 0;
+  const faltanV = decV && Math.abs(decV - totalPdf) >= 1 ? decV - totalPdf : 0;
+  const note = $I('pdf-totals-note');
+  if (note) {
+    if (faltanN || faltanV) {
+      note.textContent = `⚠ El PDF declara ${decN} entregas${decV ? ' por $' + decV.toLocaleString('es-AR') : ''} · se leyeron ${pdfData.length}${faltanV ? ' ($' + totalPdf.toLocaleString('es-AR') + ')' : ''}`;
+      note.style.display = 'block';
+    } else {
+      note.style.display = 'none';
+    }
+  }
 }
 
 /* ── Upload + parse ──────────────────────────────────── */
