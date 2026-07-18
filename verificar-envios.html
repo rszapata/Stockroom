@@ -444,6 +444,19 @@ function renderTotals() {
     { label:'Entregas',    value: `${pdfData.length}`, },
     { label:'Total',       value: `$${totalPdf.toLocaleString('es-AR')}`, yellow: true },
   ];
+  // Aviso si el PDF DECLARA más entregas o un total distinto al que se pudo leer
+  // (típico: una fila cuyo tracking quedó mal extraído del PDF y no se parseó).
+  const decN = lastParsed?.total_entregas || 0;
+  const decV = lastParsed?.total_valor_declarado || 0;
+  const faltanN = decN > pdfData.length ? decN - pdfData.length : 0;
+  const faltanV = decV && decV > totalPdf ? decV - totalPdf : 0;
+  if (faltanN || faltanV) {
+    items.push({
+      label: '⚠ El PDF declara ' + (decN || pdfData.length) + ' entregas' + (decV ? ' por $' + decV.toLocaleString('es-AR') : ''),
+      value: (faltanN ? faltanN + ' fila(s) no leída(s)' : '') + (faltanV ? (faltanN ? ' · ' : '') + '−$' + faltanV.toLocaleString('es-AR') : ''),
+      red: true,
+    });
+  }
   for (const [cuenta, val] of Object.entries(byAccount)) {
     items.push({ label: cuenta, value: `$${val.toLocaleString('es-AR')}` });
   }
@@ -502,6 +515,7 @@ async function onFileChange(file) {
     lastParsed = {
       cliente: data.cliente, periodo: data.periodo,
       total_entregas: data.total_entregas, total_valor: data.total_valor,
+      total_valor_declarado: data.total_valor_declarado,
       rows: data.rows,
     };
     $I('uz-file-name').textContent = '✓ ' + file.name;
@@ -625,7 +639,7 @@ async function cargarGuardado(id) {
     if (!d.ok) throw new Error(d.error || 'No se pudo cargar');
 
     pdfData = d.rows || [];
-    lastParsed = { cliente: d.cliente, periodo: d.periodo, total_entregas: d.total_entregas, total_valor: d.total_valor, rows: d.rows };
+    lastParsed = { cliente: d.cliente, periodo: d.periodo, total_entregas: d.total_entregas, total_valor: d.total_valor, total_valor_declarado: d.total_valor_declarado, rows: d.rows };
     lastFile = null; lastFileBytes = null;
     currentLoadedSavedId = id;
     verifiedData = [];
