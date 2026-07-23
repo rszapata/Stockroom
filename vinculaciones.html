@@ -457,7 +457,11 @@
         <span style="font-size:12px;font-weight:600;color:#fdba74">Ajustes de stock pendientes</span>
         <span id="pending-count" class="pending-count-badge">0</span>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span id="pending-bulk" class="strat-seg" style="display:none" title="Quedarse con el stock más alto o más bajo en TODAS las variantes de una vez (después revisá y Aplicá)">
+          <button onclick="resolveAllPending('max')" style="padding:5px 10px">↑ Más alto en todas</button>
+          <button onclick="resolveAllPending('min')" style="padding:5px 10px">↓ Más bajo en todas</button>
+        </span>
         <button onclick="dismissAllPending()" style="font-size:11px;color:var(--text-3);background:none;border:none;cursor:pointer;padding:4px 8px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-3)'">Descartar todos</button>
         <button onclick="applyAllPending()" id="btn-apply-all" class="btn-apply-all">
           <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1316,13 +1320,38 @@ function fmtAttrKey(key) {
 }
 
 // ── Pending panel ─────────────────────────────────────────────
+let pendingList = [];   // último set de ajustes pendientes (para el resolvedor masivo)
+
+// Marca los radios de TODOS los ajustes por variante quedándose con el stock
+// más alto (mode='max') o más bajo (mode='min'). No aplica nada: solo prepara
+// la elección; el usuario revisa y toca "Aplicar todos".
+function resolveAllPending(mode) {
+  let n = 0;
+  (pendingList || []).forEach(adj => {
+    if (adj.type !== 'variant') return;
+    (adj.variantMismatches || []).forEach((m, idx) => {
+      const per = m.perItem || [];
+      if (!per.length) return;
+      const pick = per.reduce((best, p) =>
+        mode === 'max' ? (p.qty > best.qty ? p : best) : (p.qty < best.qty ? p : best), per[0]);
+      const radio = document.querySelector('input[name="vc_' + adj.id + '_' + idx + '"][value="' + pick.itemId + '"]');
+      if (radio) { radio.checked = true; n++; }
+    });
+  });
+  log('info', 'Elegido el stock más ' + (mode === 'max' ? 'ALTO' : 'BAJO') + ' en ' + n + ' variante(s). Revisá y tocá "Aplicar todos".');
+}
+
 function renderPending(list) {
   const card = $I('pending-card');
   const container = $I('pending-list');
   const count = $I('pending-count');
-  if (!list || !list.length) { card.style.display = 'none'; return; }
+  if (!list || !list.length) { card.style.display = 'none'; pendingList = []; return; }
+  pendingList = list;
   card.style.display = 'block';
   count.textContent = list.length;
+  // Mostrar el resolvedor masivo solo si hay ajustes por variante
+  const bulk = $I('pending-bulk');
+  if (bulk) bulk.style.display = list.some(a => a.type === 'variant') ? 'inline-flex' : 'none';
 
   container.innerHTML = list.map(adj => {
     const ts = new Date(adj.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
@@ -1555,23 +1584,34 @@ async function revertAdjustment(adjId, btnEl) {
 async function applyAllPending() {
   const btn = $I('btn-apply-all');
   if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
-  log('info', 'Aplicando todos los ajustes pendientes...');
+  // Aplicar ajuste por ajuste, leyendo la elección por variante DE CADA tarjeta
+  // (scoped): distintos productos comparten attrKeys, así que un mapa global las
+  // mezclaría. Se re-renderiza una sola vez al final para no perder los radios.
+  const adjs = (pendingList || []).slice();
+  log('info', 'Aplicando ' + adjs.length + ' ajuste(s)...');
+  let okCount = 0, failCount = 0, itemsCount = 0;
   try {
-    const r = await fetch('/vinculaciones/apply-adjustment', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-    const d = await r.json();
-    if (d.ok) {
-      log('ok', 'Listo — ' + d.applied + ' item(s) actualizado' + (d.applied !== 1 ? 's' : '') + ' en MercadoLibre');
-      await loadPendingFromServer();
-      await loadGroups(); renderGroups();
-      loadLog();
-    } else {
-      log('err', 'Error: ' + (d.error || 'unknown'));
+    for (const adj of adjs) {
+      const el = $I('adj-' + adj.id);
+      const variantChoices = {};
+      if (el) el.querySelectorAll('input[type="radio"][data-attrkey]:checked')
+        .forEach(inp => { variantChoices[inp.dataset.attrkey] = inp.value; });
+      const body = { id: adj.id };
+      if (Object.keys(variantChoices).length) body.variantChoices = variantChoices;
+      if (el) el.style.opacity = '.5';
+      try {
+        const r = await fetch('/vinculaciones/apply-adjustment', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const d = await r.json();
+        if (d.ok) { okCount++; itemsCount += (d.applied || 0); }
+        else { failCount++; log('err', '  ' + adj.groupName + ': ' + (d.error || 'error')); if (el) el.style.opacity = ''; }
+      } catch(e) { failCount++; log('err', '  ' + adj.groupName + ': ' + e.message); if (el) el.style.opacity = ''; }
     }
-  } catch(e) {
-    log('err', 'Error: ' + e.message);
+    log(failCount ? 'warn' : 'ok', 'Listo — ' + okCount + ' ajuste(s), ' + itemsCount + ' item(s) actualizado(s)' + (failCount ? ' · ' + failCount + ' con error' : ''));
+    await loadPendingFromServer();
+    await loadGroups(); renderGroups();
+    loadLog();
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
