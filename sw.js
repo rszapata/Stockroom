@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v19'; // v19: vinculaciones — resolvedor masivo más alto/más bajo en ajustes pendientes
+const CACHE_NAME = 'stockroom-v20'; // v20: vinculaciones — deshacer lote de ajustes aplicados
 const STATIC_ASSETS = [
   '/',
   '/index.html',
