@@ -48,7 +48,10 @@ module.exports = function(ctx) {
       req.on('data', c => body += c);
       req.on('end', async () => {
         try {
-          const { group, sourceItemId } = JSON.parse(body);
+          const { group, sourceItemId, mode } = JSON.parse(body);
+          // mode: 'max' (igualar al mayor) | 'min' (igualar al menor, default).
+          // Solo aplica cuando NO se indica un sourceItemId explícito.
+          const useMax = mode === 'max';
           const results = [];
           for (const it of group.items) {
             const acct = (fullConfig().accounts || []).find(a => a.id === it.accountId);
@@ -75,7 +78,9 @@ module.exports = function(ctx) {
             if (!src) { json(res, 200, { ok: false, error: 'Item fuente no encontrado o sin stock', results }); return; }
             targetStock = src.realStock;
           } else {
-            targetStock = Math.min(...valid.map(r => r.realStock));
+            targetStock = useMax
+              ? Math.max(...valid.map(r => r.realStock))
+              : Math.min(...valid.map(r => r.realStock));
           }
 
           // Item fuente para matcheo por variante

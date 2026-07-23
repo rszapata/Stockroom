@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v17'; // v17: fix media query sin cerrar que anulaba el padding de las cards en desktop
+const CACHE_NAME = 'stockroom-v18'; // v18: vinculaciones — estrategia global más alto/más bajo + sync por modo
 const STATIC_ASSETS = [
   '/',
   '/index.html',

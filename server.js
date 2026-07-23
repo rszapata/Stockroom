@@ -8045,6 +8045,10 @@ async function _checkStockChangesImpl() {
   try { vinc = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch(e) { return; }
   if (!vinc.groups || !vinc.groups.length) return;
 
+  // Estrategia global de sincronización: 'highest' (igualar al mayor, p.ej. tras
+  // reponer stock en una cuenta) o 'lowest' (igualar al menor, default — dedup por venta).
+  const vincStrategy = vinc.strategy === 'highest' ? 'highest' : 'lowest';
+
   const allAccounts = fullConfig.accounts || [];
   let vincChanged = false;
 
@@ -8235,16 +8239,18 @@ async function _checkStockChangesImpl() {
     } else if (variantMismatches.length && pendingGroupIds.has(g.id)) {
       console.log('[vinc]   ↳ "' + g.name + '" — variante(s) desalineada(s) suprimida(s) (ya hay ajuste sale/cancel pendiente)');
     } else if (!pendingGroupIds.has(g.id) && !allSame && anyChanged) {
-        const minStock = Math.min(...nums);
+        // Target según la estrategia global: al mayor o al menor de los stocks.
+        const targetStock = vincStrategy === 'highest' ? Math.max(...nums) : Math.min(...nums);
 
-        // Detectar el trigger: item con mayor caída
+        // Detectar el trigger: item con mayor caída (lowest) o mayor suba (highest)
         let trigger = null;
-        let maxDrop = -Infinity;
+        let maxDelta = -Infinity;
         for (const s of stocks) {
           const prev = typeof s.lastStock === 'number' ? s.lastStock : s.realStock;
-          const drop = prev - s.realStock;
-          if (drop > maxDrop) {
-            maxDrop = drop;
+          // lowest: la mayor caída explica la venta; highest: la mayor suba explica la reposición
+          const delta = vincStrategy === 'highest' ? (s.realStock - prev) : (prev - s.realStock);
+          if (delta > maxDelta) {
+            maxDelta = delta;
             trigger = {
               itemId: s.itemId,
               acctLabel: s.acctLabel || s.accountId,
@@ -8255,10 +8261,10 @@ async function _checkStockChangesImpl() {
           }
         }
 
-        // Items que hay que bajar (stock > mínimo)
+        // Items a ajustar: los que difieren del target (bajar al menor / subir al mayor)
         const sourceDeltas = trigger ? (variantDeltasByItem[trigger.itemId] || []) : [];
         const changes = stocks
-          .filter(s => s.realStock > minStock)
+          .filter(s => s.realStock !== targetStock)
           .map(s => ({
             itemId: s.itemId,
             accountId: s.accountId,
@@ -8266,8 +8272,8 @@ async function _checkStockChangesImpl() {
             title: s.title || '',
             thumb: s.thumb || '',
             from: s.realStock,
-            to: minStock,
-            sourceVariantDeltas: sourceDeltas,  // qué variante bajó en el item fuente
+            to: targetStock,
+            sourceVariantDeltas: sourceDeltas,  // qué variante cambió en el item fuente
           }));
 
         if (changes.length) {
@@ -8276,13 +8282,14 @@ async function _checkStockChangesImpl() {
             createdAt: new Date().toISOString(),
             groupId: g.id,
             groupName: g.name,
+            strategy: vincStrategy,
             trigger,
             changes,
-            targetStock: minStock,
+            targetStock,
             status: 'pending',
           });
           pendingGroupIds.add(g.id);
-          console.log('[vinc]   ⚠ Ajuste pendiente: "' + g.name + '" → stock ' + minStock + ' (' + changes.length + ' item(s))');
+          console.log('[vinc]   ⚠ Ajuste pendiente: "' + g.name + '" → stock ' + targetStock + ' (' + vincStrategy + ', ' + changes.length + ' item(s))');
         }
       }
   }

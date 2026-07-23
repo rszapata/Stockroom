@@ -40,6 +40,13 @@
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
   padding: 8px 12px; margin-bottom: 16px; flex-wrap: wrap;
 }
+/* Segmentado de estrategia (más bajo / más alto) */
+.pg .strat-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--bg); }
+.pg .strat-seg button { font-family: var(--mono); font-size: 11px; font-weight: 600; padding: 6px 11px; border: none; background: transparent; color: var(--text-3); cursor: pointer; transition: all .15s; }
+.pg .strat-seg button.active { background: var(--ye); color: var(--bg); }
+.pg .strat-seg button:not(.active):hover { color: var(--text); background: var(--bg-card); }
+.pg .strat-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.pg .strat-wrap .strat-lbl { font-family: var(--mono); font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
 .pg .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .3s; flex-shrink: 0; }
 .pg .auto-dot.active { background: var(--green); animation: pg-ring 2s ease-out infinite; }
 @keyframes pg-ring { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.5); } 100% { box-shadow: 0 0 0 8px rgba(74,222,128,0); } }
@@ -487,6 +494,13 @@
         <div class="card-title">Grupos Vinculados</div>
       </div>
       <div class="card-actions">
+        <div class="strat-wrap">
+          <span class="strat-lbl">Mantener</span>
+          <div class="strat-seg" title="Al sincronizar (y en las propuestas automáticas), igualar todo al stock más bajo o más alto del grupo">
+            <button id="strat-low" onclick="setStrategy('lowest')">Más bajo</button>
+            <button id="strat-high" onclick="setStrategy('highest')">Más alto</button>
+          </div>
+        </div>
         <button onclick="refreshAllStocks()" class="btn-outline">
           <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
           Actualizar stocks
@@ -634,20 +648,37 @@ async function loadPageAccounts() {
   } catch(e) { log('err', 'Error cargando cuentas: ' + e.message); }
 }
 
+let syncStrategy = 'lowest';   // 'lowest' (igualar al menor) | 'highest' (igualar al mayor)
+
 async function loadGroups() {
   try {
     const r = await fetch('/vinculaciones');
     const d = await r.json();
     groups = d.groups || [];
+    syncStrategy = d.strategy === 'highest' ? 'highest' : 'lowest';
   } catch(e) { groups = []; }
+  reflectStrategyUI();
 }
 
 async function saveGroups() {
   await fetch('/vinculaciones', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ groups })
+    body: JSON.stringify({ groups, strategy: syncStrategy })
   });
+}
+
+function reflectStrategyUI() {
+  const lo = $I('strat-low'), hi = $I('strat-high');
+  if (lo) lo.classList.toggle('active', syncStrategy === 'lowest');
+  if (hi) hi.classList.toggle('active', syncStrategy === 'highest');
+}
+
+async function setStrategy(s) {
+  syncStrategy = s === 'highest' ? 'highest' : 'lowest';
+  reflectStrategyUI();
+  await saveGroups();
+  log('info', 'Estrategia: mantener el stock ' + (syncStrategy === 'highest' ? 'MÁS ALTO' : 'MÁS BAJO') + ' al sincronizar');
 }
 
 // ── Account menu (old header elements gone — these are silent no-ops) ──
@@ -890,7 +921,8 @@ function renderGroups() {
       '<div class="lg-actions">' +
         '<button class="jsbtn" onclick="refreshGroupStocks(\'' + g.id + '\')">Actualizar</button>' +
         '<button class="jsbtn" onclick="addItemToGroup(\'' + g.id + '\')">+ Item</button>' +
-        '<button class="jsbtn" onclick="syncGroup(\'' + g.id + '\')">Sync mínimo</button>' +
+        '<button class="jsbtn" onclick="syncGroup(\'' + g.id + '\',null,\'min\')" title="Igualar todas al stock más bajo del grupo">↓ Al más bajo</button>' +
+        '<button class="jsbtn" onclick="syncGroup(\'' + g.id + '\',null,\'max\')" title="Igualar todas al stock más alto del grupo">↑ Al más alto</button>' +
         '<button class="jsbtn primary" onclick="syncGroupFromSource(\'' + g.id + '\')">Sync desde seleccionada</button>' +
         '<button class="jsbtn danger" onclick="deleteGroup(\'' + g.id + '\')">Eliminar</button>' +
       '</div>' +
@@ -905,15 +937,19 @@ function syncGroupFromSource(gid) {
   syncGroup(gid, radio.value);
 }
 
-async function syncGroup(gid, sourceItemId) {
+async function syncGroup(gid, sourceItemId, mode) {
   const g = groups.find(x => x.id === gid);
   if (!g) return;
+  // Sin fuente explícita, se usa la estrategia global (o el mode pasado)
+  const effMode = mode || (syncStrategy === 'highest' ? 'max' : 'min');
   const el = $I('lg-' + gid);
   if (el) el.classList.add('syncing');
-  log('info', 'Sincronizando "' + g.name + '" (' + (sourceItemId ? 'desde ' + sourceItemId : 'al minimo') + ')...');
+  const modoTxt = sourceItemId ? 'desde ' + sourceItemId : (effMode === 'max' ? 'al MÁS ALTO' : 'al MÁS BAJO');
+  log('info', 'Sincronizando "' + g.name + '" (' + modoTxt + ')...');
   try {
     const payload = { group: g };
     if (sourceItemId) payload.sourceItemId = sourceItemId;
+    else payload.mode = effMode;
     const r = await fetch('/vinculaciones/sync', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -966,7 +1002,9 @@ async function syncGroup(gid, sourceItemId) {
 }
 
 async function syncAll() {
-  log('info', 'Sincronizando todos los grupos...');
+  const modeTxt = syncStrategy === 'highest' ? 'MÁS ALTO' : 'MÁS BAJO';
+  if (!confirm('¿Sincronizar TODOS los grupos igualando cada uno a su stock ' + modeTxt + '?')) return;
+  log('info', 'Sincronizando todos los grupos (al ' + modeTxt + ')...');
   for (const g of groups) await syncGroup(g.id);
   log('ok', 'Sincronizacion completa');
 }
