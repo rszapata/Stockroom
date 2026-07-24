@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v20'; // v20: vinculaciones — deshacer lote de ajustes aplicados
+const CACHE_NAME = 'stockroom-v21'; // v21: vinculaciones — fix "Aplicar todos" pisaba elecciones a mitad (snapshot + pausa poll + persistir)
 const STATIC_ASSETS = [
   '/',
   '/index.html',

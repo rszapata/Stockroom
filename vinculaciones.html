@@ -626,6 +626,8 @@ function esc(s){ const d=document.createElement('div'); d.textContent=s||''; ret
 let accounts = [];
 let groups = [];
 let suggestions = [];
+let busyApplying = false;    // true mientras se aplica un lote (pausa el poll de 60s que reseteaba los radios)
+let manualChoices = {};      // adjId -> {attrKey: itemId} — elecciones que sobreviven a un re-render
 let newGroupItems = [];
 let autoSyncTimer = null;
 let searchTimer = null;
@@ -1260,6 +1262,9 @@ function restoreAutoSync() {
 }
 
 async function loadPendingFromServer() {
+  // No re-renderizar mientras se aplica un lote: el re-render resetea los radios
+  // elegidos (el poll de 60s pisaba las elecciones a mitad de "Aplicar todos").
+  if (busyApplying) return;
   try {
     const r = await fetch('/vinculaciones/pending');
     const d = await r.json();
@@ -1337,6 +1342,7 @@ function resolveAllPending(mode) {
       if (!per.length) return;
       const pick = per.reduce((best, p) =>
         mode === 'max' ? (p.qty > best.qty ? p : best) : (p.qty < best.qty ? p : best), per[0]);
+      (manualChoices[adj.id] = manualChoices[adj.id] || {})[m.attrKey] = pick.itemId;
       const radio = document.querySelector('input[name="vc_' + adj.id + '_' + idx + '"][value="' + pick.itemId + '"]');
       if (radio) { radio.checked = true; n++; }
     });
@@ -1520,7 +1526,31 @@ function renderPending(list) {
       '</div>'
     );
   }).join('');
+
+  // Re-aplicar las elecciones que el usuario ya había hecho (por si un re-render
+  // del poll de 60s las pisó): marca los radios guardados en manualChoices.
+  for (const [adjId, byKey] of Object.entries(manualChoices)) {
+    for (const [attrKey, itemId] of Object.entries(byKey)) {
+      const el = $I('adj-' + adjId);
+      if (!el) continue;
+      const radio = el.querySelector('input[type="radio"][data-attrkey="' + cssEscAttr(attrKey) + '"][value="' + cssEscAttr(itemId) + '"]');
+      if (radio) radio.checked = true;
+    }
+  }
 }
+
+// Escapa un valor para usarlo dentro de un selector de atributo [x="..."]
+function cssEscAttr(s) { return String(s).replace(/["\\]/g, '\\$&'); }
+
+// Cuando el usuario cambia un radio a mano, recordarlo (sobrevive al re-render)
+document.addEventListener('change', e => {
+  const inp = e.target;
+  if (!inp || inp.type !== 'radio' || !inp.dataset || !inp.dataset.attrkey) return;
+  const card = inp.closest('[id^="adj-"]');
+  if (!card) return;
+  const adjId = card.id.replace(/^adj-/, '');
+  (manualChoices[adjId] = manualChoices[adjId] || {})[inp.dataset.attrkey] = inp.value;
+});
 
 async function applyOneAdjustment(id) {
   const el = $I('adj-' + id);
@@ -1591,15 +1621,25 @@ async function applyAllPending() {
   // (scoped): distintos productos comparten attrKeys, así que un mapa global las
   // mezclaría. Se re-renderiza una sola vez al final para no perder los radios.
   const adjs = (pendingList || []).slice();
+  // Snapshot de TODAS las elecciones ANTES de empezar: aplicar el lote tarda más
+  // que el poll de 60s, que re-renderiza y resetea los radios. Si leyéramos el DOM
+  // dentro del loop, las tarjetas aún no aplicadas volverían al default (el menor).
+  const choicesById = {};
+  for (const adj of adjs) {
+    const el = $I('adj-' + adj.id);
+    const vc = {};
+    if (el) el.querySelectorAll('input[type="radio"][data-attrkey]:checked')
+      .forEach(inp => { vc[inp.dataset.attrkey] = inp.value; });
+    choicesById[adj.id] = vc;
+  }
+  busyApplying = true;
   log('info', 'Aplicando ' + adjs.length + ' ajuste(s)...');
   let okCount = 0, failCount = 0, itemsCount = 0;
   const appliedIds = [];
   try {
     for (const adj of adjs) {
       const el = $I('adj-' + adj.id);
-      const variantChoices = {};
-      if (el) el.querySelectorAll('input[type="radio"][data-attrkey]:checked')
-        .forEach(inp => { variantChoices[inp.dataset.attrkey] = inp.value; });
+      const variantChoices = choicesById[adj.id] || {};
       const body = { id: adj.id };
       if (Object.keys(variantChoices).length) body.variantChoices = variantChoices;
       if (el) el.style.opacity = '.5';
@@ -1613,12 +1653,15 @@ async function applyAllPending() {
       } catch(e) { failCount++; log('err', '  ' + adj.groupName + ': ' + e.message); if (el) el.style.opacity = ''; }
     }
     lastAppliedBatch = appliedIds;
+    appliedIds.forEach(id => { delete manualChoices[id]; });
     reflectUndoButton();
     log(failCount ? 'warn' : 'ok', 'Listo — ' + okCount + ' ajuste(s), ' + itemsCount + ' item(s) actualizado(s)' + (failCount ? ' · ' + failCount + ' con error' : '') + (appliedIds.length ? ' · podés deshacer con "Deshacer lo aplicado"' : ''));
+    busyApplying = false;   // liberar antes de recargar (el poll estaba en pausa)
     await loadPendingFromServer();
     await loadGroups(); renderGroups();
     loadLog();
   } finally {
+    busyApplying = false;
     if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
 }
