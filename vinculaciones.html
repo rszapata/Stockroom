@@ -1704,6 +1704,7 @@ async function dismissAllPending() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
+    manualChoices = {};   // limpiar elecciones recordadas (ya no aplican)
     await loadPendingFromServer();
     loadLog();
     log('info', 'Ajustes pendientes descartados');
@@ -1716,6 +1717,7 @@ async function dismissOneAdjustment(id) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
     });
+    delete manualChoices[id];
     await loadPendingFromServer();
     loadLog();
   } catch(e) { log('err', 'Error: ' + e.message); }

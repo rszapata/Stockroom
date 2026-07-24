@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v21'; // v21: vinculaciones — fix "Aplicar todos" pisaba elecciones a mitad (snapshot + pausa poll + persistir)
+const CACHE_NAME = 'stockroom-v22'; // v22: vinculaciones — mismatches por variante respetan estrategia global + limpieza endpoint muerto
 const STATIC_ASSETS = [
   '/',
   '/index.html',

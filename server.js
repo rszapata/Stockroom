@@ -7641,7 +7641,7 @@ async function checkStockChanges() {
 // stock total (ej: se vende una variante en una cuenta y otra variante
 // distinta en la otra cuenta — los totales bajan igual pero las variantes
 // quedan desalineadas).
-function detectVariantMismatches(stocks) {
+function detectVariantMismatches(stocks, strategy) {
   const allHaveVariants = stocks.every(s => s.variantSnap && Object.keys(s.variantSnap).length);
   if (!allHaveVariants) return [];
 
@@ -7671,7 +7671,10 @@ function detectVariantMismatches(stocks) {
     const qtys = perItem.map(x => x.qty);
     const allSame = qtys.every(q => q === qtys[0]);
     if (!allSame) {
-      const targetQty = Math.min(...qtys);
+      // Default según la estrategia global: 'highest' propone quedarse con el
+      // mayor (reposición), si no el menor (venta). El usuario puede cambiarlo
+      // por variante en la UI antes de aplicar.
+      const targetQty = strategy === 'highest' ? Math.max(...qtys) : Math.min(...qtys);
       mismatches.push({ attrKey, label: perItem[0].label, perItem, targetQty });
     }
   }
@@ -8173,7 +8176,7 @@ async function _checkStockChangesImpl() {
     // totales coinciden o no. Comparar sólo totales puede hacer que un
     // desbalance real quede oculto (los totales pueden "cuadrar" de
     // casualidad mientras las variantes individuales quedan desalineadas).
-    const variantMismatches = detectVariantMismatches(stocks);
+    const variantMismatches = detectVariantMismatches(stocks, vincStrategy);
 
     // ── Auto-resolver avisos de VARIANTE ya alineados ───────────
     // Cada aviso de variante (o el resumen) cuya(s) variante(s) ya no figura(n)

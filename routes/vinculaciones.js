@@ -164,94 +164,9 @@ module.exports = function(ctx) {
       return true;
     }
 
-    // POST /vinculaciones/check-orders
-    if (pathname === '/vinculaciones/check-orders' && req.method === 'POST') {
-      let body = '';
-      req.on('data', c => body += c);
-      req.on('end', async () => {
-        try {
-          let bodyData = {};
-          try { bodyData = body ? JSON.parse(body) : {}; } catch(e) {}
-          const dryRun = !!bodyData.dryRun;
-          const vinc = fs.existsSync(VINC_PATH) ? JSON.parse(fs.readFileSync(VINC_PATH, 'utf8')) : { groups: [] };
-          if (!vinc.groups?.length) { json(res, 200, { ok: true, msg: 'No hay grupos', synced: 0, dryRun }); return; }
-
-          const itemToGroup = {};
-          for (const g of vinc.groups) {
-            for (const it of g.items) itemToGroup[it.itemId] = g;
-          }
-
-          const since       = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-          const allAccounts = fullConfig().accounts || [];
-          const groupsToSync = new Set();
-
-          for (const acct of allAccounts) {
-            if (!acct.access_token || !acct.user_id) continue;
-            try {
-              const mlPath = `/orders/search?seller=${acct.user_id}&order.status=paid&order.date_created.from=${encodeURIComponent(since)}&sort=date_desc&limit=50`;
-              const data   = await mlGetAuth(acct, mlPath);
-              for (const o of (data.results || [])) {
-                for (const oi of (o.order_items || [])) {
-                  const iid = oi.item?.id;
-                  if (iid && itemToGroup[iid]) groupsToSync.add(itemToGroup[iid].id);
-                }
-              }
-            } catch(e) { console.log(`[vinc] Error checking orders for ${acct.id}:`, e.message); }
-          }
-
-          const syncResults = [];
-          for (const gid of groupsToSync) {
-            const g = vinc.groups.find(x => x.id === gid);
-            if (!g) continue;
-            const stocks = [];
-            for (const it of g.items) {
-              const acct = allAccounts.find(a => a.id === it.accountId);
-              if (!acct?.access_token) continue;
-              try {
-                const d    = await mlGetAuth(acct, '/items/' + it.itemId);
-                const vars = d.variations || [];
-                const hasVars = vars.length > 0;
-                const stock   = hasVars ? vars.reduce((sum, v) => sum + (v.available_quantity || 0), 0) : (d.available_quantity || 0);
-                stocks.push({ ...it, stock, hasVars, variations: vars });
-              } catch(e) { /* skip */ }
-            }
-            if (!stocks.length) continue;
-            const minStock = Math.min(...stocks.map(s => s.stock));
-            for (const s of stocks) {
-              if (s.stock > minStock) {
-                const acct = allAccounts.find(a => a.id === s.accountId);
-                try {
-                  if (!dryRun) {
-                    if (s.hasVars && s.variations?.length) {
-                      const oldTotal = s.stock || 1;
-                      const newVars  = s.variations.map(v => {
-                        const oldQty = v.available_quantity || 0;
-                        let newQty   = oldTotal === 0
-                          ? Math.floor(minStock / s.variations.length)
-                          : Math.round((oldQty / oldTotal) * minStock);
-                        return { id: v.id, available_quantity: Math.max(newQty, 0) };
-                      });
-                      const sum = newVars.reduce((a, v) => a + v.available_quantity, 0);
-                      if (sum !== minStock && newVars.length) {
-                        newVars[0].available_quantity += (minStock - sum);
-                        if (newVars[0].available_quantity < 0) newVars[0].available_quantity = 0;
-                      }
-                      const expTotal = newVars.reduce((a, v) => a + (v.available_quantity || 0), 0);
-                      await mlPutVerified(acct, s.itemId, { variations: newVars }, expTotal);
-                    } else {
-                      await mlPutVerified(acct, s.itemId, { available_quantity: minStock }, minStock);
-                    }
-                  }
-                  syncResults.push({ group: g.name, groupId: g.id, accountId: s.accountId, item: s.itemId, from: s.stock, to: minStock, hasVars: !!s.hasVars });
-                } catch(e) { /* skip */ }
-              }
-            }
-          }
-          json(res, 200, { ok: true, dryRun, groupsChecked: groupsToSync.size, synced: syncResults.length, details: syncResults });
-        } catch(e) { json(res, 500, { error: e.message }); }
-      });
-      return true;
-    }
+    // NOTA: el endpoint /vinculaciones/check-orders (sync directo al mínimo al
+    // detectar órdenes, SIN confirmación) se eliminó: no tenía callers y
+    // contradecía el modelo actual de solo-propuestas + estrategia global.
 
     // GET /vinculaciones/pending
     if (pathname === '/vinculaciones/pending' && req.method === 'GET') {
