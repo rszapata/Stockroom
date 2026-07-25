@@ -641,6 +641,7 @@ async function init() {
   restoreAutoSync();
   await loadPendingFromServer();
   loadLog();
+  restoreLastBatch();
 }
 init();
 
@@ -1652,9 +1653,8 @@ async function applyAllPending() {
         else { failCount++; log('err', '  ' + adj.groupName + ': ' + (d.error || 'error')); if (el) el.style.opacity = ''; }
       } catch(e) { failCount++; log('err', '  ' + adj.groupName + ': ' + e.message); if (el) el.style.opacity = ''; }
     }
-    lastAppliedBatch = appliedIds;
+    setLastBatch(appliedIds);
     appliedIds.forEach(id => { delete manualChoices[id]; });
-    reflectUndoButton();
     log(failCount ? 'warn' : 'ok', 'Listo — ' + okCount + ' ajuste(s), ' + itemsCount + ' item(s) actualizado(s)' + (failCount ? ' · ' + failCount + ' con error' : '') + (appliedIds.length ? ' · podés deshacer con "Deshacer lo aplicado"' : ''));
     busyApplying = false;   // liberar antes de recargar (el poll estaba en pausa)
     await loadPendingFromServer();
@@ -1667,6 +1667,33 @@ async function applyAllPending() {
 }
 
 let lastAppliedBatch = [];   // ids del último "Aplicar todos" (para deshacer en lote)
+
+function setLastBatch(ids) {
+  lastAppliedBatch = ids || [];
+  try {
+    if (lastAppliedBatch.length) localStorage.setItem('vinc_last_batch', JSON.stringify(lastAppliedBatch));
+    else localStorage.removeItem('vinc_last_batch');
+  } catch(e) {}
+  reflectUndoButton();
+}
+
+// Restaura el botón de deshacer al cargar la página, si esos ajustes siguen
+// 'applied' en el server (revertibles). Si ya se revirtieron/no existen, limpia.
+async function restoreLastBatch() {
+  let ids = [];
+  try { ids = JSON.parse(localStorage.getItem('vinc_last_batch') || '[]'); } catch(e) {}
+  if (!ids.length) return;
+  try {
+    const r = await fetch('/vinculaciones/log?limit=200');
+    const d = await r.json();
+    const appliedIds = new Set((d.entries || [])
+      .filter(e => ['applied', 'sale-sync', 'cancel-restore'].includes(e.action) && e.adjId)
+      .map(e => e.adjId));
+    const revertedIds = new Set((d.entries || []).filter(e => e.action === 'reverted' && e.adjId).map(e => e.adjId));
+    ids = ids.filter(id => appliedIds.has(id) && !revertedIds.has(id));
+  } catch(e) { /* si falla el log, dejamos lo guardado */ }
+  setLastBatch(ids);
+}
 
 function reflectUndoButton() {
   const b = $I('btn-undo-batch');
@@ -1689,8 +1716,7 @@ async function undoLastBatch() {
       if (d.ok) ok++; else { fail++; log('err', '  ' + id + ': ' + (d.error || 'error')); }
     } catch(e) { fail++; log('err', '  ' + id + ': ' + e.message); }
   }
-  lastAppliedBatch = [];
-  reflectUndoButton();
+  setLastBatch([]);
   log(fail ? 'warn' : 'ok', 'Deshecho — ' + ok + ' revertido(s)' + (fail ? ' · ' + fail + ' con error' : ''));
   await loadGroups(); renderGroups();
   loadLog();
@@ -1754,6 +1780,7 @@ function renderLog(entries) {
   const SOURCE_CFG = {
     telegram: { label: '📱 Telegram', bg: 'rgba(59,130,246,.1)', border: 'rgba(59,130,246,.2)', color: '#60a5fa' },
     web:      { label: '🖥 Web',       bg: 'var(--bg)',  border: 'var(--border-2)',              color: 'var(--text-2)' },
+    auto:     { label: '⚡ Automático', bg: 'rgba(251,146,60,.1)', border: 'rgba(251,146,60,.25)', color: 'var(--yellow)' },
   };
 
   container.innerHTML = entries.map(e => {
@@ -1793,7 +1820,8 @@ function renderLog(entries) {
       if (e.bulk) detail += '<span style="color:var(--text-3);margin-left:4px">(todos)</span>';
     }
 
-    const canRevert = e.action === 'applied' && e.adjId;
+    // Revertible: aplicados manuales y ventas/cancelaciones auto-aplicadas.
+    const canRevert = ['applied', 'sale-sync', 'cancel-restore'].includes(e.action) && e.adjId;
     const revertBtn = canRevert
       ? '<button onclick="revertAdjustment(\'' + e.adjId + '\', this)" ' +
           'style="font-family:var(--mono);font-size:9px;color:var(--text-3);background:none;border:1px solid var(--border);cursor:pointer;padding:2px 7px;border-radius:5px;transition:color .15s,border-color .15s;flex-shrink:0" ' +

@@ -403,7 +403,17 @@ module.exports = function(ctx) {
               const vars     = itemData.variations || [];
               if (vars.length) {
                 const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
-                if (adj.type === 'variant' && ch.variantChanges?.length) {
+                if (ch.appliedVariantDeltas?.length) {
+                  // Venta/cancelación auto-aplicada: restaurar el valor previo (from)
+                  // de cada variante realmente tocada.
+                  for (const vd of ch.appliedVariantDeltas) {
+                    const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vd.attrKey));
+                    if (matchedVar) {
+                      const t = newVars.find(v => v.id === matchedVar.id);
+                      if (t) t.available_quantity = Math.max(0, vd.from);
+                    }
+                  }
+                } else if (adj.type === 'variant' && ch.variantChanges?.length) {
                   for (const vc of ch.variantChanges) {
                     const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
                     if (matchedVar) {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v22'; // v22: vinculaciones — mismatches por variante respetan estrategia global + limpieza endpoint muerto
+const CACHE_NAME = 'stockroom-v23'; // v23: vinculaciones — auto-aplicar ventas (revertible) + persistir deshacer-lote
 const STATIC_ASSETS = [
   '/',
   '/index.html',

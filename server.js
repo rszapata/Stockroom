@@ -6669,6 +6669,25 @@ async function sendTgAdjustmentNotification(adj) {
 
   // Ajustes dirigidos por ventas/cancelaciones (fase 2): un solo botón
   // "Aplicar" sin importar cuántas variantes/items estén involucrados.
+  // Venta YA auto-aplicada: notificación informativa, sin botón "Aplicar"
+  // (el stock ya se bajó solo). Revertir se hace desde la web (historial).
+  if (adj.type === 'sale' && adj.status === 'applied') {
+    let text = `🔻 <b>Venta sincronizada automáticamente</b> · ${adj.groupName}\n\n`;
+    for (const ch of adj.changes) {
+      for (const vc of (ch.variantChanges || [])) {
+        text += `🎨 ${vc.label} (−${vc.delta}) → bajado en ${_shortAcct(ch.acctLabel)}\n`;
+      }
+    }
+    const r = adj._autoResult || {};
+    if (r.failed || r.noMatch) text += `\n⚠️ ${[r.failed ? r.failed + ' fallo(s)' : '', r.noMatch ? r.noMatch + ' sin variante' : ''].filter(Boolean).join(' · ')} — revisá en Vinculaciones.`;
+    else text += `\n<i>El stock vinculado ya se bajó. Si algo quedó mal, revertí desde Vinculaciones → Historial.</i>`;
+    const photoUrl = await getSaleAdjPhotoUrl(adj);
+    const sent = photoUrl ? await tgSendPhoto(photoUrl, text, null) : await tgSend(text, null);
+    return (sent && sent.ok && sent.result)
+      ? { chatId: sent.result.chat?.id, msgId: sent.result.message_id, isPhoto: !!sent.result.photo }
+      : null;
+  }
+
   if (adj.type === 'sale' || adj.type === 'cancel') {
     const isCancel  = adj.type === 'cancel';
     const isReturn  = isCancel && adj.afterDelivery;   // devolución post-entrega
@@ -7940,6 +7959,24 @@ async function notifySaleAdjustments(newSales, cancellations) {
   const all = loadPendingAdjustments();
   savePendingAdjustments([...all, ...newAdjustments]);
 
+  // AUTO-APLICAR las ventas (bajar stock vinculado sin intervención). Las
+  // cancelaciones quedan PENDIENTES (manual): reponer stock tras una cancelación
+  // —sobre todo devoluciones post-entrega— necesita revisión. Todo auto-aplicado
+  // queda en el historial y es revertible.
+  // GUARD: solo en PRODUCCIÓN. En staging (DISABLE_TELEGRAM=true) NO se auto-aplica
+  // para no escribir al mismo ML dos veces (prod + staging = doble descuento).
+  for (const adj of newAdjustments) {
+    if (adj.type !== 'sale') continue;
+    if (TELEGRAM_DISABLED) { console.log('[vinc-ventas] (staging) auto-apply desactivado — venta queda pendiente'); continue; }
+    try {
+      const { applied, failed, noMatch } = await autoApplySaleAdjustment(adj);
+      adj._autoResult = { applied, failed, noMatch };
+      console.log(`[vinc-ventas] ✓ Auto-aplicada venta en "${adj.groupName}": ${applied} publicación(es) bajada(s)${failed ? ' · ' + failed + ' fallo(s)' : ''}${noMatch ? ' · ' + noMatch + ' sin variante' : ''}`);
+    } catch(e) {
+      console.log('[vinc-ventas] Error auto-aplicando venta:', _errMsg(e));
+    }
+  }
+
   let refsChanged = false;
   for (const adj of newAdjustments) {
     try {
@@ -7955,6 +7992,87 @@ async function notifySaleAdjustments(newSales, cancellations) {
     }
     savePendingAdjustments(allNow);
   }
+}
+
+// Aplica los cambios de un ajuste sale/cancel a ML (baja stock en venta, sube en
+// cancelación). Guarda los deltas reales aplicados en ch.appliedVariantDeltas
+// (from/to por variante) para poder REVERTIR después desde el historial.
+// Devuelve { applied, failed, noMatch, allDeltas }. NO toca ledger/estado/log:
+// eso lo hace el llamador (Telegram o auto-apply), que sabe el contexto.
+async function _applySaleCancelChanges(adj) {
+  const isCancel = adj.type === 'cancel';
+  const allAccounts = fullConfig.accounts || [];
+  const results = await Promise.allSettled(adj.changes.map(async ch => {
+    const acct = allAccounts.find(a => a.id === ch.accountId);
+    if (!acct) return { noMatch: true, itemId: ch.itemId, acctLabel: ch.acctLabel, reason: 'cuenta no encontrada' };
+    await refreshAccountToken(acct);
+    const itemData = await mlGetAuth(acct, '/items/' + ch.itemId);
+    const vars = itemData.variations || [];
+    const newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+    const itemDeltas = [];
+    let matched = 0;
+    for (const vc of (ch.variantChanges || [])) {
+      const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
+      const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
+      if (t) {
+        matched++;
+        const from = t.available_quantity;
+        const to   = Math.max(0, from + (isCancel ? vc.delta : -vc.delta));
+        t.available_quantity = to;
+        itemDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to, delta: from - to });
+      }
+    }
+    if (!matched) return { noMatch: true, itemId: ch.itemId, acctLabel: ch.acctLabel, reason: 'variante no encontrada (¿renombrada en ML?)' };
+    const expected = newVars.reduce((s, v) => s + (v.available_quantity || 0), 0);
+    await mlPutVerified(acct, ch.itemId, { variations: newVars }, expected);
+    ch.appliedVariantDeltas = itemDeltas;   // para revertir (restaura from)
+    return { applied: true, itemId: ch.itemId, acctLabel: ch.acctLabel, deltas: itemDeltas };
+  }));
+
+  let applied = 0, failed = 0, noMatch = 0;
+  const allDeltas = [];
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled' && r.value?.applied) { applied++; allDeltas.push(r.value); }
+    else if (r.status === 'fulfilled' && r.value?.noMatch) { noMatch++; console.log('[vinc] apply-venta no aplicado', r.value.itemId, '—', r.value.reason); }
+    else if (r.status === 'rejected') { failed++; console.log('[vinc] Error apply-venta', adj.changes[i].itemId, r.reason?.message || r.reason); }
+  });
+  return { applied, failed, noMatch, allDeltas };
+}
+
+// Auto-aplica un ajuste de VENTA (bajar stock vinculado) sin intervención.
+// Solo para type 'sale'. Persiste estado 'applied' y registra en el historial
+// (revertible). Devuelve el tally.
+async function autoApplySaleAdjustment(adj) {
+  const { applied, failed, noMatch, allDeltas } = await _applySaleCancelChanges(adj);
+
+  // Marcar ledger sincronizado sólo si no hubo errores transitorios (red/token)
+  if (failed === 0 && adj.saleKeys?.length) {
+    const ledger = loadVentasLedger();
+    for (const saleKey of adj.saleKeys) {
+      const entry = ledger.find(e => e.saleKey === saleKey);
+      if (entry) entry.synced = true;
+    }
+    saveVentasLedger(ledger);
+  }
+
+  const newStatus = applied > 0 ? 'applied' : 'error';
+  const allAdj = loadPendingAdjustments();
+  const a = allAdj.find(x => x.id === adj.id) || adj;
+  a.status    = newStatus;
+  a.appliedAt = new Date().toISOString();
+  a.autoApplied = true;
+  // Copiar los appliedVariantDeltas al objeto persistido (para revertir)
+  if (a !== adj) a.changes = adj.changes;
+  savePendingAdjustments(allAdj);
+  // Sincronizar el objeto EN MEMORIA (el que usa la notificación de Telegram)
+  adj.status = newStatus; adj.appliedAt = a.appliedAt; adj.autoApplied = true;
+
+  const variantDeltas = allDeltas.flatMap(d => d.deltas.map(vd => ({ attrKey: vd.attrKey, label: vd.label, from: vd.from, to: vd.to, delta: vd.from - vd.to })));
+  appendVincLog({
+    action: 'sale-sync', source: 'auto', adjId: adj.id, groupId: adj.groupId, groupName: adj.groupName,
+    itemsApplied: applied, variantDeltas, autoApplied: true,
+  });
+  return { applied, failed, noMatch };
 }
 
 // Convierte mismatches por variante en la lista `changes` por item que
