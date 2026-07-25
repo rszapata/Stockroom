@@ -244,6 +244,7 @@ module.exports = function(ctx) {
                     // Venta/cancelación: ajuste por delta (±qty) sobre la variante.
                     newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
                     let matchedAny = false;
+                    const chDeltas = [];   // para revertir (appliedVariantDeltas)
                     for (const vc of ch.variantChanges) {
                       const matchedVar = vars.find(v => _varKeysAll(v).some(k => k === vc.attrKey));
                       const t = matchedVar ? newVars.find(v => v.id === matchedVar.id) : null;
@@ -252,6 +253,7 @@ module.exports = function(ctx) {
                         const from = t.available_quantity;
                         t.available_quantity = Math.max(0, from + (isCancel ? vc.delta : -vc.delta));
                         deltasByAdj[adj.id].push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity });
+                        chDeltas.push({ attrKey: vc.attrKey, label: vc.label, from, to: t.available_quantity, delta: from - t.available_quantity });
                         applyMethod = isCancel ? 'cancel-restore' : 'sale-sync';
                       } else {
                         // La variante ya no existe en el item (fue eliminada o renombrada).
@@ -264,6 +266,7 @@ module.exports = function(ctx) {
                       results.push({ adjId: adj.id, itemId: ch.itemId, ok: false, error: 'Ninguna variante del ajuste encontrada en el item — puede haberse renombrado. Revisar manualmente.' });
                       continue;
                     }
+                    ch.appliedVariantDeltas = chDeltas;   // para poder revertir
                   } else if (adj.type === 'variant' && ch.variantChanges?.length) {
                     newVars = vars.map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
                     let matchedAny = false;
