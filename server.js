@@ -39,7 +39,7 @@ function _cuponVigente(c) {
 }
 let QRCode = null; try { QRCode = require('qrcode'); } catch { /* QR opcional (flyer) */ }
 const { _normalizeStr, _varKeysAll, _matchVarForApply, _varKeyFromOrderAttrs, _varLabelFromOrderAttrs, _varLabel, _fmtVarDelta, _shortAcct, _adjStaleMsg, _errMsg } = require('./lib/variant-helpers');
-const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
+const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincLog, pruneAdjustments, loadVentasLedger, saveVentasLedger, VENTAS_PATH, loadNotifiedQuestions, saveNotifiedQuestions, loadTgOffset, saveTgOffset, loadAlibabaMapping, saveAlibabaMapping, loadAuthConfig, atomicWriteFileSync } = require('./lib/json-store');
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
@@ -8513,6 +8513,20 @@ setTimeout(() => {
 setInterval(() => {
   checkStockChanges().catch(e => console.log('[vinc] Error en check periódico:', e.message));
 }, VINC_CHECK_INTERVAL);
+
+// ── Vinculaciones: poda diaria de ajustes resueltos +60 días ──
+// Mueve los ajustes ya resueltos y viejos al histórico liviano (ndjson) para que
+// vinculaciones-pending.json no crezca sin límite. Corre 2 min tras arrancar y
+// después cada 24h. Sólo en prod (staging comparte poco y evita tocar estado).
+const VINC_PRUNE_DAYS = 60;
+function runVincPrune() {
+  try {
+    const n = pruneAdjustments(VINC_PRUNE_DAYS);
+    if (n) console.log(`[vinc-prune] ${n} ajuste(s) resuelto(s) +${VINC_PRUNE_DAYS}d movidos al histórico`);
+  } catch(e) { console.log('[vinc-prune] Error:', e.message); }
+}
+setTimeout(runVincPrune, 120000);
+setInterval(runVincPrune, 24 * 60 * 60 * 1000);
 
 // ── Inicializar caché persistente de reseñas ──────────────────
 db.ensureReviewsCacheTable().catch(e => console.log('[reviews] Error en init de cache:', e.message));

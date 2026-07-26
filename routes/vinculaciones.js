@@ -4,7 +4,7 @@ const path = require('path');
 const { json } = require('../lib/http');
 const {
   loadPendingAdjustments, savePendingAdjustments,
-  loadVincLog, appendVincLog,
+  loadVincLog, appendVincLog, readHistorico,
   loadVentasLedger, saveVentasLedger,
 } = require('../lib/json-store');
 const { _varKeysAll, _matchVarForApply } = require('../lib/variant-helpers');
@@ -180,6 +180,14 @@ module.exports = function(ctx) {
       const qs    = new URL('http://x' + req.url).searchParams;
       const limit = Math.min(parseInt(qs.get('limit') || '100'), 300);
       json(res, 200, { ok: true, entries: loadVincLog().slice(0, limit) });
+      return true;
+    }
+
+    // GET /vinculaciones/historico — histórico liviano (ndjson), más nuevo primero
+    if (pathname === '/vinculaciones/historico' && req.method === 'GET') {
+      const qs    = new URL('http://x' + req.url).searchParams;
+      const limit = Math.min(parseInt(qs.get('limit') || '500'), 2000);
+      json(res, 200, { ok: true, entries: readHistorico(limit) });
       return true;
     }
 

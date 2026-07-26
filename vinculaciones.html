@@ -482,6 +482,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <button id="btn-undo-batch" onclick="undoLastBatch()" style="display:none;font-size:11px;padding:4px 10px;border:1px solid rgba(251,146,60,.4);border-radius:8px;background:rgba(251,146,60,.08);color:var(--yellow);cursor:pointer;font-weight:600" title="Revierte de una todos los ajustes que aplicaste recién">⏪ Deshacer lo aplicado</button>
+        <button id="btn-hist-toggle" onclick="toggleHistorico()" class="btn-outline" style="font-size:11px;padding:4px 10px" title="Ver el histórico archivado (ajustes viejos, formato liviano)">📜 Histórico</button>
         <button onclick="loadLog()" class="btn-outline" style="font-size:11px;padding:4px 10px">
           <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4.36"/></svg>
           Actualizar
@@ -1751,11 +1752,43 @@ async function dismissOneAdjustment(id) {
 
 // ── Historial de cambios ───────────────────────────────────────
 async function loadLog() {
+  showingHistorico = false;
+  const b = $I('btn-hist-toggle'); if (b) b.classList.remove('active');
   try {
     const r = await fetch('/vinculaciones/log?limit=100');
     const d = await r.json();
     renderLog(d.entries || []);
   } catch(e) { /* silencioso */ }
+}
+
+let showingHistorico = false;
+async function toggleHistorico() {
+  const b = $I('btn-hist-toggle');
+  if (showingHistorico) { loadLog(); return; }
+  showingHistorico = true;
+  if (b) b.classList.add('active');
+  const container = $I('log-list');
+  container.innerHTML = '<div style="padding:16px 20px;font-size:12px;color:var(--text-3);text-align:center">Cargando histórico…</div>';
+  try {
+    const r = await fetch('/vinculaciones/historico?limit=500');
+    const d = await r.json();
+    const ents = d.entries || [];
+    if (!ents.length) { container.innerHTML = '<div style="padding:20px;font-size:12px;color:var(--text-3);text-align:center">Sin histórico archivado todavía (los ajustes se archivan a los 60 días).</div>'; return; }
+    const ICON = { applied:'✅','sale-sync':'🔻','cancel-restore':'↩️','auto-resolved':'✨', dismissed:'↩️', reverted:'⏪', error:'❌' };
+    container.innerHTML = '<div style="padding:8px 16px;font-size:10px;color:var(--text-3);font-family:var(--mono);border-bottom:1px solid var(--border)">HISTÓRICO ARCHIVADO (liviano) · ' + ents.length + ' registros</div>' +
+      ents.map(e => {
+        const ts = e.ts ? new Date(e.ts).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+        return '<div class="log-hist-entry" style="padding:7px 20px">' +
+          '<span style="font-size:13px;flex-shrink:0">' + (ICON[e.action] || '·') + '</span>' +
+          '<div style="flex:1;min-width:0">' +
+            '<span style="font-size:12px;color:var(--text-2)">' + esc(e.group || '—') + '</span>' +
+            (e.deltas ? '<span style="font-family:var(--mono);font-size:10px;color:var(--text-3);margin-left:8px">' + esc(e.deltas) + '</span>' : '') +
+            (e.src ? '<span style="font-size:9px;color:var(--text-3);margin-left:6px">· ' + esc(e.src) + '</span>' : '') +
+          '</div>' +
+          '<span style="font-family:var(--mono);font-size:10px;color:var(--text-3);flex-shrink:0">' + ts + '</span>' +
+        '</div>';
+      }).join('');
+  } catch(e) { container.innerHTML = '<div style="padding:20px;color:var(--red);font-size:12px">Error cargando histórico: ' + esc(e.message) + '</div>'; }
 }
 
 function renderLog(entries) {

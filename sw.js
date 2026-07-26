@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v23'; // v23: vinculaciones — auto-aplicar ventas (revertible) + persistir deshacer-lote
+const CACHE_NAME = 'stockroom-v24'; // v24: vinculaciones — histórico liviano (poda 60d) + visor
 const STATIC_ASSETS = [
   '/',
   '/index.html',
