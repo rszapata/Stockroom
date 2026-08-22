@@ -187,8 +187,7 @@
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     <span class="adm-toggle-label">Contraer</span>
   </button>
-
-  <div class="foot-info" id="foot-clock">—</div>`;
+`;
 
   if (!el) return;
   el.innerHTML = html;

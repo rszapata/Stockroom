@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v70'; // v70: sidebar contraible a solo iconos
+const CACHE_NAME = 'stockroom-v71'; // v71: sin reloj en el sidebar, cifras tabulares, cobros rebalanceado
 const STATIC_ASSETS = [
   '/',
   '/index.html',

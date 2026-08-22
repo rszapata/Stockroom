@@ -166,6 +166,16 @@ body {
 }
 a    { text-decoration: none; color: inherit; }
 img  { display: block; max-width: 100%; }
+
+/* Cifras tabulares en todo el panel. Es un panel de operaciones: casi todo lo
+   que se mira son importes en columna, y con cifras proporcionales el 1 es más
+   angosto que el 8, así que $111.111 y $888.888 no alinean y el ojo no puede
+   comparar magnitudes de un vistazo. También evita que un contador que sube
+   ensanche su caja y mueva lo que tiene al lado. */
+body, input, select, textarea, button, table {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
 button { cursor: pointer; font-family: var(--font); border: none; background: none; touch-action: manipulation; }
 input, select, textarea { font-family: var(--font); }
 ::selection { background: rgba(21,113,95,.16); }
@@ -393,15 +403,6 @@ input, select, textarea { font-family: var(--font); }
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-/* Footer clock — compartido por todas las páginas */
-.foot-info {
-  padding: 10px 16px;
-  font-size: 11px; font-family: var(--font-mono);
-  color: var(--text-3);
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
 }
 
 /* ══════════════════════════════════════════════════════════════

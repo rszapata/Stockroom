@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=15">
+<link rel="stylesheet" href="/admin.css?v=16">
 <script src="/chart.umd.min.js"></script>
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
@@ -47,21 +47,21 @@
 .pg .upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px}
 
 .pg .upload-card{background:var(--s1);border:1px solid var(--b1);padding:24px;border-radius:6px;overflow:hidden}
-.pg .upload-card h3{font-family:var(--mono);font-size:12px;letter-spacing:.12em;margin-bottom:6px}
+.pg .upload-card h3{font-size:14px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
 .pg .upload-card h3.fundas-h{color:var(--ye)}
 .pg .upload-card h3.otros-h{color:var(--pu)}
 .pg .upload-card p{font-size:12px;color:var(--t2);margin-bottom:20px;line-height:1.6}
 
 /* DROP ZONE */
-.pg .dropzone{border:1px dashed var(--b2);padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;margin-bottom:16px;border-radius:6px;overflow:hidden}
+.pg .dropzone{border:1px dashed var(--b2);padding:11px 14px;text-align:left;cursor:pointer;transition:all .2s;position:relative;margin-bottom:16px;border-radius:6px;overflow:hidden;display:flex;align-items:center;gap:10px}
 .pg .dropzone:hover,.pg .dropzone.drag{border-color:var(--cy);background:color-mix(in srgb,var(--cy) 4%,transparent)}
 .pg .dropzone.has-file{border-color:var(--gr);background:rgba(71,255,138,.04)}
 .pg .dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.pg .dz-icon{font-size:28px;margin-bottom:10px;opacity:.5}
+.pg .dz-icon{font-size:16px;margin:0;opacity:.5;flex-shrink:0}
 .pg .dropzone.has-file .dz-icon{opacity:1}
-.pg .dz-text{font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:.08em}
+.pg .dz-text{font-size:12px;color:var(--t2);white-space:nowrap}
 .pg .dropzone.has-file .dz-text{color:var(--gr)}
-.pg .dz-fname{font-size:11px;color:var(--t2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pg .dz-fname{font-size:11px;color:var(--t3);margin:0 0 0 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
 
 /* CONTROLS */
 .pg .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -106,9 +106,11 @@
 .pg .daterange[data-rp=flex]{--ac:var(--cy)}
 
 .pg .generate-btn{height:36px;padding:0 20px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;display:flex;align-items:center;gap:8px;border-radius:6px}
-.pg .generate-btn.fundas-btn{background:var(--ye);color:#fff}
+.pg .generate-btn.fundas-btn{background:transparent;color:var(--ye);border:1px solid var(--ye)}
+.pg .generate-btn.ml-btn.fundas-ml{background:var(--ye);color:#fff;border-color:var(--ye)}
 .pg .generate-btn.fundas-btn:hover{background:#d4eb3a}
-.pg .generate-btn.otros-btn{background:var(--pu);color:#fff}
+.pg .generate-btn.otros-btn{background:transparent;color:var(--pu);border:1px solid var(--pu)}
+.pg .generate-btn.ml-btn.otros-ml{background:var(--pu);color:#fff;border-color:var(--pu)}
 .pg .generate-btn.otros-btn:hover{background:#a030e8}
 .pg .generate-btn:disabled{opacity:.4;cursor:default}
 /* Traer de ML: secundario respecto del botón de generar, para que quede claro
@@ -213,7 +215,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=10"></script>
+<script src="/stockroom-sidebar.js?v=11"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -277,7 +279,7 @@
         <div class="dropzone" id="dz-fundas">
           <input type="file" accept=".xlsx" id="file-fundas" onchange="onFileChange('fundas')" aria-label="Archivo de liquidacion de fundas">
           <div class="dz-icon">📊</div>
-          <div class="dz-text">SOLTAR EXCEL DE ML AQUÍ</div>
+          <div class="dz-text">Subir el Excel de ML a mano</div>
           <div class="dz-fname" id="fname-fundas">o hacer click para seleccionar</div>
         </div>
 
@@ -295,7 +297,7 @@
             <select id="acct-fundas" onchange="pintarFiscal('fundas')"></select>
             <span class="cuenta-fiscal" id="fiscal-fundas"></span>
           </div>
-          <button class="generate-btn ml-btn" id="btn-ml-fundas" onclick="generar('fundas','ml')"
+          <button class="generate-btn ml-btn fundas-ml" id="btn-ml-fundas" onclick="generar('fundas','ml')"
                   title="Trae las ventas del período directo de MercadoLibre, sin bajar el Excel a mano">
             <div class="spin"></div>
             ⟳ Traer de MercadoLibre
@@ -326,7 +328,7 @@
         <div class="dropzone" id="dz-otros">
           <input type="file" accept=".xlsx" id="file-otros" onchange="onFileChange('otros')" aria-label="Archivo de liquidacion de mallas y protectores">
           <div class="dz-icon">📦</div>
-          <div class="dz-text">SOLTAR EXCEL DE ML AQUÍ</div>
+          <div class="dz-text">Subir el Excel de ML a mano</div>
           <div class="dz-fname" id="fname-otros">o hacer click para seleccionar</div>
         </div>
 
@@ -344,7 +346,7 @@
             <select id="acct-otros" onchange="pintarFiscal('otros')"></select>
             <span class="cuenta-fiscal" id="fiscal-otros"></span>
           </div>
-          <button class="generate-btn ml-btn" id="btn-ml-otros" onclick="generar('otros','ml')"
+          <button class="generate-btn ml-btn otros-ml" id="btn-ml-otros" onclick="generar('otros','ml')"
                   title="Trae las ventas del período directo de MercadoLibre, sin bajar el Excel a mano">
             <div class="spin"></div>
             ⟳ Traer de MercadoLibre
@@ -383,7 +385,7 @@
       <div class="dropzone" id="dz-flex">
         <input type="file" accept=".xlsx" id="file-flex" onchange="onFlexFileChange()" aria-label="Archivo de liquidacion Flex">
         <div class="dz-icon">⚡</div>
-        <div class="dz-text">SOLTAR EXCEL DE ML AQUÍ</div>
+        <div class="dz-text">Subir el Excel de ML a mano</div>
         <div class="dz-fname" id="fname-flex">o hacer click para seleccionar</div>
       </div>
 
@@ -541,13 +543,6 @@
 const $I = id => document.getElementById(id);
 const esc = s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-/* Clock */
-(function clock(){
-  const el = $I('foot-clock');
-  if(!el) return;
-  const tick = () => { el.textContent = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
-  tick(); setInterval(tick, 1000);
-})();
 
 /* Hamburger */
 (function(){
