@@ -640,6 +640,17 @@ function accesoCF(req) {
   return req._cfAccess;
 }
 
+// Quién está haciendo la request, para el log de auditoría. Con Access el email
+// viene firmado por Cloudflare, así que es una identidad de verdad y no una IP.
+function quienEs(req) {
+  const id = accesoCF(req);
+  if (id && id.email) return id.email;
+  if (isTrustedIP(req)) return `ip-confiable:${peerIP(req)}`;
+  const sid = parseCookies(req).sr_sid;
+  if (sid && SESSIONS.has(sid)) return `password:${String(sid).slice(0, 8)}`;
+  return 'anonimo';
+}
+
 function isAuthed(req) {
   if (!AUTH_ENABLED) return true;
   // Bypass: si la request viene de una IP confiable (red local del usuario)
@@ -1086,6 +1097,9 @@ const server = http.createServer((req, res) => {
     res.end();
     return;
   }
+
+  // Se resuelve una sola vez por request y queda disponible para auditLog().
+  req._quien = quienEs(req);
 
   // ── Auth gate ───────────────────────────────────────────────
   if (AUTH_ENABLED && !isAuthExempt(pathname) && !isAuthed(req)) {
