@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=16">
+<link rel="stylesheet" href="/admin.css?v=17">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 .rt-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
@@ -32,6 +32,21 @@
 .rt-kpi-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
 .rt-kpi.gan .rt-kpi-val { color: var(--green-ink); }
 .rt-kpi.costo .rt-kpi-val { color: var(--red); }
+/* Ganancia y Margen son el RESULTADO; Neto y Costo son los insumos. Pesaban
+   igual, así que el ojo no sabía dónde caer. */
+.rt-kpi.gan { border-top: 2px solid var(--green); }
+.rt-kpi.gan .rt-kpi-val { font-size: 28px; }
+
+/* Un aviso por línea: eran tres cosas distintas en un párrafo corrido. */
+.rt-warn-l { display: flex; gap: 7px; padding: 3px 0; }
+.rt-warn-l::before { content: '⚠'; flex-shrink: 0; opacity: .8; }
+.rt-warn-x { color: var(--text-3); font-weight: 400; }
+.rt-warn-pie { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent); color: var(--text-3); font-size: 11px; }
+
+/* La cuenta se repetía entera en cada chip y era lo que más ocupaba. */
+.rt-per .rt-per-cta { display:inline-flex; align-items:center; justify-content:center;
+  width:15px; height:15px; border-radius:3px; font-size:9px; font-weight:700;
+  background:var(--blue); color:var(--on-blue); flex-shrink:0; }
 
 .rt-warn { background: var(--yellow-light); color: var(--yellow-ink); border: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent); border-radius:6px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; display: none; }
 .rt-warn.show { display: block; }
@@ -117,7 +132,7 @@ th.rt-sortable:hover { color: var(--text); }
 <div class="adm-wrap">
 
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=11"></script>
+<script src="/stockroom-sidebar.js?v=12"></script>
 
 <div class="adm-main">
   <header class="adm-header">
@@ -330,8 +345,7 @@ function renderPeriodos() {
         ? `${p.ventas} ventas fuera del rango`
         : `${p.ventas} ventas · ${ars(p.neto_en_rango)}`;
     return `<div class="rt-per ${cls}" title="${esc(p.cuenta_label || '')} — ${esc(p.periodo || '')}">
-        <div class="rt-per-top"><span class="rt-per-tag">${tag[p.estado] || ''}</span>${esc(p.cuenta_label || '')}</div>
-        <div class="rt-per-sub">${f(p.desde)} – ${f(p.hasta)}</div>
+        <div class="rt-per-top"><span class="rt-per-tag">${tag[p.estado] || ''}</span><span class="rt-per-cta" title="${esc(p.cuenta_label || '')}">${esc((p.cuenta_label || '?').trim().charAt(0))}</span>${f(p.desde)} – ${f(p.hasta)}</div>
         <div class="rt-per-sub">${det}</div>
       </div>`;
   }).join('');
@@ -366,10 +380,13 @@ function render() {
   if (inciertos || sinCosto || subvaluado) {
     warn.classList.add('show');
     const partes = [];
-    if (subvaluado) partes.push(`en las filas <b>estimadas</b> el costo de mercadería (${subvaluado.rango}) está por <b>debajo</b> de lo que pagaste en el último recibo (<b>US$${subvaluado.real}</b>/u): vinculales el link de proveedor en <a href="/orden-compra.html">Orden de compra</a> y pasan a costo real`);
-    if (inciertos) partes.push(`<b>${inciertos}</b> con costo <b>estimado a confirmar</b> (⚠ Samsung premium o packs): el costo mostrado es una estimación, revisalo`);
-    if (sinCosto)  partes.push(`<b>${sinCosto}</b> sin costo (excluidas de la ganancia)`);
-    warn.innerHTML = `⚠️ ${partes.join(' · ')}. Editá el costo en la columna "Costo/u" para fijarlo.`;
+    // Un aviso por línea, empezando por el número y la acción. Antes eran tres
+    // avisos distintos unidos con puntos en un solo párrafo, y no se leían.
+    if (sinCosto)  partes.push(`<b>${sinCosto}</b> sin costo <span class="rt-warn-x">— quedan fuera de la ganancia</span>`);
+    if (inciertos) partes.push(`<b>${inciertos}</b> con costo estimado a confirmar <span class="rt-warn-x">— Samsung premium o packs</span>`);
+    if (subvaluado) partes.push(`El costo estimado (${subvaluado.rango}) está por debajo del último recibo (<b>US$${subvaluado.real}</b>/u) <span class="rt-warn-x">— <a href="/orden-compra.html">vinculá el proveedor</a> y pasa a costo real</span>`);
+    warn.innerHTML = partes.map(x => `<div class="rt-warn-l">${x}</div>`).join('')
+      + `<div class="rt-warn-pie">El costo se edita en la columna “Costo/u”.</div>`;
   } else warn.classList.remove('show');
 
   renderRows();

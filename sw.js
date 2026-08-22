@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v71'; // v71: sin reloj en el sidebar, cifras tabulares, cobros rebalanceado
+const CACHE_NAME = 'stockroom-v72'; // v72: rentabilidad — avisos por linea, chips compactos, jerarquia de KPI
 const STATIC_ASSETS = [
   '/',
   '/index.html',
