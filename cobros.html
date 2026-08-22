@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script src="/chart.umd.min.js"></script>
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
@@ -33,8 +33,8 @@
 }
 
 /* BUTTONS */
-.pg .btn{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;border-radius:10px}
-.pg .btn.sm{height:32px;padding:0 12px;font-size:9px;border-radius:8px}
+.pg .btn{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
+.pg .btn.sm{height:32px;padding:0 12px;font-size:9px;border-radius:6px}
 .pg .btn:disabled{opacity:.4;cursor:default}
 
 /* UPLOAD ZONE */
@@ -46,14 +46,14 @@
 
 .pg .upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px}
 
-.pg .upload-card{background:var(--s1);border:1px solid var(--b1);padding:24px;border-radius:14px;overflow:hidden}
+.pg .upload-card{background:var(--s1);border:1px solid var(--b1);padding:24px;border-radius:6px;overflow:hidden}
 .pg .upload-card h3{font-family:var(--mono);font-size:12px;letter-spacing:.12em;margin-bottom:6px}
 .pg .upload-card h3.fundas-h{color:var(--ye)}
 .pg .upload-card h3.otros-h{color:var(--pu)}
 .pg .upload-card p{font-size:12px;color:var(--t2);margin-bottom:20px;line-height:1.6}
 
 /* DROP ZONE */
-.pg .dropzone{border:1px dashed var(--b2);padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;margin-bottom:16px;border-radius:14px;overflow:hidden}
+.pg .dropzone{border:1px dashed var(--b2);padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;margin-bottom:16px;border-radius:6px;overflow:hidden}
 .pg .dropzone:hover,.pg .dropzone.drag{border-color:var(--cy);background:color-mix(in srgb,var(--cy) 4%,transparent)}
 .pg .dropzone.has-file{border-color:var(--gr);background:rgba(71,255,138,.04)}
 .pg .dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
@@ -68,7 +68,7 @@
 .pg .date-range-sel{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .pg .date-range-lbl{display:flex;flex-direction:column;gap:4px}
 .pg .date-range-lbl span{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--t3);text-transform:uppercase}
-.pg .date-range-lbl input[type=date]{height:34px;padding:0 10px;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;border-radius:8px;min-width:130px;cursor:pointer;transition:border-color .15s}
+.pg .date-range-lbl input[type=date]{height:34px;padding:0 10px;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;border-radius:6px;min-width:130px;cursor:pointer;transition:border-color .15s}
 .pg .date-range-lbl input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6);cursor:pointer}
 .pg .date-range-lbl input.inp-fundas:focus{border-color:var(--ye);outline:none}
 .pg .date-range-lbl input.inp-otros:focus{border-color:var(--pu);outline:none}
@@ -77,11 +77,11 @@
 
 /* ── Selector único de rango de fechas (estilo "vuelos") ── */
 .pg .daterange{position:relative;display:inline-block}
-.pg .daterange-field{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;border-radius:8px;cursor:pointer;transition:border-color .15s}
+.pg .daterange-field{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;background:var(--s2);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;border-radius:6px;cursor:pointer;transition:border-color .15s}
 .pg .daterange-field:hover,.pg .daterange.open .daterange-field{border-color:var(--ac,var(--t2))}
 .pg .daterange-field svg{flex-shrink:0;opacity:.6}
 .pg .daterange-label{letter-spacing:.04em;white-space:nowrap}
-.pg .daterange-pop{position:fixed;z-index:200;background:var(--s1);border:1px solid var(--b2);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:12px;display:none;width:min(300px,calc(100vw - 24px))}
+.pg .daterange-pop{position:fixed;z-index:200;background:var(--s1);border:1px solid var(--b2);border-radius:6px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:12px;display:none;width:min(300px,calc(100vw - 24px))}
 .pg .daterange-pop.open{display:block;animation:pg-fadeUp .15s ease both}
 .pg .dr-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--b1)}
 .pg .dr-preset{font-family:var(--mono);font-size:9px;letter-spacing:.05em;padding:5px 9px;background:var(--s2);border:1px solid var(--b1);color:var(--t2);border-radius:6px;cursor:pointer;transition:all .12s}
@@ -105,12 +105,17 @@
 .pg .daterange[data-rp=otros]{--ac:var(--pu)}
 .pg .daterange[data-rp=flex]{--ac:var(--cy)}
 
-.pg .generate-btn{height:36px;padding:0 20px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;display:flex;align-items:center;gap:8px;border-radius:10px}
+.pg .generate-btn{height:36px;padding:0 20px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;display:flex;align-items:center;gap:8px;border-radius:6px}
 .pg .generate-btn.fundas-btn{background:var(--ye);color:#fff}
 .pg .generate-btn.fundas-btn:hover{background:#d4eb3a}
 .pg .generate-btn.otros-btn{background:var(--pu);color:#fff}
 .pg .generate-btn.otros-btn:hover{background:#a030e8}
 .pg .generate-btn:disabled{opacity:.4;cursor:default}
+/* Traer de ML: secundario respecto del botón de generar, para que quede claro
+   que el Excel a mano sigue siendo una vía válida y no la principal. */
+.pg .generate-btn.ml-btn{background:transparent;color:var(--tx);border:1px solid var(--b2)}
+.pg .generate-btn.ml-btn:hover{border-color:var(--cy);color:var(--cy)}
+.pg .generate-btn.ml-btn .spin{border-top-color:var(--cy)}
 
 /* SPINNER */
 .pg .spin{width:14px;height:14px;border:2px solid rgba(0,0,0,.2);border-top-color:var(--bg);border-radius:50%;animation:pg-spin .6s linear infinite;display:none}
@@ -118,7 +123,7 @@
 @keyframes pg-spin{to{transform:rotate(360deg)}}
 
 /* RESULTADO */
-.pg .result-strip{margin-top:14px;padding:14px 16px;border:1px solid;display:none;animation:pg-fadeUp .3s ease both;border-radius:10px}
+.pg .result-strip{margin-top:14px;padding:14px 16px;border:1px solid;display:none;animation:pg-fadeUp .3s ease both;border-radius:6px}
 .pg .result-strip.ok{border-color:rgba(71,255,138,.3);background:rgba(71,255,138,.06)}
 .pg .result-strip.err{border-color:rgba(255,71,71,.3);background:rgba(255,71,71,.06)}
 .pg .result-strip .r-title{font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:8px}
@@ -128,13 +133,13 @@
 .pg .r-kpi{font-family:var(--mono);font-size:11px}
 .pg .r-kpi span{color:var(--ye);font-weight:700}
 .pg .result-strip.otros-res .r-kpi span{color:var(--pu)}
-.pg .download-btn{height:32px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;border-radius:8px}
+.pg .download-btn{height:32px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;border-radius:6px}
 .pg .download-btn.fundas-dl{background:var(--ye);color:#fff}
 .pg .download-btn.otros-dl{background:var(--pu);color:#fff}
 .pg .r-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
-.pg .r-btn-toggle,.pg .r-btn-save{height:32px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;border-radius:8px;transition:all .15s}
+.pg .r-btn-toggle,.pg .r-btn-save{height:32px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;border-radius:6px;transition:all .15s}
 .pg .r-btn-toggle:hover,.pg .r-btn-save:hover{color:var(--tx);border-color:var(--t2)}
-.pg .cobro-preview{margin-top:14px;border:1px solid var(--b1);border-radius:10px;overflow:auto;max-height:340px}
+.pg .cobro-preview{margin-top:14px;border:1px solid var(--b1);border-radius:6px;overflow:auto;max-height:340px}
 .pg .cobro-preview table{width:100%;border-collapse:collapse;font-size:11px}
 .pg .cobro-preview thead{position:sticky;top:0;background:var(--s2)}
 .pg .cobro-preview th{font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--t3);text-transform:uppercase;text-align:left;padding:8px 10px;white-space:nowrap}
@@ -146,7 +151,7 @@
 .pg .cobro-preview .tag.ok{background:rgba(71,255,138,.15);color:var(--gr)}
 .pg .cobro-preview .tag.mix{background:color-mix(in srgb,var(--or) 15%,transparent);color:var(--or)}
 .pg .guardados-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
-.pg .guardado-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--s1);border:1px solid var(--b1);border-radius:10px}
+.pg .guardado-item{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--s1);border:1px solid var(--b1);border-radius:6px}
 .pg .guardado-main{flex:1;min-width:180px}
 .pg .guardado-nombre{font-family:var(--mono);font-size:12px;color:var(--tx);font-weight:700}
 .pg .guardado-meta{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px}
@@ -161,13 +166,13 @@
 /* CHARTS SECTION */
 .pg .charts-section{margin-top:32px;animation:pg-fadeUp .4s .1s ease both}
 .pg .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px}
-.pg .chart-card{background:var(--s1);border:1px solid var(--b1);padding:20px;border-radius:14px;overflow:hidden}
+.pg .chart-card{background:var(--s1);border:1px solid var(--b1);padding:20px;border-radius:6px;overflow:hidden}
 .pg .chart-card h4{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--t3);text-transform:uppercase;margin-bottom:16px}
 .pg canvas{width:100%!important}
 
 /* VENTAS TABLE */
 .pg .ventas-section{margin-top:32px;animation:pg-fadeUp .4s .15s ease both}
-.pg .ventas-table{background:var(--s1);border:1px solid var(--b1);margin-top:16px;border-radius:14px;overflow:auto;-webkit-overflow-scrolling:touch}
+.pg .ventas-table{background:var(--s1);border:1px solid var(--b1);margin-top:16px;border-radius:6px;overflow:auto;-webkit-overflow-scrolling:touch}
 .pg table{width:100%;border-collapse:collapse}
 .pg thead{border-bottom:1px solid var(--b2)}
 .pg th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--t3);padding:10px 14px;text-align:left;text-transform:uppercase}
@@ -187,6 +192,20 @@
   .pg .charts-grid{grid-template-columns:1fr}
 }
 
+.pg .cuenta-sel { display:flex; flex-direction:column; gap:5px; margin:14px 0; }
+.pg .cuenta-sel label { font-size:12px; font-weight:600; color:var(--text-2); }
+.pg .cuenta-sel select {
+  height:36px; padding:0 10px; border:1px solid var(--border); border-radius:6px;
+  background:var(--bg-card); color:var(--text); font:inherit; font-size:13px;
+}
+.pg .cuenta-fiscal { font-size:12px; font-weight:600; }
+.pg .cuenta-fiscal.mono { color:var(--green-ink); }
+.pg .cuenta-fiscal.resp { color:var(--blue-ink); }
+.pg .guardado-cuenta { margin-top:5px; }
+.pg .gc-badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:12px; font-weight:600; }
+.pg .gc-resp { color:var(--blue-ink); background:var(--blue-light); }
+.pg .gc-mono { color:var(--green-ink); background:var(--green-light); }
+.pg .gc-sin  { color:var(--yellow-ink); background:var(--yellow-light); }
 </style>
 </head>
 <body>
@@ -194,7 +213,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -253,10 +272,10 @@
       <!-- FUNDAS -->
       <div class="upload-card">
         <h3 class="fundas-h">⚡ COBRO FUNDAS + CABLE USB</h3>
-        <p>Sube el Excel de ventas de MercadoLibre y seleccioná el período. Se calculará el neto de todas las fundas y el cable USB (MLA3726855056).</p>
+        <p>Elegí el período y la cuenta, y traé las ventas directo de MercadoLibre — o subí el Excel a mano, como antes. Se calculará el neto de todas las fundas y el cable USB (MLA3726855056).</p>
 
         <div class="dropzone" id="dz-fundas">
-          <input type="file" accept=".xlsx" id="file-fundas" onchange="onFileChange('fundas')">
+          <input type="file" accept=".xlsx" id="file-fundas" onchange="onFileChange('fundas')" aria-label="Archivo de liquidacion de fundas">
           <div class="dz-icon">📊</div>
           <div class="dz-text">SOLTAR EXCEL DE ML AQUÍ</div>
           <div class="dz-fname" id="fname-fundas">o hacer click para seleccionar</div>
@@ -271,6 +290,16 @@
             </button>
             <div class="daterange-pop" id="rp-pop-fundas"></div>
           </div>
+          <div class="cuenta-sel">
+            <label for="acct-fundas">Cuenta de esta liquidación</label>
+            <select id="acct-fundas" onchange="pintarFiscal('fundas')"></select>
+            <span class="cuenta-fiscal" id="fiscal-fundas"></span>
+          </div>
+          <button class="generate-btn ml-btn" id="btn-ml-fundas" onclick="generar('fundas','ml')"
+                  title="Trae las ventas del período directo de MercadoLibre, sin bajar el Excel a mano">
+            <div class="spin"></div>
+            ⟳ Traer de MercadoLibre
+          </button>
           <button class="generate-btn fundas-btn" id="btn-fundas" onclick="generar('fundas')" disabled>
             <div class="spin"></div>
             ↓ Generar cobro
@@ -295,7 +324,7 @@
         <p>Calcula el neto de todo lo que NO son fundas ni cable USB — mallas, soportes, vidrios, etc. Para liquidar a los dueños de esos productos.</p>
 
         <div class="dropzone" id="dz-otros">
-          <input type="file" accept=".xlsx" id="file-otros" onchange="onFileChange('otros')">
+          <input type="file" accept=".xlsx" id="file-otros" onchange="onFileChange('otros')" aria-label="Archivo de liquidacion de mallas y protectores">
           <div class="dz-icon">📦</div>
           <div class="dz-text">SOLTAR EXCEL DE ML AQUÍ</div>
           <div class="dz-fname" id="fname-otros">o hacer click para seleccionar</div>
@@ -310,6 +339,16 @@
             </button>
             <div class="daterange-pop" id="rp-pop-otros"></div>
           </div>
+          <div class="cuenta-sel">
+            <label for="acct-otros">Cuenta de esta liquidación</label>
+            <select id="acct-otros" onchange="pintarFiscal('otros')"></select>
+            <span class="cuenta-fiscal" id="fiscal-otros"></span>
+          </div>
+          <button class="generate-btn ml-btn" id="btn-ml-otros" onclick="generar('otros','ml')"
+                  title="Trae las ventas del período directo de MercadoLibre, sin bajar el Excel a mano">
+            <div class="spin"></div>
+            ⟳ Traer de MercadoLibre
+          </button>
           <button class="generate-btn otros-btn" id="btn-otros" onclick="generar('otros')" disabled>
             <div class="spin"></div>
             ↓ Generar cobro
@@ -342,7 +381,7 @@
       </p>
 
       <div class="dropzone" id="dz-flex">
-        <input type="file" accept=".xlsx" id="file-flex" onchange="onFlexFileChange()">
+        <input type="file" accept=".xlsx" id="file-flex" onchange="onFlexFileChange()" aria-label="Archivo de liquidacion Flex">
         <div class="dz-icon">⚡</div>
         <div class="dz-text">SOLTAR EXCEL DE ML AQUÍ</div>
         <div class="dz-fname" id="fname-flex">o hacer click para seleccionar</div>
@@ -366,7 +405,7 @@
 
       <div id="flex-result" style="display:none">
         <!-- KPIs -->
-        <div style="display:flex;gap:16px;flex-wrap:wrap;padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;margin-bottom:14px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;margin-bottom:14px">
           <div class="r-kpi">Envíos Flex <span id="fk-total" style="color:var(--cy)">—</span></div>
           <div class="r-kpi">Clasificados <span id="fk-mapped" style="color:var(--gr)">—</span></div>
           <div class="r-kpi">Pendientes <span id="fk-unmapped" style="color:var(--or)">—</span></div>
@@ -376,7 +415,7 @@
         </div>
 
         <!-- Pendientes (CPs sin clasificar) -->
-        <div id="flex-pending" style="display:none;margin-bottom:14px;padding:14px;border:1px solid color-mix(in srgb,var(--or) 30%,transparent);background:color-mix(in srgb,var(--or) 6%,transparent);border-radius:10px">
+        <div id="flex-pending" style="display:none;margin-bottom:14px;padding:14px;border:1px solid color-mix(in srgb,var(--or) 30%,transparent);background:color-mix(in srgb,var(--or) 6%,transparent);border-radius:6px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
             <div style="font-family:var(--mono);font-size:11px;color:var(--or);font-weight:700">⚠ CPs PENDIENTES DE CLASIFICAR</div>
             <div style="display:flex;gap:6px">
@@ -387,7 +426,7 @@
           <div style="font-size:11px;color:var(--t2);margin-bottom:12px">Asigna una zona a cada CP. Las elecciones se guardan y la próxima vez ya quedan auto-clasificadas.</div>
 
           <!-- Mapa embebido (configurable) -->
-          <div id="flex-map-wrap" style="display:none;margin-bottom:12px;border:1px solid var(--b2);border-radius:8px;overflow:hidden;background:var(--s2)">
+          <div id="flex-map-wrap" style="display:none;margin-bottom:12px;border:1px solid var(--b2);border-radius:6px;overflow:hidden;background:var(--s2)">
             <div style="padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--t3);border-bottom:1px solid var(--b1);display:flex;justify-content:space-between;align-items:center">
               <span>MAPA OFICIAL DE ZONAS FLEX (ML)</span>
               <span id="flex-map-status" style="font-size:9px"></span>
@@ -405,7 +444,7 @@
         </div>
 
         <!-- Breakdown -->
-        <div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;overflow:hidden">
+        <div style="background:var(--s1);border:1px solid var(--b1);border-radius:6px;overflow:hidden">
           <div style="padding:10px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--t3);border-bottom:1px solid var(--b1);text-transform:uppercase">Detalle por CP</div>
           <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
             <table>
@@ -531,6 +570,25 @@ const esc = s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
   });
 })();
 
+/* La cuenta elegida en el selector de ESTE modo (fundas / otros) */
+function cuentaElegida(modo) {
+  const sel = document.getElementById('acct-' + modo);
+  const list = window._cobroAccts || [];
+  if (!sel) return window._cobroAcct || null;
+  return list.find(a => String(a.id) === sel.value) || window._cobroAcct || null;
+}
+/* Deja a la vista si se va a descontar IVA o no — es lo que más caro sale equivocar */
+function pintarFiscal(modo) {
+  const el = document.getElementById('fiscal-' + modo);
+  const a  = cuentaElegida(modo);
+  if (!el || !a) return;
+  const mono = a.fiscal === 'monotributo';
+  el.className = 'cuenta-fiscal ' + (mono ? 'mono' : 'resp');
+  el.textContent = mono
+    ? 'Monotributo — el neto NO se divide por 1.21'
+    : 'Responsable inscripto — al neto se le descuenta el IVA (÷ 1.21)';
+}
+
 /* Account switcher (shell) */
 async function loadAccounts(){
   try {
@@ -539,6 +597,17 @@ async function loadAccounts(){
     const list = Array.isArray(d) ? d : (d.accounts||[]);
     const active = list.find(a=>a.active) || list[0];
     window._cobroAcct = active || null;   // cuenta activa (id/label/fiscal) para tag + IVA del cobro
+    // La cuenta de la liquidación se ELIGE, no se hereda de la activa: subir el
+    // archivo de una cuenta estando parado en la otra descontaba IVA que no
+    // correspondía y además lo guardaba con la etiqueta equivocada.
+    window._cobroAccts = list;
+    for (const modo of ['fundas', 'otros']) {
+      const sel = document.getElementById('acct-' + modo);
+      if (!sel) continue;
+      sel.innerHTML = list.map(a =>
+        `<option value="${a.id}" ${a.id === (active||{}).id ? 'selected' : ''}>${a.label || a.id}</option>`).join('');
+      pintarFiscal(modo);
+    }
     if(active){
       const init = $I('acc-initial'); const lbl = $I('acc-label');
       const act = $I('acc-active'); const actId = $I('acc-active-id');
@@ -799,27 +868,42 @@ function initDateDefaults() {
 // initDateDefaults() se llama después de que flexState esté definido (ver final de sección FLEX)
 
 // ── Generar cobro ───────────────────────────────────────────────
-async function generar(modo) {
+// origen 'archivo' = Excel bajado a mano de ML; 'ml' = traído por API.
+// El cálculo del neto es el mismo de los dos lados: cambia sólo de dónde salen
+// las ventas, así que todo lo que sigue al fetch se comparte.
+async function generar(modo, origen = 'archivo') {
   const s   = state[modo];
-  if (!s.file) return;
+  if (origen === 'archivo' && !s.file) return;
 
-  const btn = document.getElementById(`btn-${modo}`);
+  const btn = document.getElementById(origen === 'ml' ? `btn-ml-${modo}` : `btn-${modo}`);
   const res = document.getElementById(`res-${modo}`);
   btn.classList.add('loading');
   btn.disabled = true;
   res.style.display = 'none';
 
   try {
-    const acct = window._cobroAcct || null;
+    const acct = cuentaElegida(modo);
     const sinIva = acct && acct.fiscal === 'monotributo';   // RZ-ZETTAI: sin IVA
-    const fd = new FormData();
-    fd.append('file',  s.file);
-    fd.append('desde', s.desde || '');
-    fd.append('hasta', s.hasta || '');
-    fd.append('modo',  modo);
-    if (sinIva) fd.append('sin_iva', '1');
 
-    const resp = await fetch(`${HOST}/cobro`, { method: 'POST', body: fd });
+    let resp;
+    if (origen === 'ml') {
+      if (!s.desde || !s.hasta) throw new Error('Elegí primero el rango de fechas');
+      if (!acct || !acct.id)    throw new Error('Elegí la cuenta a liquidar');
+      resp = await fetch(`${HOST}/cobro/ml`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ desde: s.desde, hasta: s.hasta, modo,
+                               sin_iva: sinIva ? '1' : '', cuenta: String(acct.id) })
+      });
+    } else {
+      const fd = new FormData();
+      fd.append('file',  s.file);
+      fd.append('desde', s.desde || '');
+      fd.append('hasta', s.hasta || '');
+      fd.append('modo',  modo);
+      if (sinIva) fd.append('sin_iva', '1');
+      resp = await fetch(`${HOST}/cobro`, { method: 'POST', body: fd });
+    }
     const data = await resp.json();
 
     if (!data.ok) throw new Error(data.detail || data.error || 'Error desconocido');
@@ -934,7 +1018,7 @@ async function guardarCobro(modo) {
   const nombre = prompt('Nombre para guardar este cobro:', def);
   if (nombre === null) return;
   try {
-    const acct = window._cobroAcct || null;
+    const acct = cuentaElegida(modo) || window._cobroAcct || null;
     const cuenta = acct ? { id: acct.id, label: acct.label, fiscal: acct.fiscal || 'responsable' } : null;
     const resp = await fetch(`${HOST}/cobro/guardar`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -955,6 +1039,18 @@ async function loadGuardados() {
     renderGuardados(data.cobros || []);
   } catch (e) { renderGuardados([]); }
 }
+/* Etiqueta de cuenta. Se muestra el régimen porque es lo que decide si al neto
+   se le descontó el IVA: una liquidación cargada con la cuenta equivocada da un
+   número ~29% más bajo y no hay forma de notarlo mirando el total. */
+function badgeCuenta(cu) {
+  if (!cu || !cu.label) return '<span class="gc-badge gc-sin">sin cuenta asignada</span>';
+  const mono = cu.fiscal === 'monotributo';
+  const tip = mono ? 'Monotributo — el neto NO se dividió por 1.21'
+                   : 'Responsable inscripto — al neto se le descontó el IVA (÷ 1.21)';
+  return `<span class="gc-badge ${mono ? 'gc-mono' : 'gc-resp'}" title="${tip}">`
+       + `${rpEsc(cu.label)} · ${mono ? 'monotributo' : 'responsable'}</span>`;
+}
+
 function renderGuardados(list) {
   const cont = document.getElementById('guardados-list');
   const cnt  = document.getElementById('guardados-count');
@@ -966,6 +1062,7 @@ function renderGuardados(list) {
       <div class="guardado-main">
         <div class="guardado-nombre">${rpEsc(c.nombre)}</div>
         <div class="guardado-meta">${rpEsc(c.modo)} · ${rpEsc(c.periodo || 'período completo')} · ${c.incluidas ?? '—'} incluidas · guardado ${fecha}</div>
+        <div class="guardado-cuenta">${badgeCuenta(c.cuenta)}</div>
       </div>
       <div class="guardado-neto">${fmtMoney(c.total_neto)}</div>
       <div class="guardado-acc">
@@ -1295,7 +1392,7 @@ function renderFlexResult(r) {
         `<option value="${z}"${u.auto_suggest === z ? ' selected' : ''}>${ZONE_LABELS[z].name} ${ZONE_LABELS[z].tariff ? '($'+fmt(ZONE_LABELS[z].tariff)+')' : ''}</option>`
       ).join('');
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((u.sample_address||'')+' Argentina '+u.cp)}`;
-      return `<div data-cp="${escAcct(u.cp)}" style="display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;margin-bottom:6px">
+      return `<div data-cp="${escAcct(u.cp)}" style="display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;margin-bottom:6px">
         <div style="font-family:var(--mono);font-weight:700;min-width:60px">${u.cp || '—'}</div>
         <div style="flex:1;font-size:11px;color:var(--t2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAcct(u.sample_address || '(sin dirección)')}</div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">×${u.count}</div>

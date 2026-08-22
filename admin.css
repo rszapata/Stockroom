@@ -6,48 +6,90 @@
 
 /* ── Variables ─────────────────────────────────────────────── */
 :root {
+  /* ── Escala tipográfica ──────────────────────────────────────
+     Antes había 26 tamaños distintos, varios con medio píxel (9.5, 10.5,
+     11.5, 12.5): señal de que se ajustaron a ojo uno por uno. Estos son los
+     pasos que quedaron; usar SIEMPRE uno de estos y no inventar valores.
+
+       --fs-xs   9px   etiquetas diminutas, badges
+       --fs-sm  10px   metadatos, subtítulos de tabla
+       --fs-md  11px   texto secundario
+       --fs-base 12px  texto de interfaz por defecto
+       --fs-lg  13px   texto principal de listas
+       --fs-xl  15px   títulos de sección
+       --fs-2xl 20px   números de KPI
+       --fs-3xl 24px   títulos de página
+  */
+  --fs-xs:   9px;
+  --fs-sm:  10px;
+  --fs-md:  11px;
+  --fs-base:12px;
+  --fs-lg:  13px;
+  --fs-xl:  15px;
+  --fs-2xl: 20px;
+  --fs-3xl: 24px;
+
   /* Acción / Brand — Verde Pizarra (reemplaza el azul ML #3483FA) */
   --blue:          #15715F;
   --blue-dark:     #0F5849;
   --blue-light:    #E7F0ED;
   --blue-mid:      #CFE5DF;
+  --blue-ink:      #0D4A3D;   /* 7.9:1 sobre --blue-light */
+  --on-blue:       #FFFFFF;   /* texto sobre --blue */
 
-  /* Estados (mantienen su semántica; texto #fff/#333 ya pareado) */
+  /* Estados. OJO: --green/--red/--yellow se usan como RELLENO (badges del
+     sidebar, pulse-dots, hovers de botones), así que no se pueden oscurecer.
+     Para TEXTO sobre el tinte claro van los `-ink`, que sí llegan a 4.5:1.
+     Medido: el ámbar viejo sobre su tinte daba 1.93:1 — ilegible. */
   --green:         #1F8A5B;
-  --green-light:   #E7F2EB;
+  --green-light:   #E9F4EE;
+  --green-ink:     #14663F;   /* 6.21:1 sobre --green-light */
   --red:           #C23B34;
-  --red-light:     #FBEAE8;
+  --red-light:     #FDF0EE;
+  --red-ink:       #9B2C24;   /* 6.79:1 sobre --red-light */
   --yellow:        #E5A21E;
-  --yellow-light:  #F8EFD9;
+  --yellow-light:  #FCF3DF;
+  --yellow-ink:    #8A5B00;   /* 5.32:1 sobre --yellow-light (antes 1.93:1) */
 
   /* Fondos — graphite premium (página claramente por debajo del blanco de las
      cards para que separen bien; sidebar blanco) */
-  --bg:            #EAECE8;
+  /* Neutro REAL: el anterior (#EAECE8) tenía el canal verde más alto (R234
+     G236 B232) y contra las cards blancas daba 1.19:1 — se leía como un
+     blanco sucio, no como otra capa. El verde de marca va en acciones, no
+     en el lienzo. La separación la hace el borde, no el relleno. */
+  --bg:            #F1F2F4;
   --bg-card:       #FFFFFF;
   --bg-sidebar:    #FFFFFF;
 
   /* Bordes — hairline visible (no se pierden contra el blanco) */
-  --border:        #D8DBD5;
-  --border-2:      #BFC3BC;
+  --border:        #D5D9DD;
+  --border-2:      #B9BFC6;
 
   /* Texto — casi-tinta, secundarios más oscuros para legibilidad */
   --text:          #14171A;
   --text-2:        #515650;
-  --text-3:        #7E847C;
+  /* #7E847C daba 3.42:1 contra el fondo — por debajo del mínimo legible.
+     Este pasa 4.5:1 tanto sobre blanco (5.16) como sobre --bg (4.61). */
+  --text-3:        #696F67;
 
   /* Tipografía */
-  --font:          'Inter', system-ui, -apple-system, sans-serif;
+  /* Misma pila exacta que la tienda (design-system.css --font-body): sin
+     'Segoe UI' el fallback en Windows no coincidía si Inter no cargaba. */
+  --font:          'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono:     'JetBrains Mono', 'Menlo', 'Consolas', monospace;
 
   /* Layout */
   --sidebar-w:     220px;
   --header-h:      56px;
 
-  /* Radii */
+  /* Radii — alineados con la tienda: --radius-card es 6px allá, así que ningún
+     contenedor del admin debe ser MÁS redondo que una card de producto.
+     lg/xl quedan en 6 a propósito (antes 8 y 12): la jerarquía de radios no
+     aportaba nada y era lo que hacía ver el panel redondeado. */
   --r-sm:  4px;
   --r:     6px;
-  --r-lg:  8px;
-  --r-xl:  12px;
+  --r-lg:  6px;
+  --r-xl:  6px;
 
   /* Sombras */
   --shadow-sm:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
@@ -61,12 +103,17 @@ html[data-theme="dark"] {
   --blue-dark:     #1F9C81;
   --blue-light:    #10302A;
   --blue-mid:      #16403A;
+  --blue-ink:      #6FD9BE;
+  --on-blue:       #08211C;   /* en noche --blue es claro: texto oscuro (6.41:1) */
   --green:         #34B36F;
   --green-light:   #0E2A1C;
+  --green-ink:     #6FD69C;   /* en oscuro el texto ACLARA, no oscurece */
   --red:           #E5675E;
   --red-light:     #2E1210;
+  --red-ink:       #F0938C;
   --yellow:        #D9A23A;
   --yellow-light:  #2C2208;
+  --yellow-ink:    #E8BE6B;
   --bg:            #0E1112;
   --bg-card:       #15191A;
   --bg-sidebar:    #111516;
@@ -74,7 +121,8 @@ html[data-theme="dark"] {
   --border-2:      #323A39;
   --text:          #E8ECEA;
   --text-2:        #99A19E;
-  --text-3:        #5F6764;
+  /* #5F6764 daba 3.04:1 sobre las cards — misma corrección que en claro */
+  --text-3:        #828A86;
   --shadow-sm: 0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
   --shadow:    0 4px 12px rgba(0,0,0,.6);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.7);
@@ -110,8 +158,9 @@ body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 14px;   /* 14 y no 16 como la tienda: el admin es denso (tablas) */
   line-height: 1.5;
+  letter-spacing: -0.005em;   /* mismo ajuste óptico que la tienda */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -246,11 +295,11 @@ input, select, textarea { font-family: var(--font); }
 .adm-item-badge {
   margin-left: auto;
   background: var(--red);
-  color: #fff;
+  color: var(--on-blue);
   font-size: 10px;
   font-weight: 700;
   min-width: 18px; height: 18px;
-  border-radius: 9px;
+  border-radius:6px;
   padding: 0 5px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
@@ -362,7 +411,7 @@ input, select, textarea { font-family: var(--font); }
   width: 26px; height: 26px;
   border-radius: 50%;
   background: var(--blue);
-  color: #fff;
+  color: var(--on-blue);
   font-size: 11px;
   font-weight: 700;
   display: flex; align-items: center; justify-content: center;
@@ -502,9 +551,9 @@ input, select, textarea { font-family: var(--font); }
   font-variant-numeric: tabular-nums;
 }
 .adm-kpi-value.blue   { color: var(--blue); }
-.adm-kpi-value.green  { color: var(--green); }
+.adm-kpi-value.green  { color: var(--green-ink); }
 .adm-kpi-value.red    { color: var(--red); }
-.adm-kpi-value.yellow { color: var(--yellow); }
+.adm-kpi-value.yellow { color: var(--yellow-ink); }
 .adm-kpi-delta {
   font-size: 12px;
   color: var(--text-3);
@@ -512,7 +561,7 @@ input, select, textarea { font-family: var(--font); }
   align-items: center;
   gap: 4px;
 }
-.adm-kpi-delta.up   { color: var(--green); }
+.adm-kpi-delta.up   { color: var(--green-ink); }
 .adm-kpi-delta.down { color: var(--red); }
 
 /* ══════════════════════════════════════════════════════════════
@@ -539,19 +588,22 @@ input, select, textarea { font-family: var(--font); }
 .btn:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
 .btn:active:not(:disabled) { transform: scale(.985); }
 
-.btn-primary   { background: var(--blue);        color: #fff;           border-color: var(--blue); }
+/* --on-blue en vez de #fff fijo: en modo noche el verde de marca es claro
+   (#2BB394) y el texto blanco encima daba 2.63:1 — el botón principal era lo
+   MENOS legible de la pantalla. Sobre fondo claro va texto oscuro. */
+.btn-primary   { background: var(--blue);        color: var(--on-blue); border-color: var(--blue); }
 .btn-primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
 
-.btn-secondary { background: var(--blue-light);   color: var(--blue);    border-color: transparent; }
+.btn-secondary { background: var(--blue-light);   color: var(--blue-ink); border-color: transparent; }
 .btn-secondary:hover { background: var(--blue-mid); }
 
 .btn-ghost     { background: transparent;         color: var(--text-2);  border-color: var(--border-2); }
 .btn-ghost:hover { border-color: var(--border-2); color: var(--text); background: var(--bg); }
 
 .btn-danger    { background: var(--red-light);    color: var(--red);     border-color: transparent; }
-.btn-danger:hover { background: var(--red); color: #fff; }
+.btn-danger:hover { background: var(--red); color: var(--on-blue); }
 
-.btn-success   { background: var(--green-light);  color: var(--green);   border-color: transparent; }
+.btn-success   { background: var(--green-light);  color: var(--green-ink);   border-color: transparent; }
 .btn-success:hover { background: var(--green); color: #fff; }
 
 .btn-sm { padding: 4px 10px; font-size: 12px; }
@@ -580,9 +632,9 @@ input, select, textarea { font-family: var(--font); }
 }
 .adm-table th {
   background: var(--bg);
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: 700;
+  color: var(--text-2);
+  font-size: 12px;   /* piso legible; antes 11 */
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .05em;
   padding: 10px 14px;
@@ -619,21 +671,28 @@ input, select, textarea { font-family: var(--font); }
   width: 36px; height: 36px; border-radius: 6px; object-fit: cover;
   border: 1px solid var(--border); background: var(--bg); flex-shrink: 0;
 }
-.adm-prod-title { font-size: 13.5px; font-weight: 500; color: var(--text); line-height: 1.3; }
-.adm-prod-meta  { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.adm-prod-title { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
+.adm-prod-meta  { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); margin-top: 2px; }
 
 /* ── Badge de estado con punto (sobrio, semántico) ──
    <span class="adm-state ok|low|err|info|neu">Activo</span> */
 .adm-state {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 9px; border-radius: 99px;
-  font-size: 11.5px; font-weight: 500; white-space: nowrap;
+  padding: 4px 10px; border-radius: 99px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;   /* 12px = piso legible */
 }
-.adm-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.adm-state.ok   { color: var(--green);  background: var(--green-light); }
-.adm-state.low  { color: var(--yellow); background: var(--yellow-light); }
-.adm-state.err  { color: var(--red);    background: var(--red-light); }
-.adm-state.info { color: var(--blue);   background: var(--blue-light); }
+/* El punto conserva el color saturado (es una forma, no texto); el texto usa
+   el `-ink` oscuro, que es el que tiene que pasar contraste. */
+.adm-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+.adm-state.ok   { color: var(--green-ink);  background: var(--green-light); }
+.adm-state.low  { color: var(--yellow-ink); background: var(--yellow-light); }
+.adm-state.err  { color: var(--red-ink);    background: var(--red-light); }
+.adm-state.info { color: var(--blue-ink);   background: var(--blue-light); }
+.adm-state.ok::before   { background: var(--green); }
+.adm-state.low::before  { background: var(--yellow); }
+.adm-state.err::before  { background: var(--red); }
+.adm-state.info::before { background: var(--blue); }
+.adm-state.neu::before  { background: currentColor; }
 .adm-state.neu  { color: var(--text-3); background: var(--bg); border: 1px solid var(--border); }
 
 /* ══════════════════════════════════════════════════════════════
@@ -649,7 +708,7 @@ input, select, textarea { font-family: var(--font); }
   font-weight: 600;
   white-space: nowrap;
 }
-.badge-green  { background: var(--green-light);  color: var(--green); }
+.badge-green  { background: var(--green-light);  color: var(--green-ink); }
 .badge-blue   { background: var(--blue-light);   color: var(--blue); }
 .badge-red    { background: var(--red-light);    color: var(--red); }
 .badge-yellow { background: var(--yellow-light); color: #8a5c00; }
@@ -800,9 +859,9 @@ input, select, textarea { font-family: var(--font); }
   min-height: 20px;
   font-family: var(--font-mono);
 }
-.adm-status.ok     { color: var(--green); }
+.adm-status.ok     { color: var(--green-ink); }
 .adm-status.error  { color: var(--red); }
-.adm-status.warn   { color: var(--yellow); }
+.adm-status.warn   { color: var(--yellow-ink); }
 
 /* Tooltip */
 [data-tip] { position: relative; }
@@ -940,6 +999,21 @@ input, select, textarea { font-family: var(--font); }
   .adm-acct-btn      { padding: 4px; gap: 0; border: none; }
   .adm-acct-btn:hover{ border: none; }
   .adm-acct-btn.open { border: none; }
+
+  /* ── Targets tactiles ────────────────────────────────────────
+     WCAG 2.2 AA (2.5.8) pide 24x24 como minimo; 44x44 es el tamaño
+     comodo para el pulgar (2.5.5 AAA). Los items del menu se tocan
+     todos los dias, asi que van a 44. */
+  .adm-item          { min-height: 44px; }
+  .adm-hamburger     { min-width: 44px; min-height: 44px; }
+  .adm-theme-btn     { min-width: 44px; min-height: 44px; }
+  .adm-acct-btn      { min-width: 44px; min-height: 44px; justify-content: center; }
+  .adm-btm-item      { min-height: 48px; }
+  /* Checkboxes y radios: 15px es imposible de acertar con el dedo */
+  input[type="checkbox"], input[type="radio"] { min-width: 24px; min-height: 24px; }
+  /* Links y botones de texto: area tactil sin cambiar el diseño visible */
+  main a:not(.btn):not(.adm-item) { padding-block: 4px; }
+  main button { min-height: 24px; }
 }
 
 /* En pantallas muy pequeñas (≤ 400px) ocultar también el subtítulo */

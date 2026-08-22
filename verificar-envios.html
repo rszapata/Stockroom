@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Upload zone ─────────────────────────────────────── */
@@ -34,7 +34,7 @@
 .uz-icon { font-size: 36px; margin-bottom: 10px; }
 .uz-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .uz-sub { font-size: 13px; color: var(--text-3); }
-.uz-file { font-size: 13px; color: var(--green); margin-top: 8px; font-weight: 500; }
+.uz-file { font-size: 13px; color: var(--green-ink); margin-top: 8px; font-weight: 500; }
 
 /* ── Resumen del PDF cargado ─────────────────────────── */
 .pdf-summary {
@@ -95,7 +95,7 @@
   padding: 3px 8px; border-radius: 100px;
   font-size: 11px; font-weight: 600; white-space: nowrap;
 }
-.v-badge.ok    { background: var(--green-light); color: var(--green); }
+.v-badge.ok    { background: var(--green-light); color: var(--green-ink); }
 .v-badge.warn  { background: var(--yellow-light, #fff7d6); color: #c9a800; }
 .v-badge.err   { background: var(--red-light); color: var(--red); }
 .v-badge.grey  { background: var(--bg); color: var(--text-3); border: 1px solid var(--border); }
@@ -115,7 +115,7 @@
   transition: all .12s;
 }
 .ml-link:hover {
-  color: #fff; background: var(--blue);
+  color: var(--on-blue); background: var(--blue);
   border-color: var(--blue);
 }
 
@@ -171,7 +171,7 @@
 
 <!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -222,7 +222,7 @@
       ondragover="event.preventDefault();this.classList.add('drag')"
       ondragleave="this.classList.remove('drag')"
       ondrop="onDrop(event)" style="margin-bottom:16px">
-      <input type="file" id="file-input" accept=".pdf" onchange="onFileChange(this.files[0])">
+      <input type="file" id="file-input" accept=".pdf" onchange="onFileChange(this.files[0])" aria-label="Archivo de resumen de logistica">
       <div class="uz-icon">📄</div>
       <div class="uz-title">Cargar resumen de logística</div>
       <div class="uz-sub">Arrastrá un PDF (SINERGIA u otra empresa) o hacé clic para seleccionarlo</div>
@@ -248,7 +248,7 @@
     <div class="pdf-summary" id="pdf-summary" style="display:none; margin-bottom:16px">
       <div class="pdf-summary-meta" id="pdf-meta"></div>
       <div class="pdf-totals" id="pdf-totals"></div>
-      <div id="pdf-totals-note" style="display:none;margin-top:8px;font-size:11px;color:var(--yellow)"></div>
+      <div id="pdf-totals-note" style="display:none;margin-top:8px;font-size:11px;color: var(--yellow-ink)"></div>
     </div>
 
     <!-- Action bar -->

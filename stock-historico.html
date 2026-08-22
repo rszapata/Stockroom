@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Histórico de Stock — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=14">
+<script src="/chart.umd.min.js"></script>
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.pg { font-family:'Inter',system-ui,sans-serif; font-size:13px; display:block; color:var(--text); }
+.pg *, .pg *::before, .pg *::after { box-sizing:border-box; }
+
+.sh-cols { display:flex; flex-direction:column; gap:20px; }
+.sh-card { background:var(--bg-card); border:1px solid var(--border); border-radius:6px; }
+.sh-hd {
+  padding:13px 20px; border-bottom:1px solid var(--border);
+  font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-2);
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.sh-bd { padding:20px; }
+
+/* Cobertura: mientras se acumula, es el dato más importante de la pantalla */
+.sh-kpis { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
+.sh-kpi { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+.sh-kpi-n { font-family:var(--font-mono); font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
+.sh-kpi-l { font-size:12px; color:var(--text-2); margin-top:3px; }
+.sh-prog { height:8px; border-radius:99px; background:var(--bg); overflow:hidden; margin:14px 0 6px; border:1px solid var(--border); }
+.sh-prog i { display:block; height:100%; background:var(--blue); }
+.sh-aviso {
+  display:flex; gap:10px; align-items:flex-start; margin-top:14px;
+  background:var(--yellow-light); border-left:3px solid var(--yellow);
+  border-radius:0 6px 6px 0; padding:12px 16px; color:var(--text-2); font-size:12px;
+}
+
+.sh-tabla-wrap { overflow-x:auto; }
+table.sh-t { width:100%; border-collapse:collapse; min-width:820px; }
+table.sh-t th {
+  text-align:left; font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--text-2); padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+table.sh-t td { padding:11px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+table.sh-t th:first-child, table.sh-t td:first-child { padding-left:20px; }
+table.sh-t th:last-child,  table.sh-t td:last-child  { padding-right:20px; }
+table.sh-t tr:last-child td { border-bottom:none; }
+table.sh-t .num { text-align:right; font-variant-numeric:tabular-nums; }
+table.sh-t tbody tr { cursor:pointer; }
+table.sh-t tbody tr:hover { background:var(--bg); }
+.sh-prod { font-weight:500; }
+.sh-var { font-size:12px; color:var(--text-3); margin-top:2px; }
+.sh-mono { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+.sh-sube { color:var(--red-ink); font-weight:600; }
+.sh-igual { color:var(--text-3); }
+.sh-vacio { padding:26px 20px; text-align:center; color:var(--text-3); font-size:13px; }
+
+.sh-filtros { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.sh-filtros select, .sh-filtros input {
+  height:32px; padding:0 9px; border:1px solid var(--border); border-radius:6px;
+  background:var(--bg-card); color:var(--text); font:inherit; font-size:12px;
+}
+.sh-chk { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text-2);
+          text-transform:none; letter-spacing:0; cursor:pointer; }
+.sh-chk input { accent-color:var(--blue); width:15px; height:15px; }
+
+/* Panel de la serie de una variante */
+.sh-serie { display:none; }
+.sh-serie.show { display:block; }
+.sh-serie-hd { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+.sh-cerrar { background:none; border:1px solid var(--border); border-radius:6px; padding:4px 10px;
+             cursor:pointer; color:var(--text-2); font:inherit; font-size:12px; }
+</style>
+</head>
+<body>
+
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/stockroom-sidebar.js?v=9"></script>
+
+<div class="adm-main">
+<header class="adm-header">
+  <div class="adm-header-left">
+    <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div>
+      <div class="adm-page-title">Histórico de Stock</div>
+      <div class="adm-page-sub">Foto diaria de cada variante — corrige la demanda de lo que estuvo quebrado</div>
+    </div>
+  </div>
+  <div class="adm-header-right">
+    <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+      <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="adm-content pg">
+  <div class="sh-cols">
+
+    <!-- Cobertura -->
+    <div class="sh-card">
+      <div class="sh-hd"><span>Cobertura del histórico</span><span id="sh-actualizado" style="text-transform:none;letter-spacing:0;font-weight:400"></span></div>
+      <div class="sh-bd">
+        <div class="sh-kpis" id="sh-kpis"></div>
+        <div id="sh-progreso"></div>
+      </div>
+    </div>
+
+    <!-- Demanda corregida -->
+    <div class="sh-card">
+      <div class="sh-hd">
+        <span>Demanda real vs. la que calcula el sistema <span id="sh-alcance" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3);margin-left:6px"></span></span>
+        <span class="sh-filtros">
+          <label class="sh-chk" title="Destildalo para ver también mallas, protectores y el resto del catálogo"><input type="checkbox" id="sh-solo-fundas" checked aria-label="Mostrar solo fundas"> Solo fundas</label>
+          <label class="sh-chk"><input type="checkbox" id="sh-solo-dif" checked aria-label="Mostrar solo las variantes que cambian"> Solo las que cambian</label>
+          <select id="sh-dias" aria-label="Dias de historico a mostrar">
+            <option value="30">últimos 30 días</option>
+            <option value="60" selected>últimos 60 días</option>
+            <option value="90">últimos 90 días</option>
+          </select>
+        </span>
+      </div>
+      <div class="sh-tabla-wrap">
+        <table class="sh-t">
+          <thead><tr>
+            <th style="min-width:280px">Producto</th>
+            <th class="num" style="width:80px">Vendidas</th>
+            <th class="num" style="width:110px">Con stock</th>
+            <th class="num" style="width:120px">Calcula hoy</th>
+            <th class="num" style="width:120px">Demanda real</th>
+            <th class="num" style="width:90px">Dif.</th>
+          </tr></thead>
+          <tbody id="sh-tbody"></tbody>
+        </table>
+      </div>
+      <div class="sh-vacio" id="sh-sin-datos" style="display:none"></div>
+    </div>
+
+    <!-- Serie de una variante -->
+    <div class="sh-card sh-serie" id="sh-serie">
+      <div class="sh-hd"><span>Evolución del stock</span></div>
+      <div class="sh-bd">
+        <div class="sh-serie-hd">
+          <div>
+            <div class="sh-prod" id="sh-serie-tit"></div>
+            <div class="sh-var" id="sh-serie-var"></div>
+          </div>
+          <button class="sh-cerrar" id="sh-serie-x">Cerrar</button>
+        </div>
+        <canvas id="sh-canvas" height="90"></canvas>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let demanda = [], grafico = null;
+
+/* ───── cobertura ───── */
+async function cargarCobertura() {
+  try {
+    const r = await fetch('/stock-historico/cobertura');
+    const d = await r.json();
+    const dias = d.dias || 0;
+    const fmt = f => f ? new Date(f).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
+    $('sh-kpis').innerHTML = [
+      [dias, 'días registrados'],
+      [(d.variantes || 0).toLocaleString('es-AR'), 'variantes seguidas'],
+      [(d.filas || 0).toLocaleString('es-AR'), 'mediciones guardadas'],
+      [fmt(d.desde), 'primera foto'],
+    ].map(([n, l]) => `<div class="sh-kpi"><div class="sh-kpi-n">${n}</div><div class="sh-kpi-l">${l}</div></div>`).join('');
+
+    // Mientras se acumula, lo importante es cuánto falta para que sirva
+    if (!d.confiable) {
+      const pct = Math.min(100, Math.round(dias / 30 * 100));
+      $('sh-progreso').innerHTML =
+        `<div class="sh-prog"><i style="width:${pct}%"></i></div>` +
+        `<div style="font-size:12px;color:var(--text-3)">${dias} de 30 días para que la corrección sea confiable</div>` +
+        `<div class="sh-aviso">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+           <div>El histórico recién arrancó. La corrección por quiebres se calcula igual, pero
+           <strong>es orientativa hasta acumular 30 días</strong>: con pocas mediciones, la proporción de
+           días con stock se extrapola y puede errarle. Faltan <strong>${d.faltan_dias} días</strong>.</div>
+         </div>`;
+    } else {
+      $('sh-progreso').innerHTML =
+        `<div class="sh-aviso" style="background:var(--green-light);border-left-color:var(--green)">
+           <div>Hay ${dias} días de histórico: la corrección por quiebres ya es confiable.</div></div>`;
+    }
+    $('sh-actualizado').textContent = 'última foto ' + fmt(d.hasta);
+  } catch(e) {
+    $('sh-kpis').innerHTML = `<div class="sh-kpi"><div class="sh-kpi-l">No se pudo leer la cobertura: ${esc(e.message)}</div></div>`;
+  }
+}
+
+/* ───── demanda corregida ───── */
+async function cargarDemanda() {
+  const dias = $('sh-dias').value;
+  const todos = $('sh-solo-fundas').checked ? '' : '&all_products=1';
+  $('sh-tbody').innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-3)">Calculando…</td></tr>`;
+  try {
+    const r = await fetch('/stock-historico/demanda?dias=' + dias + todos);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    demanda = (d.demanda || []).filter(x => x.unidades > 0);
+    $('sh-alcance').textContent = `${demanda.length} variantes con ventas` +
+      (d.all_products ? ' (todo el catálogo)' : ' (solo fundas)');
+    renderDemanda();
+  } catch(e) {
+    $('sh-tbody').innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--red-ink)">${esc(e.message)}</td></tr>`;
+  }
+}
+
+function renderDemanda() {
+  const soloDif = $('sh-solo-dif').checked;
+  // "Cambia" = estuvo quebrada alguna vez, que es cuando la corrección aplica
+  const lista = soloDif ? demanda.filter(x => x.pct_con_stock < 100) : demanda;
+  $('sh-sin-datos').style.display = lista.length ? 'none' : '';
+  if (!lista.length) {
+    $('sh-sin-datos').textContent = soloDif
+      ? 'Ninguna variante estuvo sin stock en los días medidos. Cuando alguna quiebre, va a aparecer acá con su demanda corregida.'
+      : 'Todavía no hay variantes con ventas en la ventana elegida.';
+    $('sh-tbody').innerHTML = '';
+    return;
+  }
+  $('sh-tbody').innerHTML = lista.slice(0, 120).map(x => {
+    const dif = x.demanda_mensual_real != null && x.demanda_mensual_actual > 0
+      ? (x.demanda_mensual_real / x.demanda_mensual_actual - 1) * 100 : 0;
+    return `<tr data-item="${esc(x.item_id)}" data-var="${esc(x.variation_id)}" data-tit="${esc(x.titulo)}" data-lbl="${esc(x.variante)}">
+      <td>
+        <div class="sh-prod">${esc(x.titulo)}</div>
+        <div class="sh-var">${esc(x.variante || 'única')}</div>
+      </td>
+      <td class="num sh-mono">${x.unidades}</td>
+      <td class="num sh-mono">${x.pct_con_stock}%<div class="sh-var">${x.dias_sin_stock}d sin stock</div></td>
+      <td class="num sh-mono">${x.demanda_mensual_actual}/mes</td>
+      <td class="num sh-mono" style="font-weight:600">${x.demanda_mensual_real ?? '—'}/mes</td>
+      <td class="num sh-mono ${dif > 1 ? 'sh-sube' : 'sh-igual'}">${dif > 1 ? '+' + Math.round(dif) + '%' : '—'}</td>
+    </tr>`;
+  }).join('');
+  $('sh-tbody').querySelectorAll('tr[data-item]').forEach(tr =>
+    tr.addEventListener('click', () => verSerie(tr.dataset.item, tr.dataset.var, tr.dataset.tit, tr.dataset.lbl)));
+}
+
+/* ───── serie de una variante ───── */
+async function verSerie(itemId, variationId, titulo, variante) {
+  $('sh-serie').classList.add('show');
+  $('sh-serie-tit').textContent = titulo;
+  $('sh-serie-var').textContent = variante || 'única';
+  $('sh-serie').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  try {
+    const r = await fetch(`/stock-historico/serie?item_id=${encodeURIComponent(itemId)}&variation_id=${encodeURIComponent(variationId)}&dias=120`);
+    const d = await r.json();
+    const serie = d.serie || [];
+    const css = getComputedStyle(document.documentElement);
+    const azul = css.getPropertyValue('--blue').trim() || '#15715F';
+    if (grafico) grafico.destroy();
+    grafico = new Chart($('sh-canvas'), {
+      type: 'line',
+      data: {
+        labels: serie.map(p => new Date(p.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' })),
+        datasets: [{
+          data: serie.map(p => p.cantidad),
+          borderColor: azul, backgroundColor: azul + '22',
+          fill: true, tension: .25, pointRadius: serie.length > 40 ? 0 : 3,
+          // Marcar en rojo los días sin stock: es lo que se quiere ver
+          pointBackgroundColor: serie.map(p => p.cantidad === 0 ? '#C23B34' : azul),
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display:false },
+                   tooltip: { callbacks: { label: c => c.parsed.y === 0 ? 'sin stock' : c.parsed.y + ' unidades' } } },
+        scales: { y: { beginAtZero:true, ticks:{ precision:0 } } },
+      },
+    });
+  } catch(e) { /* el gráfico es secundario */ }
+}
+$('sh-serie-x').addEventListener('click', () => $('sh-serie').classList.remove('show'));
+
+/* ───── arranque ───── */
+$('sh-dias').addEventListener('change', cargarDemanda);
+$('sh-solo-fundas').addEventListener('change', cargarDemanda);
+$('sh-solo-dif').addEventListener('change', renderDemanda);
+
+const sidebar = $('sidebar'), overlay = $('sidebar-overlay');
+$('btn-hamburger').addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+$('btn-theme').addEventListener('click', () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('adminTheme', t); } catch(e) {}
+});
+
+cargarCobertura();
+cargarDemanda();
+</script>
+</body>
+</html>

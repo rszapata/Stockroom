@@ -106,9 +106,22 @@ def tiene_precio(v):
     except (TypeError, ValueError):
         return False
 
-def calc_neto(ing, cargo, cf):
+def imp_real(f):
+    """Impuesto real de la fila, o None si la fuente no lo trae (vía API)."""
+    v = f.get('impuestos') if isinstance(f, dict) else None
+    return None if v is None else safe_f(v)
+
+def calc_neto(ing, cargo, cf, imp=None):
+    """neto = ingresos/IVA + cargo + costo_fijo + impuestos.
+
+    `imp` es la columna "Impuestos" del Excel de ML (viene negativa) y es el dato
+    exacto: son retenciones de IIBB, que cambian según la provincia del comprador
+    —medido entre 0,714 % y 1,043 % de la venta—. Cuando no está (por ejemplo en
+    la vía por API, que no lo expone) se cae al fijo histórico de COSTO_IMPUESTOS.
+    """
     try:
-        return float(ing) / IVA + float(cargo) + float(cf) - COSTO_IMPUESTOS
+        base = float(ing) / IVA + float(cargo) + float(cf)
+        return base + float(imp) if imp is not None else base - COSTO_IMPUESTOS
     except (TypeError, ValueError):
         return 0.0
 
@@ -178,8 +191,12 @@ def leer_ml(path):
         'ingresos':  col.get('Ingresos por productos (ARS)', 7),
         'cargo':     col.get('Cargo por venta', 8),
         'costo_fijo':col.get('Costo fijo', 9),
-        'titulo':    col.get('Título de la publicación', 24),
-        'pub_id':    col.get('# de publicación', 22),
+        # Retenciones reales de la venta. Antes se usaba un fijo de $307, que
+        # sobreestimaba: en la decena del 11 al 20 de agosto el real promedió
+        # $258,60 y la diferencia sobre 19 ventas fue de $919,49 de menos.
+        'impuestos': col.get('Impuestos', 15),
+        'titulo':    col.get('Título de la publicación', 25),
+        'pub_id':    col.get('# de publicación', 23),
     }
 
     filas = []
@@ -196,9 +213,27 @@ def leer_ml(path):
             'ingresos':  row.iloc[IDX['ingresos']] if IDX['ingresos'] < len(row) else None,
             'cargo':     row.iloc[IDX['cargo']] if IDX['cargo'] < len(row) else None,
             'costo_fijo':row.iloc[IDX['costo_fijo']] if IDX['costo_fijo'] < len(row) else None,
+            'impuestos': row.iloc[IDX['impuestos']] if IDX['impuestos'] < len(row) else None,
             'pub_id':    str(row.iloc[IDX['pub_id']] if IDX['pub_id'] < len(row) else '').strip(),
         })
     return filas
+
+def leer_json(path):
+    """Filas traídas de la API de ML, ya con el mismo formato que devuelve leer_ml().
+
+    El servidor las arma desde /orders/search, de modo que el cálculo de neto y
+    todos los filtros de abajo funcionan sin enterarse de por dónde entró el dato.
+    A diferencia del Excel, acá cada ítem de un paquete trae su precio y su
+    sale_fee reales, así que no hay filas padre ni netos estimados.
+    """
+    with io.open(path, encoding='utf-8') as fh:
+        data = json.load(fh)
+    filas = data.get('filas', []) if isinstance(data, dict) else (data or [])
+    NUM = ('ingresos', 'cargo', 'costo_fijo')
+    return [{k: f.get(k, 0 if k in NUM else '')
+             for k in ('id', 'fecha_str', 'estado', 'desc', 'paquete',
+                       'titulo', 'ingresos', 'cargo', 'costo_fijo', 'pub_id')}
+            for f in filas]
 
 # -- Índice de tasas por producto -------------------------------
 def construir_indice_tasas(filas):
@@ -339,7 +374,7 @@ def procesar(filas, modo="fundas", desde_dt=None, hasta_dt=None):
 
             elif not titulos or len(fundas) == len(titulos):
                 # Todas fundas → fórmula completa
-                neto_val = calc_neto(ing, cargo_v, cf_v)
+                neto_val = calc_neto(ing, cargo_v, cf_v, imp_real(f))
                 ventas.append(_v(f, dia, fecha_dt, f'Paquete {len(fundas)} fundas',
                                  ing, cargo_v, cf_v, neto_val,
                                  titulo_d=tit, notas=' + '.join(titulos)))
@@ -398,7 +433,7 @@ def procesar(filas, modo="fundas", desde_dt=None, hasta_dt=None):
             tipo = 'Funda individual'
         else:
             tipo = 'Funda (en paquete)'
-        neto_val = calc_neto(ing, cargo_v, cf_v)
+        neto_val = calc_neto(ing, cargo_v, cf_v, imp_real(f))
         ventas.append(_v(f, dia, fecha_dt, tipo, ing, cargo_v, cf_v, neto_val))
         i += 1
 
@@ -412,6 +447,7 @@ def _v(f, dia, fecha_dt, tipo, ingresos, cargo, costo_fijo, neto_val,
         'titulo': titulo_d or f['titulo'],
         'tipo': tipo, 'ingresos': ingresos, 'cargo': cargo,
         'costo_fijo': costo_fijo, 'neto': neto_val,
+        'impuestos': imp_real(f) if imp_real(f) is not None else -COSTO_IMPUESTOS,
         'estado': f['estado'], 'notas': notas,
         'excluida': excluida, 'mixto': mixto,
     }
@@ -442,7 +478,7 @@ def generar_excel(ventas, rango_label, output_path, modo="fundas"):
 
     ws.merge_cells('A2:I2')
     ws['A2'].value     = (f'Generado: {datetime.now().strftime("%d/%m/%Y %H:%M")}  |  '
-                          f'neto = ingresos/1.21 + cargo + costo_fijo − ${COSTO_IMPUESTOS:.0f} (impuestos)  |  '
+                          'neto = ingresos/1.21 + cargo + costo_fijo + impuestos  |  '
                           f'Paquetes mixtos: neto calculado con precio estimado de la funda')
     ws['A2'].font      = fn('FFB0C4D8', sz=9)
     ws['A2'].fill      = fl(C['header_bg'])
@@ -588,7 +624,9 @@ def generar_excel(ventas, rango_label, output_path, modo="fundas"):
     print(f"    → individuales/paquete2: {len(incluidas) - len(mixtos)}")
     print(f"    → paquetes mixtos:       {len(mixtos)}  (neto estimado automáticamente)")
     print(f"  Excluidas:                 {len(excluidas)}")
-    print(f"  Impuestos descontados:     ${COSTO_IMPUESTOS:.0f} × {len(incluidas)} ventas = ${COSTO_IMPUESTOS * len(incluidas):>10,.2f}")
+    _imp = sum(v.get('impuestos', -COSTO_IMPUESTOS) for v in incluidas)
+    _fuente = 'reales de ML' if any(v.get('impuestos') != -COSTO_IMPUESTOS for v in incluidas) else f'estimados a ${COSTO_IMPUESTOS:.0f}'
+    print(f"  Impuestos ({_fuente}):{'':<6} {len(incluidas)} ventas = ${_imp:>10,.2f}")
     print(f"  TOTAL NETO:                ${neto_auto:>12,.2f}")
     print(f"{'-'*58}\n")
     if mixtos:
@@ -660,7 +698,7 @@ if __name__ == '__main__':
     rango_label = f"{args.desde or 'inicio'} al {args.hasta or 'fin'}" if (args.desde or args.hasta) else 'Período completo'
     print(f"\n  Procesando: {archivo}  [modo={modo}]  [{rango_label}]")
 
-    filas  = leer_ml(archivo)
+    filas  = leer_json(archivo) if str(archivo).lower().endswith('.json') else leer_ml(archivo)
     ventas = procesar(filas, modo=modo, desde_dt=desde_dt, hasta_dt=hasta_dt)
 
     fecha_hoy = datetime.now().strftime('%Y%m%d')

@@ -8,14 +8,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC: tema guardado antes del primer paint -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Status badges ─────────────────────────────────────── */
 .badge-pendiente      { background: var(--bg); color: var(--text-2); border: 1px solid var(--border-2); }
 .badge-pendiente_pago { background: var(--yellow-light); color: #8a5c00; border: 1px solid #f5d9a8; }
-.badge-pagado         { background: var(--green-light);  color: var(--green); border: 1px solid #b3e8cf; }
+.badge-pagado         { background: var(--green-light);  color: var(--green-ink); border: 1px solid #b3e8cf; }
 .badge-despachado     { background: var(--blue-light);   color: var(--blue);  border: 1px solid #b3d0fd; }
 .badge-entregado      { background: #e6f9f0; color: #007a3d; border: 1px solid #9adfc2; }
 .badge-rechazado      { background: var(--red-light);    color: var(--red);   border: 1px solid #f9b3b9; }
@@ -30,7 +30,7 @@
   cursor: pointer; transition: all .15s;
 }
 .filter-btn:hover  { border-color: var(--blue); color: var(--blue); }
-.filter-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.filter-btn.active { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
 
 /* ── Orden ID mono ─────────────────────────────────────── */
 .ord-id {
@@ -48,7 +48,7 @@
 .pagination    { display: flex; gap: 6px; justify-content: center; margin-top: 20px; align-items: center; }
 .page-btn      { padding: 5px 12px; border-radius: var(--r); font-size: 13px; border: 1px solid var(--border-2); background: var(--bg-card); color: var(--text-2); cursor: pointer; transition: all .15s; }
 .page-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
-.page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.page-btn.active { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
 .page-btn:disabled { opacity: .35; cursor: not-allowed; }
 .page-info     { font-size: 13px; color: var(--text-3); padding: 0 8px; }
 
@@ -219,7 +219,7 @@
         <div style="flex:1;min-width:8px;"></div>
         <div class="adm-search" style="max-width:260px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="search" id="search-input" class="adm-input" placeholder="Buscar por nombre, email, orden…" style="border:none;padding:0;background:transparent;min-width:180px;">
+          <input type="search" id="search-input" class="adm-input" placeholder="Buscar por nombre, email, orden…" style="border:none;padding:0;background:transparent;min-width:180px;" aria-label="Buscar por nombre, email, orden…">
         </div>
       </div>
     </div>
@@ -524,7 +524,7 @@
       <div class="modal-status-bar">
         ${badgeHtml(o.status)}
         <span style="font-size:12px;color:var(--text-3);">Creada ${fmtDate(o.fecha)}</span>
-        ${o.paid_at ? `<span style="font-size:12px;color:var(--green);">• Pagada ${fmtDate(o.paid_at)}</span>` : ''}
+        ${o.paid_at ? `<span style="font-size:12px;color: var(--green-ink);">• Pagada ${fmtDate(o.paid_at)}</span>` : ''}
         ${o.shipped_at ? `<span style="font-size:12px;color:var(--blue);">• Enviada ${fmtDate(o.shipped_at)}</span>` : ''}
       </div>
 
@@ -563,7 +563,7 @@
         <h4>Actualizar orden</h4>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
           <div>
-            <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Estado</label>
+            <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;" for="new-status">Estado</label>
             <select id="new-status" class="adm-select" style="width:100%;">
               <option value="pendiente"        ${o.status==='pendiente'?'selected':''}>Pendiente</option>
               <option value="pendiente_pago"   ${o.status==='pendiente_pago'?'selected':''}>Esperando pago</option>
@@ -576,12 +576,12 @@
             </select>
           </div>
           <div>
-            <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Tracking (Correo / Flex)</label>
+            <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;" for="new-tracking">Tracking (Correo / Flex)</label>
             <input id="new-tracking" type="text" class="adm-input" placeholder="RA123456789AR" value="${o.tracking_number||''}" style="width:100%;box-sizing:border-box;">
           </div>
         </div>
         <div style="margin-bottom:12px;">
-          <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Notas internas</label>
+          <label style="font-size:10px;color:var(--text-3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;" for="new-notes">Notas internas</label>
           <textarea id="new-notes" class="adm-input" rows="3" placeholder="Visible solo para vos…" style="width:100%;box-sizing:border-box;resize:vertical;min-height:70px;">${o.notas_admin||''}</textarea>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">

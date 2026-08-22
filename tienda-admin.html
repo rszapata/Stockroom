@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC: tema guardado antes del primer paint -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -35,7 +35,7 @@
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .quick-icon.blue   { background: var(--blue-light);   color: var(--blue); }
-.quick-icon.green  { background: var(--green-light);  color: var(--green); }
+.quick-icon.green  { background: var(--green-light);  color: var(--green-ink); }
 .quick-icon.red    { background: var(--red-light);    color: var(--red); }
 .quick-icon.yellow { background: var(--yellow-light); color: #8a5c00; }
 .quick-icon.gray   { background: var(--bg);           color: var(--text-2); border: 1px solid var(--border); }
@@ -357,11 +357,11 @@
             <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px" id="coupon-form-title">Nuevo cupón</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
               <div class="adm-field">
-                <label class="adm-label">Código</label>
+                <label class="adm-label" for="f-code">Código</label>
                 <input class="adm-input" id="f-code" placeholder="ej. VERANO20" style="text-transform:uppercase">
               </div>
               <div class="adm-field">
-                <label class="adm-label">Tipo</label>
+                <label class="adm-label" for="f-type">Tipo</label>
                 <select class="adm-input adm-select" id="f-type">
                   <option value="percent">% Descuento</option>
                   <option value="fixed">$ Monto fijo</option>
@@ -369,21 +369,21 @@
                 </select>
               </div>
               <div class="adm-field">
-                <label class="adm-label">Valor</label>
+                <label class="adm-label" for="f-value">Valor</label>
                 <input class="adm-input" id="f-value" type="number" min="0" placeholder="ej. 15">
               </div>
               <div class="adm-field">
-                <label class="adm-label">Descripción</label>
+                <label class="adm-label" for="f-label">Descripción</label>
                 <input class="adm-input" id="f-label" placeholder="ej. 15% off en verano">
               </div>
               <div class="adm-field">
-                <label class="adm-label">Categoría aplicable</label>
+                <label class="adm-label" for="f-cat">Categoría aplicable</label>
                 <select class="adm-input adm-select" id="f-cat">
                   <option value="">Todos los productos</option>
                 </select>
               </div>
               <div class="adm-field">
-                <label class="adm-label">Descuento máximo (ARS)</label>
+                <label class="adm-label" for="f-maxdesc">Descuento máximo (ARS)</label>
                 <input class="adm-input" id="f-maxdesc" type="number" min="0" placeholder="Sin límite">
               </div>
             </div>
@@ -507,7 +507,7 @@
       function fmtUp(s){ if(s==null)return '—'; var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return [d&&d+'d',h&&h+'h',m+'m'].filter(Boolean).join(' '); }
       function dot(ok,warn){ var c=ok?'#16a34a':(warn?'#f59e0b':'#ef4444'); return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+c+';margin-right:7px;flex-shrink:0"></span>'; }
       function tile(label, dotHtml, value){
-        return '<div style="border:1px solid rgba(128,128,128,.22);border-radius:10px;padding:11px 13px">'
+        return '<div style="border:1px solid rgba(128,128,128,.22);border-radius:6px;padding:11px 13px">'
           + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:5px">'+label+'</div>'
           + '<div style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center">'+(dotHtml||'')+'<span>'+value+'</span></div></div>';
       }

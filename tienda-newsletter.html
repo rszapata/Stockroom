@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 .nl-grid { display:grid; grid-template-columns: 1.2fr 1fr; gap:18px; align-items:start; }
@@ -16,23 +16,23 @@
 .nl-stats { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
 .nl-stat { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:12px 16px; flex:1; min-width:120px; }
 .nl-stat-lbl { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); }
-.nl-stat-val { font-size:22px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+.nl-stat-val { font-size:20px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
 .nl-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-lg); padding:18px; }
 .nl-field { margin-bottom:14px; }
 .nl-field label { display:block; font-size:12px; font-weight:600; margin-bottom:5px; color:var(--text-2); }
-.nl-field input, .nl-field textarea { width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:14px; font-family:inherit; }
+.nl-field input, .nl-field textarea { width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:14px; font-family:inherit; }
 .nl-field textarea { min-height:180px; resize:vertical; line-height:1.5; }
 .nl-row { display:flex; gap:10px; }
 .nl-row .nl-field { flex:1; }
 .nl-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
 .nl-preview { background:#f4f4f2; border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; }
-.nl-preview-mail { background:#fff; border-radius:10px; padding:22px; box-shadow:0 2px 12px rgba(0,0,0,.06); color:#222; }
+.nl-preview-mail { background:#fff; border-radius:6px; padding:22px; box-shadow:0 2px 12px rgba(0,0,0,.06); color:#222; }
 .nl-preview-mail h1 { font-size:20px; margin:0 0 12px; color:#111; }
 .nl-preview-mail p { font-size:14px; line-height:1.6; color:#444; margin:0 0 12px; }
-.nl-preview-cta { display:inline-block; background:#15715f; color:#fff; padding:11px 24px; border-radius:9px; font-size:13px; font-weight:600; text-decoration:none; }
+.nl-preview-cta { display:inline-block; background:#15715f; color:#fff; padding:11px 24px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; }
 .nl-preview-foot { font-size:11px; color:#999; text-align:center; margin-top:20px; border-top:1px solid #eee; padding-top:14px; }
-#nl-status { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; display:none; }
-#nl-status.ok { background:var(--green-light); color:var(--green); display:block; }
+#nl-status { font-size:13px; padding:10px 14px; border-radius:6px; margin-top:12px; display:none; }
+#nl-status.ok { background:var(--green-light); color: var(--green-ink); display:block; }
 #nl-status.err { background:var(--red-light); color:var(--red); display:block; }
 </style>
 </head>
@@ -68,14 +68,14 @@
 
     <div class="nl-grid">
       <div class="nl-card">
-        <div class="nl-field"><label>Asunto del correo</label><input id="nl-asunto" maxlength="150" placeholder="Ej: Llegaron modelos nuevos 🎉" oninput="preview()"></div>
-        <div class="nl-field"><label>Título (dentro del mail, opcional)</label><input id="nl-titulo" maxlength="150" placeholder="Ej: Novedades de la semana" oninput="preview()"></div>
-        <div class="nl-field"><label>Cuerpo del mensaje</label><textarea id="nl-cuerpo" maxlength="8000" placeholder="Escribí tu mensaje. Dejá una línea en blanco para separar párrafos." oninput="preview()"></textarea></div>
+        <div class="nl-field"><label for="nl-asunto">Asunto del correo</label><input id="nl-asunto" maxlength="150" placeholder="Ej: Llegaron modelos nuevos 🎉" oninput="preview()"></div>
+        <div class="nl-field"><label for="nl-titulo">Título (dentro del mail, opcional)</label><input id="nl-titulo" maxlength="150" placeholder="Ej: Novedades de la semana" oninput="preview()"></div>
+        <div class="nl-field"><label for="nl-cuerpo">Cuerpo del mensaje</label><textarea id="nl-cuerpo" maxlength="8000" placeholder="Escribí tu mensaje. Dejá una línea en blanco para separar párrafos." oninput="preview()"></textarea></div>
         <div class="nl-row">
-          <div class="nl-field"><label>Botón (texto, opcional)</label><input id="nl-cta-label" maxlength="40" placeholder="Ver catálogo" oninput="preview()"></div>
-          <div class="nl-field"><label>Botón (link)</label><input id="nl-cta-url" maxlength="300" placeholder="https://wzmallas.com/tienda/catalogo.html" oninput="preview()"></div>
+          <div class="nl-field"><label for="nl-cta-label">Botón (texto, opcional)</label><input id="nl-cta-label" maxlength="40" placeholder="Ver catálogo" oninput="preview()"></div>
+          <div class="nl-field"><label for="nl-cta-url">Botón (link)</label><input id="nl-cta-url" maxlength="300" placeholder="https://wzmallas.com/tienda/catalogo.html" oninput="preview()"></div>
         </div>
-        <div class="nl-field"><label>Enviar prueba a (tu email)</label><input id="nl-test" type="email" placeholder="vos@ejemplo.com"></div>
+        <div class="nl-field"><label for="nl-test">Enviar prueba a (tu email)</label><input id="nl-test" type="email" placeholder="vos@ejemplo.com"></div>
         <div class="nl-actions">
           <button class="btn btn-ghost" onclick="enviar(true)">✉ Enviar prueba</button>
           <button class="btn btn-primary" onclick="enviar(false)">📣 Enviar a todos</button>

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Toolbar ────────────────────────────────────────────── */
@@ -62,7 +62,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
   opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0);
 }
 .bulk-count {
-  font-weight: 700; background: var(--blue); color: #fff;
+  font-weight: 700; background: var(--blue); color: var(--on-blue);
   border-radius: 100px; padding: 1px 8px; font-size: 12px; flex-shrink: 0;
 }
 .bulk-sep { width: 1px; height: 18px; background: rgba(255,255,255,.2); flex-shrink: 0; }
@@ -90,7 +90,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
   #items-tbody, #items-tbody > tr, #items-tbody > tr > td { display: block; }
   #items-tbody > tr {
     position: relative;
-    border: 1px solid var(--border); border-radius: 12px;
+    border: 1px solid var(--border); border-radius:6px;
     margin-bottom: 12px; padding: 12px 14px; background: var(--bg-card);
   }
   #items-tbody > tr > td {
@@ -222,7 +222,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 
 .portada-badge {
   position: absolute; bottom: 0; left: 0; right: 0;
-  background: var(--blue); color: #fff;
+  background: var(--blue); color: var(--on-blue);
   font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   text-align: center; padding: 2.5px 0;
   pointer-events: none;
@@ -284,7 +284,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 .field-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .field-row > .adm-field { flex: 1; min-width: 120px; }
 .field-hint { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 3px; }
-.char-ok  { color: var(--green); }
+.char-ok  { color: var(--green-ink); }
 .char-warn{ color: #d97706; }
 .char-over{ color: var(--red); }
 
@@ -297,7 +297,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
   border: 1.5px solid var(--border-2); color: var(--text-2); background: var(--bg-card);
   transition: all .14s; cursor: pointer;
 }
-.cond-pill input:checked + .pill-lbl { background: var(--blue); border-color: var(--blue); color: #fff; }
+.cond-pill input:checked + .pill-lbl { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
 .cond-pill .pill-lbl:hover { border-color: var(--blue); color: var(--blue); }
 
 /* Toggle row */
@@ -347,7 +347,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 .video-card-url { font-size: 11px; color: var(--blue); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .video-card-url:hover { text-decoration: underline; }
 .video-platform-hint { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-.video-platform-hint.detected { color: var(--green); }
+.video-platform-hint.detected { color: var(--green-ink); }
 
 /* ── Modal Cotización ───────────────────────────────────── */
 .modal-cot-overlay {
@@ -399,7 +399,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 .draft-card .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .draft-card .row  { display: flex; gap: 8px; flex-wrap: wrap; }
 .draft-card .row > * { flex: 1; min-width: 110px; }
-.draft-card .precio-preview { font-size: 12px; color: var(--green); font-weight: 600; font-family: var(--font-mono); white-space: nowrap; }
+.draft-card .precio-preview { font-size: 12px; color: var(--green-ink); font-weight: 600; font-family: var(--font-mono); white-space: nowrap; }
 .draft-card .orig { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
 
 /* ── Toast ──────────────────────────────────────────────── */
@@ -475,7 +475,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
       <div class="prod-toolbar">
         <div class="adm-search" style="flex:1;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="inp-search" placeholder="Buscar por título, marca o ID…">
+          <input type="text" id="inp-search" placeholder="Buscar por título, marca o ID…" aria-label="Buscar por título, marca o ID…">
         </div>
         <select class="adm-select" id="sel-filtro">
           <option value="">Todos</option>
@@ -513,7 +513,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
         <table class="adm-table">
           <thead>
             <tr>
-              <th class="row-chk-cell"><input type="checkbox" class="row-chk" id="chk-all" title="Seleccionar todos"></th>
+              <th class="row-chk-cell"><input type="checkbox" class="row-chk" id="chk-all" title="Seleccionar todos" aria-label="Seleccionar todos"></th>
               <th>Producto</th>
               <th>Cat.</th>
               <th>Precio</th>
@@ -585,7 +585,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 
       <!-- URL input row -->
       <div class="media-url-row" id="media-url-row" style="display:none;">
-        <input type="text" class="adm-input" id="inp-url-foto" placeholder="https://… pegá la URL de la imagen">
+        <input type="text" class="adm-input" id="inp-url-foto" placeholder="https://… pegá la URL de la imagen" aria-label="https://… pegá la URL de la imagen">
         <button class="btn btn-sm btn-primary" id="btn-add-url-foto">Agregar</button>
         <button class="btn btn-sm btn-ghost" id="btn-cancel-url-foto">✕</button>
       </div>
@@ -601,18 +601,18 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
       </div>
       <div class="form-section-body">
         <div class="adm-field">
-          <label class="adm-label">Título *</label>
+          <label class="adm-label" for="inp-titulo">Título *</label>
           <input type="text" class="adm-input" id="inp-titulo" maxlength="200"
             placeholder="Ej: iPhone 17 Pro Max 256GB Negro Titanio — E-Sim">
           <div class="field-hint"><span id="titulo-chars">0</span>/200</div>
         </div>
         <div class="field-row">
           <div class="adm-field">
-            <label class="adm-label">Marca</label>
+            <label class="adm-label" for="inp-marca">Marca</label>
             <input type="text" class="adm-input" id="inp-marca" maxlength="60" placeholder="Apple, Samsung…">
           </div>
           <div class="adm-field">
-            <label class="adm-label">Categoría</label>
+            <label class="adm-label" for="sel-form-categoria">Categoría</label>
             <select class="adm-select" id="sel-form-categoria" style="width:100%;">
               <option value="celulares">Celulares</option>
               <option value="smartwatches">Smartwatches</option>
@@ -644,15 +644,15 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
         <div class="precio-box">
           <div class="field-row">
             <div class="adm-field">
-              <label class="adm-label">Costo proveedor (USD)</label>
+              <label class="adm-label" for="inp-precio-usd">Costo proveedor (USD)</label>
               <input type="number" class="adm-input" id="inp-precio-usd" min="0" step="0.01" placeholder="320">
             </div>
             <div class="adm-field">
-              <label class="adm-label">Margen (%)</label>
+              <label class="adm-label" for="inp-margen">Margen (%)</label>
               <input type="number" class="adm-input" id="inp-margen" min="0" step="0.1" placeholder="30">
             </div>
             <div class="adm-field">
-              <label class="adm-label">Cotización USD</label>
+              <label class="adm-label" for="inp-cotizacion">Cotización USD</label>
               <input type="number" class="adm-input" id="inp-cotizacion" min="0" step="1" placeholder="1200">
             </div>
           </div>
@@ -665,7 +665,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
           </div>
           <div class="adm-field" style="margin:0;">
             <label class="adm-label">Precio final en ARS <span style="font-weight:400;color:var(--text-3);">(override manual — solo si no usás USD)</span></label>
-            <input type="number" class="adm-input" id="inp-precio-ars-manual" min="0" step="1" placeholder="Se calcula automáticamente si completás USD + cotización">
+            <input type="number" class="adm-input" id="inp-precio-ars-manual" min="0" step="1" placeholder="Se calcula automáticamente si completás USD + cotización" aria-label="Se calcula automáticamente si completás USD + cotización">
           </div>
         </div>
       </div>
@@ -748,7 +748,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
             <div style="display:flex;gap:8px;">
               <input type="text" class="adm-input" id="inp-video-url"
                 placeholder="https://youtube.com/watch?v=… o alibaba.com/…" style="flex:1;"
-                autocomplete="off">
+                autocomplete="off" aria-label="https://youtube.com/watch?v=… o alibaba.com/…">
               <button class="btn btn-sm btn-ghost" id="btn-subir-video" title="Subir un archivo de video (MP4, MOV, WebM)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Subir archivo
@@ -821,7 +821,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
       </div>
     </div>
     <div class="adm-field" style="margin-bottom:14px;">
-      <label class="adm-label">Nueva cotización USD → ARS</label>
+      <label class="adm-label" for="inp-cot-nueva">Nueva cotización USD → ARS</label>
       <input type="number" class="adm-input" id="inp-cot-nueva" min="1" step="1"
         placeholder="Ej: 1250" style="font-size:16px;font-weight:600;font-family:var(--font-mono);">
     </div>
@@ -845,7 +845,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 
     <div id="wa-step-texto">
       <div class="adm-field">
-        <label class="adm-label">Mensaje del proveedor</label>
+        <label class="adm-label" for="wa-texto">Mensaje del proveedor</label>
         <textarea class="adm-textarea" id="wa-texto" style="min-height:240px;font-family:var(--font-mono);font-size:12px;" placeholder="📲A06 4/128GB u$135-&#10;📲A07 4/64GB u$115-&#10;…pegá acá el bloque completo del mensaje…"></textarea>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:10px;">
@@ -860,11 +860,11 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
         </div>
         <div class="field-row">
           <div class="adm-field">
-            <label class="adm-label">Margen (%)</label>
+            <label class="adm-label" for="wa-margen">Margen (%)</label>
             <input type="number" class="adm-input" id="wa-margen" min="0" step="0.1" value="30">
           </div>
           <div class="adm-field">
-            <label class="adm-label">Cotización USD → ARS</label>
+            <label class="adm-label" for="wa-cotizacion">Cotización USD → ARS</label>
             <input type="number" class="adm-input" id="wa-cotizacion" min="0" step="1" placeholder="Ej: 1200">
           </div>
         </div>
@@ -1034,7 +1034,7 @@ function renderTable(items, total) {
     const thumbHtml = imgSrc
       ? `<div style="position:relative;width:44px;height:44px;flex-shrink:0;">
            <img class="prod-thumb" src="${esc(imgSrc)}" onerror="this.style.display='none'" alt="">
-           ${imgCount > 1 ? `<span style="position:absolute;bottom:-2px;right:-2px;background:var(--blue);color:#fff;font-size:9px;font-weight:700;border-radius:100px;padding:1px 4px;">${imgCount}</span>` : ''}
+           ${imgCount > 1 ? `<span style="position:absolute;bottom:-2px;right:-2px;background:var(--blue);color: var(--on-blue);font-size:9px;font-weight:700;border-radius:100px;padding:1px 4px;">${imgCount}</span>` : ''}
          </div>`
       : `<div style="width:44px;height:44px;border-radius:var(--r);background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
 
@@ -1052,7 +1052,7 @@ function renderTable(items, total) {
 
     return `
       <tr data-id="${esc(p.id)}">
-        <td class="row-chk-cell td-chk"><input type="checkbox" class="row-chk" data-id="${esc(p.id)}" title="Seleccionar"></td>
+        <td class="row-chk-cell td-chk"><input type="checkbox" class="row-chk" data-id="${esc(p.id)}" title="Seleccionar" aria-label="Seleccionar"></td>
         <td class="td-producto">
           <div class="adm-prod">
             ${thumbHtml}
@@ -1165,7 +1165,7 @@ document.getElementById('items-tbody').addEventListener('click', async (e) => {
       <span style="display:inline-flex;align-items:center;gap:4px;">
         <span style="font-size:12px;color:var(--text-3);">${enUsd ? 'u$' : '$'}</span>
         <input type="number" step="${enUsd ? '0.01' : '1'}" min="0" value="${valorActual}"
-               style="width:90px;height:30px;padding:0 8px;border:1px solid var(--blue);border-radius:7px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;font-weight:600;">
+               style="width:90px;height:30px;padding:0 8px;border:1px solid var(--blue);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;font-weight:600;">
       </span>`;
     const inp = precioEl.querySelector('input');
     inp.focus(); inp.select();
@@ -1848,8 +1848,8 @@ function renderBorradores() {
         <input type="checkbox" class="chk" ${b._check ? 'checked' : ''} data-id="${b._id}" data-f="_check">
         <div class="body">
           <div class="row">
-            <input type="text" class="adm-input" data-id="${b._id}" data-f="titulo" value="${esc(b.titulo)}" placeholder="Título">
-            <input type="text" class="adm-input" data-id="${b._id}" data-f="marca" value="${esc(b.marca || '')}" placeholder="Marca" style="max-width:140px;">
+            <input type="text" class="adm-input" data-id="${b._id}" data-f="titulo" value="${esc(b.titulo)}" placeholder="Título" aria-label="Título">
+            <input type="text" class="adm-input" data-id="${b._id}" data-f="marca" value="${esc(b.marca || '')}" placeholder="Marca" style="max-width:140px;" aria-label="Marca">
           </div>
           <div class="row">
             <select class="adm-select" data-id="${b._id}" data-f="categoria_sugerida">
@@ -1860,7 +1860,7 @@ function renderBorradores() {
               <option value="reacondicionado" ${b.condicion === 'reacondicionado' ? 'selected' : ''}>Reacondicionado</option>
               <option value="usado" ${b.condicion === 'usado' ? 'selected' : ''}>Usado</option>
             </select>
-            <input type="number" class="adm-input" data-id="${b._id}" data-f="precio_usd" value="${b.precio_usd != null ? b.precio_usd : ''}" placeholder="USD" style="max-width:100px;">
+            <input type="number" class="adm-input" data-id="${b._id}" data-f="precio_usd" value="${b.precio_usd != null ? b.precio_usd : ''}" placeholder="USD" style="max-width:100px;" aria-label="USD">
             <span class="precio-preview">${arsEst != null ? '≈ ' + fmtArs(arsEst) : '—'}</span>
           </div>
           ${varTxt}

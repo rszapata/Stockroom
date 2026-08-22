@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -22,22 +22,22 @@
 .pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
 
 /* BUTTONS */
-.pg .btn{height:38px;padding:0 16px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px}
+.pg .btn{height:38px;padding:0 16px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px}
 .pg .btn:hover{border-color:var(--border-2);color:var(--text)}
-.pg .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700}
+.pg .btn.primary{background:var(--blue);color: var(--on-blue);border-color:var(--blue);font-weight:700}
 .pg .btn.primary:hover{opacity:.9}
-.pg .btn.sm{height:32px;padding:0 12px;font-size:9px;border-radius:8px}
+.pg .btn.sm{height:32px;padding:0 12px;font-size:9px;border-radius:6px}
 .pg .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 
-.pg .card{background:var(--surface);border:1px solid var(--border);margin-bottom:14px;border-radius:14px;overflow:hidden}
-.pg .card-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:14px 14px 0 0}
+.pg .card{background:var(--surface);border:1px solid var(--border);margin-bottom:14px;border-radius:6px;overflow:hidden}
+.pg .card-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;border-radius:6px 6px 0 0}
 .pg .card-title{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase}
 .pg .card-body{padding:18px}
 
 .pg .field{margin-bottom:14px}
 .pg .field:last-child{margin-bottom:0}
 .pg .field label{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--text-3);text-transform:uppercase;margin-bottom:5px}
-.pg .field select,.pg .field input{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:0 12px;height:38px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none;border-radius:10px}
+.pg .field select,.pg .field input{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:0 12px;height:38px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none;border-radius:6px}
 .pg .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355556a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
 .pg .field select option{background:var(--surface-2)}
 
@@ -45,7 +45,7 @@
 .pg .hint{font-size:11px;color:var(--text-3);margin-top:4px;line-height:1.5}
 
 /* TABLE */
-.pg .items-table{width:100%;border-collapse:collapse;font-size:12px;border-radius:12px;overflow:hidden}
+.pg .items-table{width:100%;border-collapse:collapse;font-size:12px;border-radius:6px;overflow:hidden}
 .pg .items-table th{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--text-3);padding:10px 10px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface-2);position:sticky;top:0}
 .pg .items-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 .pg .items-table tr:hover td{background:var(--surface-2)}
@@ -53,17 +53,17 @@
 .pg .item-thumb{width:40px;height:40px;object-fit:cover;border:1px solid var(--border);background:var(--surface-2)}
 .pg .item-title{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg .status-badge{font-family:var(--font-mono);font-size:8px;letter-spacing:.08em;padding:2px 6px;border:1px solid;border-radius:6px}
-.pg .status-active{color:var(--green);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
-.pg .status-paused{color:var(--orange);border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.08)}
+.pg .status-active{color: var(--green-ink);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
+.pg .status-paused{color: var(--yellow-ink);border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.08)}
 .pg .status-closed{color:var(--red);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
 .pg .status-under_review{color:var(--purple,#9333ea);border-color:rgba(147,51,234,.3);background:rgba(147,51,234,.08)}
 
 /* PROGRESS */
-.pg .prog-bar{width:100%;height:6px;background:var(--surface-2);margin-top:8px;overflow:hidden;border-radius:3px}
+.pg .prog-bar{width:100%;height:6px;background:var(--surface-2);margin-top:8px;overflow:hidden;border-radius:4px}
 .pg .prog-fill{height:100%;background:var(--blue);transition:width .3s}
-.pg .log-wrap{max-height:320px;overflow-y:auto;padding:10px 13px;border-radius:14px}
+.pg .log-wrap{max-height:320px;overflow-y:auto;padding:10px 13px;border-radius:6px}
 .pg .log-e{font-family:var(--font-mono);font-size:10px;line-height:1.85}
-.pg .log-e.info{color:var(--text-2)}.pg .log-e.ok{color:var(--green)}.pg .log-e.err{color:var(--red)}.pg .log-e.warn{color:var(--orange)}
+.pg .log-e.info{color:var(--text-2)}.pg .log-e.ok{color: var(--green-ink)}.pg .log-e.err{color:var(--red)}.pg .log-e.warn{color: var(--yellow-ink)}
 
 /* MERGE GROUPS */
 .pg .merge-group-hd{background:rgba(147,51,234,.08);border-left:3px solid var(--purple,#9333ea)}
@@ -83,8 +83,8 @@
 .pg .group-title-input{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:4px 8px;outline:none;border-radius:6px}
 
 /* inline filter selects / inputs (outside .field) */
-.pg select.inline-sel{height:28px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:9px;padding:0 8px;outline:none;min-width:140px;-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:8px}
-.pg input.inline-inp{height:28px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:0 10px;outline:none;width:220px;border-radius:8px}
+.pg select.inline-sel{height:28px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:9px;padding:0 8px;outline:none;min-width:140px;-webkit-appearance:none;appearance:none;cursor:pointer;border-radius:6px}
+.pg input.inline-inp{height:28px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:0 10px;outline:none;width:220px;border-radius:6px}
 
 @media(max-width:767px){
   .pg .grid2{grid-template-columns:1fr}
@@ -98,7 +98,7 @@
 
 <!-- SIDEBAR -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- MAIN -->
 <div class="adm-main">
@@ -119,7 +119,7 @@
       </button>
       <div class="adm-search" style="width:220px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="hdr-search" type="search" placeholder="Buscar…" autocomplete="off">
+        <input id="hdr-search" type="search" placeholder="Buscar…" autocomplete="off" aria-label="Buscar…">
       </div>
       <div class="adm-acct" id="acct-wrap">
         <button class="adm-acct-btn" id="acc-btn">
@@ -153,11 +153,11 @@
     <div class="card-body">
       <div class="grid2">
         <div class="field">
-          <label>Cuenta origen (copiar desde)</label>
+          <label for="src-acct">Cuenta origen (copiar desde)</label>
           <select id="src-acct"></select>
         </div>
         <div class="field">
-          <label>Cuenta destino (copiar hacia)</label>
+          <label for="dst-acct">Cuenta destino (copiar hacia)</label>
           <select id="dst-acct"></select>
         </div>
       </div>
@@ -167,13 +167,13 @@
       </div>
       <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <div class="field" style="margin:0;flex:1;min-width:200px">
-          <label>Buscar en cuenta origen</label>
+          <label for="search-query">Buscar en cuenta origen</label>
           <input type="text" id="search-query" placeholder="Buscar por título... (vacío = todas)"
                  onkeydown="if(event.key==='Enter')loadItems()"
                  style="height:38px">
         </div>
         <div class="field" style="margin:0;width:160px">
-          <label>Estado</label>
+          <label for="search-status">Estado</label>
           <select id="search-status">
             <option value="active" selected>Solo activas</option>
             <option value="">Todas</option>
@@ -196,11 +196,11 @@
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn sm" onclick="detectDuplicates()" id="btn-merge" title="Detectar publicaciones duplicadas que solo cambian en color/modelo y agruparlas como variantes">🔗 AGRUPAR DUPLICADOS</button>
         <span id="merge-info" style="font-family:var(--font-mono);font-size:9px;color:var(--purple,#9333ea);display:none"></span>
-        <select id="filter-cat" onchange="applyFilters()" class="inline-sel">
+        <select id="filter-cat" onchange="applyFilters()" class="inline-sel" aria-label="Seleccionar opcion">
           <option value="">Todas las categorías</option>
         </select>
         <input type="text" id="filter-input" placeholder="Filtrar por título o ID..."
-               oninput="applyFilters()" class="inline-inp">
+               oninput="applyFilters()" class="inline-inp" aria-label="Filtrar por título o ID...">
         <span id="items-count" style="font-family:var(--font-mono);font-size:9px;color:var(--text-3)">0</span>
       </div>
     </div>
@@ -208,7 +208,7 @@
       <table class="items-table">
         <thead>
           <tr>
-            <th style="width:32px"><input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)"></th>
+            <th style="width:32px"><input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)" aria-label="Marcar opcion"></th>
             <th style="width:48px">FOTO</th>
             <th>TÍTULO</th>
             <th style="width:110px">CATEGORÍA</th>
@@ -235,14 +235,14 @@
     <div class="card-body">
       <div class="grid2" style="margin-bottom:10px">
         <div class="field" style="margin:0">
-          <label>Estado en destino</label>
+          <label for="mig-status">Estado en destino</label>
           <select id="mig-status">
             <option value="paused">PAUSADO (recomendado)</option>
             <option value="active">ACTIVO</option>
           </select>
         </div>
         <div class="field" style="margin:0">
-          <label>Concurrencia</label>
+          <label for="mig-concurrency">Concurrencia</label>
           <select id="mig-concurrency">
             <option value="1">1 a la vez</option>
             <option value="2" selected>2 simultáneas</option>
@@ -253,7 +253,7 @@
       <div id="mig-progress" class="hidden">
         <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-3);margin-bottom:4px">
           <span><span id="mig-done">0</span> / <span id="mig-total">0</span></span>
-          <span><span style="color:var(--green)" id="mig-ok">0</span> OK — <span style="color:var(--red)" id="mig-err">0</span> ERR</span>
+          <span><span style="color: var(--green-ink)" id="mig-ok">0</span> OK — <span style="color:var(--red)" id="mig-err">0</span> ERR</span>
         </div>
         <div class="prog-bar"><div class="prog-fill" id="mig-bar" style="width:0%"></div></div>
       </div>
@@ -533,7 +533,7 @@ function renderItemRow(it, isChild) {
     const lenOk = val.length > 0 && val.length <= 60;
     titleCell = '<td class="item-title" style="max-width:320px" title="ORIGINAL (' + origTitle.length + ' chars): ' + esc(origTitle) + '">' +
       '<div style="display:flex;align-items:center;gap:6px">' +
-      '<span style="color:var(--orange);font-size:11px;cursor:help" title="Título original supera 60 caracteres — editá para migrar">⚠</span>' +
+      '<span style="color: var(--yellow-ink);font-size:11px;cursor:help" title="Título original supera 60 caracteres — editá para migrar">⚠</span>' +
       '<input type="text" class="item-title-input" data-id="' + esc(it.id) + '" value="' + esc(val) + '" maxlength="60" ' +
         'oninput="updateItemTitle(\'' + esc(it.id) + '\',this.value)" ' +
         'style="flex:1;min-width:180px">' +
@@ -544,7 +544,7 @@ function renderItemRow(it, isChild) {
     titleCell = '<td class="item-title" title="' + esc(origTitle) + '">' + esc(origTitle) + '</td>';
   }
   return '<tr class="' + (isChild ? 'merge-child' : '') + '">' +
-    '<td><input type="checkbox" class="item-chk" data-id="' + it.id + '" onchange="updateSelCount()"></td>' +
+    '<td><input type="checkbox" class="item-chk" data-id="' + it.id + '" onchange="updateSelCount()" aria-label="Marcar opcion"></td>' +
     '<td>' + (thumb ? '<img class="item-thumb" src="' + esc(thumb) + '">' : '—') + '</td>' +
     titleCell +
     '<td style="font-family:var(--font-mono);font-size:8px;color:var(--text-3)" title="' + (it.category_id || '') + '">' + esc(catName.length > 18 ? catName.substring(0,16) + '…' : catName) + '</td>' +
@@ -593,7 +593,7 @@ function renderItems() {
       '<td colspan="8">' +
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
       '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">' +
-      '<input type="checkbox" class="group-chk" data-gid="' + gid + '" onchange="toggleGroup(\'' + gid + '\', this.checked)" style="accent-color:var(--blue);width:14px;height:14px;cursor:pointer">' +
+      '<input type="checkbox" class="group-chk" data-gid="' + gid + '" onchange="toggleGroup(\'' + gid + '\', this.checked)" style="accent-color:var(--blue);width:14px;height:14px;cursor:pointer" aria-label="Marcar opcion">' +
       '🔗' +
       '</label>' +
       '<input type="text" class="group-title" data-gid="' + gid + '" value="' + esc(g.customTitle) + '" maxlength="60" ' +

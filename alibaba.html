@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Page scope ── */
@@ -24,7 +24,7 @@
 /* ── Upload zone ── */
 .upload-zone {
   border: 2px dashed var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-lg);
   padding: 48px 24px;
   text-align: center;
   cursor: pointer;
@@ -50,20 +50,20 @@
 .upload-hint  { margin-top: 10px; font-size: 12px; color: var(--text-3); }
 .upload-btn {
   font-size: 12px; font-weight: 500; padding: 6px 14px;
-  border: 1px solid var(--border); border-radius: var(--radius);
+  border: 1px solid var(--border); border-radius: var(--r);
   background: var(--bg-card); color: var(--text); cursor: pointer;
   pointer-events: all; transition: border-color .15s, background .15s;
 }
 .upload-btn:hover { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
-.upload-btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
-.upload-btn-primary:hover { opacity: .88; color: #fff; background: var(--blue); }
+.upload-btn-primary { background: var(--blue); color: var(--on-blue); border-color: var(--blue); }
+.upload-btn-primary:hover { opacity: .88; color: var(--on-blue); background: var(--blue); }
 
 /* ── Estado de procesamiento ── */
 .parse-state {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 16px;
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--r);
   font-size: 13px;
 }
 .parse-state-icon { flex-shrink: 0; }
@@ -89,7 +89,7 @@
   margin-top: 8px;
   font-family: 'JetBrains Mono', monospace; font-size: 11px;
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 12px;
+  border-radius: var(--r); padding: 12px;
   max-height: 200px; overflow-y: auto;
   white-space: pre-wrap; word-break: break-word;
   color: var(--text-2);
@@ -122,7 +122,7 @@
 /* Inline editable inputs */
 .ali-input {
   width: 100%; padding: 5px 8px; border: 1px solid var(--border);
-  border-radius: var(--radius); font: inherit; font-size: 13px;
+  border-radius: var(--r); font: inherit; font-size: 13px;
   background: var(--bg-card); color: var(--text);
   transition: border-color .15s;
 }
@@ -133,7 +133,7 @@
 .combobox-wrap { position: relative; }
 .combobox-input {
   width: 100%; padding: 5px 26px 5px 8px;
-  border: 1px solid var(--border); border-radius: var(--radius);
+  border: 1px solid var(--border); border-radius: var(--r);
   font: inherit; font-size: 13px;
   background: var(--bg-card); color: var(--text);
   transition: border-color .15s;
@@ -148,7 +148,7 @@
   position: absolute; z-index: 200; left: 0; top: calc(100% + 2px);
   min-width: 100%; width: max-content; max-width: 420px;
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  border-radius: var(--r); box-shadow: 0 4px 16px rgba(0,0,0,.1);
   max-height: 280px; overflow-y: auto;
   display: none;
 }
@@ -169,14 +169,14 @@
 .var-cell-wrap { display:flex; align-items:center; gap:5px; }
 .var-thumb-sm {
   width:32px; height:32px; flex-shrink:0;
-  border-radius:var(--radius); border:1px solid var(--border);
+  border-radius:var(--r); border:1px solid var(--border);
   background:var(--bg); overflow:hidden;
   display:flex; align-items:center; justify-content:center; color:var(--text-3);
 }
 .var-thumb-sm img { width:100%; height:100%; object-fit:cover; display:block; }
 .var-select {
   flex:1; min-width:0; padding: 5px 8px;
-  border: 1px solid var(--border); border-radius: var(--radius);
+  border: 1px solid var(--border); border-radius: var(--r);
   font: inherit; font-size: 12px;
   background: var(--bg-card); color: var(--text);
 }
@@ -192,7 +192,7 @@
 /* ── PDF product thumbnail (manual) ── */
 .pdf-thumb {
   width: 38px; height: 38px; flex-shrink: 0;
-  border-radius: var(--radius); border: 1.5px dashed var(--border);
+  border-radius: var(--r); border: 1.5px dashed var(--border);
   background: var(--bg); overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-3); cursor: pointer; transition: border-color .15s, color .15s;
@@ -225,26 +225,26 @@
 #img-popover {
   position: fixed; z-index: 999;
   background: var(--bg-card); border: 1px solid var(--border-2);
-  border-radius: var(--radius-lg); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  border-radius: var(--r-lg); box-shadow: 0 8px 24px rgba(0,0,0,.18);
   padding: 10px; width: 270px;
   display: none; flex-direction: column; gap: 6px;
 }
 #img-popover.open { display: flex; }
 #img-popover-url {
   width: 100%; padding: 5px 8px; border: 1px solid var(--border);
-  border-radius: var(--radius); font: inherit; font-size: 12px;
+  border-radius: var(--r); font: inherit; font-size: 12px;
   background: var(--bg); color: var(--text);
 }
 #img-popover-url:focus { outline: none; border-color: var(--blue); }
 .img-popover-row { display: flex; gap: 6px; }
 .img-popover-btn {
   flex: 1; padding: 5px 8px; font-size: 12px; font-weight: 500;
-  border-radius: var(--radius); border: 1px solid var(--border);
+  border-radius: var(--r); border: 1px solid var(--border);
   background: var(--bg); color: var(--text); cursor: pointer;
   transition: border-color .15s, background .15s;
 }
 .img-popover-btn:hover { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
-.img-popover-btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.img-popover-btn.primary { background: var(--blue); color: var(--on-blue); border-color: var(--blue); }
 .img-popover-btn.primary:hover { opacity: .85; }
 .img-popover-status { font-size: 11px; color: var(--text-3); min-height: 14px; }
 
@@ -259,7 +259,7 @@
 .ali-badge {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: 10px; font-weight: 500; padding: 2px 6px;
-  border-radius: 3px; white-space: nowrap; max-width: 180px;
+  border-radius:4px; white-space: nowrap; max-width: 180px;
   overflow: hidden; text-overflow: ellipsis;
 }
 .ali-badge-color {
@@ -274,7 +274,7 @@
 /* ── ML product thumbnail ── */
 .ml-thumb {
   width: 38px; height: 38px; flex-shrink: 0;
-  border-radius: var(--radius); border: 1px solid var(--border);
+  border-radius: var(--r); border: 1px solid var(--border);
   background: var(--bg); overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-3);
@@ -286,7 +286,7 @@
 
 /* Row actions */
 .row-del-btn {
-  width: 28px; height: 28px; border-radius: var(--radius);
+  width: 28px; height: 28px; border-radius: var(--r);
   border: 1px solid var(--border); background: transparent;
   color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: color .15s, background .15s, border-color .15s;
@@ -299,7 +299,7 @@
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
   padding: 12px 16px;
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius); font-size: 13px;
+  border-radius: var(--r); font-size: 13px;
 }
 .ali-summary-stat { display: flex; align-items: center; gap: 6px; }
 .ali-summary-num { font-weight: 700; font-size: 18px; }
@@ -309,8 +309,8 @@
 .ali-apply-btn {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 0 24px; height: 40px;
-  background: var(--blue); color: #fff;
-  border: none; border-radius: var(--radius);
+  background: var(--blue); color: var(--on-blue);
+  border: none; border-radius: var(--r);
   font: inherit; font-size: 14px; font-weight: 600;
   cursor: pointer; transition: background .15s, transform .08s, box-shadow .15s;
 }
@@ -324,7 +324,7 @@
 /* ── Resultados ── */
 .result-row {
   display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-  border-radius: var(--radius); margin-bottom: 6px; font-size: 13px;
+  border-radius: var(--r); margin-bottom: 6px; font-size: 13px;
   border: 1px solid var(--border);
 }
 .result-row.ok-row  { border-color: #bbf7d0; background: #f0fdf4; }
@@ -363,7 +363,7 @@
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
   background: #fef9c3; border: 1px solid #fde047;
-  border-radius: var(--radius); font-size: 13px; color: #713f12;
+  border-radius: var(--r); font-size: 13px; color: #713f12;
   margin-bottom: 4px;
 }
 .prox-banner svg { flex-shrink: 0; color: #ca8a04; }
@@ -374,7 +374,7 @@
   display: inline-flex; align-items: center; gap: 7px;
   padding: 0 16px; height: 34px;
   background: var(--bg-card); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--radius);
+  border: 1px solid var(--border); border-radius: var(--r);
   font: inherit; font-size: 13px; font-weight: 500;
   cursor: pointer; transition: background .15s, border-color .15s;
   white-space: nowrap;
@@ -432,25 +432,24 @@
 
 <!-- ─────────────────── SIDEBAR ─────────────────── -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- ─────────────────── MAIN ─────────────────── -->
-<div class="adm-layout">
+<div class="adm-main">
 
-<header class="adm-topbar">
-  <button class="adm-menu-btn" id="menu-btn" aria-label="Menú">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-  </button>
-  <span class="adm-topbar-title">Carga de Stock — Alibaba</span>
-</header>
-
-<main class="adm-main pg">
-  <div class="adm-page-header">
+<header class="adm-header">
+  <div class="adm-header-left">
+    <button class="adm-hamburger" id="menu-btn" aria-label="Menú">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div>
-      <h1 class="adm-page-title">Carga de Stock — Alibaba</h1>
-      <p class="adm-page-sub">Subí el PDF de Recibo de Alibaba (<strong>Receipt_*.pdf</strong>), vinculá cada producto con ML y aplicá el incremento de stock.</p>
+      <div class="adm-page-title">Carga de Stock — Alibaba</div>
+      <div class="adm-page-sub">Subí el PDF del recibo, vinculá cada producto con ML y aplicá el incremento de stock</div>
     </div>
   </div>
+</header>
+
+<main class="adm-content pg">
 
   <!-- ── Banner Próximamente (se muestra si hay cuentas WZ) ── -->
   <div class="prox-banner" id="prox-banner" style="display:none">
@@ -476,11 +475,11 @@
         Se guarda también una copia en el servidor.
       </p>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <select id="backup-acct-sel" class="var-select" style="width:auto;min-width:160px">
+        <select id="backup-acct-sel" class="var-select" style="width:auto;min-width:160px" aria-label="Cuenta para el respaldo">
           <option value="">Cargando cuentas…</option>
         </select>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer">
-          <input type="checkbox" id="backup-incl-paused" checked style="accent-color:var(--blue)">
+          <input type="checkbox" id="backup-incl-paused" checked style="accent-color:var(--blue)" aria-label="Incluir publicaciones pausadas">
           Incluir pausadas
         </label>
         <button class="backup-btn" id="btn-backup" onclick="startBackup()">
@@ -595,7 +594,7 @@
               <th style="width:32px;text-align:center">
                 <input type="checkbox" id="check-all" checked title="Seleccionar / deseleccionar todos"
                        style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue)"
-                       onchange="toggleAllRows(this.checked)">
+                       onchange="toggleAllRows(this.checked)" aria-label="Seleccionar / deseleccionar todos">
               </th>
               <th>Producto (del recibo)</th>
               <th style="width:80px">Cant.</th>
@@ -646,14 +645,14 @@
       <span class="adm-card-title">💲 Registrar costos del recibo</span>
       <div style="display:flex;gap:8px;align-items:flex-end">
         <div style="display:flex;flex-direction:column;gap:3px">
-          <label style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600">TC</label>
-          <input id="cst-tc" type="number" value="1421" style="width:78px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:12px;text-align:right">
+          <label style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600" for="cst-tc">TC</label>
+          <input id="cst-tc" type="number" value="1532" style="width:78px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:12px;text-align:right">
         </div>
         <div style="display:flex;flex-direction:column;gap:3px">
-          <label style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600">Flete/u</label>
-          <input id="cst-flete" type="number" value="1928" style="width:78px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:12px;text-align:right">
+          <label style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600" for="cst-flete">Flete/u</label>
+          <input id="cst-flete" type="number" value="1928" style="width:78px;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:12px;text-align:right">
         </div>
-        <button class="adm-btn adm-btn-sm" id="btn-save-costos" style="background:var(--blue);color:#fff;border-color:var(--blue)">Guardar costos</button>
+        <button class="adm-btn adm-btn-sm" id="btn-save-costos" style="background:var(--blue);color: var(--on-blue);border-color:var(--blue)">Guardar costos</button>
       </div>
       <span id="costos-status" style="display:none;font-size:12px;font-weight:600"></span>
     </div>
@@ -674,7 +673,7 @@
       </span>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="adm-btn adm-btn-sm" id="btn-retry-failed"
-                style="display:none;background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)"
+                style="display:none;background:var(--red,#dc2626);color: var(--on-blue);border-color:var(--red,#dc2626)"
                 onclick="retryFailed()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
           <span id="btn-retry-label">Reintentar fallidos</span>
@@ -717,7 +716,7 @@
 <!-- ── Popover para asignar imagen al producto del recibo ── -->
 <div id="img-popover">
   <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px">Imagen del producto</div>
-  <input type="text" id="img-popover-url" placeholder="URL de imagen o página de Alibaba…" autocomplete="off">
+  <input type="text" id="img-popover-url" placeholder="URL de imagen o página de Alibaba…" autocomplete="off" aria-label="URL de imagen o página de Alibaba…">
   <div class="img-popover-row">
     <button class="img-popover-btn" onclick="imgPopoverFile()">📁 Archivo</button>
     <button class="img-popover-btn primary" id="img-popover-fetch-btn" onclick="imgPopoverFetch()">🔗 Usar URL</button>
@@ -733,7 +732,7 @@
 .step-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%;
-  background: var(--blue); color: #fff;
+  background: var(--blue); color: var(--on-blue);
   font-size: 11px; font-weight: 700;
   margin-right: 6px; flex-shrink: 0;
 }
@@ -803,7 +802,7 @@ function renderAccountSelector() {
     `<option value="${escAttr(a.id)}">${escHtml(a.label || a.id)}</option>`
   ).join('');
   wrap.innerHTML = `
-    <label style="font-size:12px;color:var(--text-2);margin-right:6px">Cuenta ML por defecto:</label>
+    <label style="font-size:12px;color:var(--text-2);margin-right:6px" for="default-acct-sel">Cuenta ML por defecto:</label>
     <select id="default-acct-sel" class="var-select" style="width:auto;min-width:120px" onchange="updateAllRowAccounts()">
       ${opts}
     </select>`;
@@ -1192,7 +1191,7 @@ async function renderCostos() {
   const titulos = await cargarTitulos();
   $('titulos-datalist').innerHTML = titulos.map(t => `<option value="${escAttr(t)}">`).join('');
 
-  const tc = parseFloat($('cst-tc').value) || 1421;
+  const tc = parseFloat($('cst-tc').value) || 1532;
   const flete = parseFloat($('cst-flete').value) || 1928;
   $('costos-list').innerHTML = conCosto.map((r, i) => {
     const costoArs = Math.round(r.unit_usd * tc + flete);
@@ -1200,16 +1199,16 @@ async function renderCostos() {
     return `
       <div class="costo-row" data-i="${i}" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--border)">
         <div style="flex:1;min-width:0">
-          <div style="font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(nombre)}">${escHtml(nombre)}</div>
+          <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(nombre)}">${escHtml(nombre)}</div>
           <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">FOB u$${r.unit_usd} × ${r.qty} u · costo ARS/u: <b>$${costoArs.toLocaleString('es-AR')}</b></div>
         </div>
         <input class="cst-titulo" list="titulos-datalist" data-usd="${r.unit_usd}" placeholder="→ Publicación de la tienda…"
-               style="flex:1.4;min-width:0;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px">
+               style="flex:1.4;min-width:0;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px" aria-label="→ Publicación de la tienda…">
       </div>`;
   }).join('');
 }
 async function guardarCostos() {
-  const tc = parseFloat($('cst-tc').value) || 1421;
+  const tc = parseFloat($('cst-tc').value) || 1532;
   const flete = parseFloat($('cst-flete').value) || 1928;
   const filas = [...document.querySelectorAll('#costos-list .costo-row')];
   const asignados = filas.map(f => {
@@ -1310,7 +1309,7 @@ function addTableRow(name = '', qty = 1, savedMapping = null, color = '', model 
   tr.innerHTML = `
     <td style="text-align:center; padding:4px 8px">
       <input type="checkbox" class="row-check" data-rowid="${id}" checked
-             style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue)">
+             style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue)" aria-label="Marcar opcion">
     </td>
     <td style="min-width:200px">
       <input type="hidden" data-rowid="${id}" data-field="name" value="${escAttr(name)}">
@@ -1333,7 +1332,7 @@ function addTableRow(name = '', qty = 1, savedMapping = null, color = '', model 
           <input type="text" class="combobox-input" id="cb-input-${id}"
                  placeholder="Buscar producto ML…"
                  autocomplete="off"
-                 value="${escAttr(mlItem ? mlItem.title : (savedMapping ? savedMapping.ml_title || savedMapping.ml_item_id : ''))}">
+                 value="${escAttr(mlItem ? mlItem.title : (savedMapping ? savedMapping.ml_title || savedMapping.ml_item_id : ''))}" aria-label="Buscar producto ML…">
           <svg class="combobox-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           <div class="combobox-dropdown" id="cb-dd-${id}"></div>
           <input type="hidden" id="cb-val-${id}"
@@ -1344,7 +1343,7 @@ function addTableRow(name = '', qty = 1, savedMapping = null, color = '', model 
       </div>
     </td>
     <td style="min-width:130px" id="var-cell-${id}">
-      <select class="var-select no-variants" id="var-sel-${id}" disabled>
+      <select class="var-select no-variants" id="var-sel-${id}" disabled aria-label="Seleccionar opcion">
         <option value="">— sin variantes —</option>
       </select>
     </td>
@@ -1434,8 +1433,8 @@ function openDropdown(id) {
     dd.innerHTML = filtered.map(p => {
       const acct  = detectItemAccount(p.id);
       const thumb = p.thumbnail
-        ? `<img src="${escAttr(p.thumbnail)}" style="width:36px;height:36px;object-fit:cover;border-radius:3px;flex-shrink:0;border:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">`
-        : `<div style="width:36px;height:36px;flex-shrink:0;border-radius:3px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-3)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+        ? `<img src="${escAttr(p.thumbnail)}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;border:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">`
+        : `<div style="width:36px;height:36px;flex-shrink:0;border-radius:4px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-3)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
       return `<div class="combobox-item" data-id="${escAttr(p.id)}" data-title="${escAttr(p.title)}" data-acct="${escAttr(acct)}" onclick="selectMlItem(${id}, '${escAttr(p.id)}', '${escAttr(p.title.replace(/'/g,"\\\'"))}', '${escAttr(acct)}')">
         <div style="display:flex;align-items:center;gap:8px">
           ${thumb}
@@ -1650,7 +1649,7 @@ function buildVariantSelect(rowId, product) {
 
   if (!product || !product.variations || !product.variations.length) {
     cell.innerHTML = `<div class="var-cell-wrap">
-      <select class="var-select no-variants" id="var-sel-${rowId}" disabled>
+      <select class="var-select no-variants" id="var-sel-${rowId}" disabled aria-label="Seleccionar opcion">
         <option value="">— sin variantes —</option>
       </select>
     </div>`;
@@ -1666,7 +1665,7 @@ function buildVariantSelect(rowId, product) {
 
   cell.innerHTML = `<div class="var-cell-wrap">
     <div class="var-thumb-sm" id="var-thumb-${rowId}">${placeholderSvg}</div>
-    <select class="var-select" id="var-sel-${rowId}" onchange="onVariantChange(${rowId})">
+    <select class="var-select" id="var-sel-${rowId}" onchange="onVariantChange(${rowId})" aria-label="Seleccionar opcion">
       <option value="">— elegir variante —</option>
       ${opts}
     </select>
@@ -2177,7 +2176,7 @@ function escAttr(s) {
 function showToast(msg, success = true) {
   const t = document.createElement('div');
   t.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-    padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;
+    padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;z-index:9999;
     background:${success ? '#16a34a' : '#dc2626'};color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.2)`;
   t.textContent = msg;
   document.body.appendChild(t);
@@ -2284,7 +2283,7 @@ async function loadBackupHistory() {
         </div>
         <a href="/api/stockroom/backup/download/${encodeURIComponent(b.filename)}"
            download="${escAttr(b.filename)}"
-           style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--blue);text-decoration:none"
+           style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;color:var(--blue);text-decoration:none"
            title="Descargar este backup">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Descargar

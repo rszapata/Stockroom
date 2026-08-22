@@ -4,9 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stockroom — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#0c0c0e;color:#e8e8f0;font-family:'Space Mono',ui-monospace,Menlo,monospace}
+  /* Inter, igual que el resto de Stockroom y que la tienda. Antes era Space
+     Mono (que además no se cargaba, caía a Menlo): era la única página con
+     otra fuente. El espaciado de letras mantiene el carácter del login. */
+  html,body{height:100%;background:#0c0c0e;color:#e8e8f0;font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif}
   body{display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse 80% 60% at 50% 30%,rgba(40,70,120,.18),transparent 70%),#0c0c0e}
   .box{width:100%;max-width:360px;border:1px solid #1e2a38;background:#101820;padding:30px 28px}
   .logo{font-size:18px;letter-spacing:.3em;color:#e8ff47;text-align:center;margin-bottom:6px}

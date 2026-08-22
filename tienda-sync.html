@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC: tema guardado antes del primer paint -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -37,7 +37,7 @@
 }
 .log-panel::-webkit-scrollbar { width: 6px; }
 .log-panel::-webkit-scrollbar-track { background: transparent; }
-.log-panel::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 3px; }
+.log-panel::-webkit-scrollbar-thumb { background: #2d3148; border-radius:4px; }
 .log-entry { display: block; }
 .log-info  { color: #6b7280; }
 .log-ok    { color: #34d399; }
@@ -48,7 +48,7 @@
 /* ── Sync button ────────────────────────────────────────── */
 .btn-sync {
   display: inline-flex; align-items: center; gap: 10px;
-  background: var(--blue); color: #fff; border: none;
+  background: var(--blue); color: var(--on-blue); border: none;
   border-radius: var(--r-lg); padding: 10px 22px;
   font-size: 13px; font-weight: 600; cursor: pointer;
   transition: background .15s, transform .1s;
@@ -95,10 +95,10 @@
   background: var(--bg-card); transition: all .15s;
 }
 .cat-tab:hover  { border-color: var(--blue); color: var(--blue); }
-.cat-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.cat-tab.active { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
 
 /* ── Stock colors ───────────────────────────────────────── */
-.stock-ok    { color: var(--green); font-weight: 700; }
+.stock-ok    { color: var(--green-ink); font-weight: 700; }
 .stock-low   { color: #d97706;      font-weight: 700; }
 .stock-empty { color: var(--red);   font-weight: 700; }
 

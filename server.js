@@ -15,6 +15,7 @@ const zlib     = require('zlib');
 const { spawn } = require('child_process');
 const sharp    = require('sharp');
 const db       = require('./db/queries');
+const { esFunda: esFundaCosto } = require('./lib/costos-fundas');
 const { migrateProductsFromCache } = require('./db/migrate-products-fn');
 const { writeJsonAtomic, detectImageExt, detectVideoExt, parseMultipart, MIME } = require('./lib/files');
 const { cors, securityHeaders, getFileType, checkCSRF, ALLOWED_PROXY_PATTERNS, isProxyPathAllowed, json } = require('./lib/http');
@@ -43,7 +44,8 @@ const { loadPendingAdjustments, savePendingAdjustments, loadVincLog, appendVincL
 const { loadSessions, saveSessions } = require('./lib/session-store');
 const { loadRateLimits, saveRateLimits } = require('./lib/rate-limit-store');
 const { tgRequest } = require('./lib/telegram');
-const { costoSugerido } = require('./lib/costos-fundas');
+const { costoSugerido, COSTOS_USD } = require('./lib/costos-fundas');
+const { calcularPedido, promediosNoProducto, costosPorVariante } = require('./lib/pedidos-costos');
 const { mpVerifyWebhookSignature } = require('./lib/mp-webhook');
 const { HTTP_TIMEOUT_MS, applyHttpTimeout, httpsRequestJson } = require('./lib/http-client');
 const { mlOauthToken, mlGet, mlPut, mlPost } = require('./lib/ml-api');
@@ -66,6 +68,7 @@ const handlePdfResumenes   = require('./routes/pdf-resumenes');
 const _mkHandlePreguntas   = require('./routes/preguntas');
 const _mkHandleBackup      = require('./routes/backup');
 const _mkHandleAlibaba     = require('./routes/alibaba');
+const _mkHandlePedidosCost = require('./routes/pedidos-costos');
 const _mkHandleVinculaciones = require('./routes/vinculaciones');
 const _mkHandleFlex        = require('./routes/flex');
 const _mkHandleDespachos   = require('./routes/despachos');
@@ -647,6 +650,36 @@ function isTrustedIP(req) {
   }
   return false;
 }
+// ── Túnel temporal de acceso remoto al panel ────────────────────
+// Por defecto, TODO lo que entra por Cloudflare queda limitado a /tienda/
+// (ver "Cloudflare isolation" más abajo). Esto habilita un único hostname
+// extra —el de un túnel temporal— a llegar al panel.
+//
+// NO baja la autenticación: la request sigue trayendo cf-connecting-ip con la
+// IP real del visitante, así que no entra por el bypass de IP confiable y el
+// login se pide igual. Solo levanta el 404 por hostname.
+//
+// Para cortar el acceso: borrar tunnel-admin.json (efecto en ≤10s, sin reiniciar).
+const TUNNEL_ADMIN_PATH = path.join(__dirname, 'tunnel-admin.json');
+let _tunAdmin = { host: null, exp: 0, leido: 0 };
+function hostTunelAdmin() {
+  const ahora = Date.now();
+  if (ahora - _tunAdmin.leido < 10000) return _tunAdmin.host;
+  _tunAdmin.leido = ahora;
+  try {
+    const c = JSON.parse(fs.readFileSync(TUNNEL_ADMIN_PATH, 'utf8'));
+    const venc = c.expira ? Date.parse(c.expira) : 0;
+    _tunAdmin.host = (venc && venc < ahora) ? null : String(c.host || '').toLowerCase() || null;
+  } catch (e) { _tunAdmin.host = null; }
+  return _tunAdmin.host;
+}
+function esTunelAdmin(req) {
+  const permitido = hostTunelAdmin();
+  if (!permitido) return false;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase().split(':')[0];
+  return !!host && host === permitido;
+}
+
 // Paths que no requieren auth
 const AUTH_EXEMPT = new Set([
   '/login', '/login.html', '/logout',
@@ -850,6 +883,7 @@ const _routerCtx = {
 const _preguntasRouter    = _mkHandlePreguntas(_routerCtx);
 const _backupRouter       = _mkHandleBackup(_routerCtx);
 const _alibabaRouter      = _mkHandleAlibaba(_routerCtx);
+const _pedidosCostRouter  = _mkHandlePedidosCost(_routerCtx);
 const _vincRouter         = _mkHandleVinculaciones(_routerCtx);
 const _flexRouter         = _mkHandleFlex(_routerCtx);
 const _despachosRouter    = _mkHandleDespachos(_routerCtx);
@@ -885,7 +919,9 @@ const server = http.createServer((req, res) => {
     (_xff && !_xffIsTailscale) ||
     /wzmallas\.com/i.test(req.headers['host'] || '')
   );
-  if (viaCloudflare) {
+  // El túnel temporal de admin (si está activo) se salta el aislamiento por
+  // hostname — pero NO la autenticación, que se aplica más abajo igual.
+  if (viaCloudflare && !esTunelAdmin(req)) {
     const isPublic =
       pathname === '/' ||
       pathname === '/tienda' ||
@@ -4586,6 +4622,7 @@ const server = http.createServer((req, res) => {
   if (_preguntasRouter(req, res, pathname)) return;
   if (_backupRouter(req, res, pathname)) return;
   if (_alibabaRouter(req, res, pathname)) return;
+  if (_pedidosCostRouter(req, res, pathname)) return;
 
   // ── Resolver redirect URI de la cuenta activa ──────────────
   function getRedirectUri() {
@@ -4830,6 +4867,159 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── /cobro/ml POST ─────────────────────────────────────────
+  // Mismo cálculo de neto que /cobro, pero trayendo las ventas de la API en vez
+  // de bajar el Excel a mano desde MercadoLibre y volver a subirlo. Arma las
+  // filas con el mismo formato que devuelve leer_ml() y se las pasa como .json,
+  // así el cálculo y los filtros de genera_cobro.py quedan intactos.
+  //
+  // Dos cosas verificadas contra el Excel de ML, al centavo:
+  //   · sale_fee == "Cargo por venta" + "Costo fijo" (por eso van juntos en cargo)
+  //   · sale_fee viene POR UNIDAD: en la venta de 4 unidades hay que multiplicarlo
+  //     por la cantidad, si no el neto sale inflado.
+  if (pathname === '/cobro/ml' && req.method === 'POST') {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      let b = {};
+      try { b = JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch (e) {}
+      const desde  = String(b.desde || '').trim();
+      const hasta  = String(b.hasta || '').trim();
+      const modo   = String(b.modo || 'fundas').trim();
+      const sinIva = b.sin_iva === true || String(b.sin_iva || '') === '1';
+      const cuenta = String(b.cuenta || '').trim();
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) {
+        json(res, 400, { error: 'Hace falta el rango de fechas (desde y hasta)' }); return;
+      }
+      const cuentas = (fullConfig.accounts || [config]);
+      const acct = cuentas.find(a => String(a.id) === cuenta)
+                || cuentas.find(a => String(a.user_id) === cuenta);
+      if (!acct || !acct.user_id) { json(res, 400, { error: 'Cuenta no encontrada o sin vincular' }); return; }
+
+      const MESES = ['enero','febrero','marzo','abril','mayo','junio',
+                     'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      // genera_cobro.py parsea la fecha del texto en español del Excel; se la
+      // damos en ese mismo formato y en hora argentina para no correr el día.
+      const AR = 'America/Argentina/Buenos_Aires';
+      const partesAR = iso => {
+        const d = new Date(iso);
+        if (isNaN(d)) return null;
+        return new Intl.DateTimeFormat('es-AR', {
+          timeZone: AR, day: 'numeric', month: 'numeric',
+          year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
+        }).formatToParts(d).reduce((a, x) => (a[x.type] = x.value, a), {});
+      };
+      const ymdAR = iso => {
+        const p = partesAR(iso);
+        return p ? `${p.year}-${String(+p.month).padStart(2, '0')}-${String(+p.day).padStart(2, '0')}` : '';
+      };
+      const fechaEs = iso => {
+        const p = partesAR(iso);
+        return p ? `${+p.day} de ${MESES[+p.month - 1]} de ${p.year} ${p.hour}:${p.minute} hs` : '';
+      };
+      const correr = (ymd, dias) => {
+        const d = new Date(ymd + 'T12:00:00Z');
+        d.setUTCDate(d.getUTCDate() + dias);
+        return d.toISOString().slice(0, 10);
+      };
+
+      (async () => {
+        try { await refreshAccountToken(acct); } catch (e) {}
+
+        // ML liquida por fecha de CIERRE, no de creación: una orden creada el 18
+        // cuyo primer pago fue rechazado y se acreditó el 21 cae en la decena
+        // siguiente, y así la muestra el Excel. order.date_closed.from existe
+        // pero la API lo ignora en silencio (devuelve lo mismo que date_created),
+        // así que se pide una ventana más ancha y se recorta acá.
+        const fromStr = `${correr(desde, -25)}T00:00:00.000-0300`;
+        const toStr   = `${correr(hasta,   2)}T23:59:59.000-0300`;
+        const filas = [];
+        let offset = 0, total = Infinity, ordenes = 0, fuera = 0;
+
+        while (offset < total && offset < 2000) {
+          const r = await mlGetAuth(acct,
+            `/orders/search?seller=${acct.user_id}` +
+            `&order.date_created.from=${encodeURIComponent(fromStr)}` +
+            `&order.date_created.to=${encodeURIComponent(toStr)}` +
+            `&sort=date_desc&limit=50&offset=${offset}`);
+          total = (r && r.paging && r.paging.total != null) ? r.paging.total : 0;
+          const results = (r && r.results) || [];
+          if (!results.length) break;
+          for (const o of results) {
+            ordenes++;
+            const cierre = o.date_closed || o.date_created;
+            const dia = ymdAR(cierre);
+            if (!dia || dia < desde || dia > hasta) { fuera++; continue; }
+            // es_valida() de genera_cobro.py descarta por las palabras "cancelad"
+            // y "devoluci", así que alcanza con traducir el status a ese vocabulario.
+            const anulada = ['cancelled', 'invalid'].includes(String(o.status || ''));
+            for (const oi of (o.order_items || [])) {
+              const qty = oi.quantity || 0;
+              if (!qty) continue;
+              filas.push({
+                id:         String(o.id),
+                fecha_str:  fechaEs(cierre),
+                estado:     anulada ? 'Cancelada' : 'Entregado',
+                desc:       '',
+                paquete:    o.pack_id ? 'Sí' : 'No',
+                titulo:     (oi.item && oi.item.title) || '',
+                ingresos:   (oi.unit_price || 0) * qty,
+                cargo:      -((oi.sale_fee || 0) * qty),   // cargo por venta + costo fijo
+                costo_fijo: 0,
+                pub_id:     (oi.item && oi.item.id) || ''
+              });
+            }
+          }
+          offset += 50;
+        }
+
+        if (!filas.length) {
+          json(res, 200, { ok: false, error: `No hay ventas de ${acct.label || acct.id} entre ${desde} y ${hasta}` });
+          return;
+        }
+
+        const tmpIn  = path.join(os.tmpdir(), `ml_api_${Date.now()}.json`);
+        const tmpOut = path.join(os.tmpdir(), `cobro_${Date.now()}.xlsx`);
+        fs.writeFileSync(tmpIn, JSON.stringify({ filas }), 'utf8');
+
+        const scriptPath = path.join(__dirname, 'genera_cobro.py');
+        const args = [scriptPath, tmpIn, '--output', tmpOut, '--modo', modo,
+                      '--desde', desde, '--hasta', hasta];
+        if (sinIva) args.push('--sin-iva');
+
+        const PYTHON = process.platform === 'win32' ? 'py' : 'python3';
+        const PYTHON_ARGS = process.platform === 'win32' ? ['-3.12'] : [];
+        const py = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
+        let stdout = '', stderr = '';
+        py.stdout.on('data', d => stdout += d);
+        py.stderr.on('data', d => stderr += d);
+
+        py.on('close', code => {
+          try { fs.unlinkSync(tmpIn); } catch (e) {}
+          if (code !== 0) { json(res, 500, { error: 'Error ejecutando el script', detail: stderr.slice(-800) }); return; }
+          if (!fs.existsSync(tmpOut)) { json(res, 500, { error: 'El script no generó el archivo', detail: stdout }); return; }
+
+          let resumen = {}, ventas = [];
+          try {
+            const clean = stdout.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            const idx = clean.indexOf('RESUMEN_JSON:');
+            if (idx !== -1) resumen = JSON.parse(clean.slice(idx + 'RESUMEN_JSON:'.length).split('\n')[0].trim());
+            const vidx = clean.indexOf('VENTAS_JSON:');
+            if (vidx !== -1) ventas = JSON.parse(clean.slice(vidx + 'VENTAS_JSON:'.length).split('\n')[0].trim());
+          } catch (e) { console.log('[cobro/ml] parse resumen:', e.message); }
+
+          const xlsxB64 = fs.readFileSync(tmpOut).toString('base64');
+          try { fs.unlinkSync(tmpOut); } catch (e) {}
+          console.log(`[cobro/ml] ${acct.label || acct.id} ${desde}..${hasta}: ${ordenes} barridas, ${fuera} fuera de rango → ${filas.length} filas`);
+          json(res, 200, { ok: true, file_b64: xlsxB64, resumen, ventas, stdout,
+                           origen: 'api', cuenta: acct.label || acct.id, ordenes, filas: filas.length });
+        });
+      })().catch(e => json(res, 500, { error: 'Error consultando MercadoLibre', detail: String(e && e.message || e) }));
+    });
+    return;
+  }
+
   // ── /cobro POST ────────────────────────────────────────────
   // Recibe multipart: campo "file" (xlsx) + "periodo" (1/2/3) + "modo" (fundas|otros)
   if (pathname === '/cobro' && req.method === 'POST') {
@@ -4932,6 +5122,9 @@ const server = http.createServer((req, res) => {
       guardado_en: c.guardado_en,
       total_neto: c.resumen?.total_neto ?? null,
       incluidas: c.resumen?.incluidas ?? null,
+      // La cuenta y su régimen: definen si al neto se le descontó IVA, así que
+      // tienen que verse en la lista para poder detectar una carga equivocada.
+      cuenta: c.cuenta ? { id: c.cuenta.id, label: c.cuenta.label, fiscal: c.cuenta.fiscal } : null,
     }));
     json(res, 200, { ok: true, cobros: lista });
     return;
@@ -5004,28 +5197,205 @@ const server = http.createServer((req, res) => {
     try { return JSON.parse(fs.readFileSync(COSTOS_PUB_PATH, 'utf8')); } catch (e) { return {}; }
   };
 
+  // Costos no-producto (flete + impuestos) por unidad, medidos sobre los recibos
+  // reales de Costos de Pedidos. Antes esto era un "flete/u" escrito a mano que
+  // además ignoraba impuestos — que son ~22% del costo del pedido.
+  // Si todavía no hay ningún pedido cargado, cae al viejo default.
+  const EXTRA_UNIT_FALLBACK = 1928;
+  const _rangoCostosUsd = () => {
+    const v = Object.values(COSTOS_USD);
+    return { min: Math.min(...v), max: Math.max(...v) };
+  };
+  function costosExtraMedidos() {
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'pedidos-costos.json'), 'utf8'));
+      const pedidos = Array.isArray(raw) ? raw : (raw.pedidos || []);
+      const prom = promediosNoProducto(pedidos);
+      if (!prom) throw new Error('sin pedidos');
+
+      // Precio de mercadería realmente pagado, para avisar si el clasificador
+      // (COSTOS_USD) quedó por debajo de lo que se está pagando de verdad.
+      // Solo líneas de fundas: el recibo trae también sopapas/soportes a US$0.20,
+      // que meterlos en el promedio lo hundiría y taparía el aviso.
+      let mercUsd = 0, mercUds = 0;
+      for (const p of pedidos) {
+        for (const it of calcularPedido(p).items) {
+          if (!esFundaCosto(it.titulo_ml || it.descripcion || '')) continue;
+          const q = Number(it.cantidad) || 0, u = Number(it.precio_unit_usd) || 0;
+          if (q > 0 && u > 0) { mercUsd += q * u; mercUds += q; }
+        }
+      }
+      return {
+        origen: 'medido',
+        flete_unit_ars: prom.flete_unit_ars,
+        impuestos_unit_ars: prom.impuestos_unit_ars,
+        extra_unit_ars: prom.extra_unit_ars,
+        unidades: prom.unidades,
+        pedidos: prom.pedidos,
+        mercaderia_usd_real: mercUds > 0 ? +(mercUsd / mercUds).toFixed(3) : null,
+        mercaderia_usd_estimado: _rangoCostosUsd(),
+      };
+    } catch (e) {
+      return {
+        origen: 'default', flete_unit_ars: EXTRA_UNIT_FALLBACK, impuestos_unit_ars: 0,
+        extra_unit_ars: EXTRA_UNIT_FALLBACK, unidades: 0, pedidos: 0, mercaderia_usd_real: null,
+        mercaderia_usd_estimado: _rangoCostosUsd(),
+      };
+    }
+  }
+
+  // Costo por publicación con la MISMA jerarquía que usa Orden de compra, que
+  // es la que se acerca a la realidad porque parte de precios de proveedor reales.
+  //     1. medido    — costo puesto de un recibo cargado (ya trae envío+impuestos)
+  //     2. proveedor — precio del link de proveedor × TC + (flete+impuestos)/u
+  //     3. estimado  — tabla de costos por tipo de funda (último recurso)
+  // Los cobros solo guardan el título de la venta, así que el puente hasta el
+  // item_id se arma con los caches de publicaciones de ML.
+  const _normTit = s => String(s || '').trim().toLowerCase();
+  function costosPorTitulo(tc, extraUnit) {
+    const out = {};
+    // título → item_id, desde los caches por cuenta
+    const tituloDe = {};
+    try {
+      const dir = path.join(__dirname, 'cache');
+      for (const f of fs.readdirSync(dir)) {
+        if (!/^items-.+\.json$/.test(f)) continue;
+        try {
+          const raw = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+          const items = Array.isArray(raw) ? raw : (raw.items || []);
+          for (const it of items) if (it && it.id && it.title) tituloDe[it.id] = it.title;
+        } catch (e) { /* cache corrupto: se ignora esa cuenta */ }
+      }
+    } catch (e) { /* sin caches: se sigue con estimado */ }
+
+    // 2. links de proveedor (el precio que pagás de verdad por la mercadería)
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'proveedor-links.json'), 'utf8'));
+      const links = raw.links || raw;
+      for (const [itemId, arr] of Object.entries(links)) {
+        const t = tituloDe[itemId];
+        const l = (Array.isArray(arr) ? arr : []).find(x => x && x.precio_usd != null);
+        if (!t || !l) continue;
+        out[_normTit(t)] = {
+          costo_unit_ars: Math.round(l.precio_usd * tc + extraUnit),
+          origen: 'proveedor', item_id: itemId, precio_usd: l.precio_usd,
+        };
+      }
+    } catch (e) { /* sin links cargados */ }
+
+    // 1. medido — pisa al proveedor porque es el costo realmente pagado
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'pedidos-costos.json'), 'utf8'));
+      const pedidos = Array.isArray(raw) ? raw : (raw.pedidos || []);
+      const acc = {};
+      for (const [k, v] of Object.entries(costosPorVariante(pedidos))) {
+        const itemId = k.split('::')[0];
+        (acc[itemId] = acc[itemId] || []).push(v.costo_unit_ars);
+      }
+      for (const [itemId, arr] of Object.entries(acc)) {
+        const t = tituloDe[itemId];
+        if (!t) continue;
+        out[_normTit(t)] = {
+          costo_unit_ars: Math.round(arr.reduce((a, b) => a + b, 0) / arr.length),
+          origen: 'medido', item_id: itemId,
+        };
+      }
+    } catch (e) { /* sin recibos cargados */ }
+
+    return out;
+  }
+
+  // Qué tramo cubre REALMENTE cada cuenta dentro de la ventana pedida.
+  // Importa porque las liquidaciones de las dos cuentas no terminan el mismo
+  // día: si una llega al 10 y la otra al 8, sumar "los últimos 30 días" sin
+  // aclararlo hace parecer que una vendió menos de lo que vendió.
+  function rangoCubierto(cobros, desde, dias) {
+    const porCuenta = new Map();
+    let min = null, max = null, n = 0;
+    for (const c of cobros) {
+      const id = _cobroCuenta(c);
+      for (const v of (c.ventas || [])) {
+        if (v.excluida) continue;
+        const f = String(v.fecha || '');
+        if (!f || (desde && f < desde)) continue;
+        n++;
+        if (!min || f < min) min = f;
+        if (!max || f > max) max = f;
+        const a = porCuenta.get(id) || { id, label: _cobroCuentaLabel(c), desde: f, hasta: f, ventas: 0 };
+        if (f < a.desde) a.desde = f;
+        if (f > a.hasta) a.hasta = f;
+        a.ventas++;
+        porCuenta.set(id, a);
+      }
+    }
+    return { dias: dias || null, pedido_desde: desde, desde: min, hasta: max,
+             ventas: n, por_cuenta: [...porCuenta.values()] };
+  }
+
+  // Estado de cada cobro guardado frente al rango elegido:
+  //   completo — todas sus ventas caen dentro
+  //   parcial  — el rango lo corta por la mitad (pasa siempre que el corte de
+  //              30 días cae dentro de una liquidación larga)
+  //   fuera    — ninguna de sus ventas entra
+  function periodosConEstado(cobros, desde, soloIds) {
+    return cobros.map(c => {
+      const vs = (c.ventas || []).filter(v => !v.excluida);
+      const dentro = vs.filter(v => !desde || String(v.fecha || '') >= desde);
+      const fechas = vs.map(v => String(v.fecha || '')).filter(Boolean).sort();
+      const estado = !desde ? 'completo'
+                   : dentro.length === 0 ? 'fuera'
+                   : dentro.length === vs.length ? 'completo' : 'parcial';
+      return {
+        id: c.id, nombre: c.nombre, periodo: c.periodo,
+        cuenta: _cobroCuenta(c), cuenta_label: _cobroCuentaLabel(c),
+        total_neto: c.resumen?.total_neto ?? null,
+        desde: fechas[0] || null, hasta: fechas[fechas.length - 1] || null,
+        ventas: vs.length,
+        ventas_en_rango: dentro.length,
+        neto_en_rango: dentro.reduce((a, v) => a + (Number(v.neto) || 0), 0),
+        estado,
+        seleccionado: soloIds.length ? soloIds.includes(c.id) : null,
+      };
+    });
+  }
+
   // Cuenta de un cobro (legacy sin tag → WZ, que es de donde vienen los históricos).
   const _cobroCuenta = c => (c.cuenta && c.cuenta.id) ? c.cuenta.id : 'wz';
   const _cobroCuentaLabel = c => (c.cuenta && c.cuenta.label) ? c.cuenta.label : 'WZ — WZMALLAS';
 
   // Agrega una lista de cobros a {publicaciones, totales} cruzando neto × costo.
-  function agregarCobros(cobros, tc, fleteUnit, overrides) {
+  function agregarCobros(cobros, tc, fleteUnit, overrides, reales = {}, desde = null) {
     const porPub = new Map();
     for (const c of cobros) {
       for (const v of (c.ventas || [])) {
         if (v.excluida) continue;
+        // Ventana por fecha de venta. Se filtra por VENTA y no por período de
+        // cobro: los cobros de las dos cuentas no arrancan ni terminan el mismo
+        // día, así que recortar por cobro daría un total sesgado.
+        if (desde && String(v.fecha || '') < desde) continue;
         const titulo = v.titulo || '(sin título)';
         const neto = Number(v.neto) || 0, ingresos = Number(v.ingresos) || 0;
         const sug = costoSugerido(titulo, tc, fleteUnit);
         let row = porPub.get(titulo);
         if (!row) {
-          const ov = overrides[titulo];
+          const ov   = overrides[titulo];
+          const real = reales[_normTit(titulo)];
+          // manual > medido > proveedor > estimado
+          let costoUnit, origen;
+          if (ov && ov.costo_ars != null) { costoUnit = Number(ov.costo_ars); origen = 'manual'; }
+          else if (real)                  { costoUnit = real.costo_unit_ars; origen = real.origen; }
+          else if (sug)                   { costoUnit = Math.round(sug.costo / (sug.unidades || 1)); origen = 'estimado'; }
+          else                            { costoUnit = null; origen = null; }
           row = {
             titulo, unidades: 0, ingresos: 0, neto: 0,
-            costo_unit: (ov && ov.costo_ars != null) ? Number(ov.costo_ars)
-                      : (sug ? Math.round(sug.costo / (sug.unidades || 1)) : null),
+            costo_unit: costoUnit,
+            costo_origen: origen,
+            precio_usd: real ? (real.precio_usd ?? null) : null,
             costo_editado: !!(ov && ov.costo_ars != null),
-            tipo: sug ? sug.tipo : null, es_funda: !!sug, confiable: sug ? sug.confiable : false,
+            tipo: sug ? sug.tipo : null, es_funda: !!sug,
+            // un costo real no necesita el aviso de "estimación a confirmar"
+            confiable: origen === 'manual' || origen === 'medido' || origen === 'proveedor'
+                     ? true : (sug ? sug.confiable : false),
           };
           porPub.set(titulo, row);
         }
@@ -5053,15 +5423,29 @@ const server = http.createServer((req, res) => {
   }
 
   // GET /api/stockroom/rentabilidad?tc=&flete_unit=&cobros=&cuenta=
+  //
+  // El costo no-producto por unidad (flete + impuestos) ya NO se pide a mano:
+  // sale medido de los recibos cargados en Costos de Pedidos. flete_unit queda
+  // solo como override manual y como fallback si todavía no hay ningún pedido.
   if (pathname === '/api/stockroom/rentabilidad' && req.method === 'GET') {
     const qp = new URL(req.url, 'http://localhost').searchParams;
-    const tc        = parseFloat(qp.get('tc')) || 1421;
-    const fleteUnit = parseFloat(qp.get('flete_unit')) || 1928;
+    const tc        = parseFloat(qp.get('tc')) || 1532;
+    const extra     = costosExtraMedidos();
+    const ovFlete   = parseFloat(qp.get('flete_unit'));
+    const fleteUnit = Number.isFinite(ovFlete) && ovFlete > 0 ? ovFlete : extra.extra_unit_ars;
+    if (Number.isFinite(ovFlete) && ovFlete > 0) extra.origen = 'manual';
     const soloIds   = (qp.get('cobros') || '').split(',').map(s => s.trim()).filter(Boolean);
     const cuentaF   = (qp.get('cuenta') || '').trim();   // '' = todas
 
     const overrides = leerCostosPub();
+    const reales    = costosPorTitulo(tc, fleteUnit);
     const todos = leerCobrosGuardados().filter(c => c.modo === 'fundas');
+
+    // Ventana temporal (7 / 10 / 30 días…). 0 o ausente = todo lo guardado.
+    const dias  = Math.max(0, parseInt(qp.get('dias') || '0') || 0);
+    const desde = dias > 0
+      ? new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10)
+      : null;
 
     // Resumen por cuenta (siempre sobre TODOS los períodos, para las pestañas).
     const cuentasMap = new Map();
@@ -5071,7 +5455,7 @@ const server = http.createServer((req, res) => {
       cuentasMap.get(id).cobros.push(c);
     }
     const por_cuenta = [...cuentasMap.values()].map(cu => {
-      const { totales } = agregarCobros(cu.cobros, tc, fleteUnit, overrides);
+      const { totales } = agregarCobros(cu.cobros, tc, fleteUnit, overrides, reales, desde);
       return { id: cu.id, label: cu.label, fiscal: cu.fiscal, neto: totales.neto, costo: totales.costo, ganancia: totales.ganancia, margen: totales.margen };
     });
 
@@ -5079,16 +5463,128 @@ const server = http.createServer((req, res) => {
     let cobros = todos;
     if (cuentaF) cobros = cobros.filter(c => _cobroCuenta(c) === cuentaF);
     if (soloIds.length) cobros = cobros.filter(c => soloIds.includes(c.id));
-    const { publicaciones, totales } = agregarCobros(cobros, tc, fleteUnit, overrides);
+    const { publicaciones, totales } = agregarCobros(cobros, tc, fleteUnit, overrides, reales, desde);
 
     json(res, 200, {
       ok: true,
       params: { tc, flete_unit: fleteUnit, cuenta: cuentaF || null },
+      rango: rangoCubierto(cobros, desde, dias),
+      costos_extra: extra,
       por_cuenta,
-      periodos: cobros.map(c => ({ id: c.id, nombre: c.nombre, periodo: c.periodo, cuenta: _cobroCuenta(c), total_neto: c.resumen?.total_neto ?? null })),
+      // Se listan TODOS los cobros de la cuenta activa (no solo los del rango):
+      // el valor está justamente en ver cuáles quedaron afuera y cuáles entraron
+      // a medias, que es lo que un total solo no cuenta.
+      periodos: periodosConEstado(cuentaF ? todos.filter(c => _cobroCuenta(c) === cuentaF) : todos,
+                                  desde, soloIds),
       totales,
       publicaciones,
     });
+    return;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/stockroom/dashboard/estado?lead=7
+  // Dos cosas que hoy se rompen en silencio y no aparecen en ningún tablero:
+  //   1. qué variantes se agotan ANTES de que llegue el próximo pedido
+  //   2. hace cuánto que no se carga una liquidación de cada cuenta
+  //      (si falta una, la rentabilidad queda corta y nada lo avisa)
+  // ══════════════════════════════════════════════════════════════
+  if (pathname === '/api/stockroom/dashboard/estado' && req.method === 'GET') {
+    (async () => {
+      const qp2  = new URL(req.url, 'http://localhost').searchParams;
+      const lead = Math.max(1, parseInt(qp2.get('lead') || '7') || 7);
+      const VENT = 60;   // misma ventana que usa la orden de compra
+
+      // ── 1. Riesgo de quiebre ──────────────────────────────────
+      const vNorm = t => String(t || '').toLowerCase().normalize('NFD')
+        .replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+      const keyDe = label => String(label || '').split('·')
+        .map(x => x.includes(':') ? x.slice(x.indexOf(':') + 1) : x)
+        .map(vNorm).filter(Boolean).sort().join('|');
+
+      let ventas = {};
+      try {
+        const r = await fetch(`http://127.0.0.1:${PORT || 3000}/orden-compra/ventas-recientes?dias=${VENT}&extra=1`);
+        ventas = (await r.json()).ventas || {};
+      } catch (e) { /* sin ventas recientes: se informa igual lo que hay en 0 */ }
+
+      // Las dos cuentas: cache/items.json solo trae la activa
+      const vistos = new Set();
+      const filas = [];
+      try {
+        const dir = path.join(__dirname, 'cache');
+        for (const f of fs.readdirSync(dir)) {
+          if (!/^items-.+\.json$/.test(f)) continue;
+          let items = [];
+          try {
+            const raw = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+            items = Array.isArray(raw) ? raw : (raw.items || []);
+          } catch (e) { continue; }
+          for (const it of items) {
+            if (!it || !it.id || !esFundaCosto(it.title || '')) continue;
+            const vars = (it.variations && it.variations.length) ? it.variations : [null];
+            const m = ventas[it.id] || {};
+            for (const v of vars) {
+              const vid = v ? String(v.id || '') : '';
+              const k = `${it.id}::${vid}`;
+              if (vistos.has(k)) continue;
+              vistos.add(k);
+              const label = v ? (v.attribute_combinations || [])
+                .map(a => `${a.name}: ${a.value_name}`).join(' · ') : '';
+              const stock = (v ? v.available_quantity : it.available_quantity) ?? 0;
+              const u = vars.length === 1 && !v
+                ? Object.values(m).reduce((a, b) => a + b, 0)
+                : (m[keyDe(label)] || 0);
+              const dm = u / (VENT / 30);                    // demanda mensual
+              const dias = dm > 0 ? stock / (dm / 30) : null; // autonomía
+              filas.push({ item_id: it.id, titulo: it.title || '', variante: label, stock, dias, dm });
+            }
+          }
+        }
+      } catch (e) { /* sin caches */ }
+
+      const sinStock = filas.filter(f => f.stock === 0 && f.dm > 0);
+      const quiebre  = filas.filter(f => f.stock > 0 && f.dias !== null && f.dias <= lead);
+      const pronto   = filas.filter(f => f.stock > 0 && f.dias !== null && f.dias > lead && f.dias <= 30);
+      const urgentes = [...sinStock, ...quiebre]
+        .sort((a, b) => (a.dias ?? -1) - (b.dias ?? -1) || b.dm - a.dm)
+        .slice(0, 6)
+        .map(f => ({ titulo: f.titulo, variante: f.variante, stock: f.stock,
+                     dias: f.dias === null ? null : Math.round(f.dias),
+                     venta_mes: +f.dm.toFixed(1) }));
+
+      // ── 2. Última liquidación cargada por cuenta ──────────────
+      const hoyStr = new Date().toISOString().slice(0, 10);
+      const porCuenta = new Map();
+      for (const c of leerCobrosGuardados().filter(x => x.modo === 'fundas')) {
+        const id = _cobroCuenta(c);
+        const fechas = (c.ventas || []).filter(v => !v.excluida)
+          .map(v => String(v.fecha || '')).filter(Boolean).sort();
+        const ult = fechas[fechas.length - 1];
+        if (!ult) continue;
+        const a = porCuenta.get(id);
+        if (!a || ult > a.hasta) {
+          porCuenta.set(id, { id, label: _cobroCuentaLabel(c), hasta: ult, periodo: c.periodo || null });
+        }
+      }
+      const cobros = [...porCuenta.values()].map(a => ({
+        ...a,
+        dias_sin_cargar: Math.round((Date.parse(hoyStr) - Date.parse(a.hasta)) / 86400000),
+      })).sort((a, b) => b.dias_sin_cargar - a.dias_sin_cargar);
+
+      json(res, 200, {
+        ok: true,
+        lead,
+        reposicion: {
+          variantes: filas.length,
+          sin_stock: sinStock.length,
+          quiebre: quiebre.length,
+          pronto: pronto.length,
+          urgentes,
+        },
+        cobros,
+      });
+    })().catch(e => json(res, 500, { error: 'No se pudo calcular el estado', detail: e.message }));
     return;
   }
 
@@ -5250,7 +5746,9 @@ const server = http.createServer((req, res) => {
 
         const items = {};
         const cuentas = [];
-        const ITEM_ATTRS = 'id,title,price,available_quantity,sold_quantity,variations';
+        // thumbnail+pictures: sin esto las publicaciones de la otra cuenta llegaban
+        // sin imagen y la orden de compra las mostraba en blanco.
+        const ITEM_ATTRS = 'id,title,price,available_quantity,sold_quantity,thumbnail,pictures,variations';
         for (const acct of others) {
           try { await refreshAccountToken(acct); } catch (e) {}
           const me = await mlGetAuth(acct, '/users/me');
@@ -5269,15 +5767,26 @@ const server = http.createServer((req, res) => {
             for (const entry of (Array.isArray(details) ? details : [])) {
               if (entry.code !== 200 || !entry.body) continue;
               const it = entry.body;
+              // Misma resolución de foto que las publicaciones propias (analytics.html):
+              // la de la variante si tiene picture_ids, si no la principal del item.
+              const pics = it.pictures || [];
+              const itemPic = pics[0]?.secure_url || pics[0]?.url || it.thumbnail || '';
+              const picDe = v => {
+                const id = v.picture_ids?.[0];
+                if (!id) return itemPic;
+                const f = pics.find(p => p.id === id);
+                return f?.secure_url || f?.url || itemPic;
+              };
               const vars = (it.variations && it.variations.length)
                 ? it.variations.map(v => ({
                     label: (v.attribute_combinations || []).map(a => `${a.name}: ${a.value_name}`).join(' · ') || ('#' + v.id),
                     vendidas: v.sold_quantity || 0,
                     stock: v.available_quantity || 0,
                     precio: v.price || it.price || 0,
+                    foto: picDe(v),
                   }))
-                : [{ label: '', vendidas: it.sold_quantity || 0, stock: it.available_quantity || 0, precio: it.price || 0 }];
-              items[it.id] = { title: it.title, cuenta: acct.label || acct.id, variantes: vars };
+                : [{ label: '', vendidas: it.sold_quantity || 0, stock: it.available_quantity || 0, precio: it.price || 0, foto: itemPic }];
+              items[it.id] = { title: it.title, cuenta: acct.label || acct.id, foto: itemPic, variantes: vars };
             }
           }
           cuentas.push({ id: acct.id, label: acct.label || acct.id, publicaciones: allIds.length });
@@ -5304,7 +5813,9 @@ const server = http.createServer((req, res) => {
     (async () => {
       try {
         const q = parsed.query || {};
-        const dias = Math.min(180, Math.max(7, parseInt(q.dias) || 60));
+        // Hasta 400 días: para recuperar variantes quebradas hace meses hay que
+        // mirar más atrás que la ventana normal de 60.
+        const dias = Math.min(400, Math.max(7, parseInt(q.dias) || 60));
         const extra = String(q.extra || '') === '1';
         const activeId = config.id || 'default';
 
@@ -5357,7 +5868,8 @@ const server = http.createServer((req, res) => {
                 const rawId = oi.item?.id;
                 if (!rawId) continue;
                 entradas.push({ acct, rawId, vid: oi.item?.variation_id || null,
-                  key: keyOf(oi.item?.variation_attributes), qty: oi.quantity || 0 });
+                  key: keyOf(oi.item?.variation_attributes), qty: oi.quantity || 0,
+                  fecha: ord.date_created || null });
                 unidades += oi.quantity || 0;
               }
             }
@@ -5389,19 +5901,231 @@ const server = http.createServer((req, res) => {
         }
 
         // 3) Agregar con la mejor clave disponible
-        const ventas = {};   // itemId → { labelKey: unidades }
+        const ventas  = {};   // itemId → { labelKey: unidades }
+        const ultimas = {};   // itemId → { labelKey: fecha ISO de la última venta }
         for (const e of entradas) {
           const itemId = remap[e.rawId] || e.rawId;
           const exact = (e.vid != null && vidLabel[e.rawId] && vidLabel[e.rawId][e.vid] != null)
             ? vidLabel[e.rawId][e.vid] : e.key;
           (ventas[itemId] = ventas[itemId] || {})[exact] = (ventas[itemId][exact] || 0) + e.qty;
+          // Última venta por variante: es lo que distingue "quebró hace un mes"
+          // de "está muerto hace un año", que es la decisión de negocio.
+          if (e.fecha) {
+            const u = (ultimas[itemId] = ultimas[itemId] || {});
+            if (!u[exact] || e.fecha > u[exact]) u[exact] = e.fecha;
+          }
         }
 
-        const data = { ok: true, dias, desde, ordenes, unidades, ventas };
+        const data = { ok: true, dias, desde, ordenes, unidades, ventas, ultimas };
         global._ventasRecCache = { key: cacheKey, at: Date.now(), data };
         json(res, 200, data);
       } catch (e) {
         console.error('[ventas-rec] ERROR:', e.message);
+        json(res, 500, { ok: false, error: e.message });
+      }
+    })();
+    return;
+  }
+
+  // ── /stock-historico/cobertura GET → desde cuándo hay datos ──
+  //    Mientras el histórico se llena, sirve para saber cuándo empieza a ser
+  //    confiable el cálculo de demanda descensurada.
+  if (pathname === '/stock-historico/cobertura' && req.method === 'GET') {
+    (async () => {
+      try {
+        const c = await db.coberturaHistorico();
+        const dias = c && c.dias ? c.dias : 0;
+        json(res, 200, {
+          ok: true, ...c,
+          // Con menos de 30 días la corrección por días-sin-stock es ruidosa
+          confiable: dias >= 30,
+          faltan_dias: Math.max(0, 30 - dias),
+        });
+      } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    })();
+    return;
+  }
+
+  // ── /stock-historico/serie GET?item_id=&variation_id=&dias= ──
+  if (pathname === '/stock-historico/serie' && req.method === 'GET') {
+    (async () => {
+      try {
+        const q = parsed.query || {};
+        if (!q.item_id) { json(res, 400, { ok: false, error: 'falta item_id' }); return; }
+        const serie = await db.serieStock(q.item_id, q.variation_id || '',
+                                          Math.min(400, Math.max(7, parseInt(q.dias) || 120)));
+        json(res, 200, { ok: true, serie });
+      } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    })();
+    return;
+  }
+
+  // ── /stock-historico/demanda GET?dias= → demanda DESCENSURADA ──
+  //    unidades vendidas ÷ días que la variante TUVO stock, en vez de ÷ días
+  //    del período. Es la corrección que el histórico habilita.
+  if (pathname === '/stock-historico/demanda' && req.method === 'GET') {
+    (async () => {
+      try {
+        const q = parsed.query || {};
+        const dias = Math.min(400, Math.max(7, parseInt(q.dias) || 60));
+        // Mismo alcance que la orden de compra: por defecto sólo fundas
+        const todos = String(q.all_products || '') === '1';
+        const [conStock, ventas] = await Promise.all([
+          db.diasConStock(dias),
+          fetch(`http://127.0.0.1:${PORT || 3000}/orden-compra/ventas-recientes?dias=${dias}&extra=1`)
+            .then(r => r.json()),
+        ]);
+
+        const vNorm = t => String(t || '').toLowerCase().normalize('NFD')
+          .replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+        const keyDe = label => String(label || '').split('·')
+          .map(x => x.includes(':') ? x.slice(x.indexOf(':') + 1) : x)
+          .map(vNorm).filter(Boolean).sort().join('|');
+
+        const out = [];
+        for (const it of getProductCache()) {
+          if (!todos && !esFundaCosto(it.title)) continue;
+          const vars = (it.variations && it.variations.length) ? it.variations : [null];
+          for (const v of vars) {
+            const vid = v ? String(v.id) : '';
+            const hist = conStock[`${it.id}::${vid}`];
+            if (!hist || !hist.dias_medidos) continue;      // sin histórico todavía
+            const label = v ? (v.attribute_combinations || [])
+              .map(a => `${a.name}: ${a.value_name}`).join(' · ') : '';
+            const u = ((ventas.ventas || {})[it.id] || {})[keyDe(label)] || 0;
+            const dcs = hist.dias_con_stock;
+            const medidos = hist.dias_medidos;
+            // Las ventas son de la ventana completa (60 d) pero el histórico
+            // puede tener muchos menos días. Dividir una por otro da valores
+            // absurdos (60 días de ventas ÷ 1 día medido = 30× la demanda).
+            // Se extrapola la PROPORCIÓN de días con stock a toda la ventana:
+            // "estuvo disponible el X % del tiempo medido, asumimos ese X %".
+            // A medida que el histórico crece, la estimación se vuelve exacta.
+            const proporcion = medidos > 0 ? dcs / medidos : 1;
+            const diasEfectivos = dias * proporcion;
+            out.push({
+              item_id: it.id, variation_id: vid, titulo: it.title, variante: label,
+              unidades: u, dias_medidos: medidos, dias_con_stock: dcs,
+              dias_sin_stock: medidos - dcs,
+              pct_con_stock: +(proporcion * 100).toFixed(0),
+              // Lo que el sistema calcula hoy: reparte sobre TODA la ventana
+              demanda_mensual_actual: +(u / (dias / 30)).toFixed(2),
+              // Corregida: reparte sólo sobre los días en que se pudo vender
+              demanda_mensual_real: diasEfectivos > 0
+                ? +(u / (diasEfectivos / 30)).toFixed(2) : null,
+              // Con pocos días medidos la proporción es ruidosa: se avisa
+              confiable: medidos >= 30,
+            });
+          }
+        }
+        out.sort((a, b) => (b.demanda_mensual_real ?? 0) - (a.demanda_mensual_real ?? 0));
+        const medidosMax = out.reduce((m, x) => Math.max(m, x.dias_medidos), 0);
+        json(res, 200, { ok: true, dias, variantes: out.length, all_products: todos,
+                         dias_de_historico: medidosMax,
+                         confiable: medidosMax >= 30,
+                         nota: medidosMax >= 30 ? null
+                           : `Sólo hay ${medidosMax} día(s) de histórico: la corrección por quiebres es orientativa hasta llegar a 30.`,
+                         demanda: out });
+      } catch (e) {
+        console.error('[stock-hist/demanda] ERROR:', e.message);
+        json(res, 500, { ok: false, error: e.message });
+      }
+    })();
+    return;
+  }
+
+  // ── /orden-compra/recuperacion GET → quebradas con demanda histórica ──
+  //
+  //    El problema que resuelve: una variante que se agotó hace más de 60 días
+  //    vendió 0 en la ventana normal, así que su demanda calculada es 0 y pide
+  //    0 unidades — el Excel la saltea y desaparece del pedido. Sin stock nunca
+  //    vuelve a vender: el quiebre se perpetúa solo.
+  //
+  //    NO decide por el dueño. Devuelve las candidatas con las señales para que
+  //    él decida: en accesorios de telefonía un producto puede estar muerto
+  //    porque el modelo de teléfono envejeció, y ninguna fórmula sabe eso.
+  if (pathname === '/orden-compra/recuperacion' && req.method === 'GET') {
+    (async () => {
+      try {
+        const q = parsed.query || {};
+        const diasLargo = Math.min(400, Math.max(90, parseInt(q.dias) || 365));
+        const stockMax  = Math.max(0, parseInt(q.stock_max) || 0);   // 0 = sólo quebradas
+        // Mismo alcance que la orden: por defecto sólo fundas. Sin esto la lista
+        // traía protectores, mallas y combos que la orden nunca consideró.
+        const todos = String(q.all_products || '') === '1';
+
+        const base = `http://127.0.0.1:${PORT || 3000}`;
+        const traer = async (u) => {
+          const r = await fetch(base + u);
+          if (!r.ok) throw new Error(`${u} → HTTP ${r.status}`);
+          return r.json();
+        };
+
+        // Dos ventanas: la corta dice "no vende hoy", la larga "vendía antes"
+        const [corta, larga] = await Promise.all([
+          traer('/orden-compra/ventas-recientes?dias=60&extra=1'),
+          traer(`/orden-compra/ventas-recientes?dias=${diasLargo}&extra=1`),
+        ]);
+
+        // Personas esperando reposición: la señal de demanda ACTUAL más fuerte
+        let alertas = {};
+        try { alertas = await db.countPendingStockAlertsByItem(); } catch (e) {}
+
+        const vNorm = s2 => String(s2 || '').toLowerCase().normalize('NFD')
+          .replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+        const keyDe = label => String(label || '').split('·')
+          .map(x => x.includes(':') ? x.slice(x.indexOf(':') + 1) : x)
+          .map(vNorm).filter(Boolean).sort().join('|');
+
+        const hoy = Date.now();
+        const cand = [];
+        for (const it of getProductCache()) {
+          if (!todos && !esFundaCosto(it.title)) continue;   // fuera de alcance
+          const vars = (it.variations && it.variations.length) ? it.variations : [null];
+          for (const v of vars) {
+            const stock = v ? (v.available_quantity ?? 0) : (it.available_quantity ?? 0);
+            if (stock > stockMax) continue;                    // todavía tiene stock
+
+            const label = v ? (v.attribute_combinations || [])
+              .map(a => `${a.name}: ${a.value_name}`).join(' · ') : '';
+            const k = keyDe(label);
+            const rec = ((corta.ventas || {})[it.id] || {})[k] || 0;
+            if (rec > 0) continue;                             // vendió hace poco: no es este caso
+
+            const viejo = ((larga.ventas || {})[it.id] || {})[k] || 0;
+            if (viejo <= 0) continue;                          // nunca vendió: no hay nada que recuperar
+
+            const ultima = ((larga.ultimas || {})[it.id] || {})[k] || null;
+            const diasSin = ultima
+              ? Math.round((hoy - new Date(ultima).getTime()) / 86400000) : null;
+
+            cand.push({
+              item_id: it.id, variation_id: v ? String(v.id) : '',
+              titulo: it.title, variante: label, stock,
+              vendidas_ventana: viejo, ventana_dias: diasLargo,
+              ultima_venta: ultima ? ultima.slice(0, 10) : null,
+              dias_sin_vender: diasSin,
+              // Ritmo mensual mientras tuvo stock (aproximado: desde la primera
+              // venta de la ventana hasta la última). Es orientativo hasta que
+              // exista el histórico de stock.
+              ritmo_mensual: diasSin != null && diasLargo > diasSin
+                ? +(viejo / ((diasLargo - diasSin) / 30)).toFixed(1) : null,
+              esperando: alertas[it.id] || 0,
+              precio: v ? (v.price ?? it.price) : it.price,
+              foto: (it.pictures || [])[0]?.secure_url || it.thumbnail || '',
+            });
+          }
+        }
+
+        // Primero lo que tiene gente esperando; después lo que quebró hace menos
+        cand.sort((a, b) =>
+          (b.esperando - a.esperando) ||
+          ((a.dias_sin_vender ?? 9e9) - (b.dias_sin_vender ?? 9e9)));
+
+        console.log(`[recuperacion] ${cand.length} variantes quebradas con demanda previa (ventana ${diasLargo}d, ${todos ? 'todo el catálogo' : 'sólo fundas'})`);
+        json(res, 200, { ok: true, ventana_dias: diasLargo, all_products: todos, candidatas: cand });
+      } catch (e) {
+        console.error('[recuperacion] ERROR:', e.message);
         json(res, 500, { ok: false, error: e.message });
       }
     })();
@@ -5421,7 +6145,7 @@ const server = http.createServer((req, res) => {
       const parts = parseMultipart(body, bm[1]);
 
       const fileData = parts['file'];
-      const tc       = parseFloat(parts['tc']    || '1421');
+      const tc       = parseFloat(parts['tc']    || '1532');
       const flete    = parseFloat(parts['flete'] || '800000');
       const units    = parseInt(parts['units']   || '415');
       const vendMin  = parseInt(parts['vendidos_min'] || '5');
@@ -5429,6 +6153,10 @@ const server = http.createServer((req, res) => {
       const allProds = String(parts['all_products'] || '') === '1' || String(parts['all_products'] || '') === 'true';
       const cobertura = Math.max(0, parseFloat(parts['cobertura'] || '0') || 0);
       const diasRec   = Math.max(0, parseInt(parts['dias_rec'] || '0') || 0);
+      // Autonomía: entra si se agota en <= N días aunque supere stock_max
+      const diasStockMax = Math.max(0, parseInt(parts['dias_stock_max'] || '0') || 0);
+      // Plazo de entrega: se suma a la cobertura (durante el viaje se sigue vendiendo)
+      const leadDias = Math.max(0, parseInt(parts['lead_dias'] || '0') || 0);
 
       if (!fileData?.data) { json(res, 400, { error: 'CSV no recibido' }); return; }
 
@@ -5450,6 +6178,8 @@ const server = http.createServer((req, res) => {
       if (allProds) args.push('--all-products');
       if (cobertura > 0) args.push('--cobertura', String(cobertura));
       if (diasRec > 0)   args.push('--dias-rec', String(diasRec));
+      if (diasStockMax > 0) args.push('--dias-stock-max', String(diasStockMax));
+      if (leadDias > 0) args.push('--lead-dias', String(leadDias));
       const py   = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
       let stdout = '', stderr = '';
       py.stdout.on('data', d => stdout += d);
@@ -5495,7 +6225,7 @@ const server = http.createServer((req, res) => {
       const parts = parseMultipart(body, bm[1]);
 
       const fileData = parts['file'];
-      const tc       = parseFloat(parts['tc']    || '1421');
+      const tc       = parseFloat(parts['tc']    || '1532');
       const flete    = parseFloat(parts['flete'] || '800000');
       const units    = parseInt(parts['units']   || '415');
       const vendMin  = parseInt(parts['vendidos_min'] || '5');
@@ -5503,6 +6233,10 @@ const server = http.createServer((req, res) => {
       const allProds = String(parts['all_products'] || '') === '1' || String(parts['all_products'] || '') === 'true';
       const cobertura = Math.max(0, parseFloat(parts['cobertura'] || '0') || 0);
       const diasRec   = Math.max(0, parseInt(parts['dias_rec'] || '0') || 0);
+      // Autonomía: entra si se agota en <= N días aunque supere stock_max
+      const diasStockMax = Math.max(0, parseInt(parts['dias_stock_max'] || '0') || 0);
+      // Plazo de entrega: se suma a la cobertura (durante el viaje se sigue vendiendo)
+      const leadDias = Math.max(0, parseInt(parts['lead_dias'] || '0') || 0);
 
       if (!fileData?.data) { json(res, 400, { error: 'CSV no recibido' }); return; }
 
@@ -5526,6 +6260,8 @@ const server = http.createServer((req, res) => {
       if (allProds) args.push('--all-products');
       if (cobertura > 0) args.push('--cobertura', String(cobertura));
       if (diasRec > 0)   args.push('--dias-rec', String(diasRec));
+      if (diasStockMax > 0) args.push('--dias-stock-max', String(diasStockMax));
+      if (leadDias > 0) args.push('--lead-dias', String(leadDias));
       const py   = spawn(PYTHON, [...PYTHON_ARGS, ...args]);
       let stdout = '', stderr = '';
       py.stdout.on('data', d => stdout += d);
@@ -5572,6 +6308,64 @@ const server = http.createServer((req, res) => {
 
       const scriptPath = path.join(__dirname, 'genera_orden_compra.py');
       if (!fs.existsSync(scriptPath)) { json(res, 500, { error: 'No se encontró genera_orden_compra.py' }); return; }
+
+      // Adjuntar el link de proveedor de cada publicación. Se hace acá y no en
+      // el front para que el Excel lo tenga aunque el borrador venga de una
+      // sesión vieja que todavía no los cargaba.
+      try {
+        const fp = path.join(__dirname, 'proveedor-links.json');
+        if (fs.existsSync(fp)) {
+          const links = JSON.parse(fs.readFileSync(fp, 'utf8')) || {};
+          const mapa = links.links || links;
+          for (const it of (draft.items || [])) {
+            const l = (mapa[it.item_id] || [])[0];
+            if (l && l.url) { it.prov_url = l.url; it.prov_nombre = l.proveedor || ''; }
+          }
+        }
+      } catch(e) { console.warn('[orden-compra/export] links de proveedor:', e.message); }
+
+      // Relación NETO/BRUTO real, de las liquidaciones ya cobradas. Es lo que
+      // permite proyectar el retorno sin inventar una comisión: ML se queda con
+      // comisión + envío, y eso ya está descontado en el `neto` de cada venta.
+      try {
+        const cobros = leerCobrosGuardados().filter(c => c.modo === 'fundas');
+        let ing = 0, net = 0;
+        const porT = {};
+        for (const c of cobros) for (const v of (c.ventas || [])) {
+          if (v.excluida) continue;
+          const i = Number(v.ingresos) || 0, e = Number(v.neto) || 0;
+          if (i <= 0) continue;
+          ing += i; net += e;
+          const t = v.titulo || '';
+          const a = porT[t] || (porT[t] = { i: 0, e: 0 });
+          a.i += i; a.e += e;
+        }
+        if (ing > 0) {
+          draft.params = draft.params || {};
+          draft.params.neto_ratio = net / ing;
+          draft.params.neto_ratio_ventas = cobros.reduce((n, c) => n + (c.ventas || []).length, 0);
+          // Por publicación, sólo donde hay volumen suficiente para ser representativo
+          const porTitulo = {};
+          for (const [t, a] of Object.entries(porT)) if (a.i >= 50000) porTitulo[t] = a.e / a.i;
+          draft.params.neto_ratio_por_titulo = porTitulo;
+          // De qué cuenta(s) salen las liquidaciones. Importa porque el régimen
+          // fiscal cambia el neto (responsable retiene IVA, monotributo no) y
+          // el pedido puede stockear cuentas de las que no hay liquidación.
+          const porCuenta = {};
+          for (const c of cobros) {
+            const cu = c.cuenta || {};
+            const k = cu.label || cu.id || 'sin cuenta';
+            const a = porCuenta[k] || (porCuenta[k] = { label: k, fiscal: cu.fiscal || '?', ventas: 0, i: 0, e: 0 });
+            for (const v of (c.ventas || [])) {
+              if (v.excluida) continue;
+              a.ventas++; a.i += Number(v.ingresos) || 0; a.e += Number(v.neto) || 0;
+            }
+          }
+          draft.params.neto_ratio_cuentas = Object.values(porCuenta)
+            .filter(a => a.i > 0)
+            .map(a => ({ label: a.label, fiscal: a.fiscal, ventas: a.ventas, ratio: a.e / a.i }));
+        }
+      } catch(e) { console.warn('[orden-compra/export] ratio neto:', e.message); }
 
       const tmpJson = path.join(os.tmpdir(), `draft_${Date.now()}.json`);
       const tmpOut  = path.join(os.tmpdir(), `orden_${Date.now()}.xlsx`);
@@ -8547,6 +9341,55 @@ db.ensureFavoritosTable().catch(e => console.log('[favoritos] Error en init de t
 db.ensureItemWatchTable().catch(e => console.log('[fav-watch] Error en init de tabla:', e.message));
 db.ensureReviewsPropiasTable().catch(e => console.log('[resenas] Error en init de tabla:', e.message));
 db.ensureEmailLogTable().catch(e => console.log('[email-log] Error en init de tabla:', e.message));
+
+// ── Histórico de stock: foto diaria de todas las variantes ───────────────
+//
+// Sin esto la demanda queda censurada: una variante que se agota deja de
+// vender y el sistema lo lee como falta de interés. Con la serie de
+// existencias, la demanda real es unidades ÷ DÍAS QUE HUBO STOCK.
+//
+// El dato de hoy no se puede recuperar mañana, así que el job arranca ya
+// aunque el cálculo que lo aprovecha se implemente después.
+db.ensureStockHistoricoTable()
+  .then(() => { snapshotStock('arranque'); })
+  .catch(e => console.log('[stock-hist] Error en init de tabla:', e.message));
+
+async function snapshotStock(motivo = 'diario') {
+  try {
+    const items = getProductCache();
+    if (!items || !items.length) { console.log('[stock-hist] cache vacío, se omite'); return; }
+    const cuenta = config.label || config.id || '';
+    const filas = [];
+    for (const it of items) {
+      const vars = (it.variations && it.variations.length) ? it.variations : null;
+      if (vars) {
+        for (const v of vars) filas.push({
+          item_id: it.id, variation_id: String(v.id || ''), cantidad: v.available_quantity ?? 0,
+          cuenta, titulo: it.title,
+          variante: (v.attribute_combinations || []).map(a => `${a.name}: ${a.value_name}`).join(' · '),
+        });
+      } else {
+        filas.push({ item_id: it.id, variation_id: '', cantidad: it.available_quantity ?? 0,
+                     cuenta, titulo: it.title, variante: '' });
+      }
+    }
+    const n = await db.guardarSnapshotStock(filas);
+    const sin = filas.filter(f => (f.cantidad || 0) === 0).length;
+    console.log(`[stock-hist] foto ${motivo}: ${n} variantes (${sin} sin stock) — cuenta ${cuenta}`);
+  } catch (e) { console.log('[stock-hist] Error al guardar la foto:', e.message); }
+}
+
+// Una foto por día. Se chequea cada hora y se dispara cuando cambia el día:
+// con un intervalo de 24 h, un reinicio del proceso salteaba días enteros.
+let _ultimaFotoStock = new Date().toISOString().slice(0, 10);
+setInterval(() => {
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (hoy === _ultimaFotoStock) return;
+  _ultimaFotoStock = hoy;
+  snapshotStock('diaria').then(() => db.podarHistoricoStock(400)
+    .then(n => { if (n) console.log(`[stock-hist] podadas ${n} filas de más de 400 días`); })
+    .catch(() => {}));
+}, 60 * 60 * 1000);
 
 // Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado
 // y manda UN email "tu carrito te espera" con deep-link de restauración.

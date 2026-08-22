@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Cat list ───────────────────────────────────────────────────── */
@@ -43,7 +43,7 @@
 
 .cat-badge {
   font-size: 11px; font-weight: 600; font-family: var(--font-mono);
-  padding: 2px 9px; border-radius: 20px; flex-shrink: 0;
+  padding: 2px 9px; border-radius:6px; flex-shrink: 0;
   border: 1px solid var(--border); color: var(--text-3); background: var(--bg);
 }
 .cat-badge.has-products {
@@ -117,7 +117,7 @@
 .cat-row.ml-readonly:hover { box-shadow: none; }
 .badge-ml {
   font-size: 10px; font-weight: 700; font-family: var(--font-mono);
-  padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+  padding: 2px 8px; border-radius:6px; flex-shrink: 0;
   background: #FFF7ED; color: #C2570A; border: 1px solid #FDBA74;
   letter-spacing: .03em;
 }
@@ -189,16 +189,16 @@
     <div class="modal-body">
       <div class="adm-field">
         <label class="adm-label">Nombre <span style="color:var(--red)">*</span></label>
-        <input type="text" class="adm-input" id="m-label" maxlength="120" placeholder="Ej: Celulares">
+        <input type="text" class="adm-input" id="m-label" maxlength="120" placeholder="Ej: Celulares" aria-label="Ej: Celulares">
       </div>
       <div class="adm-field" id="slug-field">
         <label class="adm-label">Slug <span style="font-weight:400;color:var(--text-3);">(identificador interno, sin espacios)</span></label>
-        <input type="text" class="adm-input" id="m-slug" maxlength="60" placeholder="celulares" style="font-family:var(--font-mono);font-size:12px;">
+        <input type="text" class="adm-input" id="m-slug" maxlength="60" placeholder="celulares" style="font-family:var(--font-mono);font-size:12px;" aria-label="celulares">
         <div class="field-hint">Solo letras, números y guiones. Se genera automáticamente del nombre si lo dejás vacío.</div>
       </div>
       <div class="adm-field">
         <label class="adm-label">Descripción <span style="font-weight:400;color:var(--text-3);">opcional</span></label>
-        <input type="text" class="adm-input" id="m-desc" maxlength="300" placeholder="Breve descripción para el equipo">
+        <input type="text" class="adm-input" id="m-desc" maxlength="300" placeholder="Breve descripción para el equipo" aria-label="Breve descripción para el equipo">
       </div>
     </div>
     <div class="modal-foot">

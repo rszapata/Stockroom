@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v24'; // v24: vinculaciones — histórico liviano (poda 60d) + visor
+const CACHE_NAME = 'stockroom-v69'; // v69: cobros — traer ventas de la API de ML sin bajar el Excel
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,8 @@ const STATIC_ASSETS = [
   '/publicaciones.html',
   '/migracion.html',
   '/vinculaciones.html',
+  '/pedidos-costos.html',
+  '/stock-historico.html',
   '/shell.js',
   '/chart.umd.min.js',
   '/icon.svg',

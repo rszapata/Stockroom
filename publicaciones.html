@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -31,13 +31,13 @@
 }
 .pg *, .pg *::before, .pg *::after { box-sizing: border-box; }
 /* BUTTONS */
-.pg .btn {height:38px;padding:0 16px;font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:.01em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .18s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px}
+.pg .btn {height:38px;padding:0 16px;font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:.01em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .18s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px}
 .pg .btn:hover {border-color:var(--b2);color:var(--tx);background:var(--bg-card)}
 .pg .btn.primary {background:var(--ye);color:var(--bg);border-color:var(--ye);font-weight:600}
 .pg .btn.primary:hover {background:var(--blue-dark);border-color:var(--blue-dark)}
 .pg .btn.success {background:var(--gr);color:var(--bg);border-color:var(--gr);font-weight:600}
 .pg .btn.success:hover {background:var(--green);border-color:var(--green)}
-.pg .btn.sm {height:32px;padding:0 12px;font-size:11px;border-radius:8px}
+.pg .btn.sm {height:32px;padding:0 12px;font-size:11px;border-radius:6px}
 .pg .btn:disabled {opacity:.4;cursor:not-allowed;pointer-events:none}
 .pg .btn-full {width:100%}
 
@@ -45,8 +45,8 @@
 .pg main {padding:24px 28px;flex:1}
 
 /* TABS */
-.pg .tabs {display:flex;gap:4px;margin-bottom:24px;padding:4px;background:var(--s1);border:1px solid var(--b1);border-radius:12px;width:fit-content}
-.pg .tab-btn {font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:0;color:var(--t2);background:transparent;border:none;cursor:pointer;padding:8px 18px;transition:all .2s;border-radius:8px}
+.pg .tabs {display:flex;gap:4px;margin-bottom:24px;padding:4px;background:var(--s1);border:1px solid var(--b1);border-radius:6px;width:fit-content}
+.pg .tab-btn {font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:0;color:var(--t2);background:transparent;border:none;cursor:pointer;padding:8px 18px;transition:all .2s;border-radius:6px}
 .pg .tab-btn:hover {color:var(--tx);background:rgba(255,255,255,.03)}
 .pg .tab-btn.active {color:var(--bg);background:var(--ye);font-weight:600}
 .pg .tab-content {display:none}
@@ -54,10 +54,12 @@
 
 /* LAYOUT */
 .pg .pub-layout {display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
-@media(max-width:960px){.pub-layout{grid-template-columns:1fr}}
+/* .pg .pub-layout (0,2,0) le ganaba a .pub-layout (0,1,0): la regla mobile
+   nunca se aplicaba y el panel lateral de 300px desbordaba 251px. */
+@media(max-width:960px){.pg .pub-layout{grid-template-columns:1fr}}
 
 /* CARDS */
-.pg .card {background:var(--s1);border:1px solid var(--b1);margin-bottom:14px;border-radius:16px;overflow:hidden;transition:border-color .2s}
+.pg .card {background:var(--s1);border:1px solid var(--b1);margin-bottom:14px;border-radius:6px;overflow:hidden;transition:border-color .2s}
 .pg .card:hover {border-color:var(--border)}
 .pg .card-header {padding:14px 20px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
 .pg .card-title {font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--t2);text-transform:uppercase}
@@ -66,7 +68,7 @@
 .pg .field:last-child {margin-bottom:0}
 .pg .field label {display:block;font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.02em;color:var(--t2);margin-bottom:6px}
 .pg .req {color:var(--re);margin-left:2px}
-.pg .field input, .pg .field select, .pg .field textarea {width:100%;background:var(--bg);border:1px solid var(--b1);color:var(--tx);font-family:var(--sans);font-size:13px;padding:0 12px;height:40px;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none;appearance:none;border-radius:10px}
+.pg .field input, .pg .field select, .pg .field textarea {width:100%;background:var(--bg);border:1px solid var(--b1);color:var(--tx);font-family:var(--sans);font-size:13px;padding:0 12px;height:40px;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none;appearance:none;border-radius:6px}
 .pg .field textarea {height:96px;padding:10px 12px;resize:vertical;line-height:1.5}
 .pg .field input:focus, .pg .field select:focus, .pg .field textarea:focus {border-color:var(--ye);box-shadow:0 0 0 3px color-mix(in srgb,var(--ye) 8%,transparent)}
 .pg .field input::placeholder, .pg .field textarea::placeholder {color:var(--t3)}
@@ -80,30 +82,30 @@
 .pg .radio-row label:has(input:checked) {color:var(--ye)}
 /* CATEGORY */
 .pg .cat-list {display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.pg .cat-pill {display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border:1px solid var(--b1);cursor:pointer;transition:all .18s;border-radius:10px}
+.pg .cat-pill {display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg);border:1px solid var(--b1);cursor:pointer;transition:all .18s;border-radius:6px}
 .pg .cat-pill:hover {border-color:var(--b2);background:var(--bg-card)}
 .pg .cat-pill-name {font-size:13px;font-weight:500}
 .pg .cat-pill-meta {display:flex;align-items:center;gap:8px}
 .pg .cat-id {font-family:var(--mono);font-size:10px;color:var(--t3)}
 .pg .cat-conf {font-family:var(--mono);font-size:10px;color:var(--cy);background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.2);padding:3px 7px;border-radius:6px}
-.pg .cat-selected {display:flex;align-items:center;gap:10px;padding:12px 14px;background:color-mix(in srgb,var(--ye) 6%,transparent);border:1px solid color-mix(in srgb,var(--ye) 30%,transparent);margin-top:8px;border-radius:10px}
+.pg .cat-selected {display:flex;align-items:center;gap:10px;padding:12px 14px;background:color-mix(in srgb,var(--ye) 6%,transparent);border:1px solid color-mix(in srgb,var(--ye) 30%,transparent);margin-top:8px;border-radius:6px}
 .pg .cat-selected-name {font-size:13px;color:var(--ye);font-weight:500;flex:1}
 .pg .cat-selected-id {font-family:var(--mono);font-size:10px;color:var(--t3)}
 .pg .cat-clear {background:none;cursor:pointer;color:var(--t3);font-family:var(--sans);font-size:11px;padding:4px 10px;border:1px solid var(--b1);transition:all .2s;border-radius:6px}
 .pg .cat-clear:hover {color:var(--re);border-color:rgba(239,68,68,.4)}
 
 /* IMAGES */
-.pg .img-zone {border:1.5px dashed var(--b2);padding:28px;text-align:center;cursor:pointer;transition:all .2s;color:var(--t3);font-family:var(--sans);font-size:12px;position:relative;border-radius:12px;background:var(--bg)}
+.pg .img-zone {border:1.5px dashed var(--b2);padding:28px;text-align:center;cursor:pointer;transition:all .2s;color:var(--t3);font-family:var(--sans);font-size:12px;position:relative;border-radius:6px;background:var(--bg)}
 .pg .img-zone:hover, .pg .img-zone.over {border-color:var(--ye);color:var(--ye);background:color-mix(in srgb,var(--ye) 3%,transparent)}
 .pg .img-zone input[type=file] {position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.pg .img-zone-icon {font-size:22px;margin-bottom:8px;opacity:.5;display:block}
+.pg .img-zone-icon {font-size:20px;margin-bottom:8px;opacity:.5;display:block}
 .pg .img-grid {display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.pg .img-thumb {position:relative;width:72px;height:72px;border:1px solid var(--b1);overflow:hidden;flex-shrink:0;border-radius:10px}
+.pg .img-thumb {position:relative;width:72px;height:72px;border:1px solid var(--b1);overflow:hidden;flex-shrink:0;border-radius:6px}
 .pg .img-thumb img {width:100%;height:100%;object-fit:cover;display:block}
 .pg .img-del {position:absolute;top:4px;right:4px;width:20px;height:20px;background:rgba(0,0,0,.8);border:none;cursor:pointer;color:var(--re);font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1;transition:background .15s;border-radius:6px}
 .pg .img-del:hover {background:rgba(239,68,68,.9);color:#fff}
 .pg .img-url-row {display:flex;gap:8px;margin-top:12px}
-.pg .img-url-row input {flex:1;background:var(--bg);border:1px solid var(--b1);color:var(--tx);font-family:var(--sans);font-size:12px;padding:0 12px;height:36px;outline:none;transition:border-color .2s;border-radius:8px}
+.pg .img-url-row input {flex:1;background:var(--bg);border:1px solid var(--b1);color:var(--tx);font-family:var(--sans);font-size:12px;padding:0 12px;height:36px;outline:none;transition:border-color .2s;border-radius:6px}
 .pg .img-url-row input:focus {border-color:var(--ye)}
 .pg .img-url-row input::placeholder {color:var(--t3)}
 
@@ -118,29 +120,29 @@
 .pg .toggle-label {font-family:var(--sans);font-size:12px;color:var(--t2);letter-spacing:0}
 
 /* SIMULADOR DE COSTOS */
-.pg .cs-opt {border:1px solid var(--b1);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:all .15s;background:var(--bg)}
+.pg .cs-opt {border:1px solid var(--b1);border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:all .15s;background:var(--bg)}
 .pg .cs-opt:hover {border-color:var(--b2)}
 .pg .cs-opt.sel {border-color:var(--ye);background:color-mix(in srgb,var(--ye) 5%,transparent)}
 .pg .cs-opt-hd {display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px;color:var(--tx);flex-wrap:wrap}
-.pg .cs-tag {font-size:9.5px;color:var(--gr);border:1px solid color-mix(in srgb,var(--gr) 40%,transparent);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.pg .cs-tag {font-size:10px;color:var(--gr);border:1px solid color-mix(in srgb,var(--gr) 40%,transparent);border-radius:99px;padding:1px 7px;white-space:nowrap}
 .pg .cs-sel {margin-left:auto;font-size:10px;color:var(--ye);font-weight:600}
-.pg .cs-row {display:flex;justify-content:space-between;font-size:11.5px;color:var(--t2);padding:1px 0;font-variant-numeric:tabular-nums;gap:10px}
+.pg .cs-row {display:flex;justify-content:space-between;font-size:12px;color:var(--t2);padding:1px 0;font-variant-numeric:tabular-nums;gap:10px}
 .pg .cs-row.cs-net {border-top:1px dashed var(--b1);margin-top:4px;padding-top:5px;font-weight:600;color:var(--tx)}
 .pg .cs-dif {font-size:10px;color:var(--or);margin-top:4px}
-.pg .check-item {display:flex;align-items:center;gap:10px;font-size:12.5px;padding:9px 0}
+.pg .check-item {display:flex;align-items:center;gap:10px;font-size:12px;padding:9px 0}
 .pg .check-item + .check-item {border-top:1px solid color-mix(in srgb,var(--b1) 55%,transparent)}
 .pg .check-label {flex:1;min-width:0;display:flex;align-items:center;gap:9px;color:var(--t2)}
 .pg .check-item.done .check-label {color:var(--tx)}
 .pg .check-ico {flex-shrink:0;width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;line-height:1;border:1.5px solid var(--b2);color:var(--t3)}
 .pg .check-item.done .check-ico {border-color:transparent;background:color-mix(in srgb,var(--gr) 16%,transparent);color:var(--gr)}
 .pg .check-status {flex-shrink:0;font-size:10px;font-weight:600;letter-spacing:.02em;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,var(--or) 13%,transparent);color:var(--or);white-space:nowrap}
-.pg .check-foot {display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1);font-size:11.5px}
-.pg .check-bar {flex:1;height:5px;border-radius:3px;background:var(--bg);overflow:hidden}
-.pg .check-bar > i {display:block;height:100%;border-radius:3px;background:var(--gr);transition:width .3s}
+.pg .check-foot {display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1);font-size:12px}
+.pg .check-bar {flex:1;height:5px;border-radius:4px;background:var(--bg);overflow:hidden}
+.pg .check-bar > i {display:block;height:100%;border-radius:4px;background:var(--gr);transition:width .3s}
 
 /* VARIATIONS */
 .pg .var-inputs {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-.pg .var-table-wrap {margin-top:14px;overflow-x:auto;border:1px solid var(--b1);border-radius:12px;background:var(--bg)}
+.pg .var-table-wrap {margin-top:14px;overflow-x:auto;border:1px solid var(--b1);border-radius:6px;background:var(--bg)}
 .pg .var-table {width:100%;border-collapse:collapse;font-size:12px}
 .pg .var-table th {font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--t3);padding:10px 12px;text-align:left;border-bottom:1px solid var(--b1);background:var(--bg-card);text-transform:uppercase}
 .pg .var-table td {padding:6px 10px;border-bottom:1px solid rgba(38,38,38,.5)}
@@ -151,31 +153,31 @@
 /* ATTRIBUTES */
 .pg .attrs-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
 .pg .attr-f label {display:block;font-family:var(--sans);font-size:10px;font-weight:500;letter-spacing:.04em;color:var(--t3);text-transform:uppercase;margin-bottom:5px}
-.pg .attr-f input, .pg .attr-f select {width:100%;background:var(--bg);border:1px solid var(--b1);color:var(--tx);font-family:var(--sans);font-size:12px;padding:0 12px;height:36px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;border-radius:8px}
+.pg .attr-f input, .pg .attr-f select {width:100%;background:var(--bg);border:1px solid var(--b1);color:var(--tx);font-family:var(--sans);font-size:12px;padding:0 12px;height:36px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;border-radius:6px}
 .pg .attr-f input:focus, .pg .attr-f select:focus {border-color:var(--ye)}
 .pg .attr-f select {background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2371717a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
 .pg .attr-f select option {background:var(--bg-card)}
 
 /* SIDEBAR */
 .pg .pub-sidebar {position:sticky;top:70px}
-.pg .side-card {background:var(--s1);border:1px solid var(--b1);margin-bottom:12px;border-radius:14px;overflow:hidden}
+.pg .side-card {background:var(--s1);border:1px solid var(--b1);margin-bottom:12px;border-radius:6px;overflow:hidden}
 .pg .side-card-hd {padding:12px 16px;border-bottom:1px solid var(--b1);font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--t2);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
 .pg .log-e {font-family:var(--mono);font-size:11px;line-height:1.9;padding:0}
 .pg .log-e.info {color:var(--t2)}
 .pg .log-e.ok {color:var(--gr)}
 .pg .log-e.err {color:var(--re)}
 .pg .log-e.warn {color:var(--or)}
-.pg .json-pre {background:var(--bg);padding:12px;font-family:var(--mono);font-size:10px;color:var(--t2);max-height:220px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.6;display:none;border-radius:8px}
+.pg .json-pre {background:var(--bg);padding:12px;font-family:var(--mono);font-size:10px;color:var(--t2);max-height:220px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;line-height:1.6;display:none;border-radius:6px}
 .pg .json-pre.on {display:block}
 
 /* BULK */
-.pg .bulk-top {display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:20px;background:var(--s1);border:1px solid var(--b1);border-radius:14px}
+.pg .bulk-top {display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:20px;background:var(--s1);border:1px solid var(--b1);border-radius:6px}
 .pg .bulk-top .field {margin:0;min-width:160px}
-.pg .bulk-zone {border:2px dashed var(--b2);padding:48px 28px;text-align:center;cursor:pointer;transition:all .2s;font-family:var(--sans);font-size:13px;color:var(--t3);position:relative;margin-bottom:18px;border-radius:14px;background:var(--bg)}
+.pg .bulk-zone {border:2px dashed var(--b2);padding:48px 28px;text-align:center;cursor:pointer;transition:all .2s;font-family:var(--sans);font-size:13px;color:var(--t3);position:relative;margin-bottom:18px;border-radius:6px;background:var(--bg)}
 .pg .bulk-zone:hover, .pg .bulk-zone.over {border-color:var(--ye);color:var(--ye);background:color-mix(in srgb,var(--ye) 2%,transparent)}
 .pg .bulk-zone input[type=file] {position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .pg .bulk-zone-ico {font-size:30px;display:block;margin-bottom:10px;opacity:.4}
-.pg .bprev {background:var(--s1);border:1px solid var(--b1);overflow:hidden;margin-bottom:18px;display:none;border-radius:14px}
+.pg .bprev {background:var(--s1);border:1px solid var(--b1);overflow:hidden;margin-bottom:18px;display:none;border-radius:6px}
 .pg .bprev.on {display:block}
 .pg .bprev-hd {padding:14px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between}
 .pg .bprev .bprev-table-wrap {overflow-x:auto}
@@ -189,10 +191,10 @@
 .pg .badge.err {color:var(--re);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
 .pg .badge.wait {color:var(--t3);border-color:var(--b1);background:var(--bg-card)}
 .pg .badge.run {color:var(--ye);border-color:color-mix(in srgb,var(--ye) 30%,transparent);background:color-mix(in srgb,var(--ye) 8%,transparent)}
-.pg .prog-card {background:var(--s1);border:1px solid var(--b1);padding:20px;margin-bottom:14px;display:none;border-radius:14px}
+.pg .prog-card {background:var(--s1);border:1px solid var(--b1);padding:20px;margin-bottom:14px;display:none;border-radius:6px}
 .pg .prog-card.on {display:block}
-.pg .prog-track {background:var(--bg);height:6px;border-radius:3px;overflow:hidden;margin:10px 0 14px}
-.pg .prog-fill {height:100%;background:var(--ye);transition:width .4s;border-radius:3px;width:0}
+.pg .prog-track {background:var(--bg);height:6px;border-radius:4px;overflow:hidden;margin:10px 0 14px}
+.pg .prog-fill {height:100%;background:var(--ye);transition:width .4s;border-radius:4px;width:0}
 .pg .bulk-stats {display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px}
 .pg .bstat {display:flex;align-items:baseline;gap:6px}
 .pg .bstat-n {font-family:var(--mono);font-size:20px;font-weight:600}
@@ -200,7 +202,7 @@
 .pg .bstat-n.err {color:var(--re)}
 .pg .bstat-n.wait {color:var(--t3)}
 .pg .bstat-l {font-family:var(--sans);font-size:11px;color:var(--t3);letter-spacing:.02em}
-.pg .bulk-log {background:var(--bg);padding:12px 14px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:10px;line-height:1.9;white-space:pre-wrap;border-radius:8px}
+.pg .bulk-log {background:var(--bg);padding:12px 14px;max-height:200px;overflow-y:auto;font-family:var(--mono);font-size:10px;line-height:1.9;white-space:pre-wrap;border-radius:6px}
 
 /* BULK BUILDER */
 .pg .bb-layout {display:grid;grid-template-columns:280px 1fr;gap:16px}
@@ -238,7 +240,7 @@
 /* SCROLLBAR */
 .pg ::-webkit-scrollbar {width:5px;height:5px}
 .pg ::-webkit-scrollbar-track {background:transparent}
-.pg ::-webkit-scrollbar-thumb {background:var(--b2);border-radius:3px}
+.pg ::-webkit-scrollbar-thumb {background:var(--b2);border-radius:4px}
 .pg ::-webkit-scrollbar-thumb:hover {background:var(--b3)}
 
 /* Sidebar/header inline pattern */
@@ -258,15 +260,15 @@
 @keyframes drpIn { from { opacity:0; transform: translateY(-4px);} to {opacity:1; transform:translateY(0);} }
 .pg .m-bottom-nav, .pg .m-drawer, .pg .m-drawer-overlay, .pg .m-fab { display: none !important; }
 /* ── Rounded dashboard aesthetic overrides ──────────────────── */
-.pg .card, .pg .side-card, .pg .kpi, .pg .chart-card, .pg .upload-card, .pg .flex-card, .pg .setup-box, .pg .bulk-top, .pg .prog-card, .pg .log-wrap, .pg .pub-sidebar, .pg .pub-main { border-radius: 14px !important; overflow: hidden; }
-.pg .card-header { border-radius: 14px 14px 0 0; }
-.pg .btn { border-radius: 10px !important; }
-.pg .btn.sm { border-radius: 8px !important; }
-.pg .field input, .pg .field select, .pg .field textarea, .pg input[type="text"], .pg input[type="search"], .pg input[type="number"], .pg select, .pg textarea { border-radius: 10px !important; }
-.pg .tab-btn { border-radius: 10px 10px 0 0; }
-.pg .items-table, .pg .var-table, .pg .table-wrap { border-radius: 12px; overflow: hidden; }
-.pg .img-zone, .pg .dropzone, .pg .bulk-zone { border-radius: 12px !important; }
-.pg .cat-pill { border-radius: 10px !important; }
+.pg .card, .pg .side-card, .pg .kpi, .pg .chart-card, .pg .upload-card, .pg .flex-card, .pg .setup-box, .pg .bulk-top, .pg .prog-card, .pg .log-wrap, .pg .pub-sidebar, .pg .pub-main { border-radius:6px !important; overflow: hidden; }
+.pg .card-header { border-radius:6px 6px 0 0; }
+.pg .btn { border-radius:6px !important; }
+.pg .btn.sm { border-radius:6px !important; }
+.pg .field input, .pg .field select, .pg .field textarea, .pg input[type="text"], .pg input[type="search"], .pg input[type="number"], .pg select, .pg textarea { border-radius:6px !important; }
+.pg .tab-btn { border-radius:6px 6px 0 0; }
+.pg .items-table, .pg .var-table, .pg .table-wrap { border-radius:6px; overflow: hidden; }
+.pg .img-zone, .pg .dropzone, .pg .bulk-zone { border-radius:6px !important; }
+.pg .cat-pill { border-radius:6px !important; }
 .pg .status-badge, .pg .badge, .pg .meli-badge { border-radius: 6px; }
 
 /* ═══════════════════════════════════════════════
@@ -319,7 +321,7 @@
 .pg .btm-item svg {flex-shrink:0}
 .pg .btm-sheet {
   position:fixed;left:0;right:0;bottom:0;z-index:52;
-  background:var(--bg-card);border:1px solid var(--border);border-radius:16px 16px 0 0;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:6px 6px 0 0;
   padding:6px 16px 0;display:flex;flex-direction:column;gap:2px;
   transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
   padding-bottom:calc(env(safe-area-inset-bottom,0px) + 72px)
@@ -333,7 +335,7 @@
 .pg .btm-handle {width:32px;height:3px;background:var(--border-2);border-radius:2px;margin:6px auto 12px}
 .pg .btm-more-link {
   display:flex;align-items:center;gap:12px;padding:11px 10px;
-  border-radius:10px;color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;
+  border-radius:6px;color:var(--text-2);text-decoration:none;font-size:13px;font-weight:500;
   transition:background .15s,color .15s
 }
 .pg .btm-more-link:hover {background:var(--bg-card);color:var(--text)}
@@ -358,7 +360,7 @@
 .pg .side-card     { margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
 .pg .side-card-hd  { padding: 14px 20px; }
 .pg .side-card-body{ padding: 18px 20px; }
-.pg .bb-section    { border-radius: 14px; overflow: hidden; }
+.pg .bb-section    { border-radius:6px; overflow: hidden; }
 .pg .bb-section-hd { padding: 13px 20px; }
 .pg .bb-section-body { padding: 18px 20px; }
 .pg .log-wrap      { max-height: 240px; overflow-y: auto; padding: 14px 18px; }
@@ -366,7 +368,7 @@
 
 /* 2 · Ritmo vertical del formulario */
 .pg .field         { margin-bottom: 18px; }
-.pg .field label   { margin-bottom: 7px; font-size: 11.5px; }
+.pg .field label   { margin-bottom: 7px; font-size: 12px; }
 .pg .hint          { margin-top: 6px; line-height: 1.55; }
 .pg .grid2, .pg .grid3 { gap: 14px; }
 .pg .var-inputs    { gap: 14px; }
@@ -380,12 +382,12 @@
 .pg .bprev td      { padding: 12px 16px; }
 
 /* 4 · Badges de estado elegantes (pill, tinte suave, sin gritar) */
-.pg .badge         { border-radius: 999px; padding: 4px 11px; font-size: 10.5px; letter-spacing: .04em; }
-.pg .bb-prod-item  { border-radius: 12px; padding: 12px 14px; }
+.pg .badge         { border-radius: 999px; padding: 4px 11px; font-size: 10px; letter-spacing: .04em; }
+.pg .bb-prod-item  { border-radius:6px; padding: 12px 14px; }
 .pg .bb-prod-item .bb-pi-title { font-size: 12px; margin-bottom: 4px; }
-.pg .bb-prod-item .bb-pi-meta  { font-size: 9.5px; gap: 10px; }
-.pg .bb-add-btn    { border-radius: 12px; }
-.pg .bb-empty      { border-radius: 14px; }
+.pg .bb-prod-item .bb-pi-meta  { font-size: 10px; gap: 10px; }
+.pg .bb-add-btn    { border-radius:6px; }
+.pg .bb-empty      { border-radius:6px; }
 .pg .bulk-top      { padding: 20px 24px; gap: 16px; }
 
 /* 5 · Combobox de categorías — dropdown con buscador y árbol integrado */
@@ -393,7 +395,7 @@
 .pg .cat-pop {
   position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60;
   display: flex; flex-direction: column; max-height: 360px; overflow: hidden;
-  background: var(--bg-card); border: 1px solid var(--b2); border-radius: 12px;
+  background: var(--bg-card); border: 1px solid var(--b2); border-radius:6px;
   box-shadow: 0 12px 32px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
   animation: drpIn .15s ease-out;
 }
@@ -407,12 +409,12 @@
 .pg .cat-pop-list { overflow-y: auto; padding: 8px; }
 .pg .cat-pop-ft {
   padding: 8px 14px; border-top: 1px solid var(--b1); flex-shrink: 0;
-  font-size: 10.5px; color: var(--t3); background: var(--bg);
+  font-size: 10px; color: var(--t3); background: var(--bg);
 }
 .pg .cat-list      { margin-top: 0; gap: 2px; }
-.pg .cat-pill      { border: none; border-radius: 8px; padding: 10px 12px; background: transparent; }
+.pg .cat-pill      { border: none; border-radius:6px; padding: 10px 12px; background: transparent; }
 .pg .cat-pill:hover{ background: var(--bg); border: none; }
-.pg .cat-selected  { padding: 14px 16px; border-radius: 12px; }
+.pg .cat-selected  { padding: 14px 16px; border-radius:6px; }
 
 /* 6 · Responsive — colapso elegante en mobile */
 @media (max-width: 960px) {
@@ -440,7 +442,7 @@
 
 <!-- SIDEBAR -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- MAIN -->
 <div class="adm-main">
@@ -461,7 +463,7 @@
       </button>
       <div class="adm-search" style="width:220px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="hdr-search" type="search" placeholder="Buscar&#8230;" autocomplete="off">
+        <input id="hdr-search" type="search" placeholder="Buscar&#8230;" autocomplete="off" aria-label="Buscar&#8230;">
       </div>
       <div class="adm-acct" id="acct-wrap">
         <button class="adm-acct-btn" id="acc-btn">
@@ -505,7 +507,7 @@
           <div class="card-body">
             <div class="field">
               <label>Título <span class="req">*</span></label>
-              <input type="text" id="f-titulo" placeholder="Ej: Remera algodón hombre manga corta — sin precios ni URLs" maxlength="60" oninput="onTitulo(this.value)">
+              <input type="text" id="f-titulo" placeholder="Ej: Remera algodón hombre manga corta — sin precios ni URLs" maxlength="60" oninput="onTitulo(this.value)" aria-label="Ej: Remera algodón hombre manga corta — sin precios ni URLs">
               <div class="hint"><span id="tlen">0</span>/60 caracteres</div>
             </div>
             <div class="field">
@@ -513,7 +515,7 @@
               <div id="cat-selected-wrap" class="hidden"></div>
               <div id="cat-input-wrap" class="cat-combo">
                 <input type="text" id="f-cat-search" placeholder="Buscá una categoría o pegá el ID (ej: MLA5337)…"
-                       oninput="onCatSearch(this.value)" onfocus="openCatPop()" autocomplete="off" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+                       oninput="onCatSearch(this.value)" onfocus="openCatPop()" autocomplete="off" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="Buscá una categoría o pegá el ID (ej: MLA5337)…">
                 <div class="cat-pop hidden" id="cat-pop">
                   <div class="cat-pop-bc" id="cat-breadcrumb"></div>
                   <div class="cat-pop-list" id="cat-wrap" role="listbox"></div>
@@ -525,7 +527,7 @@
             <div class="grid2">
               <div class="field" style="margin:0">
                 <label>Condición <span class="req">*</span></label>
-                <select id="f-cond" onchange="preview()">
+                <select id="f-cond" onchange="preview()" aria-label="Condicion del producto">
                   <option value="new">Nuevo</option>
                   <option value="used">Usado</option>
                   <option value="not_specified">No especificado</option>
@@ -533,7 +535,7 @@
               </div>
               <div class="field" style="margin:0">
                 <label>Tipo de publicación <span class="req">*</span></label>
-                <select id="f-tipo" onchange="preview()">
+                <select id="f-tipo" onchange="preview()" aria-label="Tipo de publicacion">
                   <option value="gold_special">Clásica — gold_special</option>
                   <option value="gold_pro">Premium — gold_pro</option>
                   <option value="free">Gratuita — free</option>
@@ -563,7 +565,7 @@
           <div class="card-body">
             <div class="img-zone" id="img-zone"
                  ondragover="e(event,'img-zone')" ondragleave="el(event,'img-zone')" ondrop="ed(event,'img-zone')">
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="onImgFiles(this.files)">
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="onImgFiles(this.files)" aria-label="Imagenes del producto">
               <span class="img-zone-icon">🖼</span>
               SUBIR IMÁGENES — drag &amp; drop o click<br>
               <span style="font-size:9px;opacity:.6">JPG / PNG — mín. 500×500 px — máx. 12 imágenes</span>
@@ -571,7 +573,7 @@
             <div id="img-grid" class="img-grid"></div>
             <div class="img-url-row">
               <input type="text" id="img-url" placeholder="O pegá una URL de imagen y presioná Enter..."
-                     onkeydown="if(event.key==='Enter')addUrl()">
+                     onkeydown="if(event.key==='Enter')addUrl()" aria-label="O pegá una URL de imagen y presioná Enter...">
               <button class="btn sm" onclick="addUrl()">+ URL</button>
             </div>
           </div>
@@ -584,7 +586,7 @@
             <div class="toggle-wrap">
               <span class="toggle-label">ACTIVAR</span>
               <label class="toggle">
-                <input type="checkbox" id="tog-vars" onchange="toggleVars()">
+                <input type="checkbox" id="tog-vars" onchange="toggleVars()" aria-label="Mostrar variantes">
                 <span class="toggle-slider"></span>
               </label>
             </div>
@@ -592,7 +594,7 @@
           <div id="vars-body" class="card-body hidden">
             <div class="hint" style="margin-bottom:10px">Elegí el tipo de variante y completá los valores separados por coma.</div>
             <div class="field" style="margin-bottom:10px">
-              <label>Tipo de variantes</label>
+              <label for="f-var-preset">Tipo de variantes</label>
               <select id="f-var-preset" onchange="applyVarPreset()" style="max-width:340px">
                 <option value="talle_color">Talle + Color (Ropa)</option>
                 <option value="color_modelo">Color + Modelo compatible (Fundas)</option>
@@ -604,22 +606,22 @@
             </div>
             <div class="var-inputs" id="var-inputs">
               <div class="field" style="margin:0" id="var-attr1-wrap">
-                <label id="var-attr1-label">Talles</label>
+                <label id="var-attr1-label" for="f-var-attr1">Talles</label>
                 <input type="text" id="f-var-attr1" placeholder="S,M,L,XL,XXL" oninput="buildVarTable()">
               </div>
               <div class="field" style="margin:0" id="var-attr2-wrap">
-                <label id="var-attr2-label">Colores</label>
+                <label id="var-attr2-label" for="f-var-attr2">Colores</label>
                 <input type="text" id="f-var-attr2" placeholder="Rojo,Azul,Negro,Blanco" oninput="buildVarTable()">
               </div>
             </div>
             <div id="var-custom-ids" class="hidden" style="margin-top:8px">
               <div class="grid2">
                 <div class="field" style="margin:0">
-                  <label>ID atributo 1 (ML)</label>
+                  <label for="f-var-cid1">ID atributo 1 (ML)</label>
                   <input type="text" id="f-var-cid1" placeholder="Ej: SIZE" oninput="buildVarTable()">
                 </div>
                 <div class="field" style="margin:0">
-                  <label>ID atributo 2 (ML)</label>
+                  <label for="f-var-cid2">ID atributo 2 (ML)</label>
                   <input type="text" id="f-var-cid2" placeholder="Ej: COLOR" oninput="buildVarTable()">
                 </div>
               </div>
@@ -648,10 +650,10 @@
             <div class="grid3" id="precio-row">
               <div class="field" style="margin:0">
                 <label>Precio <span class="req" id="precio-req">*</span></label>
-                <input type="number" id="f-precio" placeholder="15000" min="0" step="0.01" oninput="preview()">
+                <input type="number" id="f-precio" placeholder="15000" min="0" step="0.01" oninput="preview()" aria-label="15000">
               </div>
               <div class="field" style="margin:0">
-                <label>Moneda</label>
+                <label for="f-moneda">Moneda</label>
                 <select id="f-moneda" onchange="preview()">
                   <option value="ARS">ARS — Pesos</option>
                   <option value="USD">USD — Dólares</option>
@@ -659,7 +661,7 @@
               </div>
               <div class="field" style="margin:0">
                 <label>Cantidad disponible <span class="req">*</span></label>
-                <input type="number" id="f-qty" placeholder="10" min="0" oninput="preview()">
+                <input type="number" id="f-qty" placeholder="10" min="0" oninput="preview()" aria-label="10">
               </div>
             </div>
             <div id="precio-vars-note" class="hidden" style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--t3);padding:8px 10px;border:1px solid var(--b1);background:var(--s2)">
@@ -668,8 +670,8 @@
             <div class="field" style="margin-top:14px">
               <label>Estado inicial</label>
               <div class="radio-row">
-                <label><input type="radio" name="f-estado" value="active" checked onchange="preview()"> ACTIVO</label>
-                <label><input type="radio" name="f-estado" value="paused" onchange="preview()"> PAUSADO</label>
+                <label><input type="radio" name="f-estado" value="active" checked onchange="preview()" aria-label="Publicar como activa"> ACTIVO</label>
+                <label><input type="radio" name="f-estado" value="paused" onchange="preview()" aria-label="Publicar como pausada"> PAUSADO</label>
               </div>
             </div>
           </div>
@@ -681,14 +683,14 @@
           <div class="card-body">
             <div class="grid2" style="margin-bottom:12px">
               <div class="field" style="margin:0">
-                <label>Costo de envío</label>
+                <label for="f-shipping-cost">Costo de envío</label>
                 <select id="f-shipping-cost" onchange="preview()">
                   <option value="buyer">A cargo del comprador</option>
                   <option value="free">Envío gratis</option>
                 </select>
               </div>
               <div class="field" style="margin:0">
-                <label>Retiro en persona</label>
+                <label for="f-local-pickup">Retiro en persona</label>
                 <select id="f-local-pickup" onchange="preview()">
                   <option value="yes" selected>Sí</option>
                   <option value="no">No</option>
@@ -697,7 +699,7 @@
             </div>
             <div class="grid2">
               <div class="field" style="margin:0">
-                <label>Mercado Envíos Flex</label>
+                <label for="f-flex">Mercado Envíos Flex</label>
                 <select id="f-flex" onchange="preview()">
                   <option value="no">No</option>
                   <option value="yes">Sí — Envío en el día</option>
@@ -705,7 +707,7 @@
               </div>
               <div class="field" style="margin:0">
                 <label>Cuotas sin interés</label>
-                <div id="cuotas-info" style="display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px;border:1px solid var(--b1);border-radius:10px;background:var(--bg);font-size:12px;color:var(--t2);flex-wrap:wrap"></div>
+                <div id="cuotas-info" style="display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px;border:1px solid var(--b1);border-radius:6px;background:var(--bg);font-size:12px;color:var(--t2);flex-wrap:wrap"></div>
                 <div class="hint">En ML las cuotas sin interés las define el tipo de publicación (Premium), no un campo del formulario.</div>
               </div>
             </div>
@@ -717,12 +719,12 @@
           <div class="card-header"><span class="card-title">07 — DESCRIPCIÓN Y GARANTÍA</span></div>
           <div class="card-body">
             <div class="field">
-              <label>Descripción del producto</label>
+              <label for="f-desc">Descripción del producto</label>
               <textarea id="f-desc" placeholder="Descripción detallada: materiales, características, instrucciones de uso..." oninput="preview()"></textarea>
             </div>
             <div class="grid2">
               <div class="field" style="margin:0">
-                <label>Tipo de garantía</label>
+                <label for="f-gar-tipo">Tipo de garantía</label>
                 <select id="f-gar-tipo" onchange="preview()">
                   <option value="Garantía del vendedor">Garantía del vendedor</option>
                   <option value="Garantía de fábrica">Garantía de fábrica</option>
@@ -732,8 +734,8 @@
               <div class="field" style="margin:0">
                 <label>Tiempo de garantía</label>
                 <div style="display:flex;gap:6px">
-                  <input type="number" id="f-gar-num" placeholder="30" min="1" style="flex:1" oninput="preview()">
-                  <select id="f-gar-unit" style="width:100px" onchange="preview()">
+                  <input type="number" id="f-gar-num" placeholder="30" min="1" style="flex:1" oninput="preview()" aria-label="30">
+                  <select id="f-gar-unit" style="width:100px" onchange="preview()" aria-label="Unidad de la garantia">
                     <option value="días" selected>días</option>
                     <option value="meses">meses</option>
                     <option value="años">años</option>
@@ -744,7 +746,7 @@
             <div class="field" style="margin-top:14px;margin-bottom:0;max-width:300px">
               <label>Tiempo de fabricación (opcional)</label>
               <div style="display:flex;gap:8px;align-items:center">
-                <input type="number" id="f-manuf" placeholder="—" min="1" style="width:90px" oninput="preview()">
+                <input type="number" id="f-manuf" placeholder="—" min="1" style="width:90px" oninput="preview()" aria-label="Dias de fabricacion">
                 <span class="hint" style="margin:0">días — solo si el producto se fabrica a pedido</span>
               </div>
             </div>
@@ -775,11 +777,11 @@
           <div class="side-card-body">
             <div class="grid2" style="margin-bottom:10px">
               <div class="field" style="margin:0">
-                <label>Costo unitario $</label>
+                <label for="cs-costo">Costo unitario $</label>
                 <input type="number" id="cs-costo" min="0" placeholder="0" oninput="CostSim.saveInputs();CostSim.onFormChange()">
               </div>
               <div class="field" style="margin:0">
-                <label>Envío si es gratis $</label>
+                <label for="cs-envio">Envío si es gratis $</label>
                 <input type="number" id="cs-envio" min="0" placeholder="0" oninput="CostSim.saveInputs();CostSim.onFormChange()">
               </div>
             </div>
@@ -814,7 +816,7 @@
     <!-- Config bar -->
     <div class="bulk-top">
       <div class="field">
-        <label>Tipo de publicación</label>
+        <label for="b-tipo">Tipo de publicación</label>
         <select id="b-tipo">
           <option value="gold_special">Clásica — gold_special</option>
           <option value="gold_pro">Premium — gold_pro</option>
@@ -822,21 +824,21 @@
         </select>
       </div>
       <div class="field">
-        <label>Condición</label>
+        <label for="b-cond">Condición</label>
         <select id="b-cond">
           <option value="new">Nuevo</option>
           <option value="used">Usado</option>
         </select>
       </div>
       <div class="field">
-        <label>Estado inicial</label>
+        <label for="b-estado">Estado inicial</label>
         <select id="b-estado">
           <option value="paused">Pausado</option>
           <option value="active">Activo</option>
         </select>
       </div>
       <div class="field">
-        <label>Simultaneidad</label>
+        <label for="b-conc">Simultaneidad</label>
         <select id="b-conc">
           <option value="1">1 a la vez</option>
           <option value="3" selected>3 simultáneas</option>
@@ -873,29 +875,29 @@
             <div class="bb-section-body">
               <div class="field">
                 <label>Título <span class="req">*</span></label>
-                <input type="text" id="bb-titulo" placeholder="Título de la publicación" maxlength="60" oninput="bbSave()">
+                <input type="text" id="bb-titulo" placeholder="Título de la publicación" maxlength="60" oninput="bbSave()" aria-label="Título de la publicación">
               </div>
               <div class="grid2">
                 <div class="field" style="margin:0">
                   <label>Categoría ID <span class="req">*</span></label>
-                  <input type="text" id="bb-cat" placeholder="MLA109093" oninput="bbSave()">
+                  <input type="text" id="bb-cat" placeholder="MLA109093" oninput="bbSave()" aria-label="MLA109093">
                 </div>
                 <div class="field" style="margin:0">
-                  <label>Marca</label>
+                  <label for="bb-marca">Marca</label>
                   <input type="text" id="bb-marca" placeholder="Sin marca" oninput="bbSave()">
                 </div>
               </div>
               <div class="field">
-                <label>Descripción</label>
+                <label for="bb-desc">Descripción</label>
                 <textarea id="bb-desc" placeholder="Descripción del producto..." rows="3" oninput="bbSave()"></textarea>
               </div>
               <div class="grid2">
                 <div class="field" style="margin:0">
-                  <label>Garantía</label>
+                  <label for="bb-garantia">Garantía</label>
                   <input type="text" id="bb-garantia" placeholder="90 días" oninput="bbSave()">
                 </div>
                 <div class="field" style="margin:0">
-                  <label>SKU</label>
+                  <label for="bb-sku">SKU</label>
                   <input type="text" id="bb-sku" placeholder="SKU-001" oninput="bbSave()">
                 </div>
               </div>
@@ -909,11 +911,11 @@
               <div class="grid2">
                 <div class="field" style="margin:0">
                   <label>Precio <span class="req">*</span></label>
-                  <input type="number" id="bb-precio" placeholder="15000" min="0" step="0.01" oninput="bbSave();CostSim.bulkDebounced()">
+                  <input type="number" id="bb-precio" placeholder="15000" min="0" step="0.01" oninput="bbSave();CostSim.bulkDebounced()" aria-label="15000">
                 </div>
                 <div class="field" style="margin:0">
                   <label>Cantidad <span class="req">*</span></label>
-                  <input type="number" id="bb-qty" placeholder="10" min="0" oninput="bbSave()">
+                  <input type="number" id="bb-qty" placeholder="10" min="0" oninput="bbSave()" aria-label="10">
                 </div>
               </div>
               <div id="cs-bulk" style="margin-top:10px"></div>
@@ -930,7 +932,7 @@
               <div class="bb-img-list" id="bb-img-list"></div>
               <div style="display:flex;gap:6px">
                 <input type="text" id="bb-img-url" placeholder="Pegá URL de imagen y presioná Enter..." style="flex:1"
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();bbAddImg()}">
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();bbAddImg()}" aria-label="Pegá URL de imagen y presioná Enter...">
                 <button class="btn sm" onclick="bbAddImg()">+ URL</button>
               </div>
               <div class="hint" style="margin-top:6px">Arrastrá las miniaturas para reordenar. Primera imagen = portada.</div>
@@ -944,14 +946,14 @@
               <div class="toggle-wrap">
                 <span class="toggle-label">ACTIVAR</span>
                 <label class="toggle">
-                  <input type="checkbox" id="bb-tog-vars" onchange="bbToggleVars()">
+                  <input type="checkbox" id="bb-tog-vars" onchange="bbToggleVars()" aria-label="Mostrar variantes">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
             </div>
             <div id="bb-vars-body" class="bb-section-body hidden">
               <div class="field" style="margin-bottom:10px">
-                <label>Tipo de variantes</label>
+                <label for="bb-var-preset">Tipo de variantes</label>
                 <select id="bb-var-preset" onchange="bbApplyPreset()" style="max-width:340px">
                   <option value="talle_color">Talle + Color (Ropa)</option>
                   <option value="color_modelo">Color + Modelo compatible (Fundas)</option>
@@ -962,22 +964,22 @@
               </div>
               <div class="var-inputs">
                 <div class="field" style="margin:0" id="bb-attr1-wrap">
-                  <label id="bb-attr1-label">Talles</label>
+                  <label id="bb-attr1-label" for="bb-attr1">Talles</label>
                   <input type="text" id="bb-attr1" placeholder="S,M,L,XL,XXL" oninput="bbBuildVars()">
                 </div>
                 <div class="field" style="margin:0" id="bb-attr2-wrap">
-                  <label id="bb-attr2-label">Colores</label>
+                  <label id="bb-attr2-label" for="bb-attr2">Colores</label>
                   <input type="text" id="bb-attr2" placeholder="Rojo,Azul,Negro" oninput="bbBuildVars()">
                 </div>
               </div>
               <div id="bb-custom-ids" class="hidden" style="margin-top:8px">
                 <div class="grid2">
                   <div class="field" style="margin:0">
-                    <label>ID atributo 1</label>
+                    <label for="bb-cid1">ID atributo 1</label>
                     <input type="text" id="bb-cid1" placeholder="SIZE" oninput="bbBuildVars()">
                   </div>
                   <div class="field" style="margin:0">
-                    <label>ID atributo 2</label>
+                    <label for="bb-cid2">ID atributo 2</label>
                     <input type="text" id="bb-cid2" placeholder="COLOR" oninput="bbBuildVars()">
                   </div>
                 </div>
@@ -1034,14 +1036,14 @@
           <div class="card-header"><span class="card-title">01 — ORIGEN</span></div>
           <div class="card-body">
             <div class="field">
-              <label>Cuenta de origen</label>
+              <label for="cl-src-acct">Cuenta de origen</label>
               <select id="cl-src-acct"></select>
               <div class="hint">Por defecto: misma cuenta. El clon se publica en la cuenta activa: <strong id="cl-dst-name" style="color:var(--ye)">—</strong>.</div>
             </div>
             <div class="field">
               <label>ID o URL de la publicación <span class="req">*</span></label>
               <input type="text" id="cl-item-id" placeholder="MLA1234567890, MLAU1234567 o URL del producto"
-                     onkeydown="if(event.key==='Enter'){event.preventDefault();cloneLoad();}">
+                     onkeydown="if(event.key==='Enter'){event.preventDefault();cloneLoad();}" aria-label="MLA1234567890, MLAU1234567 o URL del producto">
               <div class="hint">
                 <strong>MLA…</strong>: clona la publicación tal cual (con sus variantes si las tiene en el modelo viejo).<br>
                 <strong>MLAU…</strong>: user_product_id del modelo nuevo. Se resuelve automáticamente al item padre.
@@ -1057,28 +1059,28 @@
           <div class="card-body">
             <div class="field">
               <label>Título <span class="req">*</span></label>
-              <input type="text" id="cl-titulo" maxlength="60" oninput="document.getElementById('cl-tlen').textContent=this.value.length">
+              <input type="text" id="cl-titulo" maxlength="60" oninput="document.getElementById('cl-tlen').textContent=this.value.length" aria-label="Titulo de la publicacion">
               <div class="hint"><span id="cl-tlen">0</span>/60 caracteres</div>
             </div>
             <div class="field">
-              <label>Categoría</label>
+              <label for="cl-cat">Categoría</label>
               <input type="text" id="cl-cat" readonly style="opacity:.7">
               <div class="hint">Se conserva la categoría original.</div>
             </div>
             <div class="grid2">
               <div class="field" style="margin:0">
                 <label>Precio <span class="req">*</span></label>
-                <input type="number" id="cl-precio" step="0.01" min="0">
+                <input type="number" id="cl-precio" step="0.01" min="0" aria-label="Precio">
               </div>
               <div class="field" style="margin:0">
                 <label>Stock <span class="req">*</span></label>
-                <input type="number" id="cl-stock" min="0" step="1">
+                <input type="number" id="cl-stock" min="0" step="1" aria-label="Stock">
                 <div class="hint" id="cl-stock-hint"></div>
               </div>
             </div>
             <div class="grid2">
               <div class="field" style="margin:0">
-                <label>Condición</label>
+                <label for="cl-cond">Condición</label>
                 <select id="cl-cond">
                   <option value="new">Nuevo</option>
                   <option value="used">Usado</option>
@@ -1086,7 +1088,7 @@
                 </select>
               </div>
               <div class="field" style="margin:0">
-                <label>Tipo de publicación</label>
+                <label for="cl-tipo">Tipo de publicación</label>
                 <select id="cl-tipo">
                   <option value="gold_special">Clásica — gold_special</option>
                   <option value="gold_pro">Premium — gold_pro</option>
@@ -1099,14 +1101,14 @@
               <div id="cs-clone"><div class="hint">Cargá la publicación para simular comisiones (usa el costo/envío guardados en Nueva Publicación).</div></div>
             </div>
             <div class="field">
-              <label>Estado al publicar</label>
+              <label for="cl-status">Estado al publicar</label>
               <select id="cl-status">
                 <option value="active">Activa</option>
                 <option value="paused">Pausada</option>
               </select>
             </div>
             <div class="field">
-              <label>Descripción</label>
+              <label for="cl-desc">Descripción</label>
               <textarea id="cl-desc" rows="6" style="width:100%;background:var(--s3);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:11px;padding:10px;outline:none;resize:vertical"></textarea>
             </div>
             <div class="field">
@@ -1151,6 +1153,12 @@
 <div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
 
 <script>
+/* Activa con teclado cualquier elemento que solo tenga onclick.
+   role="button" + tabindex="0" + esto = accesible por teclado (WCAG 2.1.1). */
+function teclaActiva(e, el) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+}
+
 /* Shell helpers */
 const $ = id => document.getElementById(id);
 const $$ = (sel, r=document) => Array.from(r.querySelectorAll(sel));
@@ -1971,12 +1979,12 @@ function renderCatList() {
   }
   wrap.innerHTML = '<div class="cat-list">' + list.map(c =>
     '<div class="cat-pill">' +
-      '<span class="cat-pill-name" onclick="catNavigate(\'' + c.id + '\',\'' + esc(c.name).replace(/'/g,"\\'") + '\')" ' +
+      '<span class="cat-pill-name" role="button" tabindex="0" onkeydown="teclaActiva(event,this)" onclick="catNavigate(\'' + c.id + '\',\'' + esc(c.name).replace(/'/g,"\\'") + '\')" ' +
         'style="cursor:pointer;flex:1">' + esc(c.name) + '</span>' +
       '<span class="cat-pill-meta">' +
         '<span class="cat-id">' + c.id + '</span>' +
         '<button onclick="selCategory(\'' + c.id + '\',\'' + esc(c.name).replace(/'/g,"\\'") + '\')" ' +
-          'style="font-family:var(--sans);font-size:10px;font-weight:600;padding:4px 10px;border:1px solid color-mix(in srgb,var(--ye) 45%,transparent);border-radius:7px;background:transparent;color:var(--ye);cursor:pointer;letter-spacing:.04em;transition:all .15s" ' +
+          'style="font-family:var(--sans);font-size:10px;font-weight:600;padding:4px 10px;border:1px solid color-mix(in srgb,var(--ye) 45%,transparent);border-radius:6px;background:transparent;color:var(--ye);cursor:pointer;letter-spacing:.04em;transition:all .15s" ' +
           'onmouseover="this.style.background=\'var(--ye)\';this.style.color=\'var(--bg)\'" ' +
           'onmouseout="this.style.background=\'transparent\';this.style.color=\'var(--ye)\'"' +
         '>USAR</button>' +
@@ -2046,16 +2054,16 @@ async function loadAttrs(catId) {
       const isReq = a.tags?.required || a.tags?.new_required;
       let inp = '';
       if (a.value_type === 'list' && a.values?.length) {
-        inp = '<select onchange="preview()"><option value="">— Seleccionar —</option>' +
+        inp = '<select onchange="preview()" aria-label="Atributo de la publicacion"><option value="">— Seleccionar —</option>' +
           a.values.map(v => '<option value="' + esc(v.name) + '">' + esc(v.name) + '</option>').join('') +
           '</select>';
       } else if (a.value_type === 'boolean') {
-        inp = '<select onchange="preview()"><option value="">— Seleccionar —</option><option value="Sí">Sí</option><option value="No">No</option></select>';
+        inp = '<select onchange="preview()" aria-label="Atributo de la publicacion"><option value="">— Seleccionar —</option><option value="Sí">Sí</option><option value="No">No</option></select>';
       } else if (a.value_type === 'number' || a.value_type === 'number_unit') {
         const u = a.allowed_units?.[0]?.id || '';
-        inp = '<input type="number" placeholder="' + esc(a.name) + (u ? ' (' + u + ')' : '') + '" oninput="preview()">';
+        inp = '<input type="number" placeholder="' + esc(a.name) + (u ? ' (' + u + ')' : '') + '" oninput="preview()" aria-label="' + esc(a.name) + (u ? ' (' + u + ')' : '') + '">';
       } else {
-        inp = '<input type="text" placeholder="' + esc(a.name) + '" oninput="preview()">';
+        inp = '<input type="text" placeholder="' + esc(a.name) + '" oninput="preview()" aria-label="' + esc(a.name) + '">';
       }
       d.innerHTML = '<label>' + esc(a.name) + (isReq ? '<span class="req">*</span>' : '') + '</label>' + inp;
       body.appendChild(d);
@@ -2246,12 +2254,12 @@ function buildVarTable() {
     '<tbody>' + vars.map((v, i) =>
       '<tr' + (i === varPrimaryIdx ? ' style="background:color-mix(in srgb,var(--ye) 5%,transparent)"' : '') + '>' +
         '<td style="text-align:center"><input type="radio" name="var-primary" value="' + i + '"' + (i === varPrimaryIdx ? ' checked' : '') +
-          ' onchange="setVarPrimary(' + i + ')" style="accent-color:var(--ye);cursor:pointer" title="Variante principal"></td>' +
+          ' onchange="setVarPrimary(' + i + ')" style="accent-color:var(--ye);cursor:pointer" title="Variante principal" aria-label="Variante principal"></td>' +
         (has1 ? '<td>' + esc(v.attr1) + '</td>' : '') +
         (has2 ? '<td>' + esc(v.attr2) + '</td>' : '') +
-        '<td><input type="number" value="' + esc(v.price) + '" placeholder="Precio" data-var-price="' + i + '" oninput="uv(' + i + ',\'price\',this.value)"></td>' +
-        '<td><input type="number" value="' + esc(v.qty)   + '" placeholder="Stock"  data-var-qty="' + i + '" oninput="uv(' + i + ',\'qty\',this.value)"></td>' +
-        '<td><input type="text"   value="' + esc(v.sku)   + '" placeholder="SKU"    oninput="uv(' + i + ',\'sku\',this.value)"></td>' +
+        '<td><input type="number" value="' + esc(v.price) + '" placeholder="Precio" data-var-price="' + i + '" oninput="uv(' + i + ',\'price\',this.value)" aria-label="Precio"></td>' +
+        '<td><input type="number" value="' + esc(v.qty)   + '" placeholder="Stock"  data-var-qty="' + i + '" oninput="uv(' + i + ',\'qty\',this.value)" aria-label="Stock"></td>' +
+        '<td><input type="text"   value="' + esc(v.sku)   + '" placeholder="SKU"    oninput="uv(' + i + ',\'sku\',this.value)" aria-label="SKU"></td>' +
       '</tr>'
     ).join('') + '</tbody>';
 
@@ -2321,7 +2329,7 @@ function renderVarImgAssign() {
             'style="width:48px;height:48px;border:2px solid var(--ye);cursor:grab;overflow:hidden;position:relative;transition:all .15s;flex-shrink:0" ' +
             'title="Foto ' + (pos+1) + ' — arrastrá para reordenar">' +
             '<img src="' + esc(img.preview || img.url || '') + '" style="width:100%;height:100%;object-fit:cover;pointer-events:none">' +
-            '<span style="position:absolute;top:1px;left:2px;font-family:var(--mono);font-size:7px;color:var(--ye);background:rgba(0,0,0,.7);padding:0 3px;line-height:1.4">' + (pos+1) + '</span>' +
+            '<span style="position:absolute;top:1px;left:2px;font-family:var(--mono);font-size:8px;color:var(--ye);background:rgba(0,0,0,.7);padding:0 3px;line-height:1.4">' + (pos+1) + '</span>' +
             '<button onclick="event.stopPropagation();viRemoveImg(' + vi + ',' + pos + ')" ' +
               'style="position:absolute;top:1px;right:1px;width:14px;height:14px;background:rgba(0,0,0,.8);border:none;cursor:pointer;color:var(--re);font-size:9px;display:flex;align-items:center;justify-content:center;padding:0">x</button>' +
           '</div>';
@@ -2333,7 +2341,7 @@ function renderVarImgAssign() {
         for (let i = 0; i < imgs.length; i++) { if (!assigned.includes(i)) unselected.push(i); }
         if (!unselected.length) return '';
         return '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;padding-top:4px;border-top:1px dashed var(--b2)">' +
-          '<span style="font-family:var(--mono);font-size:7px;color:var(--t3);align-self:center;margin-right:2px">+ AGREGAR:</span>' +
+          '<span style="font-family:var(--mono);font-size:8px;color:var(--t3);align-self:center;margin-right:2px">+ AGREGAR:</span>' +
           unselected.map(ii => {
             const img = imgs[ii];
             return '<div onclick="viAddImg(' + vi + ',' + ii + ')" style="width:36px;height:36px;border:1px dashed var(--b2);cursor:pointer;overflow:hidden;opacity:.4;transition:all .15s" ' +
@@ -2991,8 +2999,8 @@ function bbRenderVarTable() {
     p.variants.map((v, i) =>
       '<tr><td style="font-family:var(--mono);font-size:11px">' + esc(v.a1) + '</td>' +
       (hasA2 ? '<td style="font-family:var(--mono);font-size:11px">' + esc(v.a2) + '</td>' : '') +
-      '<td><input type="number" value="' + esc(v.precio) + '" min="0" step="0.01" placeholder="Precio" onchange="bbSaveVar(' + i + ',\'precio\',this.value)"></td>' +
-      '<td><input type="number" value="' + esc(v.qty) + '" min="0" placeholder="Cant." onchange="bbSaveVar(' + i + ',\'qty\',this.value)"></td></tr>'
+      '<td><input type="number" value="' + esc(v.precio) + '" min="0" step="0.01" placeholder="Precio" onchange="bbSaveVar(' + i + ',\'precio\',this.value)" aria-label="Precio"></td>' +
+      '<td><input type="number" value="' + esc(v.qty) + '" min="0" placeholder="Cant." onchange="bbSaveVar(' + i + ',\'qty\',this.value)" aria-label="Cant."></td></tr>'
     ).join('') + '</tbody>';
 
   if (p.images.length) { imgWrap.classList.remove('hidden'); bbRenderVarImgs(); }

@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC: aplicar tema guardado antes del primer paint -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <script src="/chart.umd.min.js"></script>
@@ -22,6 +22,35 @@
 <style>
 /* ── Sparklines ─────────────────────────────────────────── */
 .spark-wrap { height: 40px; width: 100%; overflow: hidden; }
+/* ── Riesgo de quiebre + liquidaciones ────────────────────────── */
+.badge-scope { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600;
+  padding: 2px 6px; border-radius: 3px; background: var(--blue-light); color: var(--blue);
+  cursor: help; white-space: nowrap; }
+.rep-nums { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.rep-num { flex: 1; min-width: 92px; border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px; }
+.rep-num b { display: block; font-size: 20px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.rep-num span { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
+/* El color marca sólo lo que necesita acción */
+.rep-num.rojo  { background: var(--red-light);    border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+.rep-num.rojo b  { color: var(--red-ink); }
+.rep-num.amar  { background: var(--yellow-light); border-color: color-mix(in srgb, var(--yellow) 45%, transparent); }
+.rep-num.amar b  { color: var(--yellow-ink); }
+.rep-num.ok b { color: var(--text-2); }
+.rep-lista { display: flex; flex-direction: column; gap: 5px; }
+.rep-fila { display: flex; align-items: baseline; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.rep-fila:last-child { border-bottom: 0; }
+.rep-fila .rf-t { flex: 1; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rep-fila .rf-v { color: var(--text-3); font-size: 11px; }
+.rep-fila .rf-d { font-family: var(--font-mono); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.rep-ok { color: var(--text-3); font-size: 12px; padding: 8px 0; }
+.cob-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border); }
+.cob-fila:last-child { border-bottom: 0; }
+.cob-fila .cf-n { font-size: 13px; font-weight: 600; }
+.cob-fila .cf-s { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+.cob-fila .cf-d { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+.cob-fila .cf-d.ok   { color: var(--green-ink);  background: var(--green-light); }
+.cob-fila .cf-d.tarde{ color: var(--yellow-ink); background: var(--yellow-light); }
 
 /* ── Chart card ─────────────────────────────────────────── */
 .chart-area { height: 200px; position: relative; }
@@ -32,7 +61,7 @@
   font-size: 11px; font-weight: 600;
   padding: 2px 7px; border-radius: 100px;
 }
-.kpi-badge.up   { background: var(--green-light); color: var(--green); }
+.kpi-badge.up   { background: var(--green-light); color: var(--green-ink); }
 .kpi-badge.down { background: var(--red-light);   color: var(--red); }
 .kpi-badge.neu  { background: var(--bg); color: var(--text-3); border: 1px solid var(--border); }
 
@@ -96,7 +125,7 @@
 .modal-row:last-child { border: none; }
 .modal-key   { color: var(--text-3); font-weight: 500; }
 .modal-val   { color: var(--text); font-family: var(--font-mono); font-size: 12px; }
-.modal-val.ok  { color: var(--green); font-family: var(--font); font-size: 13px; font-weight: 600; }
+.modal-val.ok  { color: var(--green-ink); font-family: var(--font); font-size: 13px; font-weight: 600; }
 .modal-val.err { color: var(--red); }
 
 
@@ -104,7 +133,7 @@
 .search-hint {
   font-size: 10px; color: var(--text-3);
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: 3px; padding: 1px 5px;
+  border-radius:4px; padding: 1px 5px;
   font-family: var(--font-mono); white-space: nowrap;
 }
 
@@ -114,7 +143,7 @@
 /* ── Lightbox dashboard ── */
 .dash-lb{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;cursor:zoom-out;opacity:0;pointer-events:none;transition:opacity .18s}
 .dash-lb.open{opacity:1;pointer-events:all}
-.dash-lb img{max-width:min(88vw,480px);max-height:80vh;border-radius:14px;border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.7);transform:scale(.92);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.dash-lb img{max-width:min(88vw,480px);max-height:80vh;border-radius:6px;border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.7);transform:scale(.92);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
 .dash-lb.open img{transform:scale(1)}
 .tbl-img[src]{cursor:zoom-in;transition:opacity .15s}
 .tbl-img[src]:hover{opacity:.8}
@@ -125,114 +154,8 @@
 <div class="adm-wrap">
 
 <!-- ═══════════════════════ SIDEBAR ════════════════════════ -->
-<aside class="adm-sidebar" id="sidebar">
-
-  <!-- Logo -->
-  <a href="/" class="adm-logo">
-    <div class="adm-logo-mark">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/>
-      </svg>
-    </div>
-    <div class="adm-logo-text">
-      <div class="adm-logo-name">Stockroom</div>
-      <div class="adm-logo-tag">Panel Admin</div>
-    </div>
-  </a>
-
-  <!-- Nav -->
-  <nav class="adm-nav">
-
-    <div class="adm-group">
-      <div class="adm-group-label">Ventas</div>
-      <a href="/" class="adm-item active">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        <span>Dashboard</span>
-      </a>
-      <a href="/analytics.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-        <span>Analytics</span>
-      </a>
-      <a href="/orden-compra.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4H8z"/><path d="M3 6h18l-1.5 13a2 2 0 01-2 1.8H6.5a2 2 0 01-2-1.8z"/><path d="M9 11h6"/></svg>
-        <span>Orden de compra</span>
-      </a>
-      <a href="/despachos.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        <span>Despachos</span>
-        <span class="adm-item-badge info" id="nav-desp-badge" style="display:none">0</span>
-      </a>
-      <a href="/cobros.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-        <span>Cobros</span>
-      </a>
-      <a href="/rentabilidad.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-        <span>Rentabilidad</span>
-      </a>
-      <a href="/verificar-envios.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.56.93 6.18 2.45"/></svg>
-        <span>Verificar Logística</span>
-      </a>
-    </div>
-
-    <div class="adm-group">
-      <div class="adm-group-label">Catálogo</div>
-      <a href="/publicaciones.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        <span>Publicaciones</span>
-      </a>
-      <a href="/vinculaciones.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-        <span>Vinculaciones</span>
-      </a>
-      <a href="/migracion.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
-        <span>Migración</span>
-      </a>
-      <a href="/alibaba.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
-        <span>Carga Alibaba</span>
-      </a>
-    </div>
-
-    <div class="adm-group">
-      <div class="adm-group-label">Clientes</div>
-      <a href="/preguntas.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        <span>Preguntas</span>
-        <span class="adm-item-badge" id="nav-preg-badge" style="display:none">0</span>
-      </a>
-    </div>
-    <div class="adm-group">
-      <div class="adm-group-label">Tienda</div>
-      <a href="/tienda-admin.html" class="adm-item">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-        <span>Admin Tienda</span>
-      </a>
-    </div>
-
-  </nav>
-
-  <!-- Footer -->
-  <div class="adm-sidebar-foot">
-    <a href="/oauth/start" class="adm-item">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-      <span>Conectar cuenta</span>
-    </a>
-    <button class="adm-item" id="btn-cfg" style="width:100%;text-align:left">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg>
-      <span>Configuración</span>
-    </button>
-    <a href="/logout" class="adm-item" style="color:var(--red)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span>Cerrar sesión</span>
-    </a>
-  </div>
-
-  <!-- Clock -->
-  <div class="foot-info" id="foot-clock">—</div>
-</aside>
+<aside class="adm-sidebar" id="sidebar" data-cfg></aside>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -261,7 +184,7 @@
       <!-- Search -->
       <div class="adm-search" style="width:220px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="search" type="search" placeholder="Buscar…" autocomplete="off">
+        <input id="search" type="search" placeholder="Buscar…" autocomplete="off" aria-label="Buscar…">
         <span class="search-hint">⌘K</span>
       </div>
 
@@ -293,7 +216,7 @@
     <!-- SCOPE: qué cuenta(s) alimentan los KPIs (default: ambas sumadas) -->
     <div id="dash-scope-row" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
       <span style="font-size:12px;color:var(--text-3)">Datos de</span>
-      <select id="dash-scope" style="font-family:inherit;font-size:13px;font-weight:600;color:var(--text);background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer">
+      <select id="dash-scope" style="font-family:inherit;font-size:13px;font-weight:600;color:var(--text);background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer" aria-label="Cuenta a mostrar en los indicadores">
         <option value="all">Ambas cuentas</option>
       </select>
     </div>
@@ -347,6 +270,53 @@
         </div>
         <div class="adm-kpi-delta"><span style="color:var(--text-3)">Ver stock bajo y crítico →</span></div>
       </a>
+    </div>
+
+    <!-- GRID: Reposición + Liquidaciones ─────────────────────────
+         Las dos cosas que se rompen en silencio: quedarse sin una funda que
+         se vende, y olvidarse de cargar una liquidación (que deja la
+         rentabilidad corta sin que nada lo avise). -->
+    <div class="adm-grid-2" style="margin-bottom:16px">
+
+      <div class="adm-card">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4H8z"/><path d="M3 6h18l-1.5 13a2 2 0 01-2 1.8H6.5a2 2 0 01-2-1.8z"/></svg>
+            Riesgo de quiebre
+            <!-- Estas dos tarjetas NO siguen el selector de cuenta de arriba, y
+                 es a propósito: el stock de las publicaciones vinculadas es uno
+                 solo para las dos cuentas, así que separarlo por cuenta daría un
+                 riesgo falso. Se etiqueta para que no parezca un descuido. -->
+            <span class="badge-scope" title="El stock vinculado es compartido: separarlo por cuenta daría un riesgo falso">ambas cuentas</span>
+          </div>
+          <div class="adm-card-actions">
+            <a href="/orden-compra.html" class="btn btn-ghost btn-sm" style="text-decoration:none">Ver orden de compra →</a>
+          </div>
+        </div>
+        <div style="padding:14px 16px">
+          <div class="rep-nums" id="rep-nums">
+            <div class="rep-num"><b class="spinner" style="width:14px;height:14px"></b></div>
+          </div>
+          <div id="rep-lista" class="rep-lista"></div>
+        </div>
+      </div>
+
+      <div class="adm-card">
+        <div class="adm-card-head">
+          <div class="adm-card-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+            Liquidaciones cargadas
+            <span class="badge-scope" title="Se listan las dos cuentas: el sentido de esta tarjeta es detectar si a una le falta cargar un cobro">ambas cuentas</span>
+          </div>
+          <div class="adm-card-actions">
+            <a href="/cobros.html" class="btn btn-ghost btn-sm" style="text-decoration:none">Cargar cobro →</a>
+          </div>
+        </div>
+        <div style="padding:14px 16px" id="cob-lista">
+          <div class="adm-empty" style="padding:24px"><span class="spinner"></span></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- GRID: Ventas + Despachos -->
@@ -485,7 +455,7 @@
       function fmtUp(s){ if(s==null)return '—'; var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return [d&&d+'d',h&&h+'h',m+'m'].filter(Boolean).join(' '); }
       function dot(ok,warn){ var c=ok?'#16a34a':(warn?'#f59e0b':'#ef4444'); return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+c+';margin-right:7px;flex-shrink:0"></span>'; }
       function tile(label, dotHtml, value){
-        return '<div style="border:1px solid rgba(128,128,128,.22);border-radius:10px;padding:11px 13px">'
+        return '<div style="border:1px solid rgba(128,128,128,.22);border-radius:6px;padding:11px 13px">'
           + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:5px">'+label+'</div>'
           + '<div style="font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center">'+(dotHtml||'')+'<span>'+value+'</span></div></div>';
       }
@@ -585,6 +555,11 @@
 </div>
 
 <script>
+/* Activa con teclado un elemento que solo responde a click (WCAG 2.1.1). */
+function teclaActiva(e, el) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+}
+
 /* ── helpers ── */
 const $  = id  => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
@@ -877,7 +852,7 @@ async function loadDespachos() {
         <tr>
           <td>
             <div style="display:flex;align-items:center;gap:10px">
-              ${row.picture ? `<img src="${esc(row.picture)}" class="tbl-img" loading="lazy" onclick="openDashImg(this.src)"/>` : '<div class="tbl-img"></div>'}
+              ${row.picture ? `<img src="${esc(row.picture)}" alt="Foto del producto — ampliar" class="tbl-img" loading="lazy" role="button" tabindex="0" onkeydown="teclaActiva(event,this)" onclick="openDashImg(this.src)"/>` : '<div class="tbl-img"></div>'}
               <div style="min-width:0">
                 <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px" title="${esc(row.title)}">${esc(row.title)}${dateBadge && row.date ? ` <span class="var-chip" style="background:var(--yellow-soft,rgba(229,162,30,.15));color:var(--yellow,#E5A21E)">despachar ${esc(fmtDispatchDay(row.date))}</span>` : ''}</div>
                 ${row.variant ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px">${esc(row.variant)}</div>` : ''}
@@ -1128,9 +1103,74 @@ function closeDashImg() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDashImg(); });
 
+/* ── Riesgo de quiebre + liquidaciones cargadas ──────────────────
+   Un solo endpoint para las dos tarjetas: el cálculo de autonomía usa el
+   mismo criterio que la orden de compra (ritmo real de los últimos 60 días
+   contra el stock actual), así que los números no pueden discrepar. */
+async function loadEstado() {
+  try {
+    const r = await fetch('/api/stockroom/dashboard/estado?lead=7');
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    renderReposicion(d);
+    renderCobros(d.cobros || []);
+  } catch (e) {
+    $('rep-nums').innerHTML = `<div class="rep-ok">No se pudo calcular: ${esc(e.message)}</div>`;
+    $('rep-lista').innerHTML = '';
+    $('cob-lista').innerHTML = `<div class="rep-ok">No se pudo cargar: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderReposicion(d) {
+  const r = d.reposicion || {};
+  const cls = n => n > 0 ? 'rojo' : 'ok';
+  $('rep-nums').innerHTML =
+    `<div class="rep-num ${cls(r.sin_stock)}"><b>${r.sin_stock ?? 0}</b><span>Sin stock</span></div>
+     <div class="rep-num ${cls(r.quiebre)}"><b>${r.quiebre ?? 0}</b><span>Se agotan en ≤ ${d.lead} días</span></div>
+     <div class="rep-num ${r.pronto > 0 ? 'amar' : 'ok'}"><b>${r.pronto ?? 0}</b><span>En ≤ 30 días</span></div>`;
+  const items = r.urgentes || [];
+  if (!items.length) {
+    $('rep-lista').innerHTML = `<div class="rep-ok">Ninguna funda se agota antes de que llegue el próximo pedido.</div>`;
+    return;
+  }
+  $('rep-lista').innerHTML = items.map(i => {
+    const d0 = i.stock === 0 ? 'sin stock' : `${i.dias} d`;
+    const col = i.stock === 0 ? 'var(--red-ink)' : 'var(--yellow-ink)';
+    return `<div class="rep-fila" title="${esc(i.titulo)}">
+        <span class="rf-t">${esc(i.titulo)}</span>
+        <span class="rf-v">${esc(i.variante || '')}</span>
+        <span class="rf-d" style="color:${col}">${d0}</span>
+      </div>`;
+  }).join('');
+}
+
+function renderCobros(cobros) {
+  if (!cobros.length) {
+    $('cob-lista').innerHTML = `<div class="rep-ok">Todavía no hay liquidaciones guardadas.</div>`;
+    return;
+  }
+  const f = s => s ? s.slice(8,10) + '/' + s.slice(5,7) : '—';
+  // 12 días: las liquidaciones de fundas se cargan cada ~10, así que pasado ese
+  // plazo lo más probable es que haya una sin cargar y no que no hubo ventas.
+  $('cob-lista').innerHTML = cobros.map(c => {
+    const tarde = c.dias_sin_cargar > 12;
+    return `<div class="cob-fila">
+        <div>
+          <div class="cf-n">${esc(c.label)}</div>
+          <div class="cf-s">última venta cargada ${f(c.hasta)}</div>
+        </div>
+        <div class="cf-d ${tarde ? 'tarde' : 'ok'}">${c.dias_sin_cargar} d</div>
+      </div>`;
+  }).join('') +
+  (cobros.some(c => c.dias_sin_cargar > 12)
+    ? `<div class="rep-ok" style="margin-top:8px">Si falta cargar una liquidación, la ganancia de Rentabilidad queda por debajo de la real.</div>`
+    : '');
+}
+
 /* ── Boot ── */
-Promise.all([loadAccounts(), loadVentas(), loadDespachos()]).catch(console.error);
+Promise.all([loadAccounts(), loadVentas(), loadDespachos(), loadEstado()]).catch(console.error);
 setInterval(() => { loadVentas(); loadDespachos(); }, 120000);
+setInterval(loadEstado, 600000);
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>

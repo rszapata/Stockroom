@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Costos de Pedidos — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=14">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.pg { font-family:'Inter',system-ui,sans-serif; font-size:13px; display:block; color:var(--text); }
+.pg *, .pg *::before, .pg *::after { box-sizing:border-box; }
+
+/* Aviso de que el stock no se toca — es la diferencia con carga Alibaba */
+.pc-nota {
+  display:flex; gap:10px; align-items:flex-start;
+  background:var(--blue-light); border-left:3px solid var(--blue);
+  border-radius:0 6px 6px 0; padding:14px 20px; margin-bottom:20px; color:var(--text-2);
+}
+.pc-nota strong { color:var(--blue-ink); }
+
+/* Las tarjetas van una debajo de otra a ancho completo. Antes había una
+   columna fija de 260px para la lista de pedidos que se comía el 20% del
+   ancho para mostrar tres renglones, y dejaba la tabla apretada. */
+.pc-cols { display:flex; flex-direction:column; gap:20px; }
+
+.pc-card { background:var(--bg-card); border:1px solid var(--border); border-radius:6px; }
+.pc-card-hd {
+  padding:13px 20px; border-bottom:1px solid var(--border);
+  font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-2);
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.pc-card-bd { padding:20px; }
+
+/* Pedidos guardados: franja horizontal, no columna lateral */
+.pc-lista { list-style:none; margin:0; padding:14px 20px; display:flex; gap:10px; overflow-x:auto; }
+.pc-lista li { flex:none; }
+.pc-lista button {
+  text-align:left; background:var(--bg); border:1px solid var(--border); border-radius:6px;
+  padding:10px 14px; cursor:pointer; font:inherit; color:var(--text); min-width:170px;
+  transition:border-color .12s, background .12s;
+}
+.pc-lista button:hover { border-color:var(--border-2); }
+.pc-lista button.sel { background:var(--blue-light); border-color:var(--blue); }
+.pc-li-t { font-weight:600; }
+.pc-li-s { font-size:12px; color:var(--text-3); margin-top:3px; font-variant-numeric:tabular-nums; }
+
+/* Campos */
+.pc-grid { display:grid; gap:18px 20px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+.pc-f { display:flex; flex-direction:column; gap:4px; }
+.pc-f label { font-size:12px; font-weight:600; color:var(--text-2); }
+.pc-f input, .pc-f select {
+  height:34px; padding:0 9px; border:1px solid var(--border); border-radius:6px;
+  background:var(--bg-card); color:var(--text); font:inherit; font-size:13px;
+}
+.pc-f input:focus, .pc-f select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(21,113,95,.12); }
+.pc-f .hint { font-size:12px; color:var(--text-3); }
+
+/* Tabla de líneas */
+.pc-tabla-wrap { overflow-x:auto; }
+table.pc-t { width:100%; border-collapse:collapse; min-width:860px; }
+table.pc-t th {
+  text-align:left; font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--text-2); padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+table.pc-t th:first-child, table.pc-t td:first-child { padding-left:20px; }
+table.pc-t th:last-child,  table.pc-t td:last-child  { padding-right:20px; }
+table.pc-t td { padding:11px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+table.pc-t tr:last-child td { border-bottom:none; }
+table.pc-t .num { text-align:right; font-variant-numeric:tabular-nums; }
+.pc-inp {
+  width:100%; height:32px; padding:0 8px; border:1px solid var(--border); border-radius:6px;
+  background:var(--bg-card); color:var(--text); font:inherit; font-size:13px;
+}
+.pc-inp.num { text-align:right; font-variant-numeric:tabular-nums; }
+.pc-inp:focus { outline:none; border-color:var(--blue); }
+.pc-costo { font-family:var(--font-mono); font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+.pc-pop {
+  display:none; position:absolute; z-index:60; max-height:340px; overflow-y:auto;
+  background:var(--bg-card); border:1px solid var(--border-2); border-radius:6px; box-shadow:var(--shadow);
+}
+.pc-pop.show { display:block; }
+.pc-op { display:flex; gap:10px; align-items:center; padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--border); }
+.pc-op:last-child { border-bottom:none; }
+.pc-op:hover, .pc-op.sel { background:var(--blue-light); }
+.pc-op img, .pc-op-sinfoto {
+  width:38px; height:38px; flex:none; object-fit:cover;
+  border:1px solid var(--border); border-radius:4px; background:var(--bg);
+}
+.pc-op-t { font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pc-op-s { font-size:12px; color:var(--text-3); margin-top:2px; }
+.pc-op-vacio { padding:16px; text-align:center; font-size:12px; color:var(--text-3); }
+.pc-chk { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+          color:var(--text-2); text-transform:none; letter-spacing:0; cursor:pointer; }
+.pc-chk input { accent-color:var(--blue); width:15px; height:15px; }
+.pc-filtro-info { font-size:12px; font-weight:400; color:var(--text-3); text-transform:none; letter-spacing:0; }
+.pc-vinc { display:flex; align-items:center; gap:8px; margin-top:5px; }
+.pc-thumb {
+  width:34px; height:34px; flex:none; object-fit:cover;
+  border:1px solid var(--border); border-radius:4px; background:var(--bg);
+}
+.pc-thumb.vacia { object-fit:none; }
+.pc-meta { font-size:12px; color:var(--text-3); margin-top:4px; font-family:var(--font-mono); }
+.pc-vinc-ok { font-size:12px; color:var(--green-ink); margin-top:3px; }
+.pc-vinc-no { font-size:12px; color:var(--yellow-ink); margin-top:3px; }
+.pc-del {
+  width:30px; height:30px; border:1px solid var(--border); border-radius:6px; background:var(--bg-card);
+  color:var(--text-3); display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.pc-del:hover { color:var(--red-ink); border-color:var(--red); }
+
+/* Totales */
+.pc-tot { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); }
+.pc-tot-c { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+.pc-tot-n { font-family:var(--font-mono); font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+.pc-tot-l { font-size:12px; color:var(--text-2); margin-top:3px; }
+.pc-barra { display:flex; height:8px; border-radius:99px; overflow:hidden; margin:14px 0 6px; background:var(--bg); }
+.pc-barra i { display:block; height:100%; }
+.pc-ley { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--text-2); }
+.pc-ley span { display:inline-flex; align-items:center; gap:5px; }
+.pc-ley i { width:9px; height:9px; border-radius:2px; display:inline-block; }
+
+/* Zona de carga del recibo — mismo patrón que Carga Alibaba. Antes era un
+   botón chico en el encabezado y pasaba desapercibido. */
+.pc-drop {
+  border:2px dashed var(--border); border-radius:6px; padding:26px 20px; text-align:center;
+  cursor:pointer; background:var(--bg); position:relative; transition:border-color .2s, background .2s;
+}
+.pc-drop:hover, .pc-drop.drag { border-color:var(--blue); background:var(--blue-light); }
+.pc-drop input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.pc-drop-ico { color:var(--text-3); margin-bottom:8px; }
+.pc-drop:hover .pc-drop-ico, .pc-drop.drag .pc-drop-ico { color:var(--blue); }
+.pc-drop-t { font-size:14px; font-weight:600; margin-bottom:4px; }
+.pc-drop-s { font-size:12px; color:var(--text-2); }
+
+.pc-acc { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:20px; padding-top:18px; border-top:1px solid var(--border); }
+.pc-msg { margin-left:auto; font-size:12px; }
+.pc-msg.ok { color:var(--green-ink); }
+.pc-msg.err { color:var(--red-ink); }
+.pc-vacio { padding:26px 16px; text-align:center; color:var(--text-3); font-size:13px; }
+</style>
+</head>
+<body>
+
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/stockroom-sidebar.js?v=9"></script>
+
+<div class="adm-main">
+<header class="adm-header">
+  <div class="adm-header-left">
+    <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div>
+      <div class="adm-page-title">Costos de Pedidos</div>
+      <div class="adm-page-sub">Costo puesto real por unidad, a partir del recibo y los gastos del envío</div>
+    </div>
+  </div>
+  <div class="adm-header-right">
+    <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+      <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="adm-content pg">
+
+  <div class="pc-nota">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <div><strong>Esta sección no modifica el stock.</strong> Vincular una línea con una variante sirve solo para imputarle el costo. Para sumar unidades al stock seguí usando <a href="/alibaba.html" style="color:var(--blue-ink);text-decoration:underline">Carga Alibaba</a>.</div>
+  </div>
+
+  <div class="pc-cols">
+    <!-- Pedidos guardados -->
+    <div class="pc-card">
+      <div class="pc-card-hd">
+        <span>Pedidos guardados</span>
+        <button class="btn btn-ghost btn-mini" id="pc-nuevo">+ Nuevo pedido</button>
+      </div>
+      <ul class="pc-lista" id="pc-lista"></ul>
+    </div>
+
+    <div class="pc-card">
+        <div class="pc-card-hd"><span>Datos del envío</span><span id="pc-id" style="font-family:var(--font-mono);text-transform:none;letter-spacing:0"></span></div>
+        <div class="pc-card-bd">
+          <div class="pc-grid">
+            <div class="pc-f"><label for="f-fecha">Fecha de compra</label><input type="date" id="f-fecha"></div>
+            <div class="pc-f"><label for="f-prov">Proveedor</label><input type="text" id="f-prov" placeholder="Alibaba…"></div>
+            <div class="pc-f">
+              <label for="f-flete">Envío courier (USD)</label>
+              <input type="number" id="f-flete" step="0.01" min="0" inputmode="decimal" placeholder="181.28">
+              <span class="hint">Lo que cobra DHL o Shippar por traerlo de China. No incluye ir a buscarlo.</span>
+            </div>
+            <div class="pc-f"><label for="f-imp">Impuestos de aduana (ARS)</label><input type="number" id="f-imp" step="1" min="0" inputmode="numeric"></div>
+            <div class="pc-f">
+              <label for="f-otros">Otros gastos (ARS)</label>
+              <input type="number" id="f-otros" step="1" min="0" inputmode="numeric">
+              <span class="hint">Opcional. Dejalo vacío si retirás vos.</span>
+            </div>
+            <div class="pc-f"><label for="f-dolar">Dólar del pago</label><input type="number" id="f-dolar" step="1" min="0" inputmode="numeric"></div>
+            <div class="pc-f"><label for="f-peso">Peso real (kg)</label><input type="number" id="f-peso" step="0.01" min="0" inputmode="decimal"></div>
+            <div class="pc-f"><label for="f-med">Medidas (cm)</label><input type="text" id="f-med" placeholder="41x31x31"></div>
+            <div class="pc-f">
+              <label for="f-reparto">Repartir envío e impuestos por</label>
+              <select id="f-reparto">
+                <option value="unidades">Cantidad de unidades</option>
+                <option value="valor">Valor de la mercadería</option>
+                <option value="volumen">Volumen relativo</option>
+              </select>
+              <span class="hint" id="f-reparto-hint"></span>
+            </div>
+          </div>
+          <div class="pc-f" style="margin-top:12px"><label for="f-det">Detalle</label><input type="text" id="f-det" placeholder="179 unidades de fundas + 45 sopapas…"></div>
+          <div id="pc-envio-calc" class="hint" style="margin-top:10px;font-size:12px;color:var(--text-2)"></div>
+        </div>
+      </div>
+
+      <div class="pc-card">
+        <div class="pc-card-hd">
+          <span>Líneas del recibo</span>
+          <span style="display:flex;align-items:center;gap:14px">
+            <label class="pc-chk" title="Destildalo si necesitás vincular algo que no sea una funda">
+              <input type="checkbox" id="pc-solo-fundas" checked aria-label="Mostrar solo fundas"> Buscar solo fundas
+            </label>
+            <span class="pc-filtro-info" id="pc-filtro-info"></span>
+            <button class="btn btn-ghost btn-mini" id="pc-add">+ Línea a mano</button>
+          </span>
+        </div>
+        <div class="pc-card-bd" style="padding-bottom:4px">
+          <div class="pc-drop" id="pc-drop">
+            <input type="file" id="pc-file" accept="application/pdf" aria-label="PDF del recibo del proveedor">
+            <div class="pc-drop-ico">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="pc-drop-t">Subí el PDF del recibo</div>
+            <div class="pc-drop-s">Arrastralo acá o hacé clic. Detecta productos, cantidades y precios — igual que Carga Alibaba, pero acá el stock no se toca.</div>
+          </div>
+        </div>
+        <div class="pc-tabla-wrap">
+          <table class="pc-t">
+            <thead><tr>
+              <th style="min-width:190px">Descripción</th>
+              <th style="width:80px" class="num">Cant.</th>
+              <th style="width:105px" class="num">Precio u$</th>
+              <th id="th-vol" style="width:90px;display:none" class="num">Vol. rel.</th>
+              <th style="min-width:230px">Variante vinculada</th>
+              <th style="width:120px" class="num">Costo unit.</th>
+              <th style="width:44px"></th>
+            </tr></thead>
+            <tbody id="pc-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pc-vacio" id="pc-sin-lineas" style="display:none">Todavía no hay líneas. Importá el PDF del recibo o agregalas a mano.</div>
+      </div>
+
+      <div class="pc-card">
+        <div class="pc-card-hd"><span>Costo del pedido</span></div>
+        <div class="pc-card-bd">
+          <div class="pc-tot" id="pc-totales"></div>
+          <div class="pc-barra" id="pc-barra"></div>
+          <div class="pc-ley">
+            <span><i style="background:var(--blue)"></i>Mercadería</span>
+            <span><i style="background:var(--yellow)"></i>Envío courier</span>
+            <span><i style="background:var(--red)"></i>Impuestos y otros</span>
+          </div>
+          <div class="pc-acc">
+            <button class="btn btn-primary" id="pc-guardar">Guardar pedido</button>
+            <button class="btn btn-ghost" id="pc-borrar">Borrar</button>
+            <span class="pc-msg" id="pc-msg"></span>
+          </div>
+        </div>
+      </div>
+  </div>
+</main>
+</div>
+
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+<div class="pc-pop" id="pc-pop"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ars = n => '$' + Math.round(Number(n)||0).toLocaleString('es-AR');
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let pedidos = [];      // guardados (ya calculados por el server)
+let actual  = null;    // el que se está editando
+let catalogo = [];     // variantes de ML para el selector
+const claveVar = v => `${v.titulo} — ${v.variante || 'única'} [${v.item_id}${v.variation_id ? ':' + v.variation_id : ''}]`;
+
+/* ───── vinculación a nivel PRODUCTO ─────
+   Una publicación de Alibaba corresponde a una sola publicación de ML, y el
+   color no la cambia. Pero el TÍTULO solo no alcanza: el mismo título de
+   Alibaba cubre varios teléfonos ("for iPhone 15 Pro Max 14 13 12 11 Samsung
+   S24 S23") y cada modelo va a una publicación distinta de ML. Verificado
+   sobre los mapeos reales: con solo el título, 3 de 8 productos son ambiguos;
+   con título + modelo, los 23 son únicos. Por eso la clave lleva los dos. */
+const claveProducto = it => `${(it.descripcion||'').trim().toLowerCase()}||${(it.modelo||'').trim().toLowerCase()}`;
+
+let mapeos = {};   // claveProducto -> { item_id, variation_id, titulo_ml, variante_ml }
+async function cargarMapeos() {
+  try {
+    const r = await fetch('/api/stockroom/alibaba/mappings');
+    if (!r.ok) return;
+    const d = await r.json();
+    mapeos = {};
+    for (const m of (d.mappings || [])) {
+      // alibaba_name viene como "Título — For X"
+      const [t, mod = ''] = String(m.alibaba_name || '').split(' — ');
+      mapeos[`${t.trim().toLowerCase()}||${mod.trim().toLowerCase()}`] = {
+        item_id: m.ml_item_id, variation_id: m.variation_id || null,
+        titulo_ml: m.ml_title || '', variante_ml: m.ml_variant_label || '',
+      };
+    }
+  } catch(e) { /* sin mapeos: se vincula a mano */ }
+}
+
+/* Aplica los mapeos conocidos a las líneas sin vincular. Devuelve cuántas. */
+function autoVincular() {
+  let n = 0;
+  (actual.items || []).forEach(it => {
+    if (it.item_id) return;
+    const m = mapeos[claveProducto(it)];
+    if (!m) return;
+    const cat = catalogo.find(v => v.item_id === m.item_id &&
+                                   String(v.variation_id || '') === String(m.variation_id || ''))
+             || catalogo.find(v => v.item_id === m.item_id);
+    Object.assign(it, { item_id: m.item_id, variation_id: m.variation_id,
+                        titulo_ml: m.titulo_ml, variante_ml: m.variante_ml,
+                        foto_ml: cat?.foto || '' });
+    it._vincTxt = claveVar({ titulo: m.titulo_ml, variante: m.variante_ml,
+                             item_id: m.item_id, variation_id: m.variation_id });
+    n++;
+  });
+  return n;
+}
+
+/* Al vincular una línea, se propaga a todas las del MISMO producto (todos los
+   colores) y se recuerda el mapeo para el próximo recibo. */
+async function propagarVinculo(origen) {
+  const k = claveProducto(origen);
+  let n = 0;
+  (actual.items || []).forEach(it => {
+    if (it === origen || claveProducto(it) !== k) return;
+    Object.assign(it, { item_id: origen.item_id, variation_id: origen.variation_id,
+                        titulo_ml: origen.titulo_ml, variante_ml: origen.variante_ml,
+                        foto_ml: origen.foto_ml || '' });
+    it._vincTxt = origen._vincTxt;
+    n++;
+  });
+  if (origen.item_id) {
+    mapeos[k] = { item_id: origen.item_id, variation_id: origen.variation_id,
+                  titulo_ml: origen.titulo_ml, variante_ml: origen.variante_ml };
+    try {
+      await fetch('/api/stockroom/alibaba/mappings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alibaba_name: origen.modelo ? `${origen.descripcion} — ${origen.modelo}` : origen.descripcion,
+          ml_item_id: origen.item_id, variation_id: origen.variation_id,
+          account_id: 'nueva', ml_title: origen.titulo_ml, ml_variant_label: origen.variante_ml,
+        }),
+      });
+    } catch(e) { /* el vínculo local ya quedó aplicado igual */ }
+  }
+  return n;
+}
+
+function pedidoVacio() {
+  return { id:null, fecha_compra:new Date().toISOString().slice(0,10), proveedor:'', detalle:'',
+           reparto:'unidades',
+           envio:{ flete_usd:0, impuestos_ars:0, otros_ars:0, dolar:0, peso_real_kg:0, medidas_cm:[] },
+           items:[] };
+}
+
+/* ───── cálculo espejo del server (lib/pedidos-costos.js) ─────
+   El server siempre recalcula al guardar; esto es solo para que la pantalla
+   responda mientras se tipea, sin ida y vuelta por cada tecla. */
+function pesoReparto(it, criterio) {
+  const c = +it.cantidad || 0;
+  if (c <= 0) return 0;
+  if (criterio === 'valor')   return c * (+it.precio_unit_usd || 0);
+  if (criterio === 'volumen') return c * (+it.vol_factor || 1);
+  return c;
+}
+function calcular(p) {
+  const e = p.envio || {}, d = +e.dolar || 0;
+  const flete = (+e.flete_usd||0) * d, imp = +e.impuestos_ars||0, otros = +e.otros_ars||0;
+  const noProd = flete + imp + otros;
+  const pesos = p.items.map(it => pesoReparto(it, p.reparto));
+  const suma = pesos.reduce((a,b)=>a+b, 0);
+  let merc = 0, uds = 0;
+  const items = p.items.map((it,i) => {
+    const c = +it.cantidad||0, pu = +it.precio_unit_usd||0;
+    const parte = suma > 0 ? noProd * (pesos[i]/suma) : 0;
+    const mu = pu*d, eu = c > 0 ? parte/c : 0;
+    merc += mu*c; uds += c;
+    return { ...it, mercaderia_unit_ars:Math.round(mu), extra_unit_ars:Math.round(eu), costo_unit_ars:Math.round(mu+eu) };
+  });
+  const total = Math.round(merc + noProd);
+  return { items, totales:{ unidades:uds, mercaderia_ars:Math.round(merc), flete_ars:Math.round(flete),
+           impuestos_ars:Math.round(imp+otros), total_ars:total,
+           costo_unit_promedio_ars: uds>0 ? Math.round(total/uds) : 0 } };
+}
+function pesoCobrable(e) {
+  const real = +e.peso_real_kg||0;
+  const m = Array.isArray(e.medidas_cm) ? e.medidas_cm.map(Number) : [];
+  const vol = (m.length===3 && m.every(x=>x>0)) ? (m[0]*m[1]*m[2])/5000 : 0;
+  return { real, vol, cobrable:Math.max(real,vol), manda: vol>real ? 'volumétrico' : 'real' };
+}
+
+/* ───── render ───── */
+function renderLista() {
+  const ul = $('pc-lista');
+  if (!pedidos.length) { ul.innerHTML = '<li><div class="pc-vacio">Sin pedidos cargados</div></li>'; return; }
+  ul.innerHTML = pedidos.map(p => `
+    <li><button data-id="${esc(p.id)}" class="${actual && actual.id===p.id ? 'sel':''}">
+      <div class="pc-li-t">${esc(p.fecha_compra || 'sin fecha')}</div>
+      <div class="pc-li-s">${p.totales.unidades} u · ${ars(p.totales.total_ars)} · ${ars(p.totales.costo_unit_promedio_ars)}/u</div>
+    </button></li>`).join('');
+  ul.querySelectorAll('button[data-id]').forEach(b =>
+    b.addEventListener('click', () => cargar(b.dataset.id)));
+}
+
+function renderEnvioCalc() {
+  const pc = pesoCobrable(actual.envio);
+  const usdKg = pc.cobrable > 0 ? ((+actual.envio.flete_usd||0)/pc.cobrable) : 0;
+  $('pc-envio-calc').innerHTML = pc.cobrable > 0
+    ? `Peso real ${pc.real} kg · volumétrico ${pc.vol.toFixed(2)} kg → <strong>se cobra ${pc.cobrable.toFixed(2)} kg</strong> (manda el ${pc.manda}) · ${usdKg.toFixed(2)} USD/kg`
+    : 'Cargá peso y medidas para ver el peso cobrable.';
+}
+
+function renderLineas() {
+  const calc = calcular(actual);
+  const vol = actual.reparto === 'volumen';
+  $('th-vol').style.display = vol ? '' : 'none';
+  $('pc-sin-lineas').style.display = actual.items.length ? 'none' : '';
+  $('pc-tbody').innerHTML = actual.items.map((it,i) => {
+    const c = calc.items[i];
+    const vinc = it.item_id
+      ? `<div class="pc-vinc">
+           ${it.foto_ml
+             ? `<img class="pc-thumb" src="${esc(it.foto_ml)}" alt="" loading="lazy" onerror="this.classList.add('vacia')">`
+             : '<div class="pc-thumb vacia"></div>'}
+           <div class="pc-vinc-ok">✓ ${esc(it.titulo_ml || it.item_id)}${it.variante_ml ? ' · ' + esc(it.variante_ml) : ''}</div>
+         </div>`
+      : `<div class="pc-vinc-no">sin vincular — no se imputa a ningún producto</div>`;
+    return `<tr data-i="${i}">
+      <td>
+        <input class="pc-inp" data-f="descripcion" value="${esc(it.descripcion)}" placeholder="Producto del recibo" aria-label="Producto del recibo">
+        ${(it.color || it.modelo) ? `<div class="pc-meta">${[it.color, it.modelo].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
+      </td>
+      <td><input class="pc-inp num" type="number" min="0" step="1" data-f="cantidad" value="${it.cantidad||0}"></td>
+      <td><input class="pc-inp num" type="number" min="0" step="0.001" data-f="precio_unit_usd" value="${it.precio_unit_usd||0}"></td>
+      <td style="${vol?'':'display:none'}"><input class="pc-inp num" type="number" min="0" step="0.1" data-f="vol_factor" value="${it.vol_factor||1}"></td>
+      <td>
+        <input class="pc-inp pc-buscar" data-i="${i}" placeholder="Buscar publicación o variante…" value="${esc(it._vincTxt||'')}" autocomplete="off" aria-label="Buscar publicación o variante…">
+        ${vinc}
+      </td>
+      <td class="num"><span class="pc-costo">${ars(c.costo_unit_ars)}</span><div style="font-size:12px;color:var(--text-3)">${ars(c.mercaderia_unit_ars)} + ${ars(c.extra_unit_ars)}</div></td>
+      <td><button class="pc-del" data-del="${i}" title="Quitar línea">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  $('pc-tbody').querySelectorAll('input[data-f]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = +e.target.closest('tr').dataset.i, f = e.target.dataset.f;
+      actual.items[i][f] = f === 'descripcion' ? e.target.value : (parseFloat(e.target.value) || 0);
+      if (f !== 'descripcion') { renderLineas(); renderTotales(); }
+    });
+  });
+  $('pc-tbody').querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => { actual.items.splice(+b.dataset.del,1); renderLineas(); renderTotales(); }));
+  $('pc-tbody').querySelectorAll('.pc-buscar').forEach(inp => {
+    inp.addEventListener('input', () => abrirBuscador(inp));
+    inp.addEventListener('focus', () => abrirBuscador(inp));
+    inp.addEventListener('keydown', e => navegarBuscador(e, inp));
+  });
+}
+
+async function vincular(i, txt) {
+  const it = actual.items[i];
+  it._vincTxt = txt;
+  const m = catalogo.find(v => claveVar(v) === txt);
+  if (m) {
+    it.item_id = m.item_id; it.variation_id = m.variation_id || null;
+    it.titulo_ml = m.titulo; it.variante_ml = m.variante; it.foto_ml = m.foto || '';
+    const n = await propagarVinculo(it);
+    if (n) msg(`Vinculado. Se aplicó también a ${n} línea(s) más del mismo producto.`, true);
+  } else if (!txt.trim()) {
+    it.item_id = null; it.variation_id = null; it.titulo_ml = ''; it.variante_ml = '';
+  }
+  renderLineas(); renderTotales();
+}
+
+function renderTotales() {
+  const t = calcular(actual).totales;
+  $('pc-totales').innerHTML = [
+    ['Total del pedido', ars(t.total_ars)],
+    ['Unidades', String(t.unidades)],
+    ['Costo promedio por unidad', ars(t.costo_unit_promedio_ars)],
+    ['Mercadería', ars(t.mercaderia_ars)],
+    ['Envío courier', ars(t.flete_ars)],
+    ['Impuestos y otros', ars(t.impuestos_ars)],
+  ].map(([l,v]) => `<div class="pc-tot-c"><div class="pc-tot-n">${v}</div><div class="pc-tot-l">${l}</div></div>`).join('');
+  const tot = t.total_ars || 1;
+  $('pc-barra').innerHTML =
+    `<i style="background:var(--blue);width:${t.mercaderia_ars/tot*100}%"></i>` +
+    `<i style="background:var(--yellow);width:${t.flete_ars/tot*100}%"></i>` +
+    `<i style="background:var(--red);width:${t.impuestos_ars/tot*100}%"></i>`;
+}
+
+function renderTodo() {
+  $('pc-id').textContent  = actual.id || 'nuevo';
+  $('f-fecha').value = actual.fecha_compra || '';
+  $('f-prov').value  = actual.proveedor || '';
+  $('f-det').value   = actual.detalle || '';
+  $('f-flete').value = actual.envio.flete_usd || '';
+  $('f-imp').value   = actual.envio.impuestos_ars || '';
+  $('f-otros').value = actual.envio.otros_ars || '';
+  $('f-dolar').value = actual.envio.dolar || '';
+  $('f-peso').value  = actual.envio.peso_real_kg || '';
+  $('f-med').value   = (actual.envio.medidas_cm||[]).join('x');
+  $('f-reparto').value = actual.reparto || 'unidades';
+  hintReparto();
+  renderEnvioCalc(); renderLineas(); renderTotales(); renderLista();
+}
+
+function hintReparto() {
+  const h = { unidades:'Cada unidad absorbe lo mismo. Sirve si todo ocupa parecido.',
+              valor:'Lo caro absorbe más. Sirve si el valor refleja el tamaño.',
+              volumen:'Cargá cuánto ocupa cada línea respecto de las demás. Es lo más fiel al flete volumétrico.' };
+  $('f-reparto-hint').textContent = h[$('f-reparto').value] || '';
+}
+
+/* ───── buscador de variantes ─────
+   Reemplaza al <datalist> nativo, que no puede mostrar imágenes y además se
+   cerraba a la primera tecla: el handler redibujaba la tabla entera y el input
+   enfocado se destruía. Acá el panel es un único elemento fuera de la tabla,
+   así que tipear no vuelve a dibujar nada. */
+let buscCtx = null;   // { inp, i, resultados, sel }
+
+function opcionesPara(txt) {
+  const base = soloFundas ? catalogo.filter(v => v.es_funda) : catalogo;
+  const q = txt.trim().toLowerCase();
+  if (!q) return base.slice(0, 40);
+  const palabras = q.split(/\s+/);
+  return base.filter(v => {
+    const h = `${v.titulo} ${v.variante}`.toLowerCase();
+    return palabras.every(p => h.includes(p));
+  }).slice(0, 40);
+}
+
+function abrirBuscador(inp) {
+  const i = +inp.dataset.i;
+  const res = opcionesPara(inp.value);
+  buscCtx = { inp, i, resultados: res, sel: 0 };
+  const pop = $('pc-pop');
+  pop.innerHTML = res.length ? res.map((v, k) => `
+    <div class="pc-op${k === 0 ? ' sel' : ''}" data-k="${k}">
+      ${v.foto ? `<img src="${esc(v.foto)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+               : '<div class="pc-op-sinfoto"></div>'}
+      <div style="min-width:0">
+        <div class="pc-op-t">${esc(v.titulo)}</div>
+        <div class="pc-op-s">${esc(v.variante || 'única')}${v.stock != null ? ` · stock ${v.stock}` : ''}</div>
+      </div>
+    </div>`).join('')
+    : `<div class="pc-op-vacio">Sin resultados${soloFundas ? ' entre las fundas — destildá "Buscar solo fundas"' : ''}</div>`;
+
+  const r = inp.getBoundingClientRect();
+  pop.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+  pop.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.scrollX + innerWidth - 372)) + 'px';
+  pop.style.width = Math.max(340, r.width) + 'px';
+  pop.classList.add('show');
+
+  pop.querySelectorAll('.pc-op').forEach(el =>
+    el.addEventListener('mousedown', ev => { ev.preventDefault(); elegir(+el.dataset.k); }));
+}
+
+function cerrarBuscador() { $('pc-pop').classList.remove('show'); buscCtx = null; }
+
+function marcarSel() {
+  $('pc-pop').querySelectorAll('.pc-op').forEach((el, k) => el.classList.toggle('sel', k === buscCtx.sel));
+  const act = $('pc-pop').querySelector('.pc-op.sel');
+  if (act) act.scrollIntoView({ block: 'nearest' });
+}
+
+function navegarBuscador(e, inp) {
+  if (!buscCtx || !$('pc-pop').classList.contains('show')) return;
+  const n = buscCtx.resultados.length;
+  if (e.key === 'ArrowDown') { e.preventDefault(); buscCtx.sel = (buscCtx.sel + 1) % n; marcarSel(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); buscCtx.sel = (buscCtx.sel - 1 + n) % n; marcarSel(); }
+  else if (e.key === 'Enter') { e.preventDefault(); elegir(buscCtx.sel); }
+  else if (e.key === 'Escape') { cerrarBuscador(); inp.blur(); }
+}
+
+async function elegir(k) {
+  if (!buscCtx) return;
+  const v = buscCtx.resultados[k];
+  const i = buscCtx.i;
+  cerrarBuscador();
+  if (!v) return;
+  await vincular(i, claveVar(v));
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#pc-pop') && !e.target.closest('.pc-buscar')) cerrarBuscador();
+});
+
+/* Reubicar el panel bajo su input. Se separa de abrirBuscador() para poder
+   seguir al input sin volver a filtrar ni perder la selección. */
+function reubicarBuscador() {
+  if (!buscCtx) return;
+  const pop = $('pc-pop'), r = buscCtx.inp.getBoundingClientRect();
+  // Si el input se fue de la pantalla, no tiene sentido dejar el panel colgado
+  if (r.bottom < 0 || r.top > innerHeight) { cerrarBuscador(); return; }
+  pop.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+  pop.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.scrollX + innerWidth - 372)) + 'px';
+}
+
+/* En captura para enterarse del scroll de cualquier contenedor, PERO ignorando
+   el del propio panel: al ser una lista con scroll, cerrarlo al deslizarla
+   hacía imposible bajar a ver las opciones. */
+window.addEventListener('scroll', e => {
+  if (!buscCtx) return;
+  const t = e.target;
+  if (t && t.closest && t.closest('#pc-pop')) return;   // scroll DENTRO de la lista
+  reubicarBuscador();
+}, true);
+window.addEventListener('resize', reubicarBuscador);
+
+/* ───── datos ───── */
+async function cargarPedidos() {
+  // Si el backend no responde, avisar en pantalla en vez de romper en silencio:
+  // sin este try la promesa quedaba rechazada y la lista no se dibujaba nunca.
+  try {
+    const r = await fetch('/api/stockroom/pedidos-costos');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    pedidos = d.pedidos || [];
+  } catch (e) {
+    pedidos = [];
+    msg('No se pudieron cargar los pedidos guardados: ' + e.message, false);
+  }
+  renderLista();
+}
+function cargar(id) {
+  const p = pedidos.find(x => x.id === id);
+  if (!p) return;
+  actual = JSON.parse(JSON.stringify(p));
+  actual.items.forEach(it => { it._vincTxt = it.item_id ? claveVar({titulo:it.titulo_ml, variante:it.variante_ml, item_id:it.item_id, variation_id:it.variation_id}) : ''; });
+  renderTodo();
+}
+let soloFundas = true;   // la sección hoy se usa solo para fundas
+async function cargarCatalogo() {
+  try {
+    const r = await fetch('/api/stockroom/pedidos-costos/variantes-catalogo');
+    const d = await r.json();
+    catalogo = d.variantes || [];
+    pintarDatalist();
+  } catch(e) { msg('No se pudo cargar el catálogo de variantes: ' + e.message, false); }
+}
+/* El datalist se arma con el subconjunto filtrado, pero `catalogo` queda
+   completo: si una línea ya está vinculada a algo que no es funda, se sigue
+   resolviendo bien. */
+function pintarDatalist() {
+  const lista = soloFundas ? catalogo.filter(v => v.es_funda) : catalogo;
+  const el = $('pc-filtro-info');
+  if (el) el.textContent = soloFundas
+    ? `${lista.length} variantes de fundas (de ${catalogo.length} en total)`
+    : `${catalogo.length} variantes — catálogo completo`;
+}
+function msg(t, ok) { const el = $('pc-msg'); el.textContent = t; el.className = 'pc-msg ' + (ok ? 'ok' : 'err'); }
+
+function leerForm() {
+  actual.fecha_compra = $('f-fecha').value || null;
+  actual.proveedor = $('f-prov').value;
+  actual.detalle   = $('f-det').value;
+  actual.reparto   = $('f-reparto').value;
+  actual.envio = {
+    flete_usd: parseFloat($('f-flete').value)||0,
+    impuestos_ars: parseFloat($('f-imp').value)||0,
+    otros_ars: parseFloat($('f-otros').value)||0,
+    dolar: parseFloat($('f-dolar').value)||0,
+    peso_real_kg: parseFloat($('f-peso').value)||0,
+    medidas_cm: ($('f-med').value.match(/\d+(?:\.\d+)?/g)||[]).slice(0,3).map(Number),
+  };
+}
+
+/* ───── acciones ───── */
+$('pc-nuevo').addEventListener('click', () => { actual = pedidoVacio(); renderTodo(); msg('',true); });
+$('pc-add').addEventListener('click', () => { actual.items.push({descripcion:'',cantidad:0,precio_unit_usd:0,vol_factor:1,item_id:null}); renderLineas(); renderTotales(); });
+['f-flete','f-imp','f-otros','f-dolar','f-peso','f-med'].forEach(id =>
+  $(id).addEventListener('input', () => { leerForm(); renderEnvioCalc(); renderLineas(); renderTotales(); }));
+$('f-reparto').addEventListener('change', () => { leerForm(); hintReparto(); renderLineas(); renderTotales(); });
+
+$('pc-guardar').addEventListener('click', async () => {
+  leerForm();
+  if (!actual.items.length) { msg('El pedido no tiene líneas.', false); return; }
+  const btn = $('pc-guardar'); btn.disabled = true; msg('Guardando…', true);
+  try {
+    const limpio = JSON.parse(JSON.stringify(actual));
+    limpio.items.forEach(it => delete it._vincTxt);
+    const r = await fetch('/api/stockroom/pedidos-costos', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pedido: limpio })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    await cargarPedidos();
+    cargar(d.pedido.id);
+    const sinVinc = d.pedido.items.filter(i => !i.item_id).length;
+    msg('Guardado.' + (sinVinc ? ` ${sinVinc} línea(s) sin vincular.` : '') + ' El stock no se modificó.', true);
+  } catch(e) { msg('✕ ' + e.message, false); }
+  finally { btn.disabled = false; }
+});
+
+$('pc-borrar').addEventListener('click', async () => {
+  if (!actual.id) { actual = pedidoVacio(); renderTodo(); return; }
+  if (!confirm('¿Borrar este pedido? Los costos que aporta dejan de usarse.')) return;
+  const r = await fetch('/api/stockroom/pedidos-costos/' + encodeURIComponent(actual.id), { method:'DELETE' });
+  if (r.ok) { actual = pedidoVacio(); await cargarPedidos(); renderTodo(); msg('Pedido borrado.', true); }
+  else msg('No se pudo borrar.', false);
+});
+
+/* Importa el PDF del recibo reusando el parser de carga Alibaba */
+const drop = $('pc-drop');
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) importarPDF(f); });
+$('pc-file').addEventListener('change', e => { const f = e.target.files[0]; if (f) importarPDF(f); e.target.value = ''; });
+
+async function importarPDF(f) {
+  if (f.type !== 'application/pdf') { msg('Tiene que ser un PDF.', false); return; }
+  msg('Leyendo el PDF…', true);
+  try {
+    const b64 = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).split(',')[1]);
+      fr.onerror = rej; fr.readAsDataURL(f);
+    });
+    const r = await fetch('/api/stockroom/alibaba/parse', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ data: b64 })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'No se pudo leer el PDF');
+    const filas = d.rows || [];
+    if (!filas.length) { msg('El PDF se leyó pero no se reconocieron líneas. Cargalas a mano.', false); return; }
+    filas.forEach(row => actual.items.push({
+      descripcion: row.title || row.name || '',
+      color:  row.color || '',
+      modelo: row.model || '',
+      cantidad: Number(row.qty) || 0,
+      precio_unit_usd: Number(row.unit_usd) || 0,
+      vol_factor: 1, item_id: null,
+    }));
+    const auto = autoVincular();
+    renderLineas(); renderTotales();
+    msg(`${filas.length} línea(s) importadas${d.usedOcr ? ' (con OCR)' : ''}` +
+        (auto ? ` · ${auto} vinculadas solas por productos ya conocidos` : '') +
+        '. Revisá cantidades y precios.', true);
+  } catch(err) { msg('✕ ' + err.message, false); }
+}
+
+const sidebar = $('sidebar'), overlay = $('sidebar-overlay');
+$('btn-hamburger').addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+// Botón de tema: mismo comportamiento que el resto del panel
+$('btn-theme').addEventListener('click', () => {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('adminTheme', t); } catch(e) {}
+});
+
+actual = pedidoVacio();
+renderTodo();
+cargarPedidos();
+cargarCatalogo();
+cargarMapeos();
+$('pc-solo-fundas').addEventListener('change', e => { soloFundas = e.target.checked; pintarDatalist(); });
+</script>
+</body>
+</html>

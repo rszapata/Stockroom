@@ -1655,6 +1655,125 @@ async function countPendingStockAlertsByItem() {
   return map;
 }
 
+
+// ══════════════════════════════════════════════════════════════════
+//  HISTÓRICO DE STOCK
+//  Foto diaria del stock de cada variante. Resuelve la demanda censurada:
+//  sin esto, una variante que se agota deja de vender y el sistema lo lee
+//  como falta de demanda, cuando en realidad es falta de stock.
+//
+//  La foto da el NIVEL. El FLUJO (cargas de Alibaba, ventas de ML) se puede
+//  cruzar después para reconstruir lo que pasó entre fotos y detectar
+//  descuadres — por eso `origen` queda preparado desde el principio.
+// ══════════════════════════════════════════════════════════════════
+async function ensureStockHistoricoTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS stock_historico (
+      item_id      TEXT        NOT NULL,
+      variation_id TEXT        NOT NULL DEFAULT '',
+      fecha        DATE        NOT NULL,
+      cantidad     INTEGER     NOT NULL CHECK (cantidad >= 0),
+      cuenta       TEXT        NOT NULL DEFAULT '',
+      titulo       TEXT        NOT NULL DEFAULT '',
+      variante     TEXT        NOT NULL DEFAULT '',
+      origen       TEXT        NOT NULL DEFAULT 'snapshot',
+      creado_en    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (item_id, variation_id, fecha)
+    )
+  `);
+  // La consulta típica es "esta variante, últimos N días"
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_stock_hist_var
+                    ON stock_historico (item_id, variation_id, fecha DESC)`);
+  // …y "todo lo que estuvo sin stock en tal fecha"
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_stock_hist_fecha
+                    ON stock_historico (fecha DESC)`);
+}
+
+/**
+ * Guarda la foto del día. La PK incluye la fecha, así que volver a correrlo
+ * el mismo día ACTUALIZA en vez de duplicar: el job puede reintentarse sin
+ * ensuciar los datos.
+ */
+async function guardarSnapshotStock(filas, fecha = null) {
+  if (!filas || !filas.length) return 0;
+  const dia = fecha || new Date().toISOString().slice(0, 10);
+  const cli = await pool.connect();
+  let n = 0;
+  try {
+    await cli.query('BEGIN');
+    // De a 500 para no armar una sentencia gigante con 2.246 variantes
+    for (let i = 0; i < filas.length; i += 500) {
+      const lote = filas.slice(i, i + 500);
+      const vals = [];
+      const params = [];
+      lote.forEach((f, k) => {
+        const b = k * 7;
+        vals.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7})`);
+        params.push(f.item_id, String(f.variation_id || ''), dia,
+                    Math.max(0, parseInt(f.cantidad) || 0),
+                    String(f.cuenta || ''), String(f.titulo || '').slice(0, 300),
+                    String(f.variante || '').slice(0, 200));
+      });
+      const r = await cli.query(
+        `INSERT INTO stock_historico (item_id, variation_id, fecha, cantidad, cuenta, titulo, variante)
+         VALUES ${vals.join(',')}
+         ON CONFLICT (item_id, variation_id, fecha)
+         DO UPDATE SET cantidad = EXCLUDED.cantidad, creado_en = NOW()`, params);
+      n += r.rowCount;
+    }
+    await cli.query('COMMIT');
+  } catch (e) {
+    await cli.query('ROLLBACK'); throw e;
+  } finally { cli.release(); }
+  return n;
+}
+
+/**
+ * Días CON stock de cada variante en una ventana. Es el denominador que
+ * faltaba: la demanda real es unidades vendidas ÷ días que hubo stock,
+ * no ÷ días del período.
+ */
+async function diasConStock(dias = 60) {
+  const { rows } = await pool.query(`
+    SELECT item_id, variation_id,
+           COUNT(*) FILTER (WHERE cantidad > 0)::int AS dias_con_stock,
+           COUNT(*)::int                             AS dias_medidos,
+           MAX(fecha) FILTER (WHERE cantidad = 0)    AS ultimo_dia_sin_stock
+      FROM stock_historico
+     WHERE fecha >= CURRENT_DATE - $1::int
+     GROUP BY item_id, variation_id`, [dias]);
+  const map = {};
+  for (const r of rows) map[`${r.item_id}::${r.variation_id}`] = r;
+  return map;
+}
+
+/** Serie de una variante, para graficar o auditar. */
+async function serieStock(itemId, variationId = '', dias = 120) {
+  const { rows } = await pool.query(
+    `SELECT fecha, cantidad FROM stock_historico
+      WHERE item_id = $1 AND variation_id = $2 AND fecha >= CURRENT_DATE - $3::int
+      ORDER BY fecha`, [itemId, String(variationId || ''), dias]);
+  return rows;
+}
+
+/** Cobertura del histórico: desde cuándo hay datos y cuántos días. */
+async function coberturaHistorico() {
+  const { rows } = await pool.query(`
+    SELECT MIN(fecha) AS desde, MAX(fecha) AS hasta,
+           COUNT(DISTINCT fecha)::int AS dias,
+           COUNT(*)::int              AS filas,
+           COUNT(DISTINCT (item_id || '::' || variation_id))::int AS variantes
+      FROM stock_historico`);
+  return rows[0] || null;
+}
+
+/** Poda: más de un año de detalle diario no aporta a la demanda. */
+async function podarHistoricoStock(diasRetencion = 400) {
+  const r = await pool.query(
+    `DELETE FROM stock_historico WHERE fecha < CURRENT_DATE - $1::int`, [diasRetencion]);
+  return r.rowCount;
+}
+
 // ── Log de emails enviados (auditoría / detectar sobre-envío al cliente) ──
 async function ensureEmailLogTable() {
   await pool.query(`
@@ -1807,6 +1926,8 @@ module.exports = {
   getPendingStockAlerts,
   markStockAlertsNotified,
   countPendingStockAlertsByItem,
+  ensureStockHistoricoTable, guardarSnapshotStock, diasConStock,
+  serieStock, coberturaHistorico, podarHistoricoStock,
   // Log de emails enviados
   ensureEmailLogTable,
   getEmailHtml,

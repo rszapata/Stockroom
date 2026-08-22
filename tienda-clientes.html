@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Cat list ───────────────────────────────────────────────────── */
@@ -43,7 +43,7 @@
 
 .cat-badge {
   font-size: 11px; font-weight: 600; font-family: var(--font-mono);
-  padding: 2px 9px; border-radius: 20px; flex-shrink: 0;
+  padding: 2px 9px; border-radius:6px; flex-shrink: 0;
   border: 1px solid var(--border); color: var(--text-3); background: var(--bg);
 }
 .cat-badge.has-products {
@@ -117,7 +117,7 @@
 .cat-row.ml-readonly:hover { box-shadow: none; }
 .badge-ml {
   font-size: 10px; font-weight: 700; font-family: var(--font-mono);
-  padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+  padding: 2px 8px; border-radius:6px; flex-shrink: 0;
   background: #FFF7ED; color: #C2570A; border: 1px solid #FDBA74;
   letter-spacing: .03em;
 }
@@ -167,7 +167,7 @@
       <div class="adm-card-body">
         <div id="rec-status" style="font-size:13px;color:var(--muted)">Tocá “Cargar lista” para analizar las últimas compras pagadas de ML y detectar clientes que repitieron.</div>
         <div id="rec-summary" style="display:none;font-size:13px;margin-bottom:10px"></div>
-        <div id="rec-msg-tpl" style="display:none;margin-bottom:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <div id="rec-msg-tpl" style="display:none;margin-bottom:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
           <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
             <span>Mensaje sugerido (post-venta ML / insert) — copialo y enviáselo a cada cliente</span>
             <button class="btn btn-ghost btn-sm" onclick="copyRecMsg(event)" style="font-size:11px">Copiar</button>
@@ -247,7 +247,7 @@ async function loadRecurrentes() {
     sum.style.display = '';
     sum.innerHTML = 'Analicé <b>' + d.analizadas + '</b> compras pagadas (' + d.compradores_unicos + ' compradores únicos)'
       + (d.total_ventas_cuenta ? ' de ' + d.total_ventas_cuenta + ' totales en la cuenta' : '')
-      + '. <b style="color:var(--green)">' + recs.length + '</b> cliente' + (recs.length !== 1 ? 's' : '') + ' con 2+ compras.';
+      + '. <b style="color: var(--green-ink)">' + recs.length + '</b> cliente' + (recs.length !== 1 ? 's' : '') + ' con 2+ compras.';
 
     document.getElementById('rec-coupon').textContent = d.coupon || 'BIENVENIDA10';
 

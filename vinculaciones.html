@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -37,11 +37,11 @@
 /* ── Auto-sync indicator ── */
 .pg .auto-sync-bar {
   display: flex; align-items: center; gap: 8px;
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius:6px;
   padding: 8px 12px; margin-bottom: 16px; flex-wrap: wrap;
 }
 /* Segmentado de estrategia (más bajo / más alto) */
-.pg .strat-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--bg); }
+.pg .strat-seg { display: inline-flex; border: 1px solid var(--border); border-radius:6px; overflow: hidden; background: var(--bg); }
 .pg .strat-seg button { font-family: var(--mono); font-size: 11px; font-weight: 600; padding: 6px 11px; border: none; background: transparent; color: var(--text-3); cursor: pointer; transition: all .15s; }
 .pg .strat-seg button.active { background: var(--ye); color: var(--bg); }
 .pg .strat-seg button:not(.active):hover { color: var(--text); background: var(--bg-card); }
@@ -69,7 +69,7 @@
 
 /* ── Cards ── */
 .pg .card {
-  background: var(--bg); border: 1px solid var(--bg-card); border-radius: 16px; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--bg-card); border-radius:6px; overflow: hidden;
   margin-bottom: 16px; transition: border-color .25s, box-shadow .25s;
 }
 .pg .card-lift:hover { border-color: var(--border-2); box-shadow: 0 12px 40px -12px rgba(0,0,0,.6); }
@@ -87,7 +87,7 @@
   height: 28px; padding: 0 11px; font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
   border: 1px solid var(--border); background: var(--bg-card); color: var(--text-2); cursor: pointer;
   transition: all .2s; white-space: nowrap; display: inline-flex; align-items: center;
-  justify-content: center; gap: 5px; border-radius: 8px;
+  justify-content: center; gap: 5px; border-radius:6px;
 }
 .pg .jsbtn:hover { border-color: var(--border-2); color: var(--text); background: var(--bg); }
 .pg .jsbtn.primary { background: var(--ye); color: var(--bg); border-color: var(--ye); font-weight: 700; }
@@ -99,20 +99,20 @@
 .pg .btn-outline {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; color: var(--text-2); background: transparent;
-  border: 1px solid var(--border); border-radius: 10px;
+  border: 1px solid var(--border); border-radius:6px;
   padding: 6px 12px; cursor: pointer; transition: all .15s;
 }
 .pg .btn-outline:hover { background: var(--bg-card); color: var(--text); border-color: var(--border-2); }
 .pg .btn-primary {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 600; color: var(--bg); background: var(--ye);
-  border: none; border-radius: 10px; padding: 6px 14px; cursor: pointer; transition: background .15s;
+  border: none; border-radius:6px; padding: 6px 14px; cursor: pointer; transition: background .15s;
 }
 .pg .btn-primary:hover { background: #FFE82E; }
 
 /* ── Chips ── */
 .pg .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 999px; letter-spacing: .02em; }
-.pg .chip-green   { background: rgba(34,197,94,.12);  color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+.pg .chip-green   { background: rgba(34,197,94,.12);  color: var(--green-ink); border: 1px solid rgba(34,197,94,.25); }
 .pg .chip-red     { background: rgba(239,68,68,.12);  color: var(--red); border: 1px solid rgba(239,68,68,.25); }
 .pg .chip-neutral { background: var(--bg-card); color: var(--text-2); border: 1px solid var(--border); }
 .pg .chip-brand   { background: color-mix(in srgb,var(--ye) 10%,transparent);   color: var(--ye); border: 1px solid color-mix(in srgb,var(--ye) 25%,transparent); }
@@ -127,7 +127,7 @@
 .pg table.data tbody tr:hover { background: var(--bg); }
 
 /* ── Link groups ── */
-.pg .link-group { border: 1px solid var(--border); background: var(--bg-card); margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: border-color .3s, box-shadow .3s; }
+.pg .link-group { border: 1px solid var(--border); background: var(--bg-card); margin-bottom: 10px; border-radius:6px; overflow: hidden; transition: border-color .3s, box-shadow .3s; }
 .pg .link-group.syncing { border-color: color-mix(in srgb,var(--ye) 35%,transparent); box-shadow: 0 0 24px color-mix(in srgb,var(--ye) 5%,transparent); }
 .pg .lg-header { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--bg-card); background: rgba(255,255,255,.015); }
 .pg .lg-name { font-family: var(--mono); font-weight: 600; font-size: 12px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -143,8 +143,8 @@
 .pg .li-acct { display: inline-block; font-family: var(--mono); font-size: 9px; padding: 2px 7px; border: 1px solid var(--border); color: var(--text-3); border-radius: 6px; background: var(--bg-card); white-space: nowrap; }
 .pg .li-id { font-family: var(--mono); font-size: 10px; color: var(--border-2); }
 .pg .li-stock { font-family: var(--mono); font-size: 12px; font-weight: 600; }
-.pg .li-stock.ok   { color: var(--green); }
-.pg .li-stock.warn { color: var(--yellow); }
+.pg .li-stock.ok   { color: var(--green-ink); }
+.pg .li-stock.warn { color: var(--yellow-ink); }
 .pg .li-stock.err  { color: var(--red); }
 .pg .btn-rm { background: none; border: none; color: var(--border-2); cursor: pointer; font-size: 16px; padding: 2px 4px; transition: color .15s; line-height: 1; }
 .pg .btn-rm:hover { color: var(--red); }
@@ -169,12 +169,12 @@
 
 /* ── Sync badges ── */
 .pg .sync-badge { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
-.pg .sync-ok      { color: var(--green); border-color: rgba(74,222,128,.25);  background: rgba(74,222,128,.07);  }
-.pg .sync-pending { color: var(--yellow); border-color: rgba(251,146,60,.25);  background: rgba(251,146,60,.07);  }
+.pg .sync-ok      { color: var(--green-ink); border-color: rgba(74,222,128,.25);  background: rgba(74,222,128,.07);  }
+.pg .sync-pending { color: var(--yellow-ink); border-color: rgba(251,146,60,.25);  background: rgba(251,146,60,.07);  }
 .pg .sync-err     { color: var(--red); border-color: rgba(248,113,113,.25); background: rgba(248,113,113,.07); }
 
 /* ── Suggestions ── */
-.pg .suggestion { border: 1px solid var(--border); background: var(--bg-card); margin-bottom: 10px; border-radius: 14px; overflow: hidden; transition: opacity .3s; }
+.pg .suggestion { border: 1px solid var(--border); background: var(--bg-card); margin-bottom: 10px; border-radius:6px; overflow: hidden; transition: opacity .3s; }
 .pg .suggestion.accepted { border-color: rgba(74,222,128,.25); opacity: .5; pointer-events: none; }
 .pg .suggestion.dismissed { display: none; }
 .pg .sg-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,.015); border-bottom: 1px solid var(--bg-card); }
@@ -182,13 +182,13 @@
 .pg .sg-count { font-family: var(--mono); font-size: 9px; color: var(--text-3); padding: 2px 7px; border: 1px solid var(--border); border-radius: 6px; white-space: nowrap; }
 .pg .sg-items { padding: 4px 0; }
 .pg .sg-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 11px; }
-.pg .sg-item img { width: 26px; height: 26px; object-fit: cover; border: 1px solid var(--bg-card); border-radius: 5px; flex-shrink: 0; }
+.pg .sg-item img { width: 26px; height: 26px; object-fit: cover; border: 1px solid var(--bg-card); border-radius:4px; flex-shrink: 0; }
 .pg .sg-item .sg-acct { font-family: var(--mono); font-size: 8px; padding: 1px 5px; border: 1px solid var(--border); color: var(--text-3); border-radius: 4px; min-width: 56px; text-align: center; }
 .pg .sg-item .sg-stk { font-family: var(--mono); font-size: 10px; color: var(--ye); min-width: 36px; text-align: right; font-weight: 600; }
 .pg .sg-actions { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--bg-card); justify-content: flex-end; }
 
 /* ── Search results ── */
-.pg .search-results { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); background: var(--bg-card); border-radius: 12px; margin-top: 4px; }
+.pg .search-results { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top: 4px; }
 .pg .search-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--bg-card); cursor: pointer; transition: background .15s; font-size: 12px; }
 .pg .search-item:last-child { border-bottom: none; }
 .pg .search-item:hover { background: color-mix(in srgb,var(--ye) 3%,transparent); }
@@ -201,9 +201,9 @@
 .pg .log-wrap { max-height: 200px; overflow-y: auto; padding: 12px 16px; }
 .pg .log-e { font-family: var(--mono); font-size: 10px; line-height: 2; }
 .pg .log-e.info { color: var(--border-2); }
-.pg .log-e.ok   { color: var(--green); }
+.pg .log-e.ok   { color: var(--green-ink); }
 .pg .log-e.err  { color: var(--red); }
-.pg .log-e.warn { color: var(--yellow); }
+.pg .log-e.warn { color: var(--yellow-ink); }
 
 /* ── Detect progress ── */
 .pg .detect-bar { width: 100%; height: 2px; background: var(--bg-card); margin-top: 10px; border-radius: 2px; overflow: hidden; }
@@ -212,7 +212,7 @@
 /* ── New group form inputs ── */
 .pg input[type=text], .pg input[type=search] {
   background: var(--bg-card); border: 1px solid var(--border-2); color: var(--text);
-  border-radius: 12px; padding: 10px 14px; font-size: 13px; outline: none;
+  border-radius:6px; padding: 10px 14px; font-size: 13px; outline: none;
   transition: border-color .2s; width: 100%;
   font-family: 'JetBrains Mono', monospace;
 }
@@ -220,7 +220,7 @@
 .pg input::placeholder { color: var(--text-3); }
 .pg select {
   width: 100%; background: var(--bg-card); border: 1px solid var(--border-2); color: var(--text);
-  border-radius: 12px; padding: 10px 14px; font-size: 13px; outline: none;
+  border-radius:6px; padding: 10px 14px; font-size: 13px; outline: none;
   appearance: none; cursor: pointer; font-family: 'JetBrains Mono', monospace;
   transition: border-color .2s;
 }
@@ -229,7 +229,7 @@
 
 /* ── Pending card ── */
 .pg .pending-card {
-  background: var(--bg); border: 1px solid rgba(249,115,22,.3); border-radius: 16px; overflow: hidden;
+  background: var(--bg); border: 1px solid rgba(249,115,22,.3); border-radius:6px; overflow: hidden;
   margin-bottom: 16px; display: none;
 }
 .pg .pending-head {
@@ -245,13 +245,13 @@
 .pg .btn-apply-all {
   display: inline-flex; align-items: center; gap: 6px;
   background: #f97316; color: var(--bg); font-size: 11px; font-weight: 600;
-  border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+  border: none; border-radius:6px; padding: 6px 12px; cursor: pointer;
   transition: background .15s;
 }
 .pg .btn-apply-all:hover { background: var(--yellow); }
 
 /* ── Historial ── */
-.pg .log-hist-card { background: var(--bg); border: 1px solid var(--bg-card); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+.pg .log-hist-card { background: var(--bg); border: 1px solid var(--bg-card); border-radius:6px; overflow: hidden; margin-bottom: 16px; }
 .pg .log-hist-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--bg-card); }
 .pg .log-hist-list { max-height: 288px; overflow-y: auto; }
 .pg .log-hist-entry { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); transition: background .15s; }
@@ -260,7 +260,7 @@
 
 /* ── Empty state ── */
 .pg .empty-hint { padding: 64px 24px; text-align: center; }
-.pg .empty-icon { width: 48px; height: 48px; border-radius: 16px; background: var(--bg-card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--text-3); }
+.pg .empty-icon { width: 48px; height: 48px; border-radius:6px; background: var(--bg-card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--text-3); }
 
 /* ── Footer ── */
 .pg footer { text-align: center; font-size: 11px; color: var(--border-2); padding-bottom: 24px; font-family: var(--mono); }
@@ -268,7 +268,7 @@
 /* ── Scrollbar ── */
 .pg *::-webkit-scrollbar { width: 6px; height: 6px; }
 .pg *::-webkit-scrollbar-track { background: transparent; }
-.pg *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.pg *::-webkit-scrollbar-thumb { background: var(--border); border-radius:6px; }
 .pg *::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
 
 </style>
@@ -278,7 +278,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -394,7 +394,7 @@
         <input type="text" id="ng-name" placeholder="Ej: iPhone 15 128GB Negro" maxlength="80">
       </div>
 
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);font-weight:500;font-family:var(--mono);margin-bottom:12px">Items vinculados</div>
         <div id="ng-items"></div>
 
@@ -481,7 +481,7 @@
         <span id="log-count" style="font-family:var(--mono);font-size:10px;color:var(--text-3);background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px">0</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button id="btn-undo-batch" onclick="undoLastBatch()" style="display:none;font-size:11px;padding:4px 10px;border:1px solid rgba(251,146,60,.4);border-radius:8px;background:rgba(251,146,60,.08);color:var(--yellow);cursor:pointer;font-weight:600" title="Revierte de una todos los ajustes que aplicaste recién">⏪ Deshacer lo aplicado</button>
+        <button id="btn-undo-batch" onclick="undoLastBatch()" style="display:none;font-size:11px;padding:4px 10px;border:1px solid rgba(251,146,60,.4);border-radius:6px;background:rgba(251,146,60,.08);color: var(--yellow-ink);cursor:pointer;font-weight:600" title="Revierte de una todos los ajustes que aplicaste recién">⏪ Deshacer lo aplicado</button>
         <button id="btn-hist-toggle" onclick="toggleHistorico()" class="btn-outline" style="font-size:11px;padding:4px 10px" title="Ver el histórico archivado (ajustes viejos, formato liviano)">📜 Histórico</button>
         <button onclick="loadLog()" class="btn-outline" style="font-size:11px;padding:4px 10px">
           <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4.36"/></svg>
@@ -917,7 +917,7 @@ function renderGroups() {
           const rowClass = isMax ? ' class="row-max"' : isMin ? ' class="row-min"' : '';
           return '<tr' + rowClass + '>' +
             '<td style="padding:9px 8px 9px 12px"><input type="radio" name="src_' + g.id + '" value="' + it.itemId + '"' + (isMax ? ' checked' : '') +
-              ' style="accent-color:var(--ye);width:14px;height:14px;cursor:pointer" title="Usar como fuente de stock"></td>' +
+              ' style="accent-color:var(--ye);width:14px;height:14px;cursor:pointer" title="Usar como fuente de stock" aria-label="Usar como fuente de stock"></td>' +
             '<td style="padding:9px 4px">' + (it.thumb ? '<img src="' + esc(it.thumb) + '" style="width:30px;height:30px;object-fit:cover;border:1px solid var(--border);border-radius:6px;display:block">' : '<div style="width:30px;height:30px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border)"></div>') + '</td>' +
             '<td><span class="li-acct">' + esc(it.acctLabel || it.accountId) + '</span></td>' +
             '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.title || '—') + '</td>' +
@@ -1200,7 +1200,7 @@ function renderSuggestions() {
       '<div class="sg-items">' +
         sg.items.map(it =>
           '<div class="sg-item">' +
-            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:26px;height:26px;background:var(--bg-card);border:1px solid var(--border);border-radius:5px"></div>') +
+            (it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div style="width:26px;height:26px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px"></div>') +
             '<span class="sg-acct">' + esc(it.acctLabel) + '</span>' +
             '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-3);font-family:var(--mono);font-size:10px">' + it.itemId + '</span>' +
             '<span class="sg-stk">x' + it.stock + '</span>' +
@@ -1209,7 +1209,7 @@ function renderSuggestions() {
       '</div>' +
       '<div class="sg-actions">' +
         '<button class="jsbtn danger" onclick="dismissSuggestion(\'' + sg.id + '\')">Descartar</button>' +
-        '<button class="jsbtn" style="border-color:rgba(74,222,128,.3);color:var(--green)" onclick="acceptSuggestion(\'' + sg.id + '\')">Confirmar</button>' +
+        '<button class="jsbtn" style="border-color:rgba(74,222,128,.3);color: var(--green-ink)" onclick="acceptSuggestion(\'' + sg.id + '\')">Confirmar</button>' +
       '</div>' +
     '</div>'
   ).join('');
@@ -1376,7 +1376,7 @@ function renderPending(list) {
     if (isSaleAdj || isCancelAdj) {
       const verbo = isCancelAdj ? 'subir' : 'bajar';
       const icon  = isCancelAdj
-        ? '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--green)"><polyline points="18 15 12 9 6 15"/></svg>'
+        ? '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color: var(--green-ink)"><polyline points="18 15 12 9 6 15"/></svg>'
         : '<svg viewBox="0 0 24 24" fill="none" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--red)"><polyline points="6 9 12 15 18 9"/></svg>';
       const deltaBadges = adj.changes.flatMap(ch => (ch.variantChanges || []).map(vc => {
         const sign = isCancelAdj ? '+' : '−';
@@ -1407,14 +1407,14 @@ function renderPending(list) {
           '<span style="font-family:var(--mono);font-size:11px">' +
             '<span style="color:var(--red);text-decoration:line-through;opacity:.6">x' + fromQty + '</span>' +
             '<span style="color:var(--text-3);margin:0 4px">→</span>' +
-            '<span style="color:var(--green);font-weight:600">x' + m.targetQty + '</span>' +
+            '<span style="color: var(--green-ink);font-weight:600">x' + m.targetQty + '</span>' +
           '</span>' +
           '<span style="color:var(--text-3);font-size:11px">·</span>' +
           opts +
         '</div>';
       }).join('');
       choiceHtml = '<div style="padding:12px 16px;display:flex;align-items:center;gap:12px">' +
-        (thumb ? '<img src="' + esc(thumb) + '" style="width:36px;height:36px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">' : '') +
+        (thumb ? '<img src="' + esc(thumb) + '" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0">' : '') +
         '<div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">' + rows + '</div>' +
       '</div>';
     } else {
@@ -1455,7 +1455,7 @@ function renderPending(list) {
             '<span style="color:var(--text-3)">' + esc(vc.label || fmtAttrKey(vc.attrKey)) + '</span>' +
             '<span style="color:var(--red);text-decoration:line-through;opacity:.7;margin-left:2px">x' + vc.from + '</span>' +
             '<span style="color:var(--text-3);margin:0 2px">→</span>' +
-            '<span style="color:var(--green);font-weight:600">x' + vc.to + '</span>' +
+            '<span style="color: var(--green-ink);font-weight:600">x' + vc.to + '</span>' +
             '</span>'
           ).join('') +
         '</div>';
@@ -1480,14 +1480,14 @@ function renderPending(list) {
         : '<span style="font-family:var(--mono);font-size:11px;flex-shrink:0;margin-top:2px">' +
             '<span style="color:var(--red);text-decoration:line-through;opacity:.6">x' + ch.from + '</span>' +
             '<span style="color:var(--text-3);margin:0 6px">→</span>' +
-            '<span style="color:var(--green);font-weight:600">x' + ch.to + '</span>' +
+            '<span style="color: var(--green-ink);font-weight:600">x' + ch.to + '</span>' +
           '</span>';
 
       return (
         '<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)">' +
           (ch.thumb
-            ? '<img src="' + esc(ch.thumb) + '" style="width:32px;height:32px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0;margin-top:2px">'
-            : '<div style="width:32px;height:32px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);flex-shrink:0;margin-top:2px"></div>') +
+            ? '<img src="' + esc(ch.thumb) + '" style="width:32px;height:32px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;margin-top:2px">'
+            : '<div style="width:32px;height:32px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);flex-shrink:0;margin-top:2px"></div>') +
           '<div style="flex:1;min-width:0">' +
             '<div style="display:flex;align-items:center;gap:8px">' +
               '<span class="li-acct" style="flex-shrink:0">' + esc(ch.acctLabel) + '</span>' +
@@ -1501,13 +1501,13 @@ function renderPending(list) {
     }).join('');
 
     return (
-      '<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden" id="adj-' + adj.id + '">' +
+      '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden" id="adj-' + adj.id + '">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border)">' +
           '<div style="display:flex;align-items:center;gap:8px">' +
             '<span style="font-size:11px;font-weight:600;color:var(--text)">' + esc(adj.groupName) + '</span>' +
             (isVariantAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(99,102,241,.15);color:#818cf8;border-radius:4px;padding:1px 6px;font-weight:600">POR VARIANTE</span>' : '') +
             (isSaleAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(248,113,113,.15);color:var(--red);border-radius:4px;padding:1px 6px;font-weight:600">VENTA</span>' : '') +
-            (isCancelAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(74,222,128,.15);color:var(--green);border-radius:4px;padding:1px 6px;font-weight:600">CANCELACIÓN</span>' : '') +
+            (isCancelAdj ? '<span style="font-family:var(--mono);font-size:9px;background:rgba(74,222,128,.15);color: var(--green-ink);border-radius:4px;padding:1px 6px;font-weight:600">CANCELACIÓN</span>' : '') +
             '<span style="font-family:var(--mono);font-size:10px;color:var(--text-3)">' + ts + '</span>' +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:6px">' +
@@ -1857,7 +1857,7 @@ function renderLog(entries) {
     const canRevert = ['applied', 'sale-sync', 'cancel-restore'].includes(e.action) && e.adjId;
     const revertBtn = canRevert
       ? '<button onclick="revertAdjustment(\'' + e.adjId + '\', this)" ' +
-          'style="font-family:var(--mono);font-size:9px;color:var(--text-3);background:none;border:1px solid var(--border);cursor:pointer;padding:2px 7px;border-radius:5px;transition:color .15s,border-color .15s;flex-shrink:0" ' +
+          'style="font-family:var(--mono);font-size:9px;color:var(--text-3);background:none;border:1px solid var(--border);cursor:pointer;padding:2px 7px;border-radius:4px;transition:color .15s,border-color .15s;flex-shrink:0" ' +
           'onmouseover="this.style.color=\'var(--yellow)\';this.style.borderColor=\'var(--yellow)\'" onmouseout="this.style.color=\'var(--text-3)\';this.style.borderColor=\'var(--border)\'">⏪ Revertir</button>'
       : '';
 

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC: tema guardado antes del primer paint -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -17,7 +17,7 @@
 .prod-toolbar .adm-search { width: 280px; max-width: 100%; }
 
 /* ── Badges extra ───────────────────────────────────────── */
-.stock-ok    { color: var(--green); font-weight: 700; }
+.stock-ok    { color: var(--green-ink); font-weight: 700; }
 .stock-low   { color: #d97706;      font-weight: 700; }
 .stock-empty { color: var(--red);   font-weight: 700; }
 
@@ -122,7 +122,7 @@
   cursor: pointer; transition: all .15s;
 }
 .src-tab:hover  { border-color: var(--blue); color: var(--blue); }
-.src-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+.src-tab.active { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
 
 .video-current {
   display: flex; align-items: center; gap: 10px;
@@ -220,7 +220,7 @@
       <div class="prod-toolbar">
         <div class="adm-search" style="flex:1;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="inp-search" placeholder="Buscar por título o ID de ML…">
+          <input type="text" id="inp-search" placeholder="Buscar por título o ID de ML…" aria-label="Buscar por título o ID de ML…">
         </div>
         <select class="adm-select" id="sel-filtro">
           <option value="">Todos los productos</option>
@@ -308,15 +308,15 @@
     <!-- Título / descripción custom -->
     <div class="adm-field">
       <label class="adm-label">Título personalizado <span style="font-weight:400;color:var(--text-3);">(opcional — reemplaza el de ML)</span></label>
-      <input type="text" class="adm-input" id="inp-titulo" maxlength="200" placeholder="Dejalo vacío para usar el título original de ML">
+      <input type="text" class="adm-input" id="inp-titulo" maxlength="200" placeholder="Dejalo vacío para usar el título original de ML" aria-label="Dejalo vacío para usar el título original de ML">
     </div>
     <div class="adm-field">
       <label class="adm-label">Descripción personalizada <span style="font-weight:400;color:var(--text-3);">(opcional)</span></label>
-      <textarea class="adm-textarea" id="inp-descripcion" maxlength="5000" placeholder="Dejalo vacío para usar la descripción original de ML"></textarea>
+      <textarea class="adm-textarea" id="inp-descripcion" maxlength="5000" placeholder="Dejalo vacío para usar la descripción original de ML" aria-label="Dejalo vacío para usar la descripción original de ML"></textarea>
     </div>
     <div class="adm-field">
       <label class="adm-label">Imagen de portada propia <span style="font-weight:400;color:var(--text-3);">(URL — opcional)</span></label>
-      <input type="text" class="adm-input" id="inp-imagen" placeholder="https://…  (dejalo vacío para usar la foto de ML)">
+      <input type="text" class="adm-input" id="inp-imagen" placeholder="https://…  (dejalo vacío para usar la foto de ML)" aria-label="https://…  (dejalo vacío para usar la foto de ML)">
       <img id="image-preview" alt="Vista previa">
     </div>
 
@@ -346,11 +346,11 @@
       <!-- Link (youtube / alibaba / aliexpress) -->
       <div id="video-link-panel" style="display:none;margin-top:10px;">
         <div class="adm-field">
-          <label class="adm-label" id="video-link-label">Link del video</label>
+          <label class="adm-label" id="video-link-label" for="inp-video-url">Link del video</label>
           <input type="text" class="adm-input" id="inp-video-url" placeholder="https://www.youtube.com/watch?v=…">
         </div>
         <div class="adm-field" style="margin-top:8px;" id="video-aliexpress-fuente-wrap">
-          <label class="adm-label">¿De qué sitio es?</label>
+          <label class="adm-label" for="sel-video-fuente-link">¿De qué sitio es?</label>
           <select class="adm-select" id="sel-video-fuente-link" style="width:100%;">
             <option value="alibaba">Alibaba</option>
             <option value="aliexpress">AliExpress</option>
@@ -373,7 +373,7 @@
     <!-- Notas internas -->
     <div class="adm-field">
       <label class="adm-label">Notas internas <span style="font-weight:400;color:var(--text-3);">(solo para el equipo — no se muestran en la tienda)</span></label>
-      <textarea class="adm-textarea" id="inp-notas" maxlength="2000" style="min-height:60px;" placeholder="Ej: pendiente de actualizar fotos, video subido el 08/06…"></textarea>
+      <textarea class="adm-textarea" id="inp-notas" maxlength="2000" style="min-height:60px;" placeholder="Ej: pendiente de actualizar fotos, video subido el 08/06…" aria-label="Ej: pendiente de actualizar fotos, video subido el 08/06…"></textarea>
     </div>
 
   </div>

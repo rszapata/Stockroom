@@ -10,14 +10,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 .rt-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
 .rt-field { display: flex; flex-direction: column; gap: 4px; }
 .rt-field label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); font-weight: 600; }
 .rt-field select, .rt-field input {
-  height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px;
+  height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius:6px;
   background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-mono); font-weight: 600;
 }
 .rt-field input[type=number] { width: 96px; text-align: right; }
@@ -27,33 +27,73 @@
 @media (max-width: 760px) { .rt-kpis { grid-template-columns: repeat(2, 1fr); } }
 .rt-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; transition: transform .12s; }
 .rt-kpi:hover { transform: translateY(-1px); }
-.rt-kpi-lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; margin-bottom: 5px; }
+.rt-kpi-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; margin-bottom: 5px; }
 .rt-kpi-val { font-size: 24px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.05; }
 .rt-kpi-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
-.rt-kpi.gan .rt-kpi-val { color: var(--green); }
+.rt-kpi.gan .rt-kpi-val { color: var(--green-ink); }
 .rt-kpi.costo .rt-kpi-val { color: var(--red); }
 
-.rt-warn { background: var(--yellow-light); color: var(--yellow); border: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 16px; display: none; }
+.rt-warn { background: var(--yellow-light); color: var(--yellow-ink); border: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent); border-radius:6px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; display: none; }
 .rt-warn.show { display: block; }
+/* valor medido sobre recibos reales — ocupa el lugar del viejo input de flete */
+.rt-medido { height:34px; display:flex; align-items:center; gap:7px; padding:0 10px; border:1px solid var(--border);
+  border-radius:6px; background:var(--bg); font-family:var(--font-mono); font-size:12px; white-space:nowrap; }
+.rt-medido .rt-src { font-family:var(--font); font-size:10px; letter-spacing:.03em; text-transform:uppercase;
+  padding:1px 5px; border-radius:3px; background:var(--green-light); color:var(--green-ink); }
+.rt-medido .rt-src.est { background:var(--yellow-light); color:var(--yellow-ink); }
+.rt-medido a { color:var(--text-3); text-decoration:none; font-family:var(--font); font-size:11px; }
+.rt-medido a:hover { color:var(--blue); text-decoration:underline; }
+/* selector de rango temporal */
+.rt-seg { display:flex; height:34px; border:1px solid var(--border); border-radius:6px; overflow:hidden; background:var(--bg); }
+.rt-seg button { border:0; background:transparent; color:var(--text-2); font:inherit; font-size:12px;
+  padding:0 11px; cursor:pointer; border-right:1px solid var(--border); white-space:nowrap; }
+.rt-seg button:last-child { border-right:0; }
+.rt-seg button:hover { background:var(--surface-2, rgba(0,0,0,.04)); }
+.rt-seg button.on { background:var(--blue); color:var(--on-blue); font-weight:600; }
+/* aviso de cobertura desigual entre cuentas */
+.rt-cober { font-size:12px; color:var(--text-3); margin:-6px 0 14px; display:none; }
+.rt-cober.show { display:block; }
+.rt-cober b { color:var(--text-2); font-weight:600; }
+.rt-cober .rt-gap { color:var(--yellow-ink); }
+/* qué cobros guardados entran en el rango elegido */
+.rt-periodos { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 16px; }
+.rt-per { border:1px solid var(--border); border-radius:6px; padding:6px 10px; background:var(--bg);
+  font-size:12px; line-height:1.35; min-width:150px; }
+.rt-per .rt-per-top { display:flex; align-items:center; gap:6px; font-weight:600; color:var(--text); }
+.rt-per .rt-per-sub { color:var(--text-3); margin-top:2px; font-family:var(--font-mono); font-size:10px; }
+.rt-per .rt-per-tag { font-size:10px; text-transform:uppercase; letter-spacing:.04em; padding:1px 5px; border-radius:3px; }
+/* dentro del rango: se destaca. fuera: se apaga, no se esconde */
+.rt-per.dentro  { border-color:color-mix(in srgb, var(--green) 45%, transparent); background:var(--green-light); }
+.rt-per.dentro  .rt-per-tag { background:var(--green-ink); color:var(--green-light); }
+.rt-per.parcial { border-color:color-mix(in srgb, var(--yellow) 55%, transparent); background:var(--yellow-light); }
+.rt-per.parcial .rt-per-tag { background:var(--yellow-ink); color:var(--yellow-light); }
+.rt-per.fuera   { opacity:.42; }
+.rt-per.fuera   .rt-per-tag { background:var(--border); color:var(--text-3); }
+/* origen del costo de cada fila — mismos nombres que en Orden de compra */
+.rt-costo-cell { display:flex; align-items:center; justify-content:flex-end; gap:6px; }
+.rt-org { font-size:10px; letter-spacing:.03em; text-transform:uppercase; padding:1px 5px; border-radius:3px; white-space:nowrap; cursor:help; }
+.rt-org.ok  { background:var(--green-light);  color:var(--green-ink); }
+.rt-org.man { background:var(--blue-light);   color:var(--blue); }
+.rt-org.est { background:var(--yellow-light); color:var(--yellow-ink); }
 
 .rt-costo-inp {
   width: 84px; height: 30px; padding: 0 8px; text-align: right;
-  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text);
-  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border); border-radius:6px; background: var(--bg); color: var(--text);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .rt-costo-inp:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,113,95,.12); }
 .rt-costo-inp.editado { border-color: var(--blue); background: var(--blue-light); }
-.rt-flag { color: var(--yellow); cursor: help; margin-left: 4px; }
+.rt-flag { color: var(--yellow-ink); cursor: help; margin-left: 4px; }
 .rt-num { font-variant-numeric: tabular-nums; text-align: right; }
-.rt-gan-pos { color: var(--green); font-weight: 600; }
+.rt-gan-pos { color: var(--green-ink); font-weight: 600; }
 .rt-gan-neg { color: var(--red); font-weight: 600; }
-.rt-sincosto { color: var(--text-3); font-style: italic; font-size: 11.5px; }
+.rt-sincosto { color: var(--text-3); font-style: italic; font-size: 12px; }
 th.rt-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 th.rt-sortable:hover { color: var(--text); }
 .rt-sort-ind { opacity: .5; font-size: 9px; }
-#rt-status { font-size: 12.5px; padding: 8px 12px; border-radius: 8px; margin-top: 12px; display: none; font-family: var(--font-mono); }
+#rt-status { font-size: 12px; padding: 8px 12px; border-radius:6px; margin-top: 12px; display: none; font-family: var(--font-mono); }
 #rt-status.show { display: block; }
-#rt-status.ok { background: var(--green-light); color: var(--green); }
+#rt-status.ok { background: var(--green-light); color: var(--green-ink); }
 #rt-status.err { background: var(--red-light); color: var(--red); }
 .rt-empty { text-align: center; padding: 56px 20px; color: var(--text-3); }
 
@@ -61,15 +101,15 @@ th.rt-sortable:hover { color: var(--text); }
 .rt-acct-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .rt-acct-tab {
   display: flex; flex-direction: column; gap: 2px; min-width: 130px;
-  padding: 9px 14px; border: 1px solid var(--border); border-radius: 10px;
+  padding: 9px 14px; border: 1px solid var(--border); border-radius:6px;
   background: var(--bg-card); cursor: pointer; transition: all .12s; text-align: left;
 }
 .rt-acct-tab:hover { border-color: var(--border-2); }
 .rt-acct-tab.active { border-color: var(--blue); background: var(--blue-light); }
 .rt-acct-tab .t-name { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
-.rt-acct-tab .t-gan { font-size: 15px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }
-.rt-acct-tab .t-fiscal { font-size: 9.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; padding: 1px 6px; border-radius: 99px; }
-.rt-acct-tab .t-fiscal.mono { background: var(--yellow-light); color: var(--yellow); }
+.rt-acct-tab .t-gan { font-size: 15px; font-weight: 700; color: var(--green-ink); font-variant-numeric: tabular-nums; }
+.rt-acct-tab .t-fiscal { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; padding: 1px 6px; border-radius: 99px; }
+.rt-acct-tab .t-fiscal.mono { background: var(--yellow-light); color: var(--yellow-ink); }
 .rt-acct-tab .t-fiscal.resp { background: var(--bg); color: var(--text-3); }
 </style>
 </head>
@@ -77,7 +117,7 @@ th.rt-sortable:hover { color: var(--text); }
 <div class="adm-wrap">
 
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <div class="adm-main">
   <header class="adm-header">
@@ -102,21 +142,32 @@ th.rt-sortable:hover { color: var(--text); }
 
     <div class="rt-tools">
       <div class="rt-field">
-        <label>Período (cobros)</label>
+        <label>Rango</label>
+        <div class="rt-seg" id="rt-rango">
+          <button data-dias="7">7 días</button>
+          <button data-dias="10">10 días</button>
+          <button data-dias="30">30 días</button>
+          <button data-dias="0" class="on">Todo</button>
+        </div>
+      </div>
+      <div class="rt-field">
+        <label for="rt-periodo">Período (cobros)</label>
         <select id="rt-periodo"><option value="">Todos los períodos</option></select>
       </div>
       <div class="rt-field">
-        <label>TC (ARS/USD)</label>
-        <input id="rt-tc" type="number" min="1" step="1" value="1421" inputmode="numeric">
+        <label for="rt-tc">TC (ARS/USD)</label>
+        <input id="rt-tc" type="number" min="1" step="1" value="1532" inputmode="numeric">
       </div>
       <div class="rt-field">
-        <label>Flete/u (ARS)</label>
-        <input id="rt-flete" type="number" min="0" step="1" value="1928" inputmode="numeric">
+        <label>Flete + impuestos/u</label>
+        <div class="rt-medido" id="rt-extra">—</div>
       </div>
       <button class="btn btn-ghost" id="rt-recalc" style="height:34px">↻ Recalcular</button>
     </div>
 
     <div class="rt-acct-tabs" id="rt-acct-tabs" style="display:none"></div>
+    <div class="rt-cober" id="rt-cober"></div>
+    <div class="rt-periodos" id="rt-periodos"></div>
 
     <div class="rt-kpis" id="rt-kpis" style="display:none">
       <div class="rt-kpi"><div class="rt-kpi-lbl">Neto (ML deposita)</div><div class="rt-kpi-val" id="k-neto">$0</div><div class="rt-kpi-sub" id="k-neto-sub"></div></div>
@@ -172,14 +223,16 @@ $('btn-hamburger')?.addEventListener('click', () => $('sidebar')?.classList.togg
 let data = null;
 let sortKey = 'ganancia', sortDir = -1;
 let cuentaSel = '';   // '' = todas
+let diasSel   = 0;    // 0 = todo lo guardado; 7 / 10 / 30 = ventana
 
 function setStatus(msg, ok) { const el = $('rt-status'); el.className = 'show ' + (ok ? 'ok' : 'err'); el.textContent = msg; }
 
 async function cargar() {
-  const tc = parseInt($('rt-tc').value) || 1421;
-  const flete = parseInt($('rt-flete').value) || 1928;
+  const tc = parseInt($('rt-tc').value) || 1532;
   const cobros = $('rt-periodo').value;
-  const qs = new URLSearchParams({ tc, flete_unit: flete });
+  // flete_unit ya no se manda: el backend lo mide sobre los recibos reales
+  const qs = new URLSearchParams({ tc });
+  if (diasSel > 0) qs.set('dias', String(diasSel));
   if (cobros) qs.set('cobros', cobros);
   if (cuentaSel) qs.set('cuenta', cuentaSel);
   try {
@@ -199,9 +252,97 @@ async function cargar() {
   } catch (e) { setStatus('✕ ' + e.message, false); }
 }
 
+// Flete + impuestos por unidad: ya no se escribe a mano, sale de los recibos
+// cargados en Costos de Pedidos. Mostramos de dónde salió para que se note.
+function renderExtra() {
+  const e = data.costos_extra;
+  const el = $('rt-extra');
+  if (!e) { el.textContent = '—'; return; }
+  if (e.origen === 'medido') {
+    el.innerHTML = `<span class="rt-src">medido</span>${ars(e.extra_unit_ars)}`
+      + `<a href="/pedidos-costos.html" title="flete ${ars(e.flete_unit_ars)} + impuestos ${ars(e.impuestos_unit_ars)}">`
+      + `${e.pedidos} pedido${e.pedidos === 1 ? '' : 's'} · ${e.unidades} u</a>`;
+  } else {
+    el.innerHTML = `<span class="rt-src est">estimado</span>${ars(e.extra_unit_ars)}`
+      + `<a href="/pedidos-costos.html">cargá un recibo para medirlo →</a>`;
+  }
+}
+
+// ¿El clasificador de costos quedó por debajo de lo que se paga de verdad?
+function mercaderiaSubvaluada() {
+  const e = data.costos_extra;
+  if (!e || !e.mercaderia_usd_real || !e.mercaderia_usd_estimado) return null;
+  const { min, max } = e.mercaderia_usd_estimado;
+  if (max >= e.mercaderia_usd_real) return null;   // el rango ya lo cubre
+  return { real: e.mercaderia_usd_real.toFixed(2), rango: `US$${min.toFixed(2)}–${max.toFixed(2)}` };
+}
+
+// Qué porción del costo mostrado se apoya en precios reales (recibo o proveedor)
+// y no en la tabla estimada. Es el dato que dice cuánto confiar en el margen.
+function coberturaReal() {
+  const reales = ['medido', 'proveedor', 'manual'];
+  let netoReal = 0, netoTot = 0, nEst = 0;
+  for (const p of data.publicaciones) {
+    if (p.costo_unit == null) continue;
+    netoTot += p.neto;
+    if (reales.includes(p.costo_origen)) netoReal += p.neto; else nEst++;
+  }
+  if (!netoTot) return 'costo de la mercadería vendida';
+  const pctReal = Math.round(netoReal / netoTot * 100);
+  if (!nEst) return 'costo real en todas las publicaciones';
+  return `<b>${pctReal}%</b> con costo real · ${nEst} estimada${nEst === 1 ? '' : 's'}`;
+}
+
+/* Hasta dónde llega REALMENTE cada cuenta dentro del rango elegido. Las
+   liquidaciones no cierran el mismo día en las dos cuentas, así que un total
+   sumado puede estar comparando 30 días de una contra 28 de la otra. */
+function renderCobertura() {
+  const el = $('rt-cober'), r = data.rango;
+  if (!r || !r.ventas) { el.classList.remove('show'); return; }
+  const f = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
+  const cuentas = r.por_cuenta || [];
+  let txt = `<b>${f(r.desde)} – ${f(r.hasta)}</b> · ${r.ventas} ventas`;
+  if (cuentas.length > 1) {
+    txt += ' · ' + cuentas.map(c => `${esc(c.label)} hasta ${f(c.hasta)}`).join(' · ');
+    const hastas = [...new Set(cuentas.map(c => c.hasta))];
+    if (hastas.length > 1) {
+      txt += ` <span class="rt-gap">— las cuentas no cierran el mismo día, el total compara tramos distintos</span>`;
+    }
+  }
+  el.innerHTML = txt;
+  el.classList.add('show');
+}
+
+/* Qué cobros guardados está tomando el rango elegido. Los que quedan afuera se
+   apagan pero NO se ocultan: saber qué NO entró es la mitad de la lectura. */
+function renderPeriodos() {
+  const el = $('rt-periodos');
+  const ps = data.periodos || [];
+  if (!ps.length) { el.innerHTML = ''; return; }
+  const f = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
+  const clase = { completo: 'dentro', parcial: 'parcial', fuera: 'fuera' };
+  const tag   = { completo: 'entero', parcial: 'parcial', fuera: 'fuera' };
+  el.innerHTML = ps.map(p => {
+    const cls = clase[p.estado] || 'fuera';
+    const det = p.estado === 'parcial'
+      ? `${p.ventas_en_rango} de ${p.ventas} ventas · ${ars(p.neto_en_rango)}`
+      : p.estado === 'fuera'
+        ? `${p.ventas} ventas fuera del rango`
+        : `${p.ventas} ventas · ${ars(p.neto_en_rango)}`;
+    return `<div class="rt-per ${cls}" title="${esc(p.cuenta_label || '')} — ${esc(p.periodo || '')}">
+        <div class="rt-per-top"><span class="rt-per-tag">${tag[p.estado] || ''}</span>${esc(p.cuenta_label || '')}</div>
+        <div class="rt-per-sub">${f(p.desde)} – ${f(p.hasta)}</div>
+        <div class="rt-per-sub">${det}</div>
+      </div>`;
+  }).join('');
+}
+
 function render() {
   const t = data.totales;
   renderAcctTabs();
+  renderCobertura();
+  renderPeriodos();
+  renderExtra();   // antes del early-return: el dato vale aunque no haya cobros
   if (!data.publicaciones.length) {
     $('rt-kpis').style.display = 'none'; $('rt-card').style.display = 'none';
     $('rt-empty').style.display = 'block'; $('rt-warn').classList.remove('show');
@@ -213,7 +354,7 @@ function render() {
   $('k-neto').textContent = ars(t.neto);
   $('k-neto-sub').textContent = `${t.publicaciones} publicaciones`;
   $('k-costo').textContent = ars(t.costo);
-  $('k-costo-sub').textContent = `costo de la mercadería vendida`;
+  $('k-costo-sub').innerHTML = coberturaReal();
   $('k-gan').textContent = ars(t.ganancia);
   $('k-margen').textContent = pct(t.margen);
   $('k-margen-sub').textContent = t.items_sin_costo ? `sobre ${ars(t.neto_con_costo)} con costo` : 'sobre el neto total';
@@ -221,9 +362,11 @@ function render() {
   const warn = $('rt-warn');
   const inciertos = data.publicaciones.filter(p => p.es_funda && !p.confiable && !p.costo_editado).length;
   const sinCosto  = data.publicaciones.filter(p => p.costo_unit == null).length;
-  if (inciertos || sinCosto) {
+  const subvaluado = mercaderiaSubvaluada();
+  if (inciertos || sinCosto || subvaluado) {
     warn.classList.add('show');
     const partes = [];
+    if (subvaluado) partes.push(`en las filas <b>estimadas</b> el costo de mercadería (${subvaluado.rango}) está por <b>debajo</b> de lo que pagaste en el último recibo (<b>US$${subvaluado.real}</b>/u): vinculales el link de proveedor en <a href="/orden-compra.html">Orden de compra</a> y pasan a costo real`);
     if (inciertos) partes.push(`<b>${inciertos}</b> con costo <b>estimado a confirmar</b> (⚠ Samsung premium o packs): el costo mostrado es una estimación, revisalo`);
     if (sinCosto)  partes.push(`<b>${sinCosto}</b> sin costo (excluidas de la ganancia)`);
     warn.innerHTML = `⚠️ ${partes.join(' · ')}. Editá el costo en la columna "Costo/u" para fijarlo.`;
@@ -257,6 +400,20 @@ function renderAcctTabs() {
   }));
 }
 
+// De dónde salió el costo de la fila. Misma jerarquía y mismos nombres que
+// Orden de compra, para que un mismo producto se lea igual en las dos pantallas.
+function origenBadge(p) {
+  const m = {
+    medido:    ['ok',  'medido',    'Costo puesto real, de un recibo cargado en Costos de Pedidos (ya incluye envío e impuestos)'],
+    proveedor: ['ok',  'proveedor', `Precio del link de proveedor${p.precio_usd != null ? ` (US$${p.precio_usd})` : ''} × TC + envío e impuestos por unidad`],
+    manual:    ['man', 'manual',    'Costo fijado a mano en esta pantalla'],
+    estimado:  ['est', 'estimado',  'Sin link de proveedor ni recibo: sale de la tabla de costos por tipo de funda. Es el menos confiable'],
+  };
+  const d = m[p.costo_origen];
+  if (!d) return '';
+  return `<span class="rt-org ${d[0]}" title="${esc(d[2])}">${d[1]}</span>`;
+}
+
 function renderRows() {
   const rows = [...data.publicaciones].sort((a, b) => {
     let av = a[sortKey], bv = b[sortKey];
@@ -274,9 +431,12 @@ function renderRows() {
         <td class="rt-num">${p.unidades}</td>
         <td class="rt-num">${ars(p.neto)}</td>
         <td class="right">
-          <input class="rt-costo-inp${p.costo_editado ? ' editado' : ''}" type="number" min="0" step="1"
-                 value="${p.costo_unit != null ? p.costo_unit : ''}" placeholder="sin costo"
-                 data-titulo="${esc(p.titulo)}" title="Costo unitario ARS — Enter para guardar">
+          <div class="rt-costo-cell">
+            ${origenBadge(p)}
+            <input class="rt-costo-inp${p.costo_editado ? ' editado' : ''}" type="number" min="0" step="1"
+                   value="${p.costo_unit != null ? p.costo_unit : ''}" placeholder="sin costo"
+                   data-titulo="${esc(p.titulo)}" title="Costo unitario ARS — Enter para guardar" aria-label="sin costo">
+          </div>
         </td>
         <td class="rt-num">${p.costo_total != null ? ars(p.costo_total) : '<span class="rt-sincosto">sin costo</span>'}</td>
         <td class="rt-num ${ganCls}">${p.ganancia != null ? ars(p.ganancia) : '—'}</td>
@@ -327,7 +487,18 @@ document.querySelectorAll('th.rt-sortable').forEach(th => {
 
 $('rt-recalc').addEventListener('click', cargar);
 $('rt-periodo').addEventListener('change', cargar);
-['rt-tc', 'rt-flete'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') cargar(); }));
+$('rt-tc').addEventListener('keydown', e => { if (e.key === 'Enter') cargar(); });
+
+$('rt-rango').addEventListener('click', e => {
+  const b = e.target.closest('button[data-dias]');
+  if (!b) return;
+  diasSel = parseInt(b.dataset.dias) || 0;
+  [...$('rt-rango').children].forEach(x => x.classList.toggle('on', x === b));
+  // El período de cobro y la ventana por fecha se pisarían entre sí: al elegir
+  // un rango se vuelve a "todos los períodos" para que el total sea legible.
+  if (diasSel > 0) $('rt-periodo').value = '';
+  cargar();
+});
 
 cargar();
 </script>

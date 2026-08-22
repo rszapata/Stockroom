@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -132,7 +132,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--bg-card); border: 1px solid var(--border); color: var(--text-2);
   font-size: 12px; font-family: 'JetBrains Mono', monospace;
-  border-radius: 8px; cursor: pointer; transition: all .15s;
+  border-radius:6px; cursor: pointer; transition: all .15s;
 }
 .pg .pbtn:hover:not(:disabled) { background: var(--border); color: var(--text); }
 .pg .pbtn.active { background: var(--blue); color: var(--bg); border-color: var(--blue); font-weight: 600; }
@@ -185,16 +185,16 @@
 .pg .modal-btn-cancel:hover { background: var(--border); }
 
 .pg .fld label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 500; display: block; margin-bottom: 6px; }
-.pg .fld input {
+.pg .fld input, .pg .fld select {
   width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
-  padding: 10px 12px; border-radius: 10px; font-family: 'JetBrains Mono', monospace;
+  padding: 10px 12px; border-radius:6px; font-family: 'JetBrains Mono', monospace;
   font-size: 14px; outline: none; transition: border-color .2s;
 }
-.pg .fld input:focus { border-color: var(--blue); }
+.pg .fld input:focus, .pg .fld select:focus { border-color: var(--blue); }
 
 .pg *::-webkit-scrollbar { width: 10px; height: 10px; }
 .pg *::-webkit-scrollbar-track { background: transparent; }
-.pg *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+.pg *::-webkit-scrollbar-thumb { background: var(--border); border-radius:6px; }
 .pg *::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
 
 /* Tailwind utility replacements */
@@ -288,7 +288,7 @@
 .pg .underline { text-decoration: underline; }
 .pg .no-underline { text-decoration: none; }
 .pg .accent-brand { accent-color: var(--blue); }
-.pg select { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 13px; outline: none; cursor: pointer; }
+.pg select { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius:6px; padding: 6px 10px; font-size: 13px; outline: none; cursor: pointer; }
 .pg select:focus { border-color: var(--blue); }
 .pg input[type=text], .pg input[type=search] { background: transparent; border: none; outline: none; color: var(--text); font-size: 13px; width: 100%; }
 .pg .focus-within\:border-neutral-600:focus-within { border-color: var(--text-3); }
@@ -306,7 +306,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -334,7 +334,7 @@
       <!-- Search -->
       <div class="adm-search" style="width:220px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="hdr-search" type="search" placeholder="Buscar…" autocomplete="off">
+        <input id="hdr-search" type="search" placeholder="Buscar…" autocomplete="off" aria-label="Buscar…">
       </div>
 
       <!-- Account switcher -->
@@ -405,14 +405,14 @@
       <!-- search -->
       <div class="tb-search">
         <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem;flex-shrink:0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="search" type="text" placeholder="Buscar por título, ID, variante…"/>
+        <input id="search" type="text" placeholder="Buscar por título, ID, variante…"aria-label="Buscar por título, ID, variante…">
       </div>
       <!-- category -->
-      <select id="f-cat" class="tb-control" style="min-width:180px">
+      <select id="f-cat" class="tb-control" style="min-width:180px" aria-label="Filtrar por categoria">
         <option value="">Todas las categorías</option>
       </select>
       <!-- status -->
-      <select id="f-status" class="tb-control">
+      <select id="f-status" class="tb-control" aria-label="Filtrar por estado">
         <option value="">Todos los estados</option>
         <option value="active">Activo</option>
         <option value="low">Stock bajo</option>
@@ -439,7 +439,7 @@
         Flyer
       </button>
       <!-- orden de compra -->
-      <button id="btn-orden" style="background:var(--blue);color:#fff;border:none;border-radius:0.75rem;padding:0.5rem 1rem;font-size:0.875rem;font-weight:600;display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;box-shadow:0 10px 15px -3px rgba(21,113,95,.2)">
+      <button id="btn-orden" style="background:var(--blue);color: var(--on-blue);border:none;border-radius:0.75rem;padding:0.5rem 1rem;font-size:0.875rem;font-weight:600;display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;box-shadow:0 10px 15px -3px rgba(21,113,95,.2)">
         <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
         Orden de compra
       </button>
@@ -487,46 +487,56 @@
       </button>
     </div>
     <div style="padding:1.5rem">
-      <div class="fld" style="margin-bottom:1rem">
-        <label>Tipo de cambio ARS / USD</label>
-        <input type="number" id="orden-tc" value="1421" min="1"/>
-      </div>
-      <div class="fld" style="margin-bottom:1rem">
-        <label>Flete + impuestos del último pedido (ARS)</label>
-        <input type="number" id="orden-flete" value="800000" min="0"/>
-      </div>
-      <div class="fld" style="margin-bottom:1rem">
-        <label>Unidades de referencia de ese pedido</label>
-        <input type="number" id="orden-units" value="415" min="1"/>
-      </div>
+      <!-- Flete, unidades de referencia y stock mínimo ya NO se preguntan:
+           el costo de envío e impuestos sale de los pedidos cargados en Costos
+           de Pedidos, y el criterio de inclusión pasó a ser la autonomía (días
+           hasta el quiebre), que es lo que un umbral de stock absoluto no puede
+           expresar. Se mandan como ocultos por compatibilidad con el script. -->
+      <div id="oc-derivado" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.85rem 1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-2)"></div>
+      <input type="hidden" id="orden-tc" value="1532">
+      <input type="hidden" id="orden-flete" value="800000">
+      <input type="hidden" id="orden-units" value="415">
+      <input type="hidden" id="orden-smax" value="7">
 
       <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem">
-        <div style="font-size:0.75rem;color:var(--text-3);margin-bottom:0.5rem;font-weight:500">Criterios de inclusión</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
-          <div class="fld">
-            <label>Vendidos ≥</label>
-            <input type="number" id="orden-vmin" value="5" min="0"/>
-          </div>
-          <div class="fld">
-            <label>Stock ≤</label>
-            <input type="number" id="orden-smax" value="7" min="0"/>
-          </div>
+        <div style="font-size:0.75rem;color:var(--text-3);margin-bottom:0.5rem;font-weight:500">Qué se pide</div>
+        <!-- Antes acá se preguntaba "Vendidos ≥" y "reponer lo que se agote en ≤ N días".
+             Los dos eran umbrales sobre el ACUMULADO de ventas, que castigan a las
+             publicaciones nuevas (poca venta de vida aunque roten rápido) y premian a
+             las viejas ya frenadas. Ahora entra al pedido todo lo que no llegue a
+             cubrir la cobertura elegida más el plazo de entrega: una sola decisión,
+             y es la misma cuenta que define cuánto pedir de cada variante. -->
+        <div class="fld">
+          <label title="Meses de stock que querés tener DESPUÉS de que llegue el pedido. Entra al pedido toda variante cuyo stock no alcance a cubrir este plazo más los días de viaje." for="orden-cobertura">Cobertura objetivo</label>
+          <select id="orden-cobertura">
+            <option value="1">1 mes</option>
+            <option value="2">2 meses</option>
+            <option value="3">3 meses</option>
+            <option value="4" selected>4 meses</option>
+          </select>
         </div>
+        <input type="hidden" id="orden-lead" value="7">
+        <input type="hidden" id="orden-vmin" value="0">
+        <input type="hidden" id="orden-dmax" value="0">
         <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:var(--text-2);margin-top:0.75rem;cursor:pointer">
-          <input type="checkbox" id="orden-allprods" style="accent-color:var(--blue)"/>
+          <input type="checkbox" id="orden-allprods" style="accent-color:var(--blue)"aria-label="Incluir todas las publicaciones, no solo fundas">
           <span>Incluir todas las publicaciones (no solo fundas)</span>
         </label>
         <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:var(--text-2);margin-top:0.5rem;cursor:pointer"
                title="Publicaciones vinculadas: suma las vendidas de la otra cuenta (el stock ya está sincronizado, no se duplica). Publicaciones solo de la otra cuenta: se agregan como filas [RZ].">
-          <input type="checkbox" id="orden-incext" style="accent-color:var(--blue)"/>
-          <span>Sumar ventas de la otra cuenta (RZ) — opcional</span>
+          <!-- Tildado por defecto: el stock de las publicaciones vinculadas es
+               UNO SOLO para las dos cuentas, así que mirar las ventas de una
+               sola subestima la demanda de ese stock compartido y deja fundas
+               afuera del pedido. El dashboard usa el mismo criterio. -->
+          <input type="checkbox" id="orden-incext" style="accent-color:var(--blue)" checkedaria-label="Sumar ventas de la otra cuenta">
+          <span>Sumar ventas de la otra cuenta (RZ)</span>
         </label>
       </div>
 
       <div id="orden-status" class="hidden" style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;padding:0.75rem;border-radius:0.5rem;margin-top:0.75rem"></div>
     </div>
     <div class="modal-panel-foot" style="flex-direction:column;gap:8px;align-items:stretch">
-      <button id="btn-orden-prev" style="width:100%;background:var(--blue);color:#fff;font-weight:600;border:none;border-radius:0.75rem;padding:0.625rem 0;font-size:0.875rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
+      <button id="btn-orden-prev" style="width:100%;background:var(--blue);color: var(--on-blue);font-weight:600;border:none;border-radius:0.75rem;padding:0.625rem 0;font-size:0.875rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
         <svg viewBox="0 0 24 24" fill="none" style="width:1rem;height:1rem" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
         Previsualizar y editar
       </button>
@@ -744,7 +754,7 @@ async function loadFromAPI() {
     finishLoad();
   } catch (e) {
     setError(`${esc(e.message)}<br><br>
-      <a href="/" style="display:inline-block;background:var(--bg);border:1px solid var(--border-2);padding:6px 12px;border-radius:8px;font-size:0.75rem;color:var(--text-2);margin-top:0.5rem;text-decoration:none">⚙ Revisar configuración</a>`);
+      <a href="/" style="display:inline-block;background:var(--bg);border:1px solid var(--border-2);padding:6px 12px;border-radius:6px;font-size:0.75rem;color:var(--text-2);margin-top:0.5rem;text-decoration:none">⚙ Revisar configuración</a>`);
   }
 }
 
@@ -1059,22 +1069,22 @@ function imprimirFlyer() {
       .fl{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;padding:13mm 11mm;background:#fff;border:1px dashed #e2e2e2}
       .fl-brand{font-size:15px;font-weight:800;letter-spacing:3px}
       .fl-rule{width:24mm;height:2px;background:#3D5AFE;margin:2.5mm 0 5mm}
-      .fl-h1{font-size:21px;font-weight:800;letter-spacing:-0.02em;line-height:1.1}
-      .fl-hook{font-size:10.5px;line-height:1.45;color:#54545A;max-width:76mm;margin-top:3mm}
+      .fl-h1{font-size:20px;font-weight:800;letter-spacing:-0.02em;line-height:1.1}
+      .fl-hook{font-size:10px;line-height:1.45;color:#54545A;max-width:76mm;margin-top:3mm}
       .fl-hook b{color:#0A0A0A;font-weight:700}
       .fl-qrwrap{position:relative;width:34mm;height:34mm;margin:5mm 0 3mm;display:flex;align-items:center;justify-content:center}
       .fl-qr{width:29mm;height:29mm;display:block}
       .fl-corners{position:absolute;inset:0;width:34mm;height:34mm}
-      .fl-scan{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#54545A}
-      .fl-coupon{margin-top:4mm;border:1.4px solid #3D5AFE;border-radius:10px;padding:5px 18px;display:flex;flex-direction:column;align-items:center}
+      .fl-scan{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#54545A}
+      .fl-coupon{margin-top:4mm;border:1.4px solid #3D5AFE;border-radius:6px;padding:5px 18px;display:flex;flex-direction:column;align-items:center}
       .fl-off{font-size:15px;font-weight:800;line-height:1.05}
       .fl-off small{display:block;font-size:9px;font-weight:600;color:#54545A;letter-spacing:.01em}
       .fl-code{font-family:'Consolas','Courier New',monospace;font-size:16px;font-weight:800;letter-spacing:2px;color:#3D5AFE;margin-top:2px}
       .fl-support{margin-top:5mm;width:82mm;border-top:1px solid #E2E2E2;padding-top:3.5mm;display:flex;flex-direction:column;align-items:center;gap:1.5mm}
-      .fl-support-t{font-size:9.5px;line-height:1.4;color:#54545A;max-width:80mm}
+      .fl-support-t{font-size:10px;line-height:1.4;color:#54545A;max-width:80mm}
       .fl-support-t b{color:#0A0A0A}
       .fl-wsp{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;letter-spacing:.3px}
-      .fl-foot{margin-top:auto;font-size:8.5px;color:#8a8a8e;letter-spacing:.02em}
+      .fl-foot{margin-top:auto;font-size:9px;color:#8a8a8e;letter-spacing:.02em}
       .print-hint{position:fixed;top:5px;left:0;right:0;text-align:center;font-size:12px;color:#555}
       @media print{ .print-hint{display:none} .fl{border-color:#eee} @page{margin:0;size:A4} }
     </style></head><body>
@@ -1086,7 +1096,7 @@ function imprimirFlyer() {
 }
 
 /* ═════ orden de compra ═════ */
-function openOrden()  { $('orden-overlay').classList.add('show');  $('orden-status').classList.add('hidden'); const b=$('btn-orden-gen'); b.disabled=false; b.textContent='Generar Excel'; }
+function openOrden()  { $('orden-overlay').classList.add('show');  $('orden-status').classList.add('hidden'); const b=$('btn-orden-gen'); b.disabled=false; b.textContent='Generar Excel'; cargarCostosDerivados(); }
 function closeOrden() { $('orden-overlay').classList.remove('show'); }
 function setOrdenStatus(msg, ok) {
   const el = $('orden-status');
@@ -1107,7 +1117,10 @@ const _vxKey = label => _vxNorm(label).split('·')
 /* Muta `rows` (el CSV de inventario): a las publicaciones VINCULADAS les suma
    las vendidas de la otra cuenta (stock sincronizado → no se duplica); las
    publicaciones que solo existen en la otra cuenta se agregan como filas [RZ]. */
-async function mergeVentasExtra(rows) {
+/* `fmtPic` decide el formato de la columna Foto: URL cruda para previsualizar en
+   la página, picCell (=IMAGE) para el xlsx. Debe coincidir con el que usan las
+   filas propias del mismo `rows`, si no la otra cuenta queda descolgada. */
+async function mergeVentasExtra(rows, fmtPic = (u => u || '')) {
   const r = await fetch('/orden-compra/ventas-extra');
   const d = await r.json();
   if (!d.ok) throw new Error(d.error || 'No se pudieron traer las ventas de la otra cuenta');
@@ -1146,7 +1159,7 @@ async function mergeVentasExtra(rows) {
   for (const [extId, ext] of Object.entries(d.items)) {
     if (linked.has(extId)) continue;
     for (const v of ext.variantes) {
-      rows.push([extId, `${ext.title} [${ext.cuenta}]`, v.label, '', v.stock, v.vendidas, v.precio, 'active', '']);
+      rows.push([extId, `${ext.title} [${ext.cuenta}]`, v.label, '', v.stock, v.vendidas, v.precio, 'active', fmtPic(v.foto || ext.foto)]);
     }
     agregadas++;
   }
@@ -1183,13 +1196,38 @@ async function addVentasRecientes(rows, incluirExtra) {
   }
 }
 
+/* Los costos de envío e impuestos ya no se preguntan: se miden desde los
+   pedidos cargados. Se muestran para que se vea de dónde salen, y se cargan en
+   los campos ocultos que el script sigue esperando. */
+async function cargarCostosDerivados() {
+  const el = document.getElementById('oc-derivado');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/stockroom/pedidos-costos/variantes');
+    const d = r.ok ? await r.json() : null;
+    const pr = d && d.promedios;
+    if (!pr) {
+      el.innerHTML = '<strong>Envío e impuestos:</strong> sin pedidos cargados, se usa una estimación. ' +
+        'Cargá un pedido en <a href="/pedidos-costos.html" style="color:var(--blue)">Costos de Pedidos</a> para medirlos.';
+      return;
+    }
+    const ars = n => '$' + Math.round(n).toLocaleString('es-AR');
+    document.getElementById('orden-flete').value = String(pr.extra_unit_ars * pr.unidades);
+    document.getElementById('orden-units').value = String(pr.unidades);
+    el.innerHTML = '<strong>Envío e impuestos:</strong> ' + ars(pr.extra_unit_ars) + ' por unidad ' +
+      '<span style="color:var(--text-3)">(envío ' + ars(pr.flete_unit_ars) + ' + impuestos ' + ars(pr.impuestos_unit_ars) +
+      ', medido sobre ' + pr.pedidos + ' pedido(s) y ' + pr.unidades + ' unidades)</span>';
+  } catch(e) { el.textContent = 'No se pudieron leer los costos medidos: ' + e.message; }
+}
+
 /* Previsualizar: calcula el borrador y abre la página de edición */
 async function previsualizarOrden() {
-  const tc       = parseInt($('orden-tc').value)    || 1421;
+  const tc       = parseInt($('orden-tc').value)    || 1532;
   const flete    = parseInt($('orden-flete').value) || 800000;
   const units    = parseInt($('orden-units').value) || 415;
   const vmin     = parseInt($('orden-vmin').value);
   const smax     = parseInt($('orden-smax').value);
+  const dmax     = parseInt($('orden-dmax').value) || 0;   // autonomía en días
   const allProds = $('orden-allprods').checked;
   const btn      = $('btn-orden-prev');
   btn.disabled = true; const orig = btn.innerHTML;
@@ -1206,9 +1244,14 @@ async function previsualizarOrden() {
         rows.push([item.id, item.title, '', item.category_name, item.available_quantity, item.sold_quantity||0, item.price, item.status, item.picture||'']);
       }
     });
+    let vxInfo = null;
     if ($('orden-incext').checked) {
       setOrdenStatus('⏳ Sumando ventas de la otra cuenta…', true);
       const vx = await mergeVentasExtra(rows);
+      // Se guarda para que el Excel pueda advertir que las ventas incluyen otra
+      // cuenta pero el neto se estima con la economía de la cuenta principal.
+      vxInfo = { cuentas: vx.cuentas.map(c => c.label), unidades: vx.unidades,
+                 vinculadas: vx.sumadas, agregadas: vx.agregadas };
       const quien = vx.cuentas.map(c => c.label).join(', ') || 'otra cuenta';
       setOrdenStatus(`⏳ Ventas de ${esc(quien)} integradas: +${vx.unidades} vendidas en ${vx.sumadas} vinculadas · ${vx.agregadas} publicaciones propias agregadas${vx.sinMatch ? ` · ⚠ ${vx.sinMatch} variantes sin match` : ''}. Calculando…`, true);
     }
@@ -1221,8 +1264,15 @@ async function previsualizarOrden() {
     fd.append('tc', String(tc)); fd.append('flete', String(flete)); fd.append('units', String(units));
     if (Number.isFinite(vmin)) fd.append('vendidos_min', String(vmin));
     if (Number.isFinite(smax)) fd.append('stock_max',    String(smax));
+    if (dmax > 0) fd.append('dias_stock_max', String(dmax));
     if (allProds)              fd.append('all_products', '1');
     if (vrec)                  fd.append('dias_rec', String(vrec.dias));
+    // Sin esto el Python cae al criterio viejo de umbrales y vuelve a dejar
+    // afuera las publicaciones nuevas que rotan rápido.
+    const cob  = parseFloat($('orden-cobertura').value) || 0;
+    const lead = parseInt($('orden-lead').value) || 0;
+    if (cob > 0)  fd.append('cobertura', String(cob));
+    if (lead > 0) fd.append('lead_dias', String(lead));
 
     const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
     const data = await resp.json();
@@ -1235,6 +1285,7 @@ async function previsualizarOrden() {
       btn.disabled = false; btn.innerHTML = orig; return;
     }
     try {
+      if (vxInfo) { draft.params = draft.params || {}; draft.params.ventas_extra = vxInfo; }
       sessionStorage.setItem('oc_draft', JSON.stringify(draft));
       sessionStorage.setItem('oc_csv', csv);   // para recalcular el criterio en la página
     } catch(e) {}
@@ -1246,11 +1297,12 @@ async function previsualizarOrden() {
 }
 
 async function ejecutarOrden() {
-  const tc       = parseInt($('orden-tc').value)    || 1421;
+  const tc       = parseInt($('orden-tc').value)    || 1532;
   const flete    = parseInt($('orden-flete').value) || 800000;
   const units    = parseInt($('orden-units').value) || 415;
   const vmin     = parseInt($('orden-vmin').value);
   const smax     = parseInt($('orden-smax').value);
+  const dmax     = parseInt($('orden-dmax').value) || 0;   // autonomía en días
   const allProds = $('orden-allprods').checked;
   const btn      = $('btn-orden-gen');
 
@@ -1270,7 +1322,7 @@ async function ejecutarOrden() {
   if ($('orden-incext').checked) {
     try {
       setOrdenStatus('⏳ Sumando ventas de la otra cuenta…', true);
-      await mergeVentasExtra(rows);
+      await mergeVentasExtra(rows, picCell);   // xlsx: =IMAGE(), igual que las propias
     } catch (e) {
       setOrdenStatus(`❌ ${esc(e.message)}`, false);
       btn.disabled = false; btn.textContent = 'Reintentar'; return;
@@ -1288,8 +1340,14 @@ async function ejecutarOrden() {
   fd.append('units', String(units));
   if (Number.isFinite(vmin)) fd.append('vendidos_min', String(vmin));
   if (Number.isFinite(smax)) fd.append('stock_max',    String(smax));
+  if (dmax > 0) fd.append('dias_stock_max', String(dmax));
   if (allProds)              fd.append('all_products', '1');
   if (vrec)                  fd.append('dias_rec', String(vrec.dias));
+  // Mismo criterio que la previsualización: manda la cobertura, no los umbrales
+  const cobD  = parseFloat($('orden-cobertura').value) || 0;
+  const leadD = parseInt($('orden-lead').value) || 0;
+  if (cobD > 0)  fd.append('cobertura', String(cobD));
+  if (leadD > 0) fd.append('lead_dias', String(leadD));
 
   try {
     const resp = await fetch('/orden-compra', { method: 'POST', body: fd });
@@ -1320,7 +1378,7 @@ async function ejecutarOrden() {
       btn.disabled = false;
       btn.textContent = 'Reintentar';
     } else {
-      const relaxedNote = r.relaxed_used ? ' · <span style="color:var(--yellow)">⚠ umbrales relajados auto</span>' : '';
+      const relaxedNote = r.relaxed_used ? ' · <span style="color: var(--yellow-ink)">⚠ umbrales relajados auto</span>' : '';
       setOrdenStatus(
         `✓ ${r.items} variantes · ${r.total_adj || '?'} u. ajustadas · Inversión: $${(r.inversion_adj || 0).toLocaleString('es-AR')}${relaxedNote}`,
         true

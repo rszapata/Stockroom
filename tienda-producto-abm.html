@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── 2-column edit layout ──────────────────────────────────── */
@@ -52,7 +52,7 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
 .ml-product-info { min-width: 0; flex: 1; }
 .ml-product-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; margin-bottom: 5px; }
 .ml-product-meta  { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); display: flex; flex-direction: column; gap: 2px; }
-.ml-product-price { font-size: 16px; font-weight: 700; color: var(--green); margin-top: 6px; }
+.ml-product-price { font-size: 16px; font-weight: 700; color: var(--green-ink); margin-top: 6px; }
 
 /* ── Image preview ──────────────────────────────────────────── */
 .img-preview-wrap { position: relative; }
@@ -106,7 +106,7 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
 .video-card-url { font-size: 11px; color: var(--blue); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .video-card-url:hover { text-decoration: underline; }
 .video-platform-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
-.video-platform-hint.detected { color: var(--green); }
+.video-platform-hint.detected { color: var(--green-ink); }
 
 /* ── Delete zone ────────────────────────────────────────────── */
 .delete-zone { display: flex; flex-direction: column; gap: 8px; }
@@ -241,7 +241,7 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
             <div class="adm-field">
               <label class="adm-label">URL de la imagen</label>
               <div class="img-upload-row">
-                <input type="text" class="adm-input" id="inp-imagen" placeholder="https://…">
+                <input type="text" class="adm-input" id="inp-imagen" placeholder="https://…" aria-label="https://…">
                 <button class="btn btn-sm btn-ghost" id="btn-subir-imagen" type="button">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;vertical-align:-1px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Subir
                 </button>
@@ -291,7 +291,7 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
             <div class="adm-field">
               <label class="adm-label">Título propio <span style="font-weight:400;color:var(--text-3);">(reemplaza el título de ML)</span></label>
               <input type="text" class="adm-input" id="inp-titulo" maxlength="200"
-                placeholder="Dejalo vacío para usar el título original de ML">
+                placeholder="Dejalo vacío para usar el título original de ML" aria-label="Dejalo vacío para usar el título original de ML">
             </div>
             <!-- ML title reference -->
             <div style="font-size:11px;color:var(--text-3);background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;">
@@ -337,7 +337,7 @@ details.edit-card[open] .collapse-arrow { transform: rotate(180deg); }
             <!-- Input section (when no video) -->
             <div id="video-input-section">
               <div class="adm-field">
-                <label class="adm-label">Link (YouTube, Alibaba, AliExpress, Vimeo)</label>
+                <label class="adm-label" for="inp-video-url">Link (YouTube, Alibaba, AliExpress, Vimeo)</label>
                 <input type="text" class="adm-input" id="inp-video-url" placeholder="https://www.youtube.com/watch?v=…">
                 <div id="video-platform-hint" class="video-platform-hint"></div>
               </div>

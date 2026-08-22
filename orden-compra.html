@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Barra sticky de la orden ── */
@@ -24,10 +24,10 @@
 .oc-bar-id { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
 .oc-bar-id strong { color: var(--text); font-weight: 600; }
 .oc-total-wrap { margin-left: auto; text-align: right; }
-.oc-total-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; }
-.oc-total-val { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
-.oc-total-sub { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.oc-dirty { display: none; font-size: 11px; color: var(--yellow); font-weight: 600; }
+.oc-total-lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; }
+.oc-total-val { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.oc-total-sub { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.oc-dirty { display: none; font-size: 12px; color: var(--yellow-ink); font-weight: 600; }
 .oc-dirty.show { display: inline; }
 
 /* ── Criterio editable ── */
@@ -37,10 +37,10 @@
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg);
 }
 .oc-cri-field { display: flex; flex-direction: column; gap: 4px; }
-.oc-cri-field label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); font-weight: 600; }
+.oc-cri-field label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); font-weight: 600; }
 .oc-cri-field input[type=number] {
   width: 96px; height: 32px; padding: 0 8px;
-  border: 1px solid var(--border); border-radius: 8px;
+  border: 1px solid var(--border); border-radius:6px;
   background: var(--bg); color: var(--text);
   font-family: var(--font-mono); font-size: 13px; font-weight: 600;
   font-variant-numeric: tabular-nums; transition: border-color .12s, box-shadow .12s;
@@ -49,48 +49,50 @@
 .oc-cri-check { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); cursor: pointer; height: 32px; }
 .oc-cri-check input { accent-color: var(--blue); width: 15px; height: 15px; }
 .oc-cri-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 2px; }
+.oc-cri-nota { align-self: center; font-size: 11px; color: var(--yellow-ink); background: var(--yellow-light);
+  border-radius: 4px; padding: 3px 8px; white-space: nowrap; }
 .oc-cri-recalc { margin-left: auto; }
 
 /* ── Toolbar (ajuste masivo + agregar + guardar) ── */
 .oc-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 .oc-toolgrp {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius:6px;
 }
-.oc-toolgrp .lbl { font-size: 11px; color: var(--text-3); font-weight: 600; }
+.oc-toolgrp .lbl { font-size: 12px; color: var(--text-3); font-weight: 600; }
 .oc-mini {
   width: 56px; height: 28px; padding: 0 7px; text-align: right;
-  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius:6px; background: var(--bg); color: var(--text);
   font-family: var(--font-mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .oc-mini:focus { outline: none; border-color: var(--blue); }
-.btn-mini { height: 28px; padding: 0 10px; font-size: 11px; border-radius: 7px; }
+.btn-mini { height: 28px; padding: 0 10px; font-size: 12px; border-radius:6px; }
 
 /* ── Agregar producto manual ── */
 .oc-addwrap { position: relative; }
 .oc-addbox { position: relative; }
 .oc-search {
   width: 240px; height: 28px; padding: 0 10px;
-  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); font-size: 12px;
+  border: 1px solid var(--border); border-radius:6px; background: var(--bg); color: var(--text); font-size: 12px;
 }
 .oc-search:focus { outline: none; border-color: var(--blue); }
 .oc-results {
   position: absolute; top: 34px; left: 0; z-index: 40; width: 360px; max-height: 300px; overflow-y: auto;
-  background: var(--bg-card); border: 1px solid var(--border-2); border-radius: 10px; box-shadow: var(--shadow-md);
+  background: var(--bg-card); border: 1px solid var(--border-2); border-radius:6px; box-shadow: var(--shadow-md);
   display: none;
 }
 .oc-results.show { display: block; }
 .oc-res-item { display: flex; align-items: center; gap: 10px; padding: 8px 11px; cursor: pointer; border-bottom: 1px solid var(--border); }
 .oc-res-item:last-child { border-bottom: none; }
 .oc-res-item:hover { background: var(--bg); }
-.oc-res-title { font-size: 12.5px; color: var(--text); font-weight: 500; }
-.oc-res-meta { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+.oc-res-title { font-size: 12px; color: var(--text); font-weight: 500; }
+.oc-res-meta { font-size: 12px; color: var(--text-3); font-family: var(--font-mono); }
 .oc-res-empty { padding: 12px; font-size: 12px; color: var(--text-3); text-align: center; }
 
 /* ── Inputs inline de la grilla ── */
 .oc-inp {
   width: 72px; height: 32px; padding: 0 8px;
-  border: 1px solid var(--border); border-radius: 8px;
+  border: 1px solid var(--border); border-radius:6px;
   background: var(--bg); color: var(--text);
   font-family: var(--font-mono); font-size: 13px; font-weight: 600;
   text-align: right; font-variant-numeric: tabular-nums;
@@ -98,32 +100,47 @@
 }
 .oc-inp:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,113,95,.12); background: var(--bg-card); }
 .oc-inp.invalid { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
-.oc-inp-pre { font-size: 11px; color: var(--text-3); margin-right: 2px; }
+.oc-inp-pre { font-size: 12px; color: var(--text-3); margin-right: 2px; }
 .oc-inp.usd { width: 58px; }
 .oc-cost-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .oc-cost-usd { display: flex; align-items: center; gap: 2px; }
-.oc-sub { font-size: 10px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.oc-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
-.oc-rowtot { font-family: var(--font-mono); font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.oc-desglose { margin-top:8px; }
+.oc-dg-barra { display:flex; height:6px; border-radius:99px; overflow:hidden; background:var(--bg); }
+.oc-dg-barra i { display:block; height:100%; }
+.oc-dg-items { display:flex; flex-wrap:wrap; gap:12px; margin-top:6px; font-size:12px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+.oc-dg-items span { display:inline-flex; align-items:center; gap:5px; }
+.oc-dg-items i { width:8px; height:8px; border-radius:2px; display:inline-block; }
+.oc-dg-items b { font-weight:600; color:var(--text); }
+.oc-rowtot { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+/* Franja de severidad: permite escanear la tabla sin leer cada chip, y hace
+   que el estado no dependa SOLO del color del texto (sol en la pantalla,
+   daltonismo). Va con box-shadow inset para no mover el layout. */
+#oc-tbody tr.sev-critico td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+#oc-tbody tr.sev-bajo    td:first-child { box-shadow: inset 3px 0 0 var(--yellow); }
+#oc-tbody tr.excluded    td:first-child { box-shadow: none; }
+#oc-tbody td:first-child { padding-left: 13px; }
+
 tr.excluded { opacity: .42; }
 tr.excluded .oc-inp { pointer-events: none; }
 
 /* badges derivados */
-.oc-badge { display: inline-block; padding: 2px 7px; border-radius: 99px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.oc-cov-low  { color: var(--red);    background: var(--red-light); }
-.oc-cov-mid  { color: var(--yellow); background: var(--yellow-light); }
-.oc-cov-ok   { color: var(--green);  background: var(--green-light); }
-.oc-cov-over { color: var(--blue);   background: var(--blue-light); }
+.oc-badge { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.oc-cov-low  { color: var(--red-ink);    background: var(--red-light); }
+.oc-cov-mid  { color: var(--yellow-ink); background: var(--yellow-light); }
+.oc-cov-ok   { color: var(--green-ink);  background: var(--green-light); }
+.oc-cov-over { color: var(--blue-ink);   background: var(--blue-light); }
 .oc-cov-na   { color: var(--text-3); }
-.oc-mg-low { color: var(--red); font-weight: 600; }
-.oc-mg-mid { color: var(--yellow); font-weight: 600; }
-.oc-mg-ok  { color: var(--green); font-weight: 600; }
+.oc-mg-low { color: var(--red-ink); font-weight: 600; }
+.oc-mg-mid { color: var(--yellow-ink); font-weight: 600; }
+.oc-mg-ok  { color: var(--green-ink); font-weight: 600; }
 .oc-stockfinal { font-variant-numeric: tabular-nums; }
 .oc-stockfinal b { color: var(--text); }
 
 .oc-iconbtn {
   width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius:6px; background: var(--bg-card);
   color: var(--text-3); cursor: pointer; transition: all .12s;
 }
 .oc-iconbtn:hover { color: var(--text); border-color: var(--border-2); }
@@ -131,22 +148,22 @@ tr.excluded .oc-inp { pointer-events: none; }
 .oc-prov { position: relative; }
 .oc-prov[disabled] { opacity: .45; cursor: not-allowed; }
 .oc-prov.has { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 40%, var(--border)); background: var(--blue-light); }
-.oc-prov-count { position: absolute; top: -5px; right: -5px; background: var(--blue); color: #fff; font-size: 9px; font-weight: 700; border-radius: 99px; min-width: 14px; height: 14px; line-height: 14px; text-align: center; padding: 0 2px; }
+.oc-prov-count { position: absolute; top: -5px; right: -5px; background: var(--blue); color: var(--on-blue); font-size: 9px; font-weight: 700; border-radius: 99px; min-width: 14px; height: 14px; line-height: 14px; text-align: center; padding: 0 2px; }
 tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 
 /* ── Popover de links de proveedor (Alibaba) ── */
-#prov-pop { position: absolute; z-index: 60; width: min(320px, calc(100vw - 24px)); background: var(--bg-card); border: 1px solid var(--border-2); border-radius: 12px; box-shadow: var(--shadow-md); padding: 12px; display: none; }
+#prov-pop { position: absolute; z-index: 60; width: min(320px, calc(100vw - 24px)); background: var(--bg-card); border: 1px solid var(--border-2); border-radius:6px; box-shadow: var(--shadow-md); padding: 12px; display: none; }
 #prov-pop.show { display: block; }
-.pp-head { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.pp-head { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
 .pp-list { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; margin-bottom: 10px; }
-.pp-link { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.pp-link { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; background: var(--bg); border: 1px solid var(--border); border-radius:6px; }
 .pp-prov { font-size: 12px; font-weight: 600; color: var(--text); }
-.pp-url { font-size: 10px; color: var(--text-3); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
-.pp-nota { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.pp-url { font-size: 12px; color: var(--text-3); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+.pp-nota { font-size: 12px; color: var(--text-2); margin-top: 2px; }
 .pp-empty { font-size: 12px; color: var(--text-3); text-align: center; padding: 10px; }
-.pp-btn { width: 26px; height: 26px; border-radius: 7px; }
+.pp-btn { width: 26px; height: 26px; border-radius:6px; }
 .pp-form { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
-.pp-in { height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); font-size: 12px; }
+.pp-in { height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius:6px; background: var(--bg); color: var(--text); font-size: 12px; }
 .pp-in:focus { outline: none; border-color: var(--blue); }
 .pp-close { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1; }
 
@@ -155,9 +172,9 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 .oc-empty h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 14px 0 6px; }
 .oc-empty p { font-size: 13px; color: var(--text-3); margin-bottom: 18px; }
 
-#oc-status { font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-top: 14px; display: none; font-family: var(--font-mono); }
+#oc-status { font-size: 13px; padding: 10px 14px; border-radius:6px; margin-top: 14px; display: none; font-family: var(--font-mono); }
 #oc-status.show { display: block; }
-#oc-status.ok  { background: var(--green-light); color: var(--green); }
+#oc-status.ok  { background: var(--green-light); color: var(--green-ink); }
 #oc-status.err { background: var(--red-light); color: var(--red); }
 
 /* ── Header de tabla fijo (sticky) al scrollear ── */
@@ -178,7 +195,7 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 <div class="adm-wrap">
 
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <div class="adm-main">
   <header class="adm-header">
@@ -220,9 +237,10 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
           <div class="oc-total-lbl">Inversión estimada <span class="oc-dirty" id="oc-dirty">● sin guardar</span></div>
           <div class="oc-total-val" id="oc-total">$0</div>
           <div class="oc-total-sub"><span id="oc-items">0</span> ítems · <span id="oc-units">0</span> unidades</div>
+          <div class="oc-desglose" id="oc-desglose"></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="oc-saved" class="btn btn-ghost" style="max-width:150px" title="Borradores guardados"><option value="">Borradores…</option></select>
+          <select id="oc-saved" class="btn btn-ghost" style="max-width:150px" title="Borradores guardados" aria-label="Borradores guardados"><option value="">Borradores…</option></select>
           <button id="oc-save" class="btn btn-ghost" title="Guardar este borrador">Guardar</button>
           <a href="/analytics.html" class="btn btn-ghost">Cancelar</a>
           <button id="oc-export" class="btn btn-primary">
@@ -234,12 +252,14 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 
       <!-- Criterio editable -->
       <div class="oc-criteria">
-        <div class="oc-cri-field"><label>Stock ≤</label><input id="cp-smax" type="number" min="0" step="1" inputmode="numeric"></div>
-        <div class="oc-cri-field"><label>Vendidas ≥</label><input id="cp-vmin" type="number" min="0" step="1" inputmode="numeric"></div>
-        <label class="oc-cri-check"><input id="cp-all" type="checkbox"> Todas las publicaciones</label>
+        <div class="oc-cri-field"><label for="cp-smax">Stock ≤</label><input id="cp-smax" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="oc-cri-field" title="Rescata productos de alta rotación: entran si el stock se agota en ≤ N días al ritmo actual, aunque superen el umbral de stock. 0 = desactivado."><label for="cp-dmax">…o se agota en ≤</label><input id="cp-dmax" type="number" min="0" step="1" inputmode="numeric" placeholder="días"></div>
+        <div class="oc-cri-field"><label for="cp-vmin">Vendidas ≥</label><input id="cp-vmin" type="number" min="0" step="1" inputmode="numeric"></div>
+        <label class="oc-cri-check"><input id="cp-all" type="checkbox" aria-label="Incluir todas las publicaciones, no solo fundas"> Todas las publicaciones</label>
+        <div class="oc-cri-nota" id="cp-cri-nota" style="display:none">Los umbrales no se aplican: manda la cobertura</div>
         <div class="oc-cri-sep"></div>
-        <div class="oc-cri-field"><label>Cobertura objetivo</label>
-          <select id="cp-cobertura" style="height:32px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-family:inherit;font-weight:500;background:var(--bg);color:var(--text)">
+        <div class="oc-cri-field"><label for="cp-cobertura">Cobertura objetivo</label>
+          <select id="cp-cobertura" style="height:32px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-family:inherit;font-weight:500;background:var(--bg);color:var(--text)">
             <option value="0">Automático</option>
             <option value="1">1 mes</option>
             <option value="2">2 meses</option>
@@ -247,10 +267,14 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
             <option value="4">4 meses</option>
           </select>
         </div>
+        <div class="oc-cri-field" title="Días que tarda en llegar el pedido. Se suma a la cobertura: durante el viaje seguís vendiendo, así que sin esto la mercadería llega a un depósito ya consumido."><label for="cp-lead">Tarda en llegar</label><input id="cp-lead" type="number" min="0" step="1" inputmode="numeric" placeholder="días"></div>
         <div class="oc-cri-sep"></div>
-        <div class="oc-cri-field"><label>TC (ARS/USD)</label><input id="cp-tc" type="number" min="1" step="1" inputmode="numeric"></div>
-        <div class="oc-cri-field"><label>Flete total</label><input id="cp-flete" type="number" min="0" step="1" inputmode="numeric"></div>
-        <div class="oc-cri-field"><label>Unidades ref.</label><input id="cp-units" type="number" min="1" step="1" inputmode="numeric"></div>
+        <div class="oc-cri-field"><label for="cp-tc">TC (ARS/USD)</label><input id="cp-tc" type="number" min="1" step="1" inputmode="numeric"></div>
+        <div class="oc-cri-field" style="min-width:210px">
+          <label>Envío e impuestos por unidad</label>
+          <div id="cp-extra" style="height:32px;display:flex;align-items:center;font-weight:600;font-variant-numeric:tabular-nums"></div>
+        </div>
+        <input id="cp-flete" type="hidden"><input id="cp-units" type="hidden">
         <button id="cp-recalc" class="btn btn-ghost oc-cri-recalc">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
           Recalcular
@@ -258,32 +282,40 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
       </div>
 
       <!-- Oportunidades de surtido (huecos de color por categoría) -->
+      <details id="oc-recup" style="display:none;margin-bottom:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg)">
+        <summary style="cursor:pointer;padding:10px 16px;font-size:13px;font-weight:600;color:var(--text);user-select:none">
+          🔁 Recuperación <span id="oc-recup-count" class="oc-badge oc-cov-low" style="margin-left:6px"></span>
+          <span style="font-weight:400;color:var(--text-3);font-size:12px;margin-left:8px">quebradas hace más de 60 días que antes vendían · decidí vos cuáles vuelven</span>
+        </summary>
+        <div id="oc-recup-body" style="padding:0 16px 12px;font-size:12px;color:var(--text-2)"></div>
+      </details>
+
       <details id="oc-opps" style="display:none;margin-bottom:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg)">
         <summary style="cursor:pointer;padding:10px 16px;font-size:13px;font-weight:600;color:var(--text);user-select:none">
           💡 Oportunidades de surtido <span id="oc-opps-count" class="oc-badge oc-cov-mid" style="margin-left:6px"></span>
-          <span style="font-weight:400;color:var(--text-3);font-size:11px;margin-left:8px">colores que venden en la categoría y este producto no ofrece · quiebres</span>
+          <span style="font-weight:400;color:var(--text-3);font-size:12px;margin-left:8px">colores que venden en la categoría y este producto no ofrece · quiebres</span>
         </summary>
-        <div id="oc-opps-body" style="padding:0 16px 12px;font-size:12.5px;color:var(--text-2)"></div>
+        <div id="oc-opps-body" style="padding:0 16px 12px;font-size:12px;color:var(--text-2)"></div>
       </details>
 
       <!-- Acciones masivas + agregar -->
       <div class="oc-tools">
         <div class="oc-toolgrp">
-          <input id="oc-filter" class="oc-search" style="width:210px;height:28px" placeholder="Filtrar: producto, modelo, color…">
+          <input id="oc-filter" class="oc-search" style="width:210px;height:28px" placeholder="Filtrar: producto, modelo, color…" aria-label="Filtrar: producto, modelo, color…">
           <span class="lbl" id="oc-filter-count" style="display:none"></span>
         </div>
         <div class="oc-toolgrp">
           <span class="lbl">Cantidades:</span>
-          <input id="ma-set" class="oc-mini" type="number" min="0" placeholder="X" title="Poner todas en…">
+          <input id="ma-set" class="oc-mini" type="number" min="0" placeholder="X" title="Poner todas en…" aria-label="Poner todas en…">
           <button class="btn btn-ghost btn-mini" id="ma-set-btn">Poner todas</button>
-          <input id="ma-pct" class="oc-mini" type="number" placeholder="%" title="Ajustar por porcentaje (ej. 20 o -10)">
+          <input id="ma-pct" class="oc-mini" type="number" placeholder="%" title="Ajustar por porcentaje (ej. 20 o -10)" aria-label="Ajustar por porcentaje (ej. 20 o -10)">
           <button class="btn btn-ghost btn-mini" id="ma-pct-btn">Aplicar %</button>
           <button class="btn btn-ghost btn-mini" id="ma-r5" title="Redondear hacia arriba a múltiplos de 5">↑5</button>
           <button class="btn btn-ghost btn-mini" id="ma-r10" title="Redondear hacia arriba a múltiplos de 10">↑10</button>
         </div>
         <div class="oc-toolgrp">
           <span class="lbl">Orden:</span>
-          <select id="oc-sort" class="oc-mini" style="width:auto;height:28px;text-align:left;font-family:inherit;font-weight:500">
+          <select id="oc-sort" class="oc-mini" style="width:auto;height:28px;text-align:left;font-family:inherit;font-weight:500" aria-label="Ordenar la lista">
             <option value="group">Producto · Modelo · Color</option>
             <option value="faltante">Menos stock primero</option>
             <option value="vendidas">Más vendidas</option>
@@ -292,7 +324,7 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
         </div>
         <div class="oc-addwrap oc-addbox">
           <button class="btn btn-ghost btn-mini" id="add-toggle">+ Agregar producto</button>
-          <input id="add-search" class="oc-search" placeholder="Buscar producto del catálogo…" style="display:none">
+          <input id="add-search" class="oc-search" placeholder="Buscar producto del catálogo…" style="display:none" aria-label="Buscar producto del catálogo…">
           <div id="add-results" class="oc-results"></div>
         </div>
       </div>
@@ -403,12 +435,32 @@ function renderHeader() {
 function renderParams() {
   const p = draft.params || {};
   $('cp-smax').value  = p.stock_max ?? '';
+  $('cp-dmax').value  = p.dias_stock_max || '';
   $('cp-vmin').value  = p.vendidos_min ?? '';
   $('cp-all').checked = !!p.all_products;
   $('cp-tc').value    = p.tc ?? '';
   $('cp-flete').value = p.flete ?? '';
   $('cp-units').value = p.units ?? '';
   $('cp-cobertura').value = String(p.cobertura || 0);
+  $('cp-lead').value  = p.lead_dias || '';
+  marcarUmbralesInertes();
+}
+
+/* Con cobertura objetivo, la entrada la decide la cobertura y estos tres
+   umbrales NO se aplican. Hay que MOSTRARLO: si quedan editables y sin efecto,
+   uno los toca creyendo que ajusta el pedido (y fue justo así que una funda que
+   se agotaba en 60 días quedó afuera por el umbral de "vendidas ≥ 5"). */
+function marcarUmbralesInertes() {
+  const inerte = (parseFloat($('cp-cobertura').value) || 0) > 0;
+  const motivo = 'Con cobertura objetivo activa este umbral no se aplica: entra todo lo que no llega a cubrir la cobertura + el plazo de entrega.';
+  ['cp-smax', 'cp-dmax', 'cp-vmin'].forEach(id => {
+    const inp = $(id); if (!inp) return;
+    inp.disabled = inerte;
+    const campo = inp.closest('.oc-cri-field');
+    if (campo) { campo.style.opacity = inerte ? '.45' : ''; campo.title = inerte ? motivo : (campo.dataset.t || ''); }
+  });
+  const nota = $('cp-cri-nota');
+  if (nota) nota.style.display = inerte ? '' : 'none';
 }
 
 const PRIO = { critico: ['err', 'Crítico'], bajo: ['low', 'Bajo'] };
@@ -420,6 +472,26 @@ function demandaMensual(it) {
   const dr = diasRec();
   if (dr > 0 && it.vend_rec != null) return Math.max(0, (+it.vend_rec || 0) / (dr / 30));
   return Math.max(0, (+it.vendidas || 0) / 4);
+}
+/* días que dura el stock ACTUAL (sin lo que se pide) al ritmo de venta vigente.
+   Es el dato que decide si el producto entra a la orden: 5 unidades no dicen
+   nada por sí solas, 5 unidades que se van en 17 días sí. */
+function diasAutonomia(it) {
+  const dm = demandaMensual(it);
+  if (dm <= 0) return null;
+  return (+it.stock_actual || 0) / (dm / 30);
+}
+function diasCell(it) {
+  // Sin stock: las ventas recientes NO miden la demanda, miden lo que alcanzó a
+  // venderse antes del quiebre. La cantidad sugerida queda corta; hay que revisarla.
+  if (it.demanda_censurada) {
+    return `<div class="oc-sub"><span class="oc-badge oc-cov-low" title="Está en quiebre: vendió poco porque no había stock, no por falta de demanda. La cantidad sugerida está subestimada — revisala a mano.">demanda subestimada</span></div>`;
+  }
+  const d = diasAutonomia(it);
+  if (d === null) return '';
+  const cls = d <= 15 ? 'oc-cov-low' : d <= 30 ? 'oc-cov-mid' : 'oc-cov-ok';
+  const solo = it.entro_por === 'dias' ? ' · entró por rotación, no por stock bajo' : '';
+  return `<div class="oc-sub"><span class="oc-badge ${cls}" title="Al ritmo actual el stock se agota en ~${Math.round(d)} días${solo}">se agota en ${Math.round(d)}d</span></div>`;
 }
 function coberturaMeses(it) {
   const dm = demandaMensual(it);
@@ -438,6 +510,18 @@ function covBadge(it) {
     : 'asume venta mensual ≈ vendidas÷4';
   return `<span class="oc-badge ${cls}" title="≈ ${txt} meses (${base})${tip ? ' · ' + tip : ''}">≈ ${txt}m</span>`;
 }
+/* De dónde salió el costo de la fila. Se muestra siempre: un costo que cambia
+   solo y sin avisar es peor que uno estimado. */
+function origenBadge(it) {
+  const cfg = {
+    medido:    ['oc-cov-ok',   'medido',    'Costo puesto real, de un pedido cargado en Costos de Pedidos (incluye envío e impuestos)'],
+    proveedor: ['oc-cov-over', 'proveedor', 'Precio del link de proveedor de esta publicación × TC + flete/u. NO incluye impuestos de aduana'],
+    manual:    ['oc-cov-mid',  'a mano',    'Lo editaste vos: no se pisa automáticamente'],
+    estimado:  ['oc-cov-na',   'estimado',  'Costo estimado por la tabla de líneas del script — el menos confiable'],
+  }[it.costo_origen || 'estimado'];
+  return `<div class="oc-sub"><span class="oc-badge ${cfg[0]}" title="${esc(cfg[2])}">${cfg[1]}</span></div>`;
+}
+
 function margenPct(it) {
   const p = +it.precio || 0, c = +it.costo_unit || 0;
   if (p <= 0) return null;
@@ -467,18 +551,18 @@ function renderRows() {
     const stockFinal = (+it.stock_actual || 0) + (+it.cant_ajustada || 0);
     const usd = usdDe(it);
     return `
-      <tr data-i="${i}" class="${it.incluido === false ? 'excluded' : ''} ${it.manual ? 'manual' : ''}">
+      <tr data-i="${i}" class="${it.incluido === false ? 'excluded' : ''} ${it.manual ? 'manual' : ''} sev-${it.prioridad || 'neu'}">
         <td>
           <div class="adm-prod">
             ${foto}
             <div style="min-width:0">
-              <div class="adm-prod-title">${esc(it.producto)}${it.manual ? ' <span class="oc-badge oc-cov-over" style="font-size:9px">manual</span>' : ''}</div>
+              <div class="adm-prod-title">${esc(it.producto)}${it.manual ? ' <span class="oc-badge oc-cov-over">manual</span>' : ''}</div>
               <div class="adm-prod-meta">${esc(meta)}</div>
             </div>
           </div>
         </td>
         <td><span class="adm-state ${cls}">${lbl}</span></td>
-        <td class="right hide-sm oc-stockfinal" style="${(+it.stock_actual) <= 4 ? 'color:var(--red)' : 'color:var(--text-3)'}">${it.stock_actual} → <b id="sf-${i}">${stockFinal}</b></td>
+        <td class="right hide-sm oc-stockfinal" style="${(+it.stock_actual) <= 4 ? 'color:var(--red)' : 'color:var(--text-3)'}">${it.stock_actual} → <b id="sf-${i}">${stockFinal}</b>${diasCell(it)}</td>
         <td class="right hide-sm" style="font-variant-numeric:tabular-nums">${it.vendidas}${(diasRec() > 0 && it.vend_rec != null) ? `<div class="oc-sub" title="Ventas reales de los últimos ${diasRec()} días (órdenes pagas de ML)">${it.vend_rec} en ${diasRec()}d</div>` : ''}</td>
         <td class="right hide-sm" id="cov-${i}">${covBadge(it)}</td>
         <td class="right">
@@ -488,7 +572,8 @@ function renderRows() {
         <td class="right">
           <div class="oc-cost-cell">
             <div><span class="oc-inp-pre">$</span><input class="oc-inp" type="number" min="0" step="1" inputmode="numeric" data-f="costo_unit" data-i="${i}" value="${it.costo_unit}"></div>
-            <div class="oc-cost-usd"><span class="oc-inp-pre">u$</span><input class="oc-inp usd" type="number" min="0" step="0.01" inputmode="decimal" data-f="usd" data-i="${i}" value="${usd ? usd.toFixed(2) : ''}" title="Costo FOB en USD (recalcula el ARS con TC + flete/u)"></div>
+            <div class="oc-cost-usd"><span class="oc-inp-pre">u$</span><input class="oc-inp usd" type="number" min="0" step="0.01" inputmode="decimal" data-f="usd" data-i="${i}" value="${usd ? usd.toFixed(2) : ''}" title="Costo FOB en USD (recalcula el ARS con TC + flete/u)" aria-label="Costo FOB en USD (recalcula el ARS con TC + flete/u)"></div>
+            ${origenBadge(it)}
           </div>
         </td>
         <td class="right hide-sm" id="mg-${i}">${mgCell(it)}</td>
@@ -509,6 +594,11 @@ function renderRows() {
   tb.querySelectorAll('.oc-toggle').forEach(btn => btn.addEventListener('click', onToggle));
   tb.querySelectorAll('.oc-prov:not([disabled])').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openProv(btn.dataset.item, +btn.dataset.i, btn); }));
   applyFilter();
+  // Redibujar deja los totales de fila en el "$0" del template, así que hay que
+  // recalcular SIEMPRE después. Antes dependía de que cada llamador se acordara,
+  // y `loadProvLinks().then(() => renderRows())` no lo hacía: al resolver esa
+  // promesa (después del render inicial) los totales quedaban todos en $0.
+  recompute();
 }
 
 /* ───── filtro de filas ───── */
@@ -548,11 +638,15 @@ function onEdit(e) {
       // costo USD editado → recalcular ARS = usd*tc + flete/u
       const tc = +((draft.params||{}).tc) || 0, fu = +((draft.params||{}).flete_unit) || 0;
       draft.items[i].costo_unit = Math.round(num * tc + fu);
+      draft.items[i].costo_manual = true;
+      draft.items[i].costo_origen = 'manual';
       const arsInp = document.querySelector(`input[data-f="costo_unit"][data-i="${i}"]`);
       if (arsInp) { arsInp.value = draft.items[i].costo_unit; arsInp.classList.remove('invalid'); }
     } else {
       draft.items[i][f] = num;
       if (f === 'costo_unit') {
+        draft.items[i].costo_manual = true;   // no volver a pisarlo automáticamente
+        draft.items[i].costo_origen = 'manual';
         const usd = usdDe(draft.items[i]);
         const usdInp = document.querySelector(`input[data-f="usd"][data-i="${i}"]`);
         if (usdInp) { usdInp.value = usd ? usd.toFixed(2) : ''; usdInp.classList.remove('invalid'); }
@@ -578,15 +672,21 @@ function rowValid(it) {
 }
 
 function recompute() {
-  let items = 0, units = 0, inv = 0;
+  let items = 0, units = 0, inv = 0, sMerc = 0, sFlete = 0, sImp = 0;
   draft.items.forEach((it, i) => {
     const included = it.incluido !== false;
     const valid = rowValid(it);
     const tot = (included && valid) ? (+it.cant_ajustada) * (+it.costo_unit) : 0;
     const rt = $('rt-' + i);
     if (rt) rt.textContent = ars(tot);
-    if (included && valid && (+it.cant_ajustada) > 0) { items++; units += (+it.cant_ajustada); inv += tot; }
+    if (included && valid && (+it.cant_ajustada) > 0) {
+      items++; units += (+it.cant_ajustada); inv += tot;
+      const q = +it.cant_ajustada;
+      if (it._merc == null) partirCosto(it);
+      sMerc += (it._merc||0) * q; sFlete += (it._flete||0) * q; sImp += (it._imp||0) * q;
+    }
   });
+  renderDesglose(sMerc, sFlete, sImp, inv);
   $('oc-total').textContent = ars(inv);
   $('oc-items').textContent = items;
   $('oc-units').textContent = units;
@@ -634,15 +734,19 @@ async function recalcular() {
   try {
     const fd = new FormData();
     fd.append('file', new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }), 'inventario.csv');
-    fd.append('tc',    String(parseInt($('cp-tc').value)    || 1421));
+    fd.append('tc',    String(parseInt($('cp-tc').value)    || 1532));
     fd.append('flete', String(parseInt($('cp-flete').value) || 800000));
     fd.append('units', String(parseInt($('cp-units').value) || 415));
     const vmin = $('cp-vmin').value.trim(), smax = $('cp-smax').value.trim();
     if (vmin !== '') fd.append('vendidos_min', String(parseInt(vmin)));
     if (smax !== '') fd.append('stock_max',    String(parseInt(smax)));
+    const dmax = $('cp-dmax').value.trim();
+    if (dmax !== '' && parseInt(dmax) > 0) fd.append('dias_stock_max', String(parseInt(dmax)));
     if ($('cp-all').checked) fd.append('all_products', '1');
     const cob = parseFloat($('cp-cobertura').value) || 0;
     if (cob > 0) fd.append('cobertura', String(cob));
+    const lead = parseInt($('cp-lead').value) || 0;
+    if (lead > 0) fd.append('lead_dias', String(lead));
     const dr = diasRec();
     if (dr > 0) fd.append('dias_rec', String(dr));   // el oc_csv ya trae la columna VendRec
     const resp = await fetch('/orden-compra/draft', { method: 'POST', body: fd });
@@ -651,7 +755,8 @@ async function recalcular() {
     if (!data.draft.items || !data.draft.items.length) {
       const r = data.draft.diagnostico || {};
       const grupo = r.all_products ? 'productos' : 'fundas';
-      setStatus(`⚠ Sin ítems con ese criterio. De ${r.fundas_total ?? '?'} ${grupo}: ${r.pass_vendidos ?? '?'} con vendidas ≥ ${r.vendidos_min}, ${r.pass_stock ?? '?'} con stock ≤ ${r.stock_max}. Aflojá los umbrales o tildá "todas".`, false);
+      const porDias = r.dias_stock_max > 0 ? `, ${r.pass_dias ?? 0} más se agotan en ≤ ${r.dias_stock_max} días` : '';
+      setStatus(`⚠ Sin ítems con ese criterio. De ${r.fundas_total ?? '?'} ${grupo}: ${r.pass_vendidos ?? '?'} con vendidas ≥ ${r.vendidos_min}, ${r.pass_stock ?? '?'} con stock ≤ ${r.stock_max}${porDias}. Aflojá los umbrales o tildá "todas".`, false);
       renderParams(); btn.disabled = false; btn.innerHTML = orig; return;
     }
     const keepId = draft.draft_id, keepCreado = draft.creado;
@@ -660,11 +765,26 @@ async function recalcular() {
     const have = new Set(draft.items.map(it => it.id));
     manuales.filter(m => !have.has(m.id)).forEach(m => draft.items.unshift(m));
     captureProdOrder(); applySort();
+    // El server devuelve su propio flete_unit (flete/units); si hay pedidos
+    // medidos, el bueno es el de ellos.
+    if (promedios) draft.params.flete_unit = promedios.extra_unit_ars;
+    aplicarCostos();   // el recálculo trae costos estimados: pisarlos con los reales
+    renderExtra();
     try { sessionStorage.setItem('oc_draft', JSON.stringify(draft)); } catch(e) {}
     dirty = false; $('oc-dirty').classList.remove('show');
     renderAll();
-    const relax = (draft.diagnostico || {}).relaxed_used ? ' (umbrales relajados automáticamente)' : '';
-    setStatus(`✓ Recalculado con el nuevo criterio: ${draft.items.length} ítems${relax}.`, true);
+    const dg = draft.diagnostico || {};
+    const relax = dg.relaxed_used ? ' (umbrales relajados automáticamente)' : '';
+    // Vale la pena decirlo: son los que el umbral de stock dejaba afuera
+    const resc = dg.pass_dias > 0 ? ` · ${dg.pass_dias} rescatados por rotación (se agotan en ≤ ${dg.dias_stock_max} días)` : '';
+    // No son un error: pasaron el umbral de stock pero su rotación es tan baja
+    // que lo que tienen ya cubre los meses objetivo. Se dicen para que no
+    // parezca que el listado "perdió" filas.
+    const cub = dg.ya_cubiertas > 0 ? ` · ${dg.ya_cubiertas} sin pedir (el stock ya cubre la cobertura)` : '';
+    // Las que el criterio viejo de umbrales habría perdido: son justo las que
+    // se agotan antes de que llegue el pedido pero tienen pocas ventas de vida.
+    const salv = dg.rescatadas > 0 ? ` · ${dg.rescatadas} que los umbrales dejaban afuera` : '';
+    setStatus(`✓ Recalculado con el nuevo criterio: ${draft.items.length} ítems${relax}${resc}${cub}${salv}.`, true);
   } catch (e) {
     setStatus(`✕ ${esc(e.message)}`, false);
   } finally {
@@ -672,9 +792,9 @@ async function recalcular() {
   }
 }
 $('cp-recalc').addEventListener('click', recalcular);
-['cp-smax', 'cp-vmin', 'cp-tc', 'cp-flete', 'cp-units'].forEach(id =>
+['cp-smax', 'cp-dmax', 'cp-vmin', 'cp-tc', 'cp-flete', 'cp-units', 'cp-lead'].forEach(id =>
   $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); recalcular(); } }));
-$('cp-cobertura').addEventListener('change', recalcular);
+$('cp-cobertura').addEventListener('change', () => { marcarUmbralesInertes(); recalcular(); });
 $('oc-sort').addEventListener('change', e => { currentSort = e.target.value; applySort(); renderRows(); recompute(); });
 
 /* ───── agregar producto manual (parsea oc_csv) ───── */
@@ -745,7 +865,7 @@ $('add-search').addEventListener('input', () => {
   if (!matches.length) { box.innerHTML = `<div class="oc-res-empty">Sin coincidencias nuevas</div>`; box.classList.add('show'); return; }
   box.innerHTML = matches.map((c, k) => `
     <div class="oc-res-item" data-k="${k}">
-      <div class="adm-prod-thumb" style="width:30px;height:30px">${c.foto ? `<img src="${esc(c.foto)}" style="width:100%;height:100%;object-fit:cover;border-radius:5px" onerror="this.style.display='none'">` : ''}</div>
+      <div class="adm-prod-thumb" style="width:30px;height:30px">${c.foto ? `<img src="${esc(c.foto)}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" onerror="this.style.display='none'">` : ''}</div>
       <div style="min-width:0">
         <div class="oc-res-title">${esc(c.titulo)}</div>
         <div class="oc-res-meta">${esc(c.variante || c.item_id)} · stock ${c.stock} · vend ${c.vendidos}</div>
@@ -757,6 +877,76 @@ $('add-search').addEventListener('input', () => {
 });
 document.addEventListener('click', e => { if (!e.target.closest('.oc-addbox')) $('add-results').classList.remove('show'); });
 
+/* ───── recuperación de quebradas ─────
+   No auto-pide: la decisión "¿este producto todavía me sirve?" es de negocio.
+   Con 7 días de plazo de entrega conviene reaccionar a la señal antes que
+   predecir con ventas de hace un año. */
+let recups = [];
+async function cargarRecuperacion() {
+  try {
+    // Respeta el alcance de la orden: si está en fundas, la recuperación también
+    const todos = (draft.params || {}).all_products ? '&all_products=1' : '';
+    const r = await fetch('/orden-compra/recuperacion?dias=365' + todos);
+    if (!r.ok) return;
+    const d = await r.json();
+    recups = d.candidatas || [];
+    renderRecuperacion(d.ventana_dias);
+  } catch(e) { /* silencioso: es un panel opcional */ }
+}
+
+function renderRecuperacion(ventana) {
+  if (!recups.length) { $('oc-recup').style.display = 'none'; return; }
+  $('oc-recup').style.display = '';
+  $('oc-recup-count').textContent = recups.length;
+  const yaEsta = it => draft.items.some(x => x.item_id === it.item_id && x.variante === it.variante);
+  $('oc-recup-body').innerHTML =
+    `<div style="margin:6px 0 10px">Sin stock y sin ventas en 60 días, pero con ventas en los últimos ${ventana}. ` +
+    `Ordenadas por gente esperando reposición.</div>` +
+    recups.slice(0, 30).map((c, i) => `
+      <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--border)">
+        ${c.foto ? `<img src="${esc(c.foto)}" style="width:34px;height:34px;object-fit:cover;border:1px solid var(--border);border-radius:4px;flex:none">`
+                 : '<div style="width:34px;height:34px;background:var(--bg);border:1px solid var(--border);border-radius:4px;flex:none"></div>'}
+        <div style="min-width:0;flex:1">
+          <div style="color:var(--text);font-weight:500">${esc(c.titulo)}</div>
+          <div style="font-size:12px;color:var(--text-3)">${esc(c.variante || 'única')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${c.esperando ? `<span class="oc-badge oc-cov-low" title="Personas que dejaron su mail esperando que vuelva">🔔 ${c.esperando} esperan</span>` : ''}
+          <span class="oc-badge oc-cov-na" title="Última venta registrada">${c.ultima_venta || 'sin fecha'}</span>
+          <span class="oc-badge oc-cov-na">${c.dias_sin_vender != null ? c.dias_sin_vender + 'd sin vender' : ''}</span>
+          <span class="oc-badge oc-cov-mid" title="Vendidas en la ventana larga">${c.vendidas_ventana} u</span>
+          ${c.ritmo_mensual ? `<span class="oc-badge oc-cov-ok" title="Ritmo mientras tuvo stock">≈${c.ritmo_mensual}/mes</span>` : ''}
+        </div>
+        <button class="btn btn-ghost btn-mini oc-recup-add" data-i="${i}" ${yaEsta(c) ? 'disabled' : ''}>
+          ${yaEsta(c) ? 'ya está' : '+ al pedido'}
+        </button>
+      </div>`).join('');
+  $('oc-recup-body').querySelectorAll('.oc-recup-add').forEach(b =>
+    b.addEventListener('click', () => recuperar(recups[+b.dataset.i])));
+}
+
+/* Suma la variante al pedido usando el ritmo que tenía cuando había stock */
+function recuperar(c) {
+  const p = draft.params || {};
+  const cob = +p.cobertura || 0, lead = +p.lead_dias || 0;
+  const dm = c.ritmo_mensual || 0;
+  const cant = cob > 0 && dm > 0
+    ? Math.max(5, Math.ceil((dm * (cob + lead / 30) - c.stock) / 5) * 5)
+    : 5;
+  addManual({
+    item_id: c.item_id, titulo: c.titulo, variante: c.variante, categoria: '',
+    foto: c.foto, stock: c.stock, vendidos: c.vendidas_ventana,
+    vendRec: null, precio: c.precio,
+  });
+  // addManual calcula con vendidas/4; acá el dato bueno es el ritmo medido
+  const nuevo = draft.items[0];
+  nuevo.cant_ajustada = cant;
+  nuevo.cant_sugerida = cant;
+  nuevo.recuperada = true;
+  renderRows(); recompute(); renderRecuperacion(365);
+  setStatus(`✓ ${esc(c.titulo)} vuelve al pedido con ${cant} unidades — revisá la cantidad.`, true);
+}
+
 function addManual(c) {
   const color = c.variante.includes('·') ? c.variante.split('·')[0].replace('Color:', '').trim() : '';
   const modelo = c.variante.includes('·') ? (c.variante.split('·')[1] || '').replace('Nombre del diseño:', '').trim() : c.variante;
@@ -766,9 +956,10 @@ function addManual(c) {
   // cantidad: respeta la cobertura objetivo activa (con demanda real si hay VendRec)
   const p = draft.params || {};
   const cob = +p.cobertura || 0, dr = +p.dias_rec || 0;
+  const lead = +p.lead_dias || 0;   // el viaje también se consume (igual que el Python)
   const dm = (dr > 0 && c.vendRec != null) ? c.vendRec / (dr / 30) : c.vendidos / 4;
   const cAdj = cob > 0
-    ? Math.max(0, Math.ceil(Math.max(0, dm * cob - c.stock) / 5) * 5)
+    ? Math.max(0, Math.ceil(Math.max(0, dm * (cob + lead / 30) - c.stock) / 5) * 5)
     : cantAdj(c.vendidos);
   draft.items.unshift({
     id: c.item_id + '::' + c.variante, item_id: c.item_id, producto: c.titulo, variante: c.variante,
@@ -845,7 +1036,7 @@ function renderOpps() {
       ${l.faltan.length ? `<div style="margin-top:2px">➕ No ofrece: ${esc(l.faltan.join(' · '))}</div>` : ''}
       ${l.quiebres.length ? `<div style="margin-top:2px;color:var(--red)">⛔ Quiebre: ${esc(l.quiebres.join(' · '))}</div>` : ''}
     </div>`).join('') +
-    `<div style="padding-top:8px;color:var(--text-3);font-size:11px">Calculado con el inventario cargado: ventas históricas por color dentro de cada categoría de ML. Para ofrecer un color nuevo hay que crear la variante en la publicación (y conseguir el producto).</div>`;
+    `<div style="padding-top:8px;color:var(--text-3);font-size:12px">Calculado con el inventario cargado: ventas históricas por color dentro de cada categoría de ML. Para ofrecer un color nuevo hay que crear la variante en la publicación (y conseguir el producto).</div>`;
 }
 
 /* ───── guardar / cargar borradores (localStorage) ───── */
@@ -890,6 +1081,127 @@ $('oc-saved').addEventListener('change', e => {
   e.target.value = '';
 });
 
+/* ───── de dónde sale el costo de cada fila ─────
+   Jerarquía, de más a menos confiable:
+     1. medido    — costo puesto real de un pedido cargado en Costos de Pedidos
+                    (ya incluye envío e impuestos)
+     2. proveedor — precio del link de proveedor de esta publicación
+                    (FOB + flete/u; NO incluye impuestos)
+     3. estimado  — la tabla de costos por línea del script
+   Una fila editada a mano queda congelada: `costo_manual` la protege. */
+let costosMedidos = {};   // item_id → { costo_unit_ars, n }
+let promedios = null;     // costos no-mercadería por unidad, medidos de los pedidos
+async function loadCostosMedidos() {
+  try {
+    const r = await fetch('/api/stockroom/pedidos-costos/variantes');
+    if (!r.ok) return;
+    const d = await r.json();
+    // El borrador no guarda variation_id, así que se promedia por publicación
+    const acc = {};
+    for (const [k, v] of Object.entries(d.costos || {})) {
+      const itemId = k.split('::')[0];
+      (acc[itemId] = acc[itemId] || []).push({ ars: v.costo_unit_ars, usd: v.precio_unit_usd });
+    }
+    costosMedidos = {};
+    for (const [id, arr] of Object.entries(acc)) {
+      const ars = arr.map(x => x.ars);
+      const usd = arr.map(x => x.usd).filter(x => x != null && x > 0);
+      costosMedidos[id] = {
+        costo_unit_ars: Math.round(ars.reduce((a,b)=>a+b,0)/ars.length),
+        // Precio de mercadería del recibo: es el que hay que ver en la factura
+        precio_unit_usd: usd.length ? +(usd.reduce((a,b)=>a+b,0)/usd.length).toFixed(3) : null,
+        n: ars.length,
+      };
+    }
+    // Reemplaza al par "flete total / unidades" que antes se escribía a mano:
+    // ahora sale de los pedidos reales y contempla los impuestos.
+    promedios = d.promedios || null;
+    if (promedios) {
+      draft.params = draft.params || {};
+      draft.params.flete_unit = promedios.extra_unit_ars;
+    }
+    renderExtra();
+  } catch(e) { /* sin pedidos cargados: se sigue con proveedor/estimado */ }
+}
+
+/* Parte el costo de la fila en mercadería / envío / impuestos. Lo no-mercadería
+   sale de lo medido; el resto es mercadería, así la suma siempre cierra con el
+   costo unitario que se muestra (aunque se haya editado a mano). */
+function partirCosto(it) {
+  const fl = promedios ? promedios.flete_unit_ars : 0;
+  const im = promedios ? promedios.impuestos_unit_ars : 0;
+  const c  = +it.costo_unit || 0;
+  it._flete = Math.min(fl, c);
+  it._imp   = Math.min(im, Math.max(0, c - it._flete));
+  it._merc  = Math.max(0, c - it._flete - it._imp);
+}
+
+function renderDesglose(merc, flete, imp, total) {
+  const el = $('oc-desglose'); if (!el) return;
+  if (!total) { el.innerHTML = ''; return; }
+  const p = v => Math.round(v / total * 100);
+  el.innerHTML =
+    `<div class="oc-dg-barra">
+       <i style="background:var(--blue);width:${merc/total*100}%" title="Mercadería"></i>
+       <i style="background:var(--yellow);width:${flete/total*100}%" title="Envío"></i>
+       <i style="background:var(--red);width:${imp/total*100}%" title="Impuestos"></i>
+     </div>
+     <div class="oc-dg-items">
+       <span><i style="background:var(--blue)"></i>Mercadería ${ars(merc)} <b>${p(merc)}%</b></span>
+       <span><i style="background:var(--yellow)"></i>Envío ${ars(flete)} <b>${p(flete)}%</b></span>
+       <span><i style="background:var(--red)"></i>Impuestos ${ars(imp)} <b>${p(imp)}%</b></span>
+     </div>`;
+}
+
+function renderExtra() {
+  const el = $('cp-extra'); if (!el) return;
+  if (!promedios) {
+    el.innerHTML = `<span class="oc-badge oc-cov-mid" title="Cargá un pedido en Costos de Pedidos para medir envío e impuestos reales">sin pedidos cargados</span>`;
+    return;
+  }
+  el.innerHTML = `${ars(promedios.extra_unit_ars)} <span class="oc-sub" style="margin-left:8px;display:inline">` +
+    `envío ${ars(promedios.flete_unit_ars)} + impuestos ${ars(promedios.impuestos_unit_ars)}` +
+    `</span>`;
+  el.title = `Promedio de ${promedios.pedidos} pedido(s), ${promedios.unidades} unidades`;
+}
+
+function aplicarCostos() {
+  const p = draft.params || {};
+  const tc = +p.tc || 0, fu = +p.flete_unit || 0;
+  const n = { medido: 0, proveedor: 0, estimado: 0, manual: 0 };
+  (draft.items || []).forEach(it => {
+    // precio_usd = SOLO la mercadería (lo que se le paga al proveedor), sin
+    // flete ni impuestos. Es el número con el que se controla la factura de
+    // Alibaba, así que se arrastra al Excel tal cual viene de la fuente.
+    if (it.costo_manual) {
+      it.costo_origen = 'manual'; n.manual++;
+      // Costo escrito a mano en ARS: el USD se deduce sacándole lo no-producto.
+      it.precio_usd = tc > 0 ? +(((+it.costo_unit || 0) - fu) / tc).toFixed(3) : null;
+      it.precio_usd_exacto = false;
+      return;
+    }
+    const med = costosMedidos[it.item_id];
+    if (med) {
+      it.costo_unit = med.costo_unit_ars; it.costo_origen = 'medido'; n.medido++;
+      it.precio_usd = med.precio_unit_usd ?? null;
+      it.precio_usd_exacto = med.precio_unit_usd != null;
+      partirCosto(it); return;
+    }
+    const link = (provLinks[it.item_id] || []).find(l => l.precio_usd != null);
+    if (link) {
+      it.costo_unit = Math.round(link.precio_usd * tc + fu);
+      it.costo_origen = 'proveedor'; n.proveedor++;
+      it.precio_usd = link.precio_usd; it.precio_usd_exacto = true;
+      partirCosto(it); return;
+    }
+    it.costo_origen = 'estimado'; n.estimado++;
+    it.precio_usd = tc > 0 ? +(((+it.costo_unit || 0) - fu) / tc).toFixed(3) : null;
+    it.precio_usd_exacto = false;
+    partirCosto(it);
+  });
+  return n;
+}
+
 /* ───── links de proveedor (Alibaba) ───── */
 const isHttp = u => /^https?:\/\//i.test(String(u || '').trim());
 async function loadProvLinks() {
@@ -932,12 +1244,12 @@ function openProv(itemId, rowIdx, anchor) {
       </div>`).join('') : '<div class="pp-empty">Sin links cargados todavía</div>'}
     </div>
     <div class="pp-form">
-      <input class="pp-in" id="pp-url" placeholder="URL del proveedor (https://…)">
+      <input class="pp-in" id="pp-url" placeholder="URL del proveedor (https://…)" aria-label="URL del proveedor (https://…)">
       <div style="display:flex;gap:6px">
-        <input class="pp-in" id="pp-prov" placeholder="Proveedor" style="flex:1">
-        <input class="pp-in" id="pp-usd" type="number" step="0.01" min="0" placeholder="u$" style="width:72px">
+        <input class="pp-in" id="pp-prov" placeholder="Proveedor" style="flex:1" aria-label="Proveedor">
+        <input class="pp-in" id="pp-usd" type="number" step="0.01" min="0" placeholder="u$" style="width:72px" aria-label="u$">
       </div>
-      <input class="pp-in" id="pp-nota" placeholder="Nota (opcional)">
+      <input class="pp-in" id="pp-nota" placeholder="Nota (opcional)" aria-label="Nota (opcional)">
       <button class="btn btn-primary btn-sm" id="pp-add" style="justify-content:center">+ Agregar link</button>
     </div>`;
 
@@ -963,6 +1275,8 @@ function openProv(itemId, rowIdx, anchor) {
     if (!l || l.precio_usd == null) return;
     const tc = +((draft.params||{}).tc) || 0, fu = +((draft.params||{}).flete_unit) || 0;
     draft.items[rowIdx].costo_unit = Math.round(l.precio_usd * tc + fu);
+    draft.items[rowIdx].costo_origen = 'proveedor';
+    draft.items[rowIdx].costo_manual = false;
     markDirty(); renderRows(); recompute(); closeProv();
     setStatus(`✓ Costo de la fila actualizado desde el proveedor (u$${l.precio_usd}).`, true);
   }));
@@ -973,7 +1287,15 @@ function openProv(itemId, rowIdx, anchor) {
     const link = { url, proveedor: $('pp-prov').value.trim(), precio_usd: usd !== '' ? +usd : null, nota: $('pp-nota').value.trim() };
     (provLinks[itemId] = provLinks[itemId] || []).push(link);
     const ok = await saveProvLinks(itemId);
-    if (ok) { renderRows(); openProv(itemId, rowIdx, document.querySelector(`.oc-prov[data-i="${rowIdx}"]`) || anchor); }
+    if (ok) {
+      const n = aplicarCostos();
+      renderRows(); recompute();
+      const tocadas = (draft.items || []).filter(x => x.item_id === itemId && x.costo_origen === 'proveedor').length;
+      setStatus(link.precio_usd != null
+        ? `✓ Link guardado. Costo aplicado a ${tocadas} variante(s) de esta publicación (u$${link.precio_usd}).`
+        : '✓ Link guardado (sin precio: el costo no cambió).', true);
+      openProv(itemId, rowIdx, document.querySelector(`.oc-prov[data-i="${rowIdx}"]`) || anchor);
+    }
   });
 }
 document.addEventListener('click', e => { if (!e.target.closest('#prov-pop') && !e.target.closest('.oc-prov')) closeProv(); });
@@ -1010,7 +1332,17 @@ $('oc-export').addEventListener('click', async () => {
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 loadDraft();
-loadProvLinks().then(() => { if (draft) renderRows(); });
+cargarRecuperacion();
+Promise.all([loadProvLinks(), loadCostosMedidos()]).then(() => {
+  if (!draft) return;
+  const n = aplicarCostos();
+  renderRows();
+  const partes = [];
+  if (n.medido)    partes.push(`${n.medido} con costo medido`);
+  if (n.proveedor) partes.push(`${n.proveedor} desde el link de proveedor`);
+  if (n.estimado)  partes.push(`${n.estimado} estimadas`);
+  if (partes.length) setStatus(`Costos aplicados: ${partes.join(' · ')}.`, true);
+});
 </script>
 </body>
 </html>

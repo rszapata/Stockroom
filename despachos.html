@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=9">
+<link rel="stylesheet" href="/admin.css?v=14">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -30,30 +30,30 @@
 @keyframes pg-spin{to{transform:rotate(360deg)}}
 
 /* ── btn ── */
-.pg .btn{height:36px;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px}
+.pg .btn{height:36px;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px}
 .pg .btn:hover{border-color:var(--b2);color:var(--tx)}
 .pg .btn:disabled{opacity:.45;cursor:default}
 .pg .btn-primary{background:var(--ye);color:#fff;border-color:var(--ye);font-weight:700}
-.pg .btn-primary:hover{background:var(--blue-dark);border-color:var(--blue-dark);color:#fff}
+.pg .btn-primary:hover{background:var(--blue-dark);border-color:var(--blue-dark);color: var(--on-blue)}
 .pg .btn-ghost{background:transparent;border-color:var(--b1);color:var(--t2)}
 .pg .btn-zpl{background:#6366f1;border-color:#6366f1;color:#fff;font-weight:700}
 .pg .btn-zpl:hover{background:#4f46e5;border-color:#4f46e5}
 .pg #btn-refresh.is-loading #btn-refresh-icon{animation:pg-spin .7s linear infinite}
 
 /* ── action bar ── */
-.pg .action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:12px 16px;background:var(--s1);border:1px solid var(--b1);border-radius:12px}
+.pg .action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:12px 16px;background:var(--s1);border:1px solid var(--b1);border-radius:6px}
 .pg .action-bar-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
 .pg .action-bar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
 .pg #hdr-updated{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
 .pg #hdr-sub{font-size:12px;color:var(--t2);font-family:'JetBrains Mono',monospace}
 
 /* ── kpi pill ── */
-.pg .kpi-pill{background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:14px 20px;min-width:120px}
+.pg .kpi-pill{background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:14px 20px;min-width:120px}
 
 /* ── account section ── */
-.pg .acct-section{background:var(--s1);border:1px solid var(--b1);border-radius:14px;overflow:hidden;margin-bottom:20px}
+.pg .acct-section{background:var(--s1);border:1px solid var(--b1);border-radius:6px;overflow:hidden;margin-bottom:20px}
 .pg .acct-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--b1);gap:12px;flex-wrap:wrap}
-.pg .acct-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.pg .acct-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color: var(--on-blue);flex-shrink:0}
 .pg .acct-name{font-size:13px;font-weight:600;color:var(--tx)}
 .pg .acct-meta{font-size:11px;color:var(--t2);font-family:'JetBrains Mono',monospace}
 
@@ -61,7 +61,7 @@
 .pg .order-row{display:flex;align-items:flex-start;gap:12px;padding:12px 18px;border-bottom:1px solid var(--b1);transition:background .12s}
 .pg .order-row:last-child{border-bottom:none}
 .pg .order-row:hover{background:rgba(255,255,255,.025)}
-.pg .item-img{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--b1);flex-shrink:0;background:var(--s2)}
+.pg .item-img{width:44px;height:44px;border-radius:6px;object-fit:cover;border:1px solid var(--b1);flex-shrink:0;background:var(--s2)}
 .pg .item-title{font-size:12px;color:var(--tx);font-weight:500;line-height:1.4}
 .pg .item-variant{font-size:11px;color:var(--t2);margin-top:2px}
 .pg .qty-badge{height:24px;min-width:28px;padding:0 8px;background:color-mix(in srgb,var(--ye) 10%,transparent);border:1px solid color-mix(in srgb,var(--ye) 25%,transparent);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ye);display:inline-flex;align-items:center;justify-content:center}
@@ -79,7 +79,7 @@
 .pg .pkg-subhead.sh-prog{color:var(--ye);background:color-mix(in srgb,var(--ye) 6%,transparent)}
 /* Venta multi-producto (pack): caja delimitada con margen, para que dos packs
    seguidos se vean como dos cajas separadas y no como un bloque continuo. */
-.pg .pkg-card.pkg-multi{background:color-mix(in srgb,var(--ye) 2.5%,transparent);border:1px solid color-mix(in srgb,var(--ye) 28%,transparent);border-left:3px solid var(--ye);border-radius:8px;margin:10px;overflow:hidden}
+.pg .pkg-card.pkg-multi{background:color-mix(in srgb,var(--ye) 2.5%,transparent);border:1px solid color-mix(in srgb,var(--ye) 28%,transparent);border-left:3px solid var(--ye);border-radius:6px;margin:10px;overflow:hidden}
 .pg .pkg-card.pkg-multi + .pkg-card.pkg-multi{margin-top:10px}
 .pg .pkg-header{display:flex;align-items:center;justify-content:space-between;padding:9px 18px 5px;gap:8px;flex-wrap:wrap}
 .pg .pkg-id{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3);letter-spacing:.04em}
@@ -89,7 +89,7 @@
 /* Encabezado de subsección por tipo (Fundas / Mallas-Protectores / Combinadas) */
 .pg .pkg-subhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 18px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--t2);background:var(--bg);border-top:1px solid var(--b1);border-bottom:1px solid var(--b1)}
 .pg .orders-list > .pkg-subhead:first-child{border-top:none}
-.pg .pkg-subcount{font-size:10px;font-weight:700;color:var(--t3);background:var(--bg-card);border:1px solid var(--b1);border-radius:9px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.pg .pkg-subcount{font-size:10px;font-weight:700;color:var(--t3);background:var(--bg-card);border:1px solid var(--b1);border-radius:6px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .pg .pkg-subhead.sh-mixta{color:var(--or);box-shadow:inset 3px 0 0 var(--or)}
 .pg .pkg-item{display:flex;align-items:flex-start;gap:12px;padding:7px 18px 7px 30px}
 .pg .pkg-item:not(:last-child){border-bottom:1px solid rgba(255,255,255,.03)}
@@ -107,7 +107,7 @@
 /* ── LIGHTBOX ── */
 .pg .lightbox-ov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;cursor:zoom-out;opacity:0;pointer-events:none;transition:opacity .18s}
 .pg .lightbox-ov.open{opacity:1;pointer-events:all}
-.pg .lightbox-ov img{max-width:min(92vw,520px);max-height:80vh;border-radius:14px;border:1px solid var(--border);box-shadow:0 32px 80px rgba(0,0,0,.7);transform:scale(.92);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.pg .lightbox-ov img{max-width:min(92vw,520px);max-height:80vh;border-radius:6px;border:1px solid var(--border);box-shadow:0 32px 80px rgba(0,0,0,.7);transform:scale(.92);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
 .pg .lightbox-ov.open img{transform:scale(1)}
 .pg .item-img[src]{cursor:zoom-in;transition:opacity .15s}
 .pg .item-img[src]:hover{opacity:.8}
@@ -117,6 +117,19 @@
 .pg .sel-btn{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:4px;border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;letter-spacing:.04em;transition:all .12s}
 .pg .sel-btn:hover{color:var(--tx);border-color:var(--b1)}
 
+/* ── filtro por tipo ── */
+.pg .tipo-filtro{display:flex;gap:8px;margin-bottom:16px}
+.pg .tipo-filtro button{flex:1;height:38px;border:1px solid var(--b1);border-radius:8px;background:var(--bg-card);
+  color:var(--t2);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .12s}
+.pg .tipo-filtro button:hover{color:var(--tx);border-color:var(--b2)}
+.pg .tipo-filtro button.on{background:var(--ye);border-color:var(--ye);color:#1a1a1a}
+/* Filtrado por CSS: las combinadas quedan visibles en los dos filtros porque
+   hay que prepararlas igual. Lo programado se oculta al filtrar. */
+.pg[data-filtro="funda"] [data-tipo="malla"],
+.pg[data-filtro="funda"] .prog-section,
+.pg[data-filtro="malla"] [data-tipo="funda"],
+.pg[data-filtro="malla"] .prog-section{display:none}
+
 @media(max-width:640px){
   .pg .btn-group{flex-wrap:wrap}
   /* KPIs en grid de 3 columnas: 6 pills → 2 filas prolijas (antes flex:1 los
@@ -124,6 +137,51 @@
   .pg .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .pg .kpi-pill{min-width:0;padding:10px 12px;margin-left:0!important}
   .pg .action-bar{flex-direction:column;align-items:flex-start}
+
+  /* ── Modo lista ──────────────────────────────────────────────
+     En el celular esto se usa parado al lado de la mesa, con una mano y
+     mirando de lejos: la pantalla tiene que ser la lista de pedidos, no un
+     tablero. Los KPI y el encabezado se achican, los productos crecen. */
+  /* KPIs en una sola tira compacta: antes ocupaban media pantalla y empujaban
+     los pedidos abajo del fold. Acá son referencia, no protagonistas. */
+  .pg .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+  .pg .kpi-pill{padding:6px 4px;text-align:center;min-width:0}
+  .pg .kpi-pill > div:first-child{font-size:9px!important;letter-spacing:.04em}
+  .pg .kpi-pill > div:last-child{font-size:1.05rem!important;line-height:1.2}
+  /* "Actualizado" ya está en el encabezado */
+  .pg .kpi-pill:nth-child(5){display:none}
+
+  /* Botones en una fila que se desliza, en vez de dos filas apiladas */
+  .pg .action-bar{gap:8px}
+  .pg .btn-group{flex-wrap:nowrap;overflow-x:auto;width:100%;padding-bottom:2px;
+    scrollbar-width:none}
+  .pg .btn-group::-webkit-scrollbar{display:none}
+  .pg .btn-group .btn{flex:0 0 auto;font-size:12px;padding:0 10px;height:34px}
+  .pg .hdr-sub{font-size:11px}
+  .pg .acct-header{padding:10px 12px}
+  .pg .status-bar{margin-bottom:12px}
+
+  /* La botonera se queda fija arriba: se filtra todo el tiempo */
+  .pg .tipo-filtro{position:sticky;top:0;z-index:20;background:var(--bg);
+    padding:8px 0;margin:0 0 12px}
+  .pg .tipo-filtro button{height:40px;font-size:13px}
+
+  /* Producto: mas grande que en PC pero con una escala pareja. La version
+     anterior saltaba de 10px a 16px y se veia desbalanceada; acá todo el
+     texto vive entre 11 y 13.5px, y entran mas productos por pantalla. */
+  .pg .pkg-item{gap:11px;padding:9px 12px 9px 14px;align-items:center}
+  .pg .item-img{width:52px;height:52px;border-radius:7px}
+  .pg .item-title{font-size:13px;line-height:1.35;font-weight:500}
+  .pg .item-variant{font-size:12px;margin-top:2px}
+  .pg .qty-badge{height:28px;min-width:36px;font-size:13px;font-weight:700;border-radius:7px}
+
+  /* Cabecera de cada venta: compacta, es dato secundario */
+  .pg .pkg-header{padding:7px 12px 3px;gap:6px}
+  .pg .pkg-id,.pg .pkg-buyer{font-size:11px}
+  .pg .pkg-multi-badge,.pg .pkg-single-badge{font-size:10px}
+  .pg .pkg-subhead{padding:9px 12px;font-size:10px}
+  .pg .pkg-card.pkg-multi{margin:8px 6px}
+  .pg .ord-chk{width:19px;height:19px}
 }
 
 </style>
@@ -134,7 +192,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=5"></script>
+<script src="/stockroom-sidebar.js?v=9"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -214,7 +272,7 @@
   <!-- KPI row -->
   <div class="kpi-row">
     <div class="kpi-pill">
-      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Órdenes</div>
+      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Paquetes</div>
       <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--tx)" id="kpi-orders">—</div>
     </div>
     <div class="kpi-pill">
@@ -229,13 +287,16 @@
       <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Agencia</div>
       <div style="font-size:1.5rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--or)" id="kpi-agencia">—</div>
     </div>
-    <div class="kpi-pill" style="margin-left:auto">
-      <div style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:4px">Actualizado</div>
-      <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--t2)" id="kpi-updated">—</div>
-    </div>
   </div>
 
-  <!-- Status bar -->
+  <!-- Filtro por tipo. Arriba de todo porque en el celular es lo primero que
+       se toca: se prepara una tanda de fundas o una de mallas, no las dos. -->
+  <div class="tipo-filtro" id="tipo-filtro" data-arranque="funda">
+    <button data-f="funda" class="on" onclick="filtrarTipo('funda')">Fundas</button>
+    <button data-f="malla"        onclick="filtrarTipo('malla')">Mallas</button>
+    <button data-f="todo"         onclick="filtrarTipo('todo')">Todo</button>
+  </div>
+
   <div class="status-bar" id="status-bar">
     <span class="spinner" style="margin-right:8px"></span>Cargando pedidos…
   </div>
@@ -380,7 +441,11 @@ function fmtNow() {
   return new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 }
 function setStatus(msg, loading=false) {
-  $I('status-bar').innerHTML = (loading ? '<span class="spinner" style="margin-right:8px"></span>' : '') + msg;
+  const _bar = $I('status-bar');
+  _bar.innerHTML = (loading ? '<span class="spinner" style="margin-right:8px"></span>' : '') + msg;
+  // Se guarda el texto base para poder agregarle el conteo del filtro sin
+  // pisarlo la próxima vez que se actualice
+  if (!loading) { _bar.dataset.base = msg; aplicarFiltroInicial(); }
 }
 
 // ── Flyer imprimible (FASE F) ──────────────────────────────────
@@ -428,28 +493,33 @@ function imprimirFlyer() {
       .fl{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;padding:13mm 11mm;background:#fff;border:1px dashed #e2e2e2}
       .fl-brand{font-size:15px;font-weight:800;letter-spacing:3px}
       .fl-rule{width:24mm;height:2px;background:#3D5AFE;margin:2.5mm 0 5mm}
-      .fl-h1{font-size:21px;font-weight:800;letter-spacing:-0.02em;line-height:1.1}
-      .fl-hook{font-size:10.5px;line-height:1.45;color:#54545A;max-width:76mm;margin-top:3mm}
+      .fl-h1{font-size:20px;font-weight:800;letter-spacing:-0.02em;line-height:1.1}
+      .fl-hook{font-size:10px;line-height:1.45;color:#54545A;max-width:76mm;margin-top:3mm}
       .fl-hook b{color:#0A0A0A;font-weight:700}
       .fl-qrwrap{position:relative;width:34mm;height:34mm;margin:5mm 0 3mm;display:flex;align-items:center;justify-content:center}
       .fl-qr{width:29mm;height:29mm;display:block}
       .fl-corners{position:absolute;inset:0;width:34mm;height:34mm}
-      .fl-scan{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:#54545A}
-      .fl-coupon{margin-top:4mm;border:1.4px solid #3D5AFE;border-radius:10px;padding:5px 18px;display:flex;flex-direction:column;align-items:center}
+      .fl-scan{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#54545A}
+      .fl-coupon{margin-top:4mm;border:1.4px solid #3D5AFE;border-radius:6px;padding:5px 18px;display:flex;flex-direction:column;align-items:center}
       .fl-off{font-size:15px;font-weight:800;line-height:1.05}
       .fl-off small{display:block;font-size:9px;font-weight:600;color:#54545A;letter-spacing:.01em}
       .fl-code{font-family:'Consolas','Courier New',monospace;font-size:16px;font-weight:800;letter-spacing:2px;color:#3D5AFE;margin-top:2px}
       .fl-support{margin-top:5mm;width:82mm;border-top:1px solid #E2E2E2;padding-top:3.5mm;display:flex;flex-direction:column;align-items:center;gap:1.5mm}
-      .fl-support-t{font-size:9.5px;line-height:1.4;color:#54545A;max-width:80mm}
+      .fl-support-t{font-size:10px;line-height:1.4;color:#54545A;max-width:80mm}
       .fl-support-t b{color:#0A0A0A}
       .fl-wsp{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;letter-spacing:.3px}
-      .fl-foot{margin-top:auto;font-size:8.5px;color:#8a8a8e;letter-spacing:.02em}
+      .fl-foot{margin-top:auto;font-size:9px;color:#8a8a8e;letter-spacing:.02em}
       .print-hint{position:fixed;top:5px;left:0;right:0;text-align:center;font-size:12px;color:#555}
       @media print{ .print-hint{display:none} .fl{border-color:#eee} @page{margin:0;size:A4} }
     </style></head><body>
     <div class="print-hint">Se abre el diálogo de impresión… (guardá como PDF o imprimí). 4 flyers por hoja A4.</div>
     <div class="sheet">${uno}${uno}${uno}${uno}</div>
-    <script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script>
+    <script>
+/* Activa con teclado un elemento que solo responde a click (WCAG 2.1.1). */
+function teclaActiva(e, el) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+}
+window.onload=function(){setTimeout(function(){window.print()},500)}<\/script>
     </body></html>`);
   win.document.close();
 }
@@ -470,14 +540,20 @@ function renderData(d, ts) {
   });
   // KPIs globales → cuentan solo lo de HOY (lo accionable)
   const hoyOrders = allOrders.filter(o => !o.scheduled);
-  $I('kpi-orders').textContent = hoyOrders.length;
+  // Se cuenta por PAQUETE, no por orden de ML. Una compra de varios productos
+  // llega como varias órdenes con el mismo pack_id pero es UN solo envío: por
+  // contar órdenes crudas el panel marcaba 26 donde había 10 paquetes, y
+  // flex+agencia sumaban 26 en vez de 10.
+  const packKey  = o => o.pack_id || ('o_' + o.id);
+  const paquetes = new Set(hoyOrders.map(packKey));
+  $I('kpi-orders').textContent = paquetes.size;
   $I('kpi-units').textContent  = hoyOrders.reduce((s,o) => s + (o.items||[]).reduce((a,i) => a + (i.quantity||1), 0), 0);
-  const flexCount    = hoyOrders.filter(o => o.is_flex).length;
-  const agenciaCount = hoyOrders.filter(o => !o.is_flex).length;   // no-Flex = Agencia
+  // Un pack comparte un único envío, así que su tipo no puede estar dividido
+  const flexCount    = new Set(hoyOrders.filter(o =>  o.is_flex).map(packKey)).size;
+  const agenciaCount = new Set(hoyOrders.filter(o => !o.is_flex).map(packKey)).size;
   $I('kpi-flex').textContent    = flexCount;
   $I('kpi-agencia').textContent = agenciaCount;
   const timeStr = ts ? new Date(ts).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }) : fmtNow();
-  $I('kpi-updated').textContent = timeStr;
   $I('hdr-updated').textContent = 'Última carga: ' + timeStr;
 
   // Botones globales
@@ -572,7 +648,7 @@ function renderOrders(acct) {
     byKey[key].orders.push(o);
   }
 
-  const renderCard = (g) => {
+  const renderCard = (g, tipoGrupo = 'mixta') => {
     const orders    = g.orders;
     const o0        = orders[0];
     const orderIds  = orders.map(o => String(o.id));
@@ -590,7 +666,7 @@ function renderOrders(acct) {
       return `
       <div class="pkg-item">
         ${i.picture
-          ? `<img src="${esc(i.picture)}" alt="" class="item-img" loading="lazy" onclick="openImg(this.src)"/>`
+          ? `<img src="${esc(i.picture)}" alt="Foto del producto — ampliar" class="item-img" loading="lazy" role="button" tabindex="0" onkeydown="teclaActiva(event,this)" onclick="openImg(this.src)"/>`
           : `<div class="item-img"></div>`}
         <div style="flex:1;min-width:0">
           <div class="item-title">${esc(i.title)}</div>
@@ -617,7 +693,7 @@ function renderOrders(acct) {
       : '#' + String(o0.id || '').slice(-6);
 
     return `
-    <div class="pkg-card${isMulti ? ' pkg-multi' : ''}">
+    <div class="pkg-card${isMulti ? ' pkg-multi' : ''}" data-tipo="${tipoGrupo}">
       <div class="pkg-header">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <input type="checkbox" class="ord-chk" data-order-ids="${esc(idsAttr)}"
@@ -644,7 +720,9 @@ function renderOrders(acct) {
   const hoyGroups  = groups.filter(g => !g.orders[0].scheduled);
   const progGroups = groups.filter(g =>  g.orders[0].scheduled);
 
-  const esFunda = t => /funda|carcasa|cover/i.test(t || '');
+  // Fundas incluye sopapas/soportes de celular: se preparan y despachan junto
+  // con las fundas. Todo lo demas (mallas, protectores, correas) es "mallas".
+  const esFunda = t => /funda|carcasa|cover|sopapa/i.test(t || '');
   const buckets = { malla: [], funda: [], mixta: [] };
   for (const g of hoyGroups) {
     const titles = g.orders.flatMap(o => o.items).map(i => i.title || '');
@@ -652,21 +730,73 @@ function renderOrders(acct) {
     const hasOtro  = titles.some(t => !esFunda(t));
     buckets[(hasFunda && hasOtro) ? 'mixta' : hasFunda ? 'funda' : 'malla'].push(g);
   }
-  const sub = (label, arr, cls) => arr.length
-    ? `<div class="pkg-subhead ${cls}"><span>${label}</span><span class="pkg-subcount">${arr.length}</span></div>` + arr.map(renderCard).join('')
+  // data-tipo permite filtrar por CSS: las combinadas llevan las dos marcas
+  // porque hay que prepararlas tanto si estas armando fundas como mallas.
+  const sub = (label, arr, cls, tipo) => arr.length
+    ? `<div class="pkg-subhead ${cls}" data-tipo="${tipo}"><span>${label}</span><span class="pkg-subcount">${arr.length}</span></div>`
+      + arr.map(g => renderCard(g, tipo)).join('')
     : '';
-  let html = sub('Mallas / Protectores', buckets.malla, 'sh-malla')
-           + sub('Fundas', buckets.funda, 'sh-funda')
-           + sub('Combinadas · fundas + mallas/protectores', buckets.mixta, 'sh-mixta');
+  let html = sub('Mallas / Protectores', buckets.malla, 'sh-malla', 'malla')
+           + sub('Fundas', buckets.funda, 'sh-funda', 'funda')
+           + sub('Combinadas · fundas + mallas/protectores', buckets.mixta, 'sh-mixta', 'mixta');
   if (!html) html = '<div class="empty-row">✓ Nada para despachar hoy</div>';
 
   if (progGroups.length) {
     html += `<div class="prog-section">`
           + `<div class="pkg-subhead sh-prog"><span>Programado · a despachar a futuro</span><span class="pkg-subcount">${progGroups.length}</span></div>`
-          + progGroups.map(renderCard).join('')
+          + progGroups.map(g => renderCard(g, 'prog')).join('')
           + `</div>`;
   }
   return html;
+}
+
+/* ── Filtro por tipo ───────────────────────────────────────────
+   Se filtra con un atributo en el contenedor y reglas CSS, sin volver a pedir
+   datos ni re-renderizar: el toque responde al instante y no se pierde la
+   seleccion de ordenes que ya venias marcando. */
+let filtroTipo = 'funda';   // arranca en fundas: es el grueso del despacho
+function filtrarTipo(t) {
+  filtroTipo = t;
+  const pg = document.querySelector('.pg');
+  if (t === 'todo') pg.removeAttribute('data-filtro');
+  else pg.setAttribute('data-filtro', t);
+  document.querySelectorAll('#tipo-filtro button').forEach(b =>
+    b.classList.toggle('on', b.dataset.f === t));
+  try { localStorage.setItem('dsp_filtro', t); } catch (e) {}
+  actualizarConteoFiltro();
+}
+
+/* Cuántas ventas quedan a la vista: sin esto, al filtrar no se sabe si no hay
+   nada de ese tipo o si algo falló. */
+function actualizarConteoFiltro() {
+  const vis = [...document.querySelectorAll('.pkg-card')]
+    .filter(c => c.offsetParent !== null).length;
+  const bar = document.getElementById('status-bar');
+  if (!bar || !bar.dataset.base) return;
+  bar.innerHTML = filtroTipo === 'todo'
+    ? bar.dataset.base
+    : `${bar.dataset.base} · <b>${vis}</b> ${filtroTipo === 'funda' ? 'con fundas' : 'con mallas/protectores'}`;
+
+  // Si el filtro esconde todo, decirlo. Una lista en blanco parece un error de
+  // carga y manda a refrescar al pedo.
+  document.querySelectorAll('.filtro-vacio').forEach(e => e.remove());
+  if (filtroTipo !== 'todo' && vis === 0 && document.querySelector('.pkg-card')) {
+    const cont = document.getElementById('accounts-container');
+    const tipo = filtroTipo === 'funda' ? 'fundas' : 'mallas o protectores';
+    const div = document.createElement('div');
+    div.className = 'empty-row filtro-vacio';
+    div.innerHTML = `No hay pedidos con ${tipo} para despachar.
+      <button class="sel-btn" style="margin-left:8px" onclick="filtrarTipo('todo')">Ver todos</button>`;
+    cont.appendChild(div);
+  }
+}
+
+// Se recuerda el ultimo filtro usado; si no hay nada guardado arranca en
+// Fundas, que es el grueso de lo que se despacha.
+function aplicarFiltroInicial() {
+  let inicial = 'funda';
+  try { inicial = localStorage.getItem('dsp_filtro') || 'funda'; } catch (e) {}
+  filtrarTipo(inicial);
 }
 
 // ── Selección de órdenes ──────────────────────────────────────

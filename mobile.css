@@ -36,7 +36,7 @@
 .m-drawer-close {
   width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
   background: none; border: 1px solid var(--b1); color: var(--t2); cursor: pointer;
-  font-size: 18px; border-radius: 8px; transition: all .2s;
+  font-size: 18px; border-radius:6px; transition: all .2s;
 }
 .m-drawer-close:active { background: var(--s2); color: var(--tx); }
 
@@ -49,7 +49,7 @@
 }
 .m-drawer-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; margin-bottom: 4px; border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 4px; border-radius:6px;
   font-family: var(--sans); font-size: 14px; color: var(--t2);
   cursor: pointer; transition: all .15s; text-decoration: none;
   border: none; background: none; width: 100%; text-align: left;
@@ -88,7 +88,7 @@
 .m-fab {
   display: none;
   position: fixed; z-index: 800;
-  width: 56px; height: 56px; border-radius: 16px;
+  width: 56px; height: 56px; border-radius:6px;
   background: var(--ye); color: #0c0c0e; border: none;
   box-shadow: 0 4px 16px rgba(232,255,71,.3), 0 2px 6px rgba(0,0,0,.4);
   cursor: pointer; transition: all .2s;
@@ -178,7 +178,7 @@
   /* ── CARDS — rounded, shadows, mobile-friendly ───────────── */
   .card, .side-card, .kpi, .chart-card, .upload-card, .flex-card,
   .setup-box, .bulk-top, .prog-card {
-    border-radius: 14px !important;
+    border-radius:6px !important;
     box-shadow: 0 2px 12px rgba(0,0,0,.2) !important;
     overflow: hidden;
   }
@@ -198,7 +198,7 @@
     height: 44px !important;
     font-size: 14px !important;
     padding: 0 14px !important;
-    border-radius: 10px !important;
+    border-radius:6px !important;
   }
   .field textarea {
     height: auto !important;
@@ -241,7 +241,7 @@
   .btn {
     height: 44px !important; min-height: 44px;
     padding: 0 18px !important;
-    border-radius: 10px !important;
+    border-radius:6px !important;
     font-size: 11px !important;
     transition: all .15s;
   }
@@ -252,7 +252,7 @@
   .btn.sm {
     height: 36px !important; min-height: 36px;
     padding: 0 12px !important;
-    border-radius: 8px !important;
+    border-radius:6px !important;
   }
   .btn.primary:active {
     background: #d4eb3a;
@@ -285,29 +285,29 @@
   }
 
   /* ── IMAGES ──────────────────────────────────────────────── */
-  .img-zone { padding: 16px; min-height: 80px; border-radius: 10px !important; }
+  .img-zone { padding: 16px; min-height: 80px; border-radius:6px !important; }
   .img-thumb { width: 56px; height: 56px; border-radius: 6px; }
   .img-url-row { flex-direction: column; }
-  .img-url-row input { height: 44px !important; border-radius: 10px !important; }
+  .img-url-row input { height: 44px !important; border-radius:6px !important; }
 
   /* ── VARIATIONS TABLE ────────────────────────────────────── */
-  .var-table-wrap { border-radius: 10px !important; overflow: hidden; }
+  .var-table-wrap { border-radius:6px !important; overflow: hidden; }
   .var-table td input {
     height: 36px !important;
     font-size: 12px !important;
-    border-radius: 6px !important;
+    border-radius:6px !important;
   }
   .var-inputs { gap: 8px !important; }
 
   /* ── CATEGORY NAVIGATOR ──────────────────────────────────── */
   .cat-list { gap: 6px; }
-  .cat-pill { padding: 12px 14px; border-radius: 10px !important; }
+  .cat-pill { padding: 12px 14px; border-radius:6px !important; }
   .cat-pill-name { font-size: 14px; }
   #cat-breadcrumb { gap: 6px; }
   #cat-breadcrumb button, #cat-breadcrumb span {
     font-size: 10px !important;
     padding: 5px 10px !important;
-    border-radius: 6px !important;
+    border-radius:6px !important;
   }
 
   /* ── ATTRIBUTE GRID ──────────────────────────────────────── */
@@ -316,12 +316,12 @@
   }
   .attr-f input, .attr-f select {
     height: 44px !important;
-    border-radius: 10px !important;
+    border-radius:6px !important;
   }
 
   /* ── KPI CARDS ───────────────────────────────────────────── */
   .kpi {
-    border-radius: 12px !important;
+    border-radius:6px !important;
     padding: 14px !important;
   }
   .kpi .val { font-size: 20px; }
@@ -335,7 +335,7 @@
   .toolbar .search-box input {
     width: 100% !important;
     height: 44px !important;
-    border-radius: 10px !important;
+    border-radius:6px !important;
   }
   .toolbar .fsel {
     width: 100%;
@@ -343,7 +343,7 @@
   .toolbar .fsel select {
     width: 100%;
     height: 44px !important;
-    border-radius: 10px !important;
+    border-radius:6px !important;
   }
   .ftags { flex-wrap: wrap; }
 
@@ -353,7 +353,7 @@
   }
 
   /* ── ANALYTICS — upload cards ────────────────────────────── */
-  .dropzone { padding: 20px; border-radius: 10px !important; }
+  .dropzone { padding: 20px; border-radius:6px !important; }
   .controls { flex-direction: column; gap: 8px; }
   .periodo-sel { flex-wrap: wrap; }
   .periodo-sel label { min-height: 36px; padding: 8px 12px; }
@@ -362,7 +362,7 @@
   /* ── ANALYTICS — flex section ────────────────────────────── */
   .flex-card {
     flex-direction: column !important; gap: 14px;
-    border-radius: 14px !important;
+    border-radius:6px !important;
     padding: 16px !important;
   }
   .flex-btns { width: 100%; justify-content: stretch; }
@@ -375,7 +375,7 @@
   /* ── LOG WRAP ────────────────────────────────────────────── */
   .log-wrap {
     max-height: 150px;
-    border-radius: 10px;
+    border-radius:6px;
   }
   .log-e { font-size: 9px; line-height: 1.7; }
 
@@ -390,7 +390,7 @@
   }
   .radio-row label {
     min-height: 44px; padding: 10px 14px;
-    background: var(--s2); border-radius: 10px;
+    background: var(--s2); border-radius:6px;
     border: 1px solid var(--b1);
   }
   .radio-row label:has(input:checked) {
@@ -410,7 +410,7 @@
     padding: 14px !important;
   }
   .bulk-top .field { min-width: unset !important; width: 100%; }
-  .bulk-zone { border-radius: 10px; padding: 20px; }
+  .bulk-zone { border-radius:6px; padding: 20px; }
 
   /* ── PAGINATION ──────────────────────────────────────────── */
   .pagination {
@@ -445,7 +445,7 @@
   /* ── SETUP MODAL ─────────────────────────────────────────── */
   .setup-overlay .setup-box {
     margin: 10px; max-width: none;
-    border-radius: 14px !important;
+    border-radius:6px !important;
   }
 
   /* ── HINT TEXT ────────────────────────────────────────────── */
@@ -459,6 +459,6 @@
 @media (max-width: 400px) {
   header .meli-badge, header .live, header #updated { display: none !important; }
   .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .m-fab { width: 50px; height: 50px; border-radius: 14px; }
+  .m-fab { width: 50px; height: 50px; border-radius:6px; }
   .m-fab svg { width: 20px; height: 20px; }
 }
