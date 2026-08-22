@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v69'; // v69: cobros — traer ventas de la API de ML sin bajar el Excel
+const CACHE_NAME = 'stockroom-v70'; // v70: sidebar contraible a solo iconos
 const STATIC_ASSETS = [
   '/',
   '/index.html',

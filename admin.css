@@ -292,6 +292,83 @@ input, select, textarea { font-family: var(--font); }
   border-radius: 0 3px 3px 0;
 }
 .adm-item svg { flex-shrink: 0; width: 16px; height: 16px; }
+
+/* ── Sidebar contraído ────────────────────────────────────────
+   Sólo iconos. El estado vive en <html data-sidebar="mini"> y lo
+   escribe stockroom-sidebar.js antes de pintar, así no parpadea.
+   Se mueve --sidebar-w porque el contenido ya se corre con esa
+   variable: no hay que tocar el layout de ninguna página. */
+:root[data-sidebar="mini"] { --sidebar-w: 60px; }
+
+/* La transición va en el ancho, no en el margen, para que la barra y
+   el contenido se muevan juntos. */
+.adm-sidebar, .adm-main, .adm-content { transition: width .16s ease, margin-left .16s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .adm-sidebar, .adm-main, .adm-content { transition: none; }
+}
+
+:root[data-sidebar="mini"] .adm-logo      { justify-content: center; padding: 16px 0; }
+:root[data-sidebar="mini"] .adm-logo-text,
+:root[data-sidebar="mini"] .adm-group-label,
+:root[data-sidebar="mini"] .adm-item > span,
+:root[data-sidebar="mini"] .adm-toggle-label { display: none; }
+
+:root[data-sidebar="mini"] .adm-group     { padding: 10px 6px 2px; }
+/* Sin la etiqueta del grupo hace falta otra señal de que un grupo
+   terminó y empieza otro, si no queda una tira de iconos sin ritmo. */
+:root[data-sidebar="mini"] .adm-group + .adm-group {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 10px;
+}
+:root[data-sidebar="mini"] .adm-item      { justify-content: center; padding: 9px 0; gap: 0; }
+:root[data-sidebar="mini"] .adm-item svg  { width: 18px; height: 18px; }
+
+/* El contador no cabe al lado del icono: pasa a ser un punto arriba
+   a la derecha, que igual avisa "acá hay algo". */
+:root[data-sidebar="mini"] .adm-item-badge {
+  position: absolute;
+  top: 4px; right: 8px;
+  margin: 0;
+  min-width: 7px; width: 7px; height: 7px;
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+/* Botón de contraer/expandir */
+.adm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: calc(100% - 16px);
+  margin: 4px 8px 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.adm-toggle:hover { background: var(--bg); color: var(--text); }
+.adm-toggle svg   { flex-shrink: 0; width: 16px; height: 16px; transition: transform .16s ease; }
+:root[data-sidebar="mini"] .adm-toggle      { justify-content: center; width: calc(100% - 12px); margin: 4px 6px 8px; padding: 9px 0; }
+:root[data-sidebar="mini"] .adm-toggle svg  { transform: rotate(180deg); }
+
+/* En pantallas chicas el sidebar ya se abre y cierra entero con el
+   hamburger, así que contraer no aporta y sólo confunde. */
+@media (max-width: 900px) {
+  :root[data-sidebar="mini"] { --sidebar-w: 220px; }
+  :root[data-sidebar="mini"] .adm-logo-text,
+  :root[data-sidebar="mini"] .adm-group-label,
+  :root[data-sidebar="mini"] .adm-item > span { display: revert; }
+  :root[data-sidebar="mini"] .adm-item { justify-content: flex-start; padding: 7px 10px; gap: 9px; }
+  .adm-toggle { display: none; }
+}
 .adm-item-badge {
   margin-left: auto;
   background: var(--red);

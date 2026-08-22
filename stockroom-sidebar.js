@@ -39,8 +39,21 @@
     return '';
   }
 
+  // ── Estado contraído ────────────────────────────────────────
+  // Se aplica ANTES de escribir el HTML para que no se vea el sidebar
+  // ancho un frame y después salte a angosto.
+  const MINI_KEY = 'wz_sidebar_mini';
+  function aplicarMini(on) {
+    document.documentElement.setAttribute('data-sidebar', on ? 'mini' : 'full');
+  }
+  let mini = false;
+  try { mini = localStorage.getItem(MINI_KEY) === '1'; } catch (e) {}
+  aplicarMini(mini);
+
   const el  = document.getElementById('sidebar');
   const cur = activeKey();
+  // Con el sidebar contraído el texto no se ve, así que el title es lo único
+  // que queda para saber qué es cada icono.
   const A = k => 'adm-item' + (cur === k ? ' active' : '');
 
   // Solo el dashboard abre el modal de cuentas ML
@@ -170,7 +183,36 @@
     </a>
   </div>
 
+  <button class="adm-toggle" id="adm-toggle" type="button" aria-controls="sidebar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <span class="adm-toggle-label">Contraer</span>
+  </button>
+
   <div class="foot-info" id="foot-clock">—</div>`;
 
-  if (el) el.innerHTML = html;
+  if (!el) return;
+  el.innerHTML = html;
+
+  // Cada ítem lleva su nombre en title: contraído es lo único que identifica
+  // al icono, y expandido no molesta.
+  el.querySelectorAll('.adm-item').forEach(a => {
+    const t = (a.querySelector('span') || {}).textContent;
+    if (t && !a.title) a.title = t.trim();
+  });
+
+  const btn = document.getElementById('adm-toggle');
+  function pintarBoton() {
+    const on = document.documentElement.getAttribute('data-sidebar') === 'mini';
+    btn.setAttribute('aria-expanded', String(!on));
+    btn.title = on ? 'Expandir el menú' : 'Contraer el menú';
+    btn.setAttribute('aria-label', btn.title);
+  }
+  pintarBoton();
+
+  btn.addEventListener('click', () => {
+    mini = !mini;
+    aplicarMini(mini);
+    try { localStorage.setItem(MINI_KEY, mini ? '1' : '0'); } catch (e) {}
+    pintarBoton();
+  });
 })();
