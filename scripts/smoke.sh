@@ -10,6 +10,21 @@ BASE="${1:-http://localhost:3000}"
 PASS=0
 FAIL=0
 
+# El panel ya no confía en localhost: tailscaled corre en userspace-networking,
+# así que toda la tailnet llegaba como 127.0.0.1 y entraba sin password. Para
+# poder seguir probando los endpoints admin, el smoke se loguea de verdad.
+COOKIES="$(mktemp)"
+trap 'rm -f "$COOKIES"' EXIT
+AUTH_JSON="$(dirname "$0")/../auth.json"
+ADMIN_OK=0
+if [ -f "$AUTH_JSON" ]; then
+  PW=$(AUTH_JSON="$AUTH_JSON" node -e 'const fs=require("fs");try{process.stdout.write(String(JSON.parse(fs.readFileSync(process.env.AUTH_JSON,"utf8")).password||""))}catch(e){}' 2>/dev/null)
+  if [ -n "$PW" ]; then
+    LOGIN_CODE=$(node -e 'process.stdout.write(JSON.stringify({password:process.argv[1]}))' "$PW"       | curl -s -o /dev/null -w '%{http_code}' -c "$COOKIES"              -X POST "$BASE/login" -H 'Content-Type: application/json' --data-binary @-)
+    [ "$LOGIN_CODE" = "200" ] && ADMIN_OK=1
+  fi
+fi
+
 # check_status URL EXPECTED_STATUS [DESCRIPCION]
 check_status() {
   local path="$1" expected="$2" desc="${3:-$1}"
@@ -21,6 +36,33 @@ check_status() {
   else
     echo "  FAIL $desc — esperado $expected, recibido $code"
     FAIL=$((FAIL+1))
+  fi
+}
+
+# check_status_auth — igual que check_status pero con la sesión del login
+check_status_auth() {
+  local path="$1" expected="$2" desc="${3:-$1}"
+  local code
+  code=$(curl -s -b "$COOKIES" -o /dev/null -w '%{http_code}' "$BASE$path")
+  if [ "$code" = "$expected" ]; then
+    echo "  OK   $desc ($code)"; PASS=$((PASS+1))
+  else
+    echo "  FAIL $desc — esperado $expected, recibido $code"; FAIL=$((FAIL+1))
+  fi
+}
+
+# check_body_auth — igual que check_body pero con la sesión del login
+check_body_auth() {
+  local path="$1" pattern="$2" desc="${3:-$1}"
+  local body code
+  body=$(curl -s -b "$COOKIES" -w '
+%{http_code}' "$BASE$path")
+  code=$(echo "$body" | tail -1)
+  body=$(echo "$body" | sed '$d')
+  if [ "$code" = "200" ] && echo "$body" | grep -q "$pattern"; then
+    echo "  OK   $desc"; PASS=$((PASS+1))
+  else
+    echo "  FAIL $desc — status=$code, patrón '$pattern' no encontrado"; FAIL=$((FAIL+1))
   fi
 }
 
@@ -77,17 +119,29 @@ check_status "/robots.txt"         200 "robots.txt"
 check_status "/tienda/sitemap.xml" 200 "sitemap.xml"
 
 echo "--- Seguridad: archivos bloqueados / paths sensibles ---"
-check_status "/config.json"            404 "config.json bloqueado"
-check_status "/Stockroom/server.js"    404 "server.js no servible"
-check_status "/backups/"               404 "/backups/ no servible"
-check_status "/tienda/../server.js"    404 "path traversal bloqueado"
+# Con sesión: así se prueba que el handler los bloquea de verdad (404) y no que
+# el redirect al login los tapa de casualidad.
+if [ "$ADMIN_OK" = "1" ]; then
+  check_status_auth "/config.json"            404 "config.json bloqueado"
+  check_status_auth "/Stockroom/server.js"    404 "server.js no servible"
+  check_status_auth "/backups/"               404 "/backups/ no servible"
+  check_status_auth "/tienda/../server.js"    404 "path traversal bloqueado"
+else
+  check_status "/config.json"            302 "config.json no se sirve (sin sesión)"
+  check_status "/Stockroom/server.js"    302 "server.js no se sirve (sin sesión)"
+fi
 
 echo "--- Admin ---"
-# Nota: desde localhost/IP confiable el panel admin NO pide login (by design,
-# ver auth.json trusted_ips). Por eso acá esperamos 200, no 401 — lo que
-# importa es que el endpoint responda bien (no 500/crash).
-check_body "/api/tienda/admin/audit-log" '{'           "GET admin/audit-log responde"
-check_body "/api/tienda/admin/productos" '"productos"' "GET admin/productos responde"
+# Sin sesión estos endpoints deben rechazar; con sesión deben responder bien.
+# Las dos mitades importan: la primera prueba que el panel está protegido, la
+# segunda que no se rompió.
+check_status "/api/tienda/admin/audit-log" 401 "admin/audit-log exige sesión"
+if [ "$ADMIN_OK" = "1" ]; then
+  check_body_auth "/api/tienda/admin/audit-log" '{'           "GET admin/audit-log responde (con sesión)"
+  check_body_auth "/api/tienda/admin/productos" '"productos"' "GET admin/productos responde (con sesión)"
+else
+  echo "  SKIP admin con sesión — no se pudo leer la password de auth.json"
+fi
 
 echo ""
 echo "=== Resultado: $PASS OK / $FAIL FAIL ==="

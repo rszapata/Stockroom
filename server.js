@@ -484,6 +484,17 @@ const crypto = require('crypto');
 const AUTH_PATH = path.join(__dirname, 'auth.json');
 const AUTH_CFG = loadAuthConfig(AUTH_PATH);
 
+// Cloudflare Access — identidad verificada en el borde (ver lib/cf-access.js).
+// Es lo que habilita exponer el panel en stockroom.znrapp.com: Cloudflare
+// autentica con Google antes del túnel y firma un JWT que acá se valida.
+// Sin la sección cf_access en auth.json el módulo queda inerte y no cambia nada.
+const cfAccess = require('./lib/cf-access');
+cfAccess.configurar(AUTH_CFG);
+if (cfAccess.estaConfigurado()) {
+  cfAccess.precargar();
+  console.log(`  ✓ [cf-access] Activo — permitidos: ${cfAccess.emailsPermitidos().join(', ')}`);
+}
+
 // Auth se desactiva si:
 //   - auth.json no existe / está corrupto
 //   - no hay password (o quedó el placeholder)
@@ -619,10 +630,23 @@ setInterval(() => {
 
 _loadRateLimits(); // cargar al inicio
 
+// Identidad verificada por Cloudflare Access. Se cachea por request porque se
+// consulta dos veces (aislamiento y auth) y verificar una firma no es gratis.
+function accesoCF(req) {
+  if (req._cfAccess !== undefined) return req._cfAccess;
+  req._cfAccess = cfAccess.estaConfigurado()
+    ? cfAccess.verificarSync(req.headers['cf-access-jwt-assertion'])
+    : null;
+  return req._cfAccess;
+}
+
 function isAuthed(req) {
   if (!AUTH_ENABLED) return true;
   // Bypass: si la request viene de una IP confiable (red local del usuario)
   if (isTrustedIP(req)) return true;
+  // Cloudflare Access ya autenticó con Google y firmó el JWT: la firma es la
+  // credencial, no el hostname ni la IP. Es lo que permite exponer el panel.
+  if (accesoCF(req)) return true;
   const sid = parseCookies(req).sr_sid;
   if (!sid) return false;
   const s = SESSIONS.get(sid);
@@ -636,12 +660,22 @@ function isAuthed(req) {
 const TRUSTED_IPS = new Set(
   Array.isArray(AUTH_CFG && AUTH_CFG.trusted_ips) ? AUTH_CFG.trusted_ips : []
 );
+// La IP del peer TCP real, sin mirar ningún header.
+function peerIP(req) {
+  const ra = req.socket && req.socket.remoteAddress;
+  return ra ? String(ra).replace(/^::ffff:/, '') : '';
+}
+
 function isTrustedIP(req) {
-  const ip = getClientIP(req);
+  // Se decide SOLO por el peer TCP. Antes usaba getClientIP(), que da prioridad
+  // a CF-Connecting-IP: como el server bindea 0.0.0.0, cualquiera en la LAN
+  // podía mandar ese header con 127.0.0.1 y entrar al panel sin password.
+  const ip = peerIP(req);
   if (!ip) return false;
-  // Mismo equipo — siempre de confianza
-  if (ip === '127.0.0.1' || ip === '::1') return true;
-  // IP explícita en lista blanca de auth.json
+  // Loopback ya NO es confiable por sí solo: tailscaled corre con
+  // --tun=userspace-networking, así que TODA la tailnet llega como 127.0.0.1
+  // y el panel quedaba abierto para cualquier dispositivo de la tailnet.
+  // Para volver a confiar en el propio equipo, agregar "127.0.0.1" a trusted_ips.
   if (TRUSTED_IPS.has(ip)) return true;
   // Red local — si trust_local_network: true en auth.json, toda la LAN entra sin password.
   // Seguro para uso doméstico; desactivar si el servidor está en una red compartida.
@@ -921,7 +955,10 @@ const server = http.createServer((req, res) => {
   );
   // El túnel temporal de admin (si está activo) se salta el aislamiento por
   // hostname — pero NO la autenticación, que se aplica más abajo igual.
-  if (viaCloudflare && !esTunelAdmin(req)) {
+  // Access levanta el aislamiento sólo con un JWT válido de Cloudflare. A
+  // diferencia de un allowlist por hostname, esto no se puede falsear desde la
+  // LAN mandando `Host: stockroom.znrapp.com` a la IP del servidor.
+  if (viaCloudflare && !esTunelAdmin(req) && !accesoCF(req)) {
     const isPublic =
       pathname === '/' ||
       pathname === '/tienda' ||
