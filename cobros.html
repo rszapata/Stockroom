@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=19">
+<link rel="stylesheet" href="/admin.css?v=20">
 <script src="/chart.umd.min.js"></script>
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
@@ -33,7 +33,7 @@
 }
 
 /* BUTTONS */
-.pg .btn{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
+.pg .btn{height:38px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:1px solid var(--b1);background:var(--s1);color:var(--t2);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px}
 .pg .btn.sm{height:32px;padding:0 12px;font-size:9px;border-radius:6px}
 .pg .btn:disabled{opacity:.4;cursor:default}
 
@@ -49,6 +49,8 @@
 .pg .upload-card{background:var(--s1);border:1px solid var(--b1);padding:24px;border-radius:6px;overflow:hidden}
 .pg .upload-card h3{font-size:14px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
 .pg .upload-card h3.fundas-h{color:var(--ye)}
+.pg .upload-card h3 svg{vertical-align:-2px;margin-right:2px}
+.pg .flex-h{color:var(--cy)}
 .pg .upload-card h3.otros-h{color:var(--pu)}
 .pg .upload-card p{font-size:12px;color:var(--t2);margin-bottom:20px;line-height:1.6}
 
@@ -132,14 +134,16 @@
 .pg .result-strip.ok .r-title{color:var(--gr)}
 .pg .result-strip.err .r-title{color:var(--re)}
 .pg .result-kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+.pg .flex-kpis-box{padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;margin-bottom:14px}
+.pg .alerta-ambar{margin-bottom:14px;padding:14px;border:1px solid color-mix(in srgb,var(--or) 30%,transparent);background:color-mix(in srgb,var(--or) 6%,transparent);border-radius:6px}
 .pg .r-kpi{font-family:var(--mono);font-size:11px}
 .pg .r-kpi span{color:var(--ye);font-weight:700}
 .pg .result-strip.otros-res .r-kpi span{color:var(--pu)}
-.pg .download-btn{height:32px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;border-radius:6px}
+.pg .download-btn{height:32px;padding:0 16px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;border:none;cursor:pointer;font-weight:700;transition:all .2s;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .pg .download-btn.fundas-dl{background:var(--ye);color:#fff}
 .pg .download-btn.otros-dl{background:var(--pu);color:#fff}
 .pg .r-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
-.pg .r-btn-toggle,.pg .r-btn-save{height:32px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;border-radius:6px;transition:all .15s}
+.pg .r-btn-toggle,.pg .r-btn-save{height:32px;padding:0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;border:1px solid var(--b1);background:var(--s2);color:var(--t2);cursor:pointer;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
 .pg .r-btn-toggle:hover,.pg .r-btn-save:hover{color:var(--tx);border-color:var(--t2)}
 .pg .cobro-preview{margin-top:14px;border:1px solid var(--b1);border-radius:6px;overflow:auto;max-height:340px}
 .pg .cobro-preview table{width:100%;border-collapse:collapse;font-size:11px}
@@ -273,12 +277,12 @@
 
       <!-- FUNDAS -->
       <div class="upload-card">
-        <h3 class="fundas-h">⚡ COBRO FUNDAS + CABLE USB</h3>
+        <h3 class="fundas-h"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> COBRO FUNDAS + CABLE USB</h3>
         <p>Elegí el período y la cuenta, y traé las ventas directo de MercadoLibre — o subí el Excel a mano, como antes. Se calculará el neto de todas las fundas y el cable USB (MLA3726855056).</p>
 
         <div class="dropzone" id="dz-fundas">
           <input type="file" accept=".xlsx" id="file-fundas" onchange="onFileChange('fundas')" aria-label="Archivo de liquidacion de fundas">
-          <div class="dz-icon">📊</div>
+          <div class="dz-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div>
           <div class="dz-text">Subir el Excel de ML a mano</div>
           <div class="dz-fname" id="fname-fundas">o hacer click para seleccionar</div>
         </div>
@@ -313,8 +317,8 @@
           <div class="result-kpis" id="kpis-fundas"></div>
           <div class="r-actions">
             <button class="download-btn fundas-dl" id="dl-fundas" onclick="descargar('fundas')">↓ Descargar Excel</button>
-            <button class="r-btn-toggle" onclick="togglePreview('fundas')">👁 Ver detalle</button>
-            <button class="r-btn-save" onclick="guardarCobro('fundas')">💾 Guardar</button>
+            <button class="r-btn-toggle" onclick="togglePreview('fundas')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg> Ver detalle</button>
+            <button class="r-btn-save" onclick="guardarCobro('fundas')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar</button>
           </div>
           <div class="cobro-preview" id="preview-fundas" style="display:none"></div>
         </div>
@@ -322,12 +326,12 @@
 
       <!-- OTROS -->
       <div class="upload-card">
-        <h3 class="otros-h">⬡ COBRO OTROS PRODUCTOS (socios)</h3>
+        <h3 class="otros-h">COBRO OTROS PRODUCTOS (socios)</h3>
         <p>Calcula el neto de todo lo que NO son fundas ni cable USB — mallas, soportes, vidrios, etc. Para liquidar a los dueños de esos productos.</p>
 
         <div class="dropzone" id="dz-otros">
           <input type="file" accept=".xlsx" id="file-otros" onchange="onFileChange('otros')" aria-label="Archivo de liquidacion de mallas y protectores">
-          <div class="dz-icon">📦</div>
+          <div class="dz-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4H8z"/><path d="M3 6h18l-1.5 13a2 2 0 01-2 1.8H6.5a2 2 0 01-2-1.8z"/><path d="M9 11h6"/></svg></div>
           <div class="dz-text">Subir el Excel de ML a mano</div>
           <div class="dz-fname" id="fname-otros">o hacer click para seleccionar</div>
         </div>
@@ -362,8 +366,8 @@
           <div class="result-kpis" id="kpis-otros"></div>
           <div class="r-actions">
             <button class="download-btn otros-dl" id="dl-otros" onclick="descargar('otros')">↓ Descargar Excel</button>
-            <button class="r-btn-toggle" onclick="togglePreview('otros')">👁 Ver detalle</button>
-            <button class="r-btn-save" onclick="guardarCobro('otros')">💾 Guardar</button>
+            <button class="r-btn-toggle" onclick="togglePreview('otros')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg> Ver detalle</button>
+            <button class="r-btn-save" onclick="guardarCobro('otros')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar</button>
           </div>
           <div class="cobro-preview" id="preview-otros" style="display:none"></div>
         </div>
@@ -376,7 +380,7 @@
   <div class="upload-section" style="margin-top:32px">
     <div class="section-title">Costo Flex del período</div>
     <div class="upload-card" style="background:var(--s1);border:1px solid var(--b1);padding:24px">
-      <h3 style="font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--cy);margin-bottom:6px">⚡ GASTO DE ENVÍOS FLEX</h3>
+      <h3 class="flex-h"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> GASTO DE ENVÍOS FLEX</h3>
       <p style="font-size:12px;color:var(--t2);margin-bottom:20px;line-height:1.6">
         Subí el mismo Excel de ventas de ML (el de fundas/otros). Filtra envíos Flex y calcula el gasto según zona del comprador
         (CABA $4490 · GBA cercano $6490 · GBA lejano $8490). Los CPs sin clasificar se listan abajo para asignar zona.
@@ -384,7 +388,7 @@
 
       <div class="dropzone" id="dz-flex">
         <input type="file" accept=".xlsx" id="file-flex" onchange="onFlexFileChange()" aria-label="Archivo de liquidacion Flex">
-        <div class="dz-icon">⚡</div>
+        <div class="dz-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
         <div class="dz-text">Subir el Excel de ML a mano</div>
         <div class="dz-fname" id="fname-flex">o hacer click para seleccionar</div>
       </div>
@@ -402,12 +406,12 @@
           <div class="spin"></div>
           ↓ Calcular
         </button>
-        <button class="btn sm" onclick="openFlexZonesEditor()" title="Ver/editar mapeo CP → zona">⚙ ZONAS</button>
+        <button class="btn sm" onclick="openFlexZonesEditor()" title="Ver/editar mapeo CP → zona"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg> ZONAS</button>
       </div>
 
       <div id="flex-result" style="display:none">
         <!-- KPIs -->
-        <div style="display:flex;gap:16px;flex-wrap:wrap;padding:14px 16px;background:var(--s2);border:1px solid var(--b1);border-radius:6px;margin-bottom:14px">
+        <div class="result-kpis flex-kpis-box">
           <div class="r-kpi">Envíos Flex <span id="fk-total" style="color:var(--cy)">—</span></div>
           <div class="r-kpi">Clasificados <span id="fk-mapped" style="color:var(--gr)">—</span></div>
           <div class="r-kpi">Pendientes <span id="fk-unmapped" style="color:var(--or)">—</span></div>
@@ -417,12 +421,12 @@
         </div>
 
         <!-- Pendientes (CPs sin clasificar) -->
-        <div id="flex-pending" style="display:none;margin-bottom:14px;padding:14px;border:1px solid color-mix(in srgb,var(--or) 30%,transparent);background:color-mix(in srgb,var(--or) 6%,transparent);border-radius:6px">
+        <div id="flex-pending" class="alerta-ambar" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--or);font-weight:700">⚠ CPs PENDIENTES DE CLASIFICAR</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--or);font-weight:700;display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> CPs PENDIENTES DE CLASIFICAR</div>
             <div style="display:flex;gap:6px">
-              <button class="btn sm" onclick="toggleFlexMap()" id="btn-toggle-map">🗺 Mostrar mapa</button>
-              <button class="btn sm" onclick="configFlexMap()" title="Configurar URL del iframe del mapa ML Flex">⚙</button>
+              <button class="btn sm" onclick="toggleFlexMap()" id="btn-toggle-map"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> <span class="btn-label">Mostrar mapa</span></button>
+              <button class="btn sm" onclick="configFlexMap()" title="Configurar URL del iframe del mapa ML Flex"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/></svg></button>
             </div>
           </div>
           <div style="font-size:11px;color:var(--t2);margin-bottom:12px">Asigna una zona a cada CP. Las elecciones se guardan y la próxima vez ya quedan auto-clasificadas.</div>
@@ -441,7 +445,7 @@
           <div id="flex-pending-list"></div>
           <div style="margin-top:10px;display:flex;gap:8px">
             <button class="btn sm" onclick="saveFlexZones()" style="background:var(--cy);color:#0c0c0e;border:none">↑ Guardar y recalcular</button>
-            <button class="btn sm" onclick="autoFillCaba()">⚡ Auto-asignar sugeridos</button>
+            <button class="btn sm" onclick="autoFillCaba()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-asignar sugeridos</button>
           </div>
         </div>
 
@@ -476,7 +480,7 @@
   <div class="charts-section" id="charts-section">
     <div class="section-title">Resumen del período</div>
     <div id="charts-empty" class="empty-charts">
-      <div class="icon">📈</div>
+      <div class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div>
       <p>Generá un cobro arriba para ver los gráficos</p>
     </div>
     <div class="charts-grid" id="charts-grid" style="display:none">
@@ -1048,7 +1052,7 @@ function renderGuardados(list) {
       </div>
       <div class="guardado-neto">${fmtMoney(c.total_neto)}</div>
       <div class="guardado-acc">
-        <button class="g-btn" onclick="verGuardado('${c.id}')">👁 Ver</button>
+        <button class="g-btn" onclick="verGuardado('${c.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg> Ver</button>
         <button class="g-btn" onclick="descargarGuardado('${c.id}')">↓ Excel</button>
         <button class="g-btn del" onclick="borrarGuardado('${c.id}','${rpEsc(c.nombre)}')">✕</button>
       </div>
@@ -1378,7 +1382,7 @@ function renderFlexResult(r) {
         <div style="font-family:var(--mono);font-weight:700;min-width:60px">${u.cp || '—'}</div>
         <div style="flex:1;font-size:11px;color:var(--t2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAcct(u.sample_address || '(sin dirección)')}</div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">×${u.count}</div>
-        <a href="${mapsUrl}" target="_blank" rel="noopener" class="btn sm" title="Ver en Google Maps" style="text-decoration:none">🗺</a>
+        <a href="${mapsUrl}" target="_blank" rel="noopener" class="btn sm" title="Ver en Google Maps" style="text-decoration:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></a>
         <select data-cp="${escAcct(u.cp)}" onchange="flexState.pendingChoices[this.dataset.cp]=this.value" style="height:28px;background:var(--s1);border:1px solid var(--b1);color:var(--tx);font-family:var(--mono);font-size:10px;padding:0 6px;border-radius:6px">
           <option value="">— elegir —</option>
           ${opts}
@@ -1436,7 +1440,7 @@ function configFlexMap() {
   const trimmed = url.trim();
   if (!trimmed) {
     localStorage.removeItem('flex_map_url');
-    alert('Mapa borrado. Toca ⚙ otra vez para configurar.');
+    alert('Mapa borrado. Volvé a abrir Configurar para setearlo de nuevo.');
     document.getElementById('flex-map-wrap').style.display = 'none';
     return;
   }
@@ -1460,11 +1464,11 @@ function toggleFlexMap() {
       '<iframe src="' + url.replace(/"/g,'&quot;') + '" style="width:100%;height:480px;border:0;display:block" loading="lazy" referrerpolicy="no-referrer"></iframe>';
     document.getElementById('flex-map-status').textContent = 'cargado';
     wrap.style.display = 'block';
-    btn.textContent = '🗺 Ocultar mapa';
+    btn.querySelector('.btn-label').textContent = 'Ocultar mapa';
   } else {
     wrap.style.display = 'none';
     document.getElementById('flex-map-content').innerHTML = '';
-    btn.textContent = '🗺 Mostrar mapa';
+    btn.querySelector('.btn-label').textContent = 'Mostrar mapa';
   }
 }
 

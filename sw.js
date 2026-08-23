@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v74'; // v74: selector de cuentas en orden-compra, bug de switch-account, mono en datos, barra de guardado
+const CACHE_NAME = 'stockroom-v75'; // v75: cobros sin emojis, iconos SVG del sistema, secciones al sistema de diseno
 const STATIC_ASSETS = [
   '/',
   '/index.html',
