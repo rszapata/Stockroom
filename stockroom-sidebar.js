@@ -244,4 +244,21 @@
     try { localStorage.setItem(MINI_KEY, mini ? '1' : '0'); } catch (e) {}
     pintarBoton();
   });
+
+  // ── Escape cierra el selector de cuentas ─────────────────────
+  // Cada página tenía su propia copia del toggle del dropdown (#acc-panel),
+  // y sólo index.html había agregado el cierre con Escape — en las otras 8
+  // el dropdown se quedaba abierto. Se centraliza acá, una sola vez para
+  // todas: es un elemento con id fijo, así que no hace falta que cada página
+  // reimplemente el mismo handler. classList.remove('open') es inofensivo en
+  // las páginas que no usan esa clase (sólo 2 de 9 la tienen).
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const panel = document.getElementById('acc-panel');
+    if (panel && !panel.classList.contains('hidden')) {
+      panel.classList.add('hidden');
+      const accBtn = document.getElementById('acc-btn');
+      if (accBtn) accBtn.classList.remove('open');
+    }
+  });
 })();

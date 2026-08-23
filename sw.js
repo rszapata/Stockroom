@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v73'; // v73: bug de teclado en despachos, scroll con pista visual, bottom nav unico
+const CACHE_NAME = 'stockroom-v74'; // v74: selector de cuentas en orden-compra, bug de switch-account, mono en datos, barra de guardado
 const STATIC_ASSETS = [
   '/',
   '/index.html',

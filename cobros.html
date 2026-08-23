@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=18">
+<link rel="stylesheet" href="/admin.css?v=19">
 <script src="/chart.umd.min.js"></script>
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
@@ -215,7 +215,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar" data-btm-nav></aside>
-<script src="/stockroom-sidebar.js?v=13"></script>
+<script src="/stockroom-sidebar.js?v=14"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -584,27 +584,36 @@ async function loadAccounts(){
     if(active){
       const init = $I('acc-initial'); const lbl = $I('acc-label');
       const act = $I('acc-active'); const actId = $I('acc-active-id');
-      if(init) init.textContent = (active.label||'?').charAt(0).toUpperCase();
-      if(lbl)  lbl.textContent  = active.label||active.accountId||'Cuenta';
-      if(act)  act.textContent  = active.label||active.accountId||'—';
-      if(actId)actId.textContent= active.accountId||'—';
+      if(init) init.textContent = (active.label||'?').trim().charAt(0).toUpperCase();
+      if(lbl)  lbl.textContent  = active.label||'Cuenta';
+      if(act)  act.textContent  = active.label||'—';
+      if(actId)actId.textContent= active.user_id ? 'ID '+active.user_id : '—';
     }
     const panel = $I('acc-list');
     if(panel){
+      // Antes: onclick="switchAcctShell('${esc(a.accountId)}')" contra
+      // POST /switch-account con { accountId }. a.accountId no existe en la
+      // respuesta de /accounts (el campo real es a.id) y el servidor sólo
+      // tiene POST /accounts/switch esperando { id } — el botón llamaba a un
+      // endpoint inexistente con un id vacío. Como location.reload() corre
+      // igual, nunca se notó: la página recargaba mostrando la MISMA cuenta.
       panel.innerHTML = list.map(a=>`
-        <button onclick="switchAcctShell('${esc(a.accountId)}')" class="adm-dropdown-item${a.active?' active':''}">
-          <div class="adm-avatar" style="width:26px;height:26px;font-size:11px">${(a.label||'?').charAt(0).toUpperCase()}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.label||a.accountId)}</div>
-            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.accountId)}</div>
+        <button data-id="${esc(a.id)}" class="adm-dropdown-item${a.active?' active':''}">
+          <div class="adm-avatar" style="width:26px;height:26px;font-size:11px">${esc((a.label||'?').trim().charAt(0).toUpperCase())}</div>
+          <div style="flex:1;min-width:0;text-align:left">
+            <div style="font-size:13px;font-weight:500;color:var(--text)">${esc(a.label||a.id)}</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.user_id||'—')}</div>
           </div>
           ${a.active?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
         </button>`).join('');
+      panel.querySelectorAll('button[data-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await fetch('/accounts/switch', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id }) });
+          location.reload();
+        });
+      });
     }
   } catch(e) { console.warn('loadAccounts:', e); }
-}
-async function switchAcctShell(id){
-  try{ await fetch('/switch-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:id})}); location.reload(); }catch(e){}
 }
 const accBtn = $I('acc-btn');
 const accPanel = $I('acc-panel');

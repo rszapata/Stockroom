@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=18">
+<link rel="stylesheet" href="/admin.css?v=19">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Barra sticky de la orden ── */
@@ -29,6 +29,23 @@
 .oc-total-sub { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .oc-dirty { display: none; font-size: 12px; color: var(--yellow-ink); font-weight: 600; }
 .oc-dirty.show { display: inline; }
+
+/* El "● sin guardar" del header es chico y queda arriba del todo: con la
+   tabla scrolleada (puede tener 30+ filas) se pierde de vista y es fácil
+   irse de la página sin guardar. La barra flotante se ve siempre, esté
+   donde esté el scroll. Mismo amarillo que .oc-dirty, no un color nuevo. */
+.oc-savebar {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 45;
+  align-items: center; justify-content: center; gap: 14px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+  background: var(--yellow-light);
+  border-top: 2px solid var(--yellow);
+  font-size: 13px; font-weight: 600; color: var(--yellow-ink);
+}
+.oc-savebar.show { display: flex; }
+@media (max-width: 480px) { .oc-savebar span { display: none; } }
 
 /* ── Criterio editable ── */
 .oc-criteria {
@@ -195,7 +212,7 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 <div class="adm-wrap">
 
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=13"></script>
+<script src="/stockroom-sidebar.js?v=14"></script>
 
 <div class="adm-main">
   <header class="adm-header">
@@ -213,6 +230,27 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
         <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
         <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       </button>
+
+      <!-- Account switcher: sin esto no había forma de generar la orden de
+           la OTRA cuenta ML sin ir a otra página a cambiarla y volver acá. -->
+      <div class="adm-acct" id="acct-wrap">
+        <button class="adm-acct-btn" id="acc-btn">
+          <div class="adm-avatar" id="acc-initial">?</div>
+          <span class="adm-acct-name" id="acc-label">Cuenta</span>
+          <svg class="adm-acct-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="adm-dropdown hidden" id="acc-panel">
+          <div class="adm-dropdown-head">Cuenta activa</div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)" id="acc-active">—</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);margin-top:2px" id="acc-active-id">—</div>
+          </div>
+          <div id="acc-list"></div>
+          <div class="adm-dropdown-foot">
+            <a href="/oauth/start" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">+ Nueva cuenta</a>
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -359,6 +397,14 @@ tr.manual td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 </div>
 <div id="prov-pop"></div>
 
+<!-- Barra flotante de guardado: el "● sin guardar" del header es chico y se
+     pierde de vista si scrolleás la tabla. Reusa el guardado real de
+     #oc-save (mismo prompt de nombre), no duplica lógica. -->
+<div class="oc-savebar" id="oc-savebar">
+  <span>Hay cambios sin guardar en este borrador</span>
+  <button id="oc-savebar-btn" class="btn btn-primary">Guardar ahora</button>
+</div>
+
 <script>
 /* ═══════════ Orden de Compra — preview + edición + export ═══════════ */
 const $ = id => document.getElementById(id);
@@ -373,8 +419,71 @@ $('btn-theme').addEventListener('click', () => {
 });
 $('btn-hamburger')?.addEventListener('click', () => $('sidebar')?.classList.toggle('open'));
 
+/* Account switcher (shell) — antes esta página no tenía forma de elegir la
+   cuenta ML: para generar la orden de la otra cuenta había que ir a otra
+   página, cambiarla ahí y volver. Calcado de index.html (que sí pega contra
+   el endpoint real) y NO de cobros.html: ese usa POST /switch-account con
+   { accountId }, pero el servidor sólo tiene POST /accounts/switch y espera
+   { id } — el botón de cambiar cuenta en cobros.html está roto hace quién
+   sabe cuánto y nadie lo notó porque location.reload() igual recarga la
+   misma cuenta sin tirar error visible. */
+async function loadAccounts(){
+  try {
+    const r = await fetch('/accounts');
+    if (!r.ok) return;
+    const d = await r.json();
+    const active = (d.accounts||[]).find(a => a.active);
+    if (active) {
+      const init = $('acc-initial'); const lbl = $('acc-label');
+      const act = $('acc-active');   const actId = $('acc-active-id');
+      if(init) init.textContent = (active.label||'?').trim().charAt(0).toUpperCase();
+      if(lbl)  lbl.textContent  = active.label||'Cuenta';
+      if(act)  act.textContent  = active.label||'—';
+      if(actId)actId.textContent= active.user_id ? 'ID '+active.user_id : '—';
+    }
+    const panel = $('acc-list');
+    if (panel) {
+      panel.innerHTML = (d.accounts||[]).map(a => `
+        <button data-id="${esc(a.id)}" class="adm-dropdown-item${a.active?' active':''}">
+          <div class="adm-avatar" style="width:26px;height:26px;font-size:11px">${esc((a.label||'?').trim().charAt(0).toUpperCase())}</div>
+          <div style="flex:1;min-width:0;text-align:left">
+            <div style="font-size:13px;font-weight:${a.active?600:500};color:var(--text)">${esc(a.label)}</div>
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">${esc(a.user_id||'—')}</div>
+          </div>
+          ${a.active?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}
+        </button>`).join('');
+      panel.querySelectorAll('button[data-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await fetch('/accounts/switch', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id }) });
+          location.reload();
+        });
+      });
+    }
+  } catch(e) { console.warn('loadAccounts:', e); }
+}
+const accBtn = $('acc-btn');
+const accPanel = $('acc-panel');
+if(accBtn && accPanel){
+  accBtn.addEventListener('click', e => { e.stopPropagation(); accPanel.classList.toggle('hidden'); });
+  document.addEventListener('click', () => { if(accPanel) accPanel.classList.add('hidden'); });
+}
+loadAccounts();
+
 let draft = null;
 let dirty = false;
+
+// La barra flotante sigue a #oc-dirty por MutationObserver en vez de tocar
+// los ~4 lugares que hacen "dirty = false" — así no hay riesgo de que un
+// reset futuro se olvide de sincronizarla, se sincroniza sola.
+(() => {
+  const dot = $('oc-dirty'), bar = $('oc-savebar'), btn = $('oc-savebar-btn');
+  if (!dot || !bar) return;
+  new MutationObserver(() => bar.classList.toggle('show', dot.classList.contains('show')))
+    .observe(dot, { attributes: true, attributeFilter: ['class'] });
+  // El guardado real vive en #oc-save (prompt del nombre + localStorage);
+  // este botón sólo lo dispara, no duplica la lógica.
+  btn?.addEventListener('click', () => $('oc-save').click());
+})();
 let catalog = null;   // parseado de oc_csv (para agregar manual)
 let currentSort = 'group';
 let prodOrder = new Map();   // orden estable de productos (1ª aparición que devolvió el backend)

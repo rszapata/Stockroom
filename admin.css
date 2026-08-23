@@ -724,6 +724,12 @@ input, select, textarea { font-family: var(--font); }
 }
 .adm-table th.right,
 .adm-table td.right { text-align: right; }
+/* Las columnas numéricas ya se marcaban class="right mono" a mano en varias
+   páginas (tienda-admin, tienda-clientes) y en otras se quedaba en sólo
+   "right" y nadie agregaba el mono (orden-compra.html no tenía ni un caso).
+   Encabezados quedan afuera a propósito: nunca llevaban mono, son etiquetas
+   cortas ("CANT.", "TOTAL"), no datos. */
+.adm-table td.right { font-family: var(--font-mono); font-size: 12px; }
 .adm-table td {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
@@ -820,6 +826,12 @@ input, select, textarea { font-family: var(--font); }
 }
 .adm-input::placeholder { color: var(--text-3); }
 .adm-input.error { border-color: var(--red); }
+
+/* Inputs numéricos (costo por unidad, cobertura, cantidades) en mono en las
+   ~63 instancias del panel: son datos, no texto de interfaz, y la mayoría
+   vive fuera de .adm-table (celdas editables sueltas en rentabilidad,
+   orden-compra, etc.) así que el fix de arriba no las alcanzaba. */
+input[type="number"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .adm-field-error { font-size: 12px; color: var(--red); }
 
 /* Search bar */
