@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockroom-v72'; // v72: rentabilidad — avisos por linea, chips compactos, jerarquia de KPI
+const CACHE_NAME = 'stockroom-v73'; // v73: bug de teclado en despachos, scroll con pista visual, bottom nav unico
 const STATIC_ASSETS = [
   '/',
   '/index.html',

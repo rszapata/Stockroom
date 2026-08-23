@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=17">
+<link rel="stylesheet" href="/admin.css?v=18">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -75,6 +75,12 @@
 .pg .q-textarea::placeholder{color:var(--t3)}
 .pg .q-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .pg .char-count{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--t3)}
+/* El atajo Ctrl/Cmd+Enter ya funcionaba (handleKey), pero no había ninguna
+   pista de que existiera. Se oculta en mobile: ahí la mayoría no tiene
+   teclado físico y el espacio en el footer ya está justo. */
+.pg .kbd-hint{font-size:10px;color:var(--t3);white-space:nowrap}
+.pg .kbd-hint kbd{font-family:'JetBrains Mono',monospace;font-size:9px;background:var(--s2);
+  border:1px solid var(--b2);border-radius:3px;padding:1px 4px;color:var(--t2)}
 .pg .char-count.warn{color:var(--or)}
 .pg .char-count.error{color:var(--re)}
 .pg .q-status{font-size:11px;font-family:'JetBrains Mono',monospace;min-height:16px}
@@ -100,7 +106,10 @@
   /* KPIs en grid: 2 pills iguales, sin el hueco del margin-left:auto */
   .pg .kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .pg .kpi-pill{min-width:0;padding:10px 12px;margin-left:0!important}
-  .pg .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .pg .quick-replies{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent);
+    mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent)}
+  .pg .kbd-hint{display:none}
   .pg .quick-btn{flex-shrink:0}
   .pg .q-textarea{min-height:60px}
 }
@@ -111,8 +120,8 @@
 <div class="adm-wrap">
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
-<aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=12"></script>
+<aside class="adm-sidebar" id="sidebar" data-btm-nav></aside>
+<script src="/stockroom-sidebar.js?v=13"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -206,28 +215,6 @@
 <div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
 
 <!-- Bottom nav -->
-<nav class="adm-btm-nav">
-  <a href="/" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-    <span>Dashboard</span>
-  </a>
-  <a href="/despachos.html" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-    <span>Despachos</span>
-  </a>
-  <a href="/preguntas.html" class="adm-btm-item active">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    <span>Preguntas</span>
-  </a>
-  <a href="/cobros.html" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-    <span>Cobros</span>
-  </a>
-  <a href="/analytics.html" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-    <span>Analytics</span>
-  </a>
-</nav>
 
 <script>
 /* ─── Shell bootstrap (inline) ─── */
@@ -429,6 +416,7 @@ function renderQuestions(acct) {
         <div class="q-footer">
           <div style="display:flex;align-items:center;gap:10px">
             <span class="char-count" id="cc-${q.id}">0 / 2000</span>
+            <span class="kbd-hint"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> envía</span>
             <span class="q-status" id="qs-${q.id}"></span>
           </div>
           <button class="btn btn-send" id="sb-${q.id}"

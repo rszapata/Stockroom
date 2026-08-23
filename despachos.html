@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=17">
+<link rel="stylesheet" href="/admin.css?v=18">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -75,7 +75,13 @@
 .pg .pkg-card{border-bottom:1px solid var(--b1)}
 .pg .pkg-card:last-child{border-bottom:none}
 .pg .prog-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--ye) 12%,transparent);border:1px solid color-mix(in srgb,var(--ye) 35%,transparent);color:var(--ye);letter-spacing:.05em;font-weight:700;white-space:nowrap}
-.pg .prog-section .pkg-card{opacity:.72}
+/* Antes era opacity:.72 sobre toda la tarjeta: bajo sol o luz de depósito el
+   contraste ya bajo se volvía ilegible, justo en la vista que se usa parado
+   con el celular en la mano. Ahora la distinción "todavía no" es de color
+   (texto atenuado) y borde punteado, sin tocar la opacidad general. */
+.pg .prog-section .pkg-card{border-left:2px dashed var(--b2)}
+.pg .prog-section .item-title{color:var(--t2)}
+.pg .prog-section .item-variant{color:var(--t3)}
 .pg .pkg-subhead.sh-prog{color:var(--ye);background:color-mix(in srgb,var(--ye) 6%,transparent)}
 /* Venta multi-producto (pack): caja delimitada con margen, para que dos packs
    seguidos se vean como dos cajas separadas y no como un bloque continuo. */
@@ -113,6 +119,9 @@
 .pg .item-img[src]:hover{opacity:.8}
 
 /* ── Checkbox selección de órdenes ── */
+/* El checkbox mide 15/19px, pero el <label> que lo envuelve en el HTML (ver
+   pkg-header) hace que tocar el nombre, el # de orden o el comprador también
+   lo tilde — el objetivo táctil real es toda esa fila, no el cuadradito. */
 .pg .ord-chk{width:15px;height:15px;cursor:pointer;accent-color:var(--ye);flex-shrink:0;margin-top:2px}
 .pg .sel-btn{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:4px;border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;letter-spacing:.04em;transition:all .12s}
 .pg .sel-btn:hover{color:var(--tx);border-color:var(--b1)}
@@ -156,6 +165,13 @@
   .pg .btn-group{flex-wrap:nowrap;overflow-x:auto;width:100%;padding-bottom:2px;
     scrollbar-width:none}
   .pg .btn-group::-webkit-scrollbar{display:none}
+  /* Sin scrollbar visible no queda ninguna pista de que hay más botones fuera
+     de pantalla. Es un desvanecimiento fijo en el borde derecho (CSS puro no
+     puede saber si ya se llegó al final del scroll); avisa "deslizá acá" y
+     no molesta cuando los botones entran todos: ahí no hay overflow real y
+     el desvanecido cae sobre el margen vacío del contenedor. */
+  .pg .btn-group{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent);
+    mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent)}
   .pg .btn-group .btn{flex:0 0 auto;font-size:12px;padding:0 10px;height:34px}
   .pg .hdr-sub{font-size:11px}
   .pg .acct-header{padding:10px 12px}
@@ -191,8 +207,8 @@
 <div class="adm-wrap">
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
-<aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=12"></script>
+<aside class="adm-sidebar" id="sidebar" data-btm-nav></aside>
+<script src="/stockroom-sidebar.js?v=13"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -319,28 +335,6 @@
 <div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
 
 <!-- Bottom nav -->
-<nav class="adm-btm-nav">
-  <a href="/" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-    <span>Dashboard</span>
-  </a>
-  <a href="/despachos.html" class="adm-btm-item active">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-    <span>Despachos</span>
-  </a>
-  <a href="/preguntas.html" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    <span>Preguntas</span>
-  </a>
-  <a href="/cobros.html" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
-    <span>Cobros</span>
-  </a>
-  <a href="/analytics.html" class="adm-btm-item">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-    <span>Analytics</span>
-  </a>
-</nav>
 
 <script>
 /* ─── Shell bootstrap (inline) ─── */
@@ -688,7 +682,7 @@ function renderOrders(acct) {
     return `
     <div class="pkg-card${isMulti ? ' pkg-multi' : ''}" data-tipo="${tipoGrupo}">
       <div class="pkg-header">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer">
           <input type="checkbox" class="ord-chk" data-order-ids="${esc(idsAttr)}"
             ${sel ? 'checked' : ''}
             onclick="togglePackSel('${esc(idsAttr)}')"
@@ -697,7 +691,7 @@ function renderOrders(acct) {
           ${progBadge}
           <span class="pkg-id">${esc(ordChips)}</span>
           ${buyer ? `<span class="pkg-buyer">${esc(buyer)}</span>` : ''}
-        </div>
+        </label>
         ${ventaBadge}
       </div>
       ${itemsHtml}
@@ -1085,6 +1079,14 @@ function descargarB64(b64, mime, filename) {
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/* Activa con teclado un elemento que solo responde a click (WCAG 2.1.1).
+   Hay una copia idéntica dentro del template del flyer (más abajo, en el
+   <script> que se escribe en la ventana de impresión): esa vive en OTRO
+   documento y no puede compartir esta, así que se define en los dos lados. */
+function teclaActiva(e, el) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
 }
 
 function openImg(src) {

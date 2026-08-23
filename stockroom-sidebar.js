@@ -56,6 +56,36 @@
   // que queda para saber qué es cada icono.
   const A = k => 'adm-item' + (cur === k ? ' active' : '');
 
+  // ── Bottom nav (mobile) ──────────────────────────────────────
+  // Estaba copiado y pegado en 8 páginas, y NO era el mismo copy-paste en
+  // todas: había dos listas de 5 ítems distintas (una con Analytics, otra con
+  // Publicaciones en su lugar), y en migracion.html y vinculaciones.html
+  // ninguno de los 5 ítems se marcaba activo — ni siquiera había un link a la
+  // propia página. Acá hay una sola lista, la que ya usaban 5 de las 8
+  // páginas, y el estado activo sale de activeKey(), la misma fuente que ya
+  // usa el sidebar de escritorio.
+  //
+  // Es opt-in con data-btm-nav en el <aside>, igual que data-cfg: media
+  // docena de páginas (rentabilidad, orden de compra, etc.) usan este script
+  // para el sidebar pero no tienen espacio para una segunda barra fija abajo.
+  if (el && el.hasAttribute('data-btm-nav')) {
+    const BTM = [
+      ['dashboard', '/', 'Dashboard', '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'],
+      ['despachos', '/despachos.html', 'Despachos', '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>'],
+      ['preguntas', '/preguntas.html', 'Preguntas', '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>'],
+      ['cobros', '/cobros.html', 'Cobros', '<path d="M20 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/>'],
+      ['analytics', '/analytics.html', 'Analytics', '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>'],
+    ];
+    const nav = document.createElement('nav');
+    nav.className = 'adm-btm-nav';
+    nav.innerHTML = BTM.map(([key, href, label, path]) => `
+      <a href="${href}" class="adm-btm-item${cur === key ? ' active' : ''}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>
+        <span>${label}</span>
+      </a>`).join('');
+    document.body.appendChild(nav);
+  }
+
   // Solo el dashboard abre el modal de cuentas ML
   const cfgHtml = (el && el.hasAttribute('data-cfg')) ? `
     <button class="adm-item" id="btn-cfg" style="width:100%;text-align:left">
