@@ -484,6 +484,10 @@ const crypto = require('crypto');
 const AUTH_PATH = path.join(__dirname, 'auth.json');
 const AUTH_CFG = loadAuthConfig(AUTH_PATH);
 
+// Token para las llamadas que el propio servidor se hace a sí mismo por
+// loopback (ver INTERNAL_TOKEN más abajo, después de isAuthed).
+const INTERNAL_TOKEN = crypto.randomBytes(24).toString('hex');
+
 // Cloudflare Access — identidad verificada en el borde (ver lib/cf-access.js).
 // Es lo que habilita exponer el panel en stockroom.znrapp.com: Cloudflare
 // autentica con Google antes del túnel y firma un JWT que acá se valida.
@@ -646,6 +650,8 @@ function quienEs(req) {
   const id = accesoCF(req);
   if (id && id.email) return id.email;
   if (isTrustedIP(req)) return `ip-confiable:${peerIP(req)}`;
+  const itok = req.headers['x-internal-token'];
+  if (itok && timingSafeEqStr(itok, INTERNAL_TOKEN)) return 'servidor';
   const sid = parseCookies(req).sr_sid;
   if (sid && SESSIONS.has(sid)) return `password:${String(sid).slice(0, 8)}`;
   return 'anonimo';
@@ -658,12 +664,31 @@ function isAuthed(req) {
   // Cloudflare Access ya autenticó con Google y firmó el JWT: la firma es la
   // credencial, no el hostname ni la IP. Es lo que permite exponer el panel.
   if (accesoCF(req)) return true;
+  // El propio servidor llamándose a sí mismo por loopback (fetchInterno, más
+  // abajo). Antes esto pasaba porque 127.0.0.1 era confiable por defecto,
+  // pero esa regla se sacó al endurecer isTrustedIP() — el mismo 127.0.0.1
+  // es indistinguible de una conexión de Tailscale (tailscaled la proxea en
+  // modo userspace-networking). El token vive sólo en memoria del proceso,
+  // así que nada externo puede falsearlo.
+  const itok = req.headers['x-internal-token'];
+  if (itok && timingSafeEqStr(itok, INTERNAL_TOKEN)) return true;
   const sid = parseCookies(req).sr_sid;
   if (!sid) return false;
   const s = SESSIONS.get(sid);
   if (!s) return false;
   if (Date.now() > s.exp) { SESSIONS.delete(sid); return false; }
   return true;
+}
+
+// Para que el propio servidor consulte sus rutas por loopback (ej.
+// /orden-compra/ventas-recientes desde /stock-historico/demanda) sin que el
+// auth gate lo redirija a /login.html — fetch() sigue redirects por defecto,
+// así que sin esto la respuesta termina siendo el HTML del login y
+// r.json() explota con "Unexpected token < in JSON at position 0".
+function fetchInterno(path) {
+  return fetch(`http://127.0.0.1:${PORT || 3000}${path}`, {
+    headers: { 'X-Internal-Token': INTERNAL_TOKEN },
+  });
 }
 
 // IPs confiables — leídas de auth.json (trusted_ips: [...])
@@ -5555,7 +5580,7 @@ const server = http.createServer((req, res) => {
 
       let ventas = {};
       try {
-        const r = await fetch(`http://127.0.0.1:${PORT || 3000}/orden-compra/ventas-recientes?dias=${VENT}&extra=1`);
+        const r = await fetchInterno(`/orden-compra/ventas-recientes?dias=${VENT}&extra=1`);
         ventas = (await r.json()).ventas || {};
       } catch (e) { /* sin ventas recientes: se informa igual lo que hay en 0 */ }
 
@@ -6023,7 +6048,7 @@ const server = http.createServer((req, res) => {
         const todos = String(q.all_products || '') === '1';
         const [conStock, ventas] = await Promise.all([
           db.diasConStock(dias),
-          fetch(`http://127.0.0.1:${PORT || 3000}/orden-compra/ventas-recientes?dias=${dias}&extra=1`)
+          fetchInterno(`/orden-compra/ventas-recientes?dias=${dias}&extra=1`)
             .then(r => r.json()),
         ]);
 
@@ -6105,9 +6130,8 @@ const server = http.createServer((req, res) => {
         // traía protectores, mallas y combos que la orden nunca consideró.
         const todos = String(q.all_products || '') === '1';
 
-        const base = `http://127.0.0.1:${PORT || 3000}`;
         const traer = async (u) => {
-          const r = await fetch(base + u);
+          const r = await fetchInterno(u);
           if (!r.ok) throw new Error(`${u} → HTTP ${r.status}`);
           return r.json();
         };
