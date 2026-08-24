@@ -3063,130 +3063,12 @@ const server = http.createServer((req, res) => {
     // (payload mucho más chico → mucho más rápido) y vuelve a
     // consolidar en memoria (sin llamadas a la API) antes de guardar
     // cache/items.json. Pensada para correr seguido sin saturar nada.
-    if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
+if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
       (async () => {
         try {
-          const accounts = (fullConfig.accounts && fullConfig.accounts.length)
-            ? fullConfig.accounts
-            : (config.access_token ? [config] : []);
-          if (!accounts.length) {
-            res.writeHead(400);
-            res.end(JSON.stringify({ error: 'No hay cuentas ML configuradas' }));
-            return;
-          }
-
-          const cacheDir = path.join(__dirname, 'cache');
-          const errors   = [];
-          const allRawItems = [];
-          let totalChecked = 0, totalUpdated = 0;
-
-          for (const acct of accounts) {
-            if (!acct.access_token) continue;
-
-            const acctPath = path.join(cacheDir, `items-${acct.id}.json`);
-            let acctItems;
-            try {
-              acctItems = JSON.parse(fs.readFileSync(acctPath, 'utf8'));
-              if (!Array.isArray(acctItems)) throw new Error('formato inválido');
-            } catch {
-              errors.push(`[${acct.label || acct.id}] sin cache previo — corré "Sincronizar todo" primero`);
-              continue;
-            }
-
-            const byId = new Map(acctItems.map(it => [it.id, it]));
-            const ids  = [...byId.keys()];
-            const BATCH = 20;
-
-            for (let i = 0; i < ids.length; i += BATCH) {
-              const batch = ids.slice(i, i + BATCH);
-              try {
-                // attributes acotados → ML devuelve un payload mucho más chico
-                const details = await mlGetAuth(acct,
-                  `/items?ids=${batch.join(',')}&attributes=id,available_quantity,sold_quantity,price,status,variations`
-                );
-                for (const entry of (Array.isArray(details) ? details : [])) {
-                  totalChecked++;
-                  if (entry.code !== 200 || !entry.body) continue;
-                  const fresh  = entry.body;
-                  const cached = byId.get(fresh.id);
-                  if (!cached) continue;
-
-                  cached.available_quantity = fresh.available_quantity;
-                  cached.sold_quantity      = fresh.sold_quantity;
-                  cached.price              = fresh.price;
-                  cached.status             = fresh.status;
-
-                  // Variaciones nativas de ML (una publicación, varios SKU):
-                  // actualizar stock/precio por variación sin tocar el resto
-                  // (combinaciones, fotos asociadas, etc.)
-                  if (Array.isArray(fresh.variations) && Array.isArray(cached.variations)) {
-                    const freshVarsById = new Map(fresh.variations.map(v => [v.id, v]));
-                    for (const v of cached.variations) {
-                      const fv = freshVarsById.get(v.id);
-                      if (fv) {
-                        v.available_quantity = fv.available_quantity;
-                        v.sold_quantity      = fv.sold_quantity;
-                        if (fv.price != null) v.price = fv.price;
-                      }
-                    }
-                  }
-                  totalUpdated++;
-                }
-              } catch (bErr) {
-                errors.push(`[${acct.label || acct.id}] batch ${i}: ${bErr.message}`);
-              }
-            }
-
-            // Persistir el cache por cuenta con el stock fresco
-            try { fs.writeFileSync(acctPath, JSON.stringify(acctItems, null, 2)); } catch {}
-            allRawItems.push(...acctItems);
-          }
-
-          if (!allRawItems.length) {
-            res.writeHead(400);
-            res.end(JSON.stringify({ error: 'No hay datos en cache — corré una sincronización completa primero', errors }));
-            return;
-          }
-
-          // Re-consolidar en memoria — mismo criterio que /sync, pero sin
-          // pegarle de nuevo a la API (es instantáneo)
-          const seen = new Set();
-          const deduped = allRawItems.filter(item => {
-            if (seen.has(item.id)) return false;
-            seen.add(item.id); return true;
-          });
-
-          let vinculaciones = null;
-          try {
-            const vincFp = path.join(__dirname, 'vinculaciones.json');
-            if (fs.existsSync(vincFp)) {
-              vinculaciones = JSON.parse(fs.readFileSync(vincFp, 'utf8'));
-            }
-          } catch (e) { console.warn('  ⚠ vinculaciones.json no leído:', e.message); }
-
-          const consolidated = consolidateItems(deduped, vinculaciones);
-          const cachePath = path.join(cacheDir, 'items.json');
-          fs.writeFileSync(cachePath, JSON.stringify(consolidated, null, 2));
-          invalidateProductCache();
-
-          console.log(`  ✓ [tienda/sync/stock] ${totalUpdated}/${totalChecked} publicaciones refrescadas, ${consolidated.length} en cache`);
-
-          // Reflejar stock/precio en la DB — mismo proceso idempotente que usa /sync
-          migrateProductsFromCache().then(stats => {
-            console.log(`  ✓ [tienda/sync/stock] DB: +${stats.inserted} nuevos, ~${stats.updated} actualizados`);
-          }).catch(e => {
-            console.warn('  ⚠ [tienda/sync/stock] Error al migrar a DB:', e.message);
-          });
-
-          res.writeHead(200);
-          res.end(JSON.stringify({
-            ok:         true,
-            checked:    totalChecked,
-            updated:    totalUpdated,
-            total:      consolidated.length,
-            updated_at: new Date().toISOString(),
-            errors:     errors.length ? errors : undefined,
-          }));
+          const r = await syncStockLiviano();
+          res.writeHead(r.ok ? 200 : 400);
+          res.end(JSON.stringify(r));
         } catch (e) {
           console.error('[tienda/sync/stock] Error inesperado:', e.message);
           res.writeHead(500);
@@ -9417,6 +9299,121 @@ db.ensureItemWatchTable().catch(e => console.log('[fav-watch] Error en init de t
 db.ensureReviewsPropiasTable().catch(e => console.log('[resenas] Error en init de tabla:', e.message));
 db.ensureEmailLogTable().catch(e => console.log('[email-log] Error en init de tabla:', e.message));
 
+// ── Sync liviano de stock (cache/items.json) ──────────────────────────────
+//
+// Extraído del handler de POST /api/tienda/sync/stock para poder llamarlo
+// también desde un cron (ver más abajo) sin pasar por HTTP. Sólo pide
+// attributes=id,available_quantity,sold_quantity,price,status,variations —
+// payload chico, pensado para correr seguido — y reusa el cache por cuenta
+// que ya dejó el último "Sincronizar todo" completo, sin re-paginar desde
+// cero. Si nunca corrió un sync completo, no hay de dónde partir y avisa.
+async function syncStockLiviano() {
+  const accounts = (fullConfig.accounts && fullConfig.accounts.length)
+    ? fullConfig.accounts
+    : (config.access_token ? [config] : []);
+  if (!accounts.length) return { ok: false, error: 'No hay cuentas ML configuradas' };
+
+  const cacheDir = path.join(__dirname, 'cache');
+  const errors   = [];
+  const allRawItems = [];
+  let totalChecked = 0, totalUpdated = 0;
+
+  for (const acct of accounts) {
+    if (!acct.access_token) continue;
+
+    const acctPath = path.join(cacheDir, `items-${acct.id}.json`);
+    let acctItems;
+    try {
+      acctItems = JSON.parse(fs.readFileSync(acctPath, 'utf8'));
+      if (!Array.isArray(acctItems)) throw new Error('formato inválido');
+    } catch {
+      errors.push(`[${acct.label || acct.id}] sin cache previo — corré "Sincronizar todo" primero`);
+      continue;
+    }
+
+    const byId = new Map(acctItems.map(it => [it.id, it]));
+    const ids  = [...byId.keys()];
+    const BATCH = 20;
+
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const batch = ids.slice(i, i + BATCH);
+      try {
+        const details = await mlGetAuth(acct,
+          `/items?ids=${batch.join(',')}&attributes=id,available_quantity,sold_quantity,price,status,variations`
+        );
+        for (const entry of (Array.isArray(details) ? details : [])) {
+          totalChecked++;
+          if (entry.code !== 200 || !entry.body) continue;
+          const fresh  = entry.body;
+          const cached = byId.get(fresh.id);
+          if (!cached) continue;
+
+          cached.available_quantity = fresh.available_quantity;
+          cached.sold_quantity      = fresh.sold_quantity;
+          cached.price              = fresh.price;
+          cached.status             = fresh.status;
+
+          // Variaciones nativas de ML (una publicación, varios SKU):
+          // actualizar stock/precio por variación sin tocar el resto
+          // (combinaciones, fotos asociadas, etc.)
+          if (Array.isArray(fresh.variations) && Array.isArray(cached.variations)) {
+            const freshVarsById = new Map(fresh.variations.map(v => [v.id, v]));
+            for (const v of cached.variations) {
+              const fv = freshVarsById.get(v.id);
+              if (fv) {
+                v.available_quantity = fv.available_quantity;
+                v.sold_quantity      = fv.sold_quantity;
+                if (fv.price != null) v.price = fv.price;
+              }
+            }
+          }
+          totalUpdated++;
+        }
+      } catch (bErr) {
+        errors.push(`[${acct.label || acct.id}] batch ${i}: ${bErr.message}`);
+      }
+    }
+
+    try { fs.writeFileSync(acctPath, JSON.stringify(acctItems, null, 2)); } catch {}
+    allRawItems.push(...acctItems);
+  }
+
+  if (!allRawItems.length) {
+    return { ok: false, error: 'No hay datos en cache — corré una sincronización completa primero', errors };
+  }
+
+  const seen = new Set();
+  const deduped = allRawItems.filter(item => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id); return true;
+  });
+
+  let vinculaciones = null;
+  try {
+    const vincFp = path.join(__dirname, 'vinculaciones.json');
+    if (fs.existsSync(vincFp)) vinculaciones = JSON.parse(fs.readFileSync(vincFp, 'utf8'));
+  } catch (e) { console.warn('  ⚠ vinculaciones.json no leído:', e.message); }
+
+  const consolidated = consolidateItems(deduped, vinculaciones);
+  const cachePath = path.join(cacheDir, 'items.json');
+  fs.writeFileSync(cachePath, JSON.stringify(consolidated, null, 2));
+  invalidateProductCache();
+
+  console.log(`  ✓ [tienda/sync/stock] ${totalUpdated}/${totalChecked} publicaciones refrescadas, ${consolidated.length} en cache`);
+
+  try {
+    const stats = await migrateProductsFromCache();
+    console.log(`  ✓ [tienda/sync/stock] DB: +${stats.inserted} nuevos, ~${stats.updated} actualizados`);
+  } catch (e) {
+    console.warn('  ⚠ [tienda/sync/stock] Error al migrar a DB:', e.message);
+  }
+
+  return {
+    ok: true, checked: totalChecked, updated: totalUpdated, total: consolidated.length,
+    updated_at: new Date().toISOString(), errors: errors.length ? errors : undefined,
+  };
+}
+
 // ── Histórico de stock: foto diaria de todas las variantes ───────────────
 //
 // Sin esto la demanda queda censurada: una variante que se agota deja de
@@ -9465,6 +9462,28 @@ setInterval(() => {
     .then(n => { if (n) console.log(`[stock-hist] podadas ${n} filas de más de 400 días`); })
     .catch(() => {}));
 }, 60 * 60 * 1000);
+
+// ── Sync liviano automático de stock ──────────────────────────────────────
+// Antes esto era 100% manual (botón en tienda-sync.html): cache/items.json
+// quedó sin tocar 15 días seguidos, y el histórico de stock —que se alimenta
+// de ese mismo cache— fotografió el mismo estado congelado los 15 días,
+// haciendo inútil el cálculo de demanda real que depende de él. Cada 6 h
+// mantiene fresco lo que ve TODO el panel (despachos, publicaciones,
+// analytics, orden de compra), no sólo el histórico.
+const SYNC_STOCK_INTERVAL = 6 * 60 * 60 * 1000;
+setInterval(() => {
+  syncStockLiviano()
+    .then(r => { if (!r.ok) console.log('[sync-stock-auto] ' + r.error); })
+    .catch(e => console.log('[sync-stock-auto] Error:', e.message));
+}, SYNC_STOCK_INTERVAL);
+// Primera corrida diferida: al arranque el cache recién leído puede tener
+// hasta 6h de atraso si no se hace ya — 2 min para no competir con el resto
+// de las tareas que también corren al boot.
+setTimeout(() => {
+  syncStockLiviano()
+    .then(r => { if (!r.ok) console.log('[sync-stock-auto] ' + r.error); })
+    .catch(e => console.log('[sync-stock-auto] Error:', e.message));
+}, 2 * 60 * 1000);
 
 // Cada 15 min: busca carritos abandonados hace +4hs sin recordatorio enviado
 // y manda UN email "tu carrito te espera" con deep-link de restauración.
