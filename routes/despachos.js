@@ -119,6 +119,12 @@ module.exports = function(ctx) {
       const sh  = sid ? shipmentStatus[sid] : null;
       const logisticType = sh?.logistic_type || null;
       const isFlex = logisticType === 'self_service';
+      // Full: ML tiene el stock en su depósito y despacha directo — el
+      // vendedor no empaqueta ni lleva nada a una agencia. Antes cualquier
+      // pedido no-Flex se etiquetaba "Agencia" por descarte (getDispatchType
+      // en despachos.html siempre devolvía 'agencia'), así que un Full real
+      // aparecía como si hubiera que despacharlo a mano.
+      const isFull = logisticType === 'fulfillment';
       const handling_date = _arDate(sh?.dispatch);           // 'YYYY-MM-DD' AR o null
       const scheduled = !!(handling_date && handling_date > _arToday); // se despacha a futuro
       return {
@@ -133,7 +139,7 @@ module.exports = function(ctx) {
         shipping_id: sid || null,
         shipping_status: sh?.status ?? o.shipping?.status ?? null,
         shipping_substatus: sh?.substatus ?? o.shipping?.substatus ?? null,
-        logistic_type: logisticType, is_flex: isFlex,
+        logistic_type: logisticType, is_flex: isFlex, is_full: isFull,
         items: (o.order_items || []).map(i => {
           const itemId = i.item?.id, varId = i.item?.variation_id;
           let picture = null;

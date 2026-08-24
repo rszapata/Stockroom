@@ -68,6 +68,10 @@
 .pg .flex-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--cy) 10%,transparent);border:1px solid color-mix(in srgb,var(--cy) 30%,transparent);color:var(--cy);letter-spacing:.06em;font-weight:600}
 .pg .correo-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.05);border:1px solid var(--b2);color:var(--t2);letter-spacing:.06em}
 .pg .agencia-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--or) 10%,transparent);border:1px solid color-mix(in srgb,var(--or) 35%,transparent);color:var(--or);letter-spacing:.06em;font-weight:600}
+/* Full: ML tiene el stock en su depósito y despacha directo — no hay nada
+   que empaquetar ni llevar a una agencia. Verde para que se lea distinto
+   de "tenés que hacer algo" (flex/agencia/correo). */
+.pg .full-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--gr) 10%,transparent);border:1px solid color-mix(in srgb,var(--gr) 35%,transparent);color:var(--gr);letter-spacing:.06em;font-weight:600}
 .pg .error-row{padding:16px 18px;color:var(--re);font-size:12px;font-family:'JetBrains Mono',monospace}
 .pg .empty-row{padding:24px 18px;text-align:center;color:var(--t3);font-size:12px}
 
@@ -546,7 +550,9 @@ function renderData(d, ts) {
   $I('kpi-units').textContent  = hoyOrders.reduce((s,o) => s + (o.items||[]).reduce((a,i) => a + (i.quantity||1), 0), 0);
   // Un pack comparte un único envío, así que su tipo no puede estar dividido
   const flexCount    = new Set(hoyOrders.filter(o =>  o.is_flex).map(packKey)).size;
-  const agenciaCount = new Set(hoyOrders.filter(o => !o.is_flex).map(packKey)).size;
+  // Full queda afuera de este conteo (no "agencia por descarte"): si no, el
+  // número de arriba diría Agencia mientras la tarjeta de abajo dice FULL.
+  const agenciaCount = new Set(hoyOrders.filter(o => !o.is_flex && !o.is_full).map(packKey)).size;
   $I('kpi-flex').textContent    = flexCount;
   $I('kpi-agencia').textContent = agenciaCount;
   const timeStr = ts ? new Date(ts).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }) : fmtNow();
@@ -628,6 +634,7 @@ function renderOrders(acct) {
 
   const BADGE = {
     flex:    ['flex-badge',    'FLEX'],
+    full:    ['full-badge',    'FULL'],
     agencia: ['agencia-badge', 'AGENCIA'],
     correo:  ['correo-badge',  'CORREO'],
   };
@@ -653,7 +660,7 @@ function renderOrders(acct) {
     const totalUnits = items.reduce((s, i) => s + (i.quantity || 1), 0);
     const isMulti   = prodLines > 1;                   // venta de más de un producto
 
-    const tipo = o0.is_flex ? 'flex' : dispatchType;
+    const tipo = o0.is_flex ? 'flex' : o0.is_full ? 'full' : dispatchType;
     const [cls, label] = BADGE[tipo] || BADGE.correo;
     const buyer = o0.buyer && o0.buyer !== '—' ? o0.buyer : '';
 
