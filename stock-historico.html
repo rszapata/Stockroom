@@ -12,8 +12,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <script src="/chart.umd.min.js"></script>
+<!-- ECharts sólo acá: el treemap de stock inmóvil lo necesita y Chart.js no lo hace.
+     No se carga en el resto del panel para no sumarle peso a páginas que no lo usan. -->
+<script src="/echarts.min.js?v=1"></script>
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 .pg { font-family:'Inter',system-ui,sans-serif; font-size:13px; display:block; color:var(--text); }
@@ -81,7 +84,7 @@ table.sh-t tbody tr:hover { background:var(--bg); }
 <body>
 
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=14"></script>
+<script src="/stockroom-sidebar.js?v=15"></script>
 
 <div class="adm-main">
 <header class="adm-header">
@@ -156,6 +159,26 @@ table.sh-t tbody tr:hover { background:var(--bg); }
           <button class="sh-cerrar" id="sh-serie-x">Cerrar</button>
         </div>
         <canvas id="sh-canvas" height="90"></canvas>
+      </div>
+    </div>
+
+    <!-- Stock inmóvil -->
+    <div class="sh-card">
+      <div class="sh-hd">
+        <span>Stock inmóvil <span id="si-alcance" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3);margin-left:6px"></span></span>
+        <select id="si-dias" aria-label="Ventana del stock inmovil">
+          <option value="16" selected>Todo el histórico</option>
+          <option value="7">Últimos 7 días</option>
+        </select>
+      </div>
+      <div class="sh-bd">
+        <p style="margin:0 0 12px;font-size:12px;color:var(--text-3)">
+          Variantes que tuvieron stock <b>todos</b> los días medidos y no vendieron <b>ni una unidad</b>.
+          Es un hecho medido, no una estimación: sirve desde el primer día de histórico.
+        </p>
+        <div id="si-kpis" class="sh-kpis"></div>
+        <div id="si-treemap" style="width:100%;height:420px;margin-top:12px"></div>
+        <div class="sh-vacio" id="si-vacio" style="display:none"></div>
       </div>
     </div>
 
@@ -244,12 +267,12 @@ function renderDemanda() {
     return `<tr data-item="${esc(x.item_id)}" data-var="${esc(x.variation_id)}" data-tit="${esc(x.titulo)}" data-lbl="${esc(x.variante)}">
       <td>
         <div class="sh-prod">${esc(x.titulo)}</div>
-        <div class="sh-var">${esc(x.variante || 'única')}</div>
+        <div class="sh-var">${esc(x.variante || 'única')}${x.cuenta ? ' · ' + esc(String(x.cuenta).split(/s[—-]s/).pop()) : ''}</div>
       </td>
       <td class="num sh-mono">${x.unidades}</td>
       <td class="num sh-mono">${x.pct_con_stock}%<div class="sh-var">${x.dias_sin_stock}d sin stock</div></td>
       <td class="num sh-mono">${x.demanda_mensual_actual}/mes</td>
-      <td class="num sh-mono" style="font-weight:600">${x.demanda_mensual_real ?? '—'}/mes</td>
+      <td class="num sh-mono" style="font-weight:600">${x.demanda_mensual_real != null ? x.demanda_mensual_real + '/mes' : '—'}${x.muestra_chica ? `<div class="sh-var" title="Sólo ${x.dias_con_stock} día(s) con stock: hacen falta ${x.dias_con_stock_min} para estimar una demanda mensual sin inventarla.">muestra chica</div>` : ''}</td>
       <td class="num sh-mono ${dif > 1 ? 'sh-sube' : 'sh-igual'}">${dif > 1 ? '+' + Math.round(dif) + '%' : '—'}</td>
     </tr>`;
   }).join('');
@@ -309,6 +332,78 @@ $('btn-theme').addEventListener('click', () => {
 
 cargarCobertura();
 cargarDemanda();
+
+/* ───── stock inmóvil (ECharts treemap) ───── */
+let treemap = null;
+async function cargarInmovil() {
+  const dias = $('si-dias').value;
+  try {
+    const r = await fetch('/stock-historico/inmovil?dias=' + dias);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    renderInmovil(d);
+  } catch (e) {
+    $('si-vacio').style.display = '';
+    $('si-vacio').textContent = 'No se pudo cargar: ' + e.message;
+  }
+}
+
+function renderInmovil(d) {
+  $('si-alcance').textContent = d.variantes + ' variantes · ' + d.unidades + ' unidades paradas';
+  $('si-kpis').innerHTML =
+    kpi(d.unidades, 'unidades sin moverse') +
+    kpi(d.variantes, 'variantes') +
+    kpi(d.productos, 'publicaciones');
+
+  if (!d.detalle.length) {
+    $('si-vacio').style.display = '';
+    $('si-vacio').textContent = 'Todas las variantes con stock movieron al menos una unidad.';
+    $('si-treemap').style.display = 'none';
+    return;
+  }
+  $('si-vacio').style.display = 'none';
+  $('si-treemap').style.display = '';
+
+  // producto → variante: se ve de un vistazo dónde está la plata quieta
+  const data = d.detalle.slice(0, 40).map(p => ({
+    name: p.titulo,
+    value: p.unidades,
+    children: p.variantes.slice(0, 30).map(v => ({ name: v.variante, value: v.unidades })),
+  }));
+
+  const oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (treemap) treemap.dispose();
+  treemap = echarts.init(document.getElementById('si-treemap'), null, { renderer: 'canvas' });
+  treemap.setOption({
+    tooltip: {
+      formatter: p => {
+        const camino = (p.treePathInfo || []).slice(1).map(x => x.name).join(' › ');
+        return '<b>' + camino + '</b><br>' + p.value + ' unidades sin vender';
+      },
+    },
+    series: [{
+      type: 'treemap',
+      data,
+      roam: false,
+      nodeClick: 'zoomToNode',
+      breadcrumb: { show: true, top: 2, itemStyle: { color: oscuro ? '#333' : '#eee', textStyle: { color: oscuro ? '#ddd' : '#333' } } },
+      label: { show: true, formatter: '{b}', overflow: 'truncate', fontSize: 11 },
+      upperLabel: { show: true, height: 22, fontSize: 11, color: oscuro ? '#ddd' : '#222' },
+      levels: [
+        { itemStyle: { borderColor: oscuro ? '#1a1a1a' : '#fff', borderWidth: 3, gapWidth: 3 } },
+        { colorSaturation: [0.32, 0.55], itemStyle: { borderColorSaturation: 0.6, gapWidth: 1, borderWidth: 1 } },
+      ],
+    }],
+  });
+}
+
+function kpi(valor, etiqueta) {
+  return '<div class="sh-kpi"><b>' + valor + '</b><span>' + etiqueta + '</span></div>';
+}
+
+$('si-dias').addEventListener('change', cargarInmovil);
+window.addEventListener('resize', () => { if (treemap) treemap.resize(); });
+cargarInmovil();
 </script>
 </body>
 </html>

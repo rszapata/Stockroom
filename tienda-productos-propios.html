@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Toolbar ────────────────────────────────────────────── */
@@ -72,7 +72,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
   transition: background .12s, color .12s; font-family: var(--font-sans);
 }
 .bulk-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
-.bulk-btn.danger:hover { background: #ef4444; color: #fff; }
+.bulk-btn.danger:hover { background: var(--red); color: #fff; }
 .bulk-btn-close { color: rgba(255,255,255,.5); font-size: 16px; padding: 2px 4px; }
 .bulk-btn-close:hover { color: #fff; background: rgba(255,255,255,.12); }
 
@@ -218,7 +218,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
   font-size: 13px; font-weight: 700; transition: background .1s;
 }
 .mth-btn:hover { background: #fff; }
-.mth-btn.del:hover { background: #ef4444; color: #fff; }
+.mth-btn.del:hover { background: var(--red); color: #fff; }
 
 .portada-badge {
   position: absolute; bottom: 0; left: 0; right: 0;
@@ -285,7 +285,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 .field-row > .adm-field { flex: 1; min-width: 120px; }
 .field-hint { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 3px; }
 .char-ok  { color: var(--green-ink); }
-.char-warn{ color: #d97706; }
+.char-warn{ color: var(--yellow-ink); }
 .char-over{ color: var(--red); }
 
 /* Condition pills */
@@ -339,10 +339,10 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
   font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   margin-bottom: 3px;
 }
-.pill-yt  { background: #fee2e2; color: #991b1b; }
-.pill-al  { background: #fef3c7; color: #92400e; }
+.pill-yt  { background: var(--red-light); color: var(--red-ink); }
+.pill-al  { background: var(--yellow-light); color: var(--yellow-ink); }
 .pill-vi  { background: #ede9fe; color: #5b21b6; }
-.pill-up  { background: #dcfce7; color: #166534; }
+.pill-up  { background: var(--green-light); color: var(--green-ink); }
 .pill-ot  { background: var(--bg); color: var(--text-3); border: 1px solid var(--border-2); }
 .video-card-url { font-size: 11px; color: var(--blue); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .video-card-url:hover { text-decoration: underline; }
@@ -413,7 +413,7 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 }
 #toast.show { opacity: 1; transform: translateY(0); }
 #toast.ok   { background: var(--green); }
-#toast.err  { background: #ef4444; }
+#toast.err  { background: var(--red); }
 
 .btn-spin {
   display: inline-block; width: 14px; height: 14px;
@@ -425,8 +425,8 @@ tr.bulk-selected td { background: var(--blue-light) !important; }
 /* Delete confirm inline */
 .delete-confirm {
   display: none; align-items: center; gap: 8px;
-  background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--r-lg);
-  padding: 8px 12px; font-size: 12px; color: #991b1b;
+  background: var(--red-light); border: 1px solid color-mix(in srgb, var(--red) 32%, transparent); border-radius: var(--r-lg);
+  padding: 8px 12px; font-size: 12px; color: var(--red-ink);
 }
 .delete-confirm.show { display: flex; }
 </style>

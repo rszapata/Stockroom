@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 .rt-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
@@ -23,33 +23,43 @@
 .rt-field input[type=number] { width: 96px; text-align: right; }
 .rt-field select { min-width: 220px; font-family: var(--font-sans, inherit); }
 
-.rt-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-@media (max-width: 760px) { .rt-kpis { grid-template-columns: repeat(2, 1fr); } }
-.rt-kpi { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; transition: transform .12s; }
-.rt-kpi:hover { transform: translateY(-1px); }
-.rt-kpi-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 600; margin-bottom: 5px; }
-.rt-kpi-val { font-size: 24px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.05; }
-.rt-kpi-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
-.rt-kpi.gan .rt-kpi-val { color: var(--green-ink); }
-.rt-kpi.costo .rt-kpi-val { color: var(--red); }
-/* Ganancia y Margen son el RESULTADO; Neto y Costo son los insumos. Pesaban
-   igual, así que el ojo no sabía dónde caer. */
-.rt-kpi.gan { border-top: 2px solid var(--green); }
-.rt-kpi.gan .rt-kpi-val { font-size: 28px; }
+/* ── El resultado ────────────────────────────────────────────────────────
+   La página contesta una sola pregunta. Ese número va solo y grande; el resto
+   es la cuenta que lo produce, en una línea debajo. */
+.rt-res { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 20px 22px; margin-bottom: 16px; }
+.rt-res-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-3); font-weight: 600; }
+.rt-res-val { font-size: 44px; font-weight: 700; line-height: 1.02; margin-top: 4px;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--green-ink); }
+.rt-res-val.neg { color: var(--red); }
+@media (max-width: 760px) { .rt-res-val { font-size: 34px; } }
 
-/* Un aviso por línea: eran tres cosas distintas en un párrafo corrido. */
-.rt-warn-l { display: flex; gap: 7px; padding: 3px 0; }
-.rt-warn-l::before { content: '⚠'; flex-shrink: 0; opacity: .8; }
-.rt-warn-x { color: var(--text-3); font-weight: 400; }
-.rt-warn-pie { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent); color: var(--text-3); font-size: 11px; }
+/* La cuenta que da ese número. Neto y costo son insumos: van en texto, no en
+   tarjetas del mismo tamaño que el resultado. */
+.rt-res-cuenta { margin-top: 8px; font-size: 13px; color: var(--text-2);
+  font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.rt-res-cuenta b { color: var(--text); font-weight: 600; }
+.rt-res-margen { margin-left: auto; font-size: 13px; color: var(--text-2); }
+.rt-res-margen b { font-size: 17px; color: var(--text); font-weight: 700; }
+
+/* La letra chica del número: por qué puede no ser exacto. Va colgando de él,
+   plegada, en vez de un cartel que corta la página. */
+.rt-nota { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.rt-nota[hidden] { display: none; }
+.rt-nota-btn { display: inline-flex; align-items: center; gap: 7px; background: none; border: 0;
+  padding: 0; cursor: pointer; font: inherit; font-size: 12px; color: var(--yellow-ink); }
+.rt-nota-btn:hover { text-decoration: underline; }
+.rt-nota-chev { transition: transform .15s; }
+.rt-nota.open .rt-nota-chev { transform: rotate(180deg); }
+.rt-nota-cuerpo { display: none; margin-top: 9px; font-size: 12px; color: var(--text-2); }
+.rt-nota.open .rt-nota-cuerpo { display: block; }
 
 /* La cuenta se repetía entera en cada chip y era lo que más ocupaba. */
 .rt-per .rt-per-cta { display:inline-flex; align-items:center; justify-content:center;
   width:15px; height:15px; border-radius:3px; font-size:9px; font-weight:700;
   background:var(--blue); color:var(--on-blue); flex-shrink:0; }
 
-.rt-warn { background: var(--yellow-light); color: var(--yellow-ink); border: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent); border-radius:6px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; display: none; }
-.rt-warn.show { display: block; }
 /* valor medido sobre recibos reales — ocupa el lugar del viejo input de flete */
 .rt-medido { height:34px; display:flex; align-items:center; gap:7px; padding:0 10px; border:1px solid var(--border);
   border-radius:6px; background:var(--bg); font-family:var(--font-mono); font-size:12px; white-space:nowrap; }
@@ -70,6 +80,17 @@
 .rt-cober.show { display:block; }
 .rt-cober b { color:var(--text-2); font-weight:600; }
 .rt-cober .rt-gap { color:var(--yellow-ink); }
+
+/* Aviso de conciliación: lo cargado a mano vs lo que ML reporta hoy. */
+.rt-conc { border:1px solid var(--border); border-left:3px solid var(--yellow-ink);
+           border-radius:6px; padding:10px 12px; margin:0 0 14px; font-size:12.5px; }
+.rt-conc-tit { font-weight:600; color:var(--text-1); margin-bottom:6px; }
+.rt-conc-it { color:var(--text-2); margin:3px 0; }
+.rt-conc-it b { color:var(--yellow-ink); font-weight:600; }
+.rt-conc-det { color:var(--text-3); font-size:11.5px; margin:2px 0 0 14px; }
+.rt-conc-pie { color:var(--text-3); font-size:11px; margin-top:7px; }
+.rt-conc summary { cursor:pointer; color:var(--text-3); font-size:11.5px; margin-top:6px; }
+.rt-conc summary:hover { color:var(--text-2); }
 /* qué cobros guardados entran en el rango elegido */
 .rt-periodos { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 16px; }
 .rt-per { border:1px solid var(--border); border-radius:6px; padding:6px 10px; background:var(--bg);
@@ -112,27 +133,109 @@ th.rt-sortable:hover { color: var(--text); }
 #rt-status.err { background: var(--red-light); color: var(--red); }
 .rt-empty { text-align: center; padding: 56px 20px; color: var(--text-3); }
 
-/* Pestañas por cuenta */
-.rt-acct-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.rt-acct-tab {
-  display: flex; flex-direction: column; gap: 2px; min-width: 130px;
-  padding: 9px 14px; border: 1px solid var(--border); border-radius:6px;
-  background: var(--bg-card); cursor: pointer; transition: all .12s; text-align: left;
+/* Desglose por cuenta dentro del bloque principal */
+.rt-cuentas { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 18px; }
+.rt-cta {
+  border: 1px solid var(--border); border-radius: 6px; padding: 11px 13px;
+  background: var(--bg); cursor: pointer; text-align: left; font-family: inherit; color: var(--text);
 }
-.rt-acct-tab:hover { border-color: var(--border-2); }
-.rt-acct-tab.active { border-color: var(--blue); background: var(--blue-light); }
-.rt-acct-tab .t-name { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
-.rt-acct-tab .t-gan { font-size: 15px; font-weight: 700; color: var(--green-ink); font-variant-numeric: tabular-nums; }
-.rt-acct-tab .t-fiscal { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; padding: 1px 6px; border-radius: 99px; }
-.rt-acct-tab .t-fiscal.mono { background: var(--yellow-light); color: var(--yellow-ink); }
-.rt-acct-tab .t-fiscal.resp { background: var(--bg); color: var(--text-3); }
+.rt-cta:hover { border-color: var(--text-3); }
+.rt-cta.on { border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
+.rt-cta-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.rt-cta-name { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+.rt-cta-neto { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.rt-cta-sub  { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.rt-cta-iva  { font-size: 9.5px; padding: 2px 6px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-3); white-space: nowrap; }
+/* ── Bloques plegables ───────────────────────────────────────────────────
+   Lo que es auditoría (qué cobros entran, el costo de cada publicación) no
+   es la respuesta de la pantalla: queda a un clic, con un resumen de una
+   línea que dice si vale la pena abrirlo. */
+.rt-plegable { margin: 0 0 16px; }
+.rt-plegable > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card);
+  font-size: 12.5px; color: var(--text-2); user-select: none; }
+.rt-plegable > summary::-webkit-details-marker { display: none; }
+.rt-plegable > summary:hover { border-color: var(--text-3); }
+.rt-plegable > summary b { color: var(--text); font-weight: 600; }
+.rt-pleg-ver { margin-left: auto; font-size: 11.5px; color: var(--text-3); display: inline-flex; align-items: center; gap: 5px; }
+.rt-pleg-ver::before { content: 'ver'; }
+.rt-plegable[open] .rt-pleg-ver::before { content: 'ocultar'; }
+.rt-pleg-ver::after { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s; }
+.rt-plegable[open] .rt-pleg-ver::after { transform: rotate(225deg) translateY(-2px); }
+.rt-plegable[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.rt-plegable > .rt-periodos { margin: 0; padding: 12px 14px; border: 1px solid var(--border); border-top: 0;
+  border-radius: 0 0 6px 6px; background: var(--bg-card); }
+.rt-plegable > .adm-card { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; margin: 0; }
+
+/* ── Ventas por día ──────────────────────────────────────────────────────
+   Colores validados (validate_palette.js, categorical, 2 slots) contra las
+   superficies reales del panel: #FFFFFF claro y #15191A oscuro. El color
+   sigue a la CUENTA (orden fijo por id), no a su posición en el ranking. */
+.rt-viz { --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a;
+  --viz-grid: #ECEEF0; --viz-base: #C9CED2; }
+html[data-theme="dark"] .rt-viz { --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70;
+  --viz-grid: #1F2526; --viz-base: #39413F; }
+.rt-graficos { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+.rt-graficos > .adm-card { margin: 0; }
+@media (max-width: 1020px) { .rt-graficos { grid-template-columns: minmax(0, 1fr); } }
+.rt-card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.rt-leyenda { display: flex; gap: 14px; font-size: 11.5px; color: var(--text-2); }
+.rt-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.rt-leyenda i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.rt-dia-resumen { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12.5px; color: var(--text-2); margin-bottom: 14px; }
+.rt-dia-resumen b { color: var(--text); font-weight: 600; }
+.rt-dia { position: relative; }
+.rt-dia-grafico { display: grid; grid-template-columns: 46px minmax(0, 1fr); grid-template-rows: 210px auto; }
+.rt-dia-ejey { position: relative; }
+.rt-dia-ejey span { position: absolute; right: 8px; transform: translateY(50%); font-size: 10px;
+  color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rt-dia-plot { position: relative; border-bottom: 1px solid var(--viz-base); }
+.rt-dia-grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--viz-grid); }
+.rt-dia-cols { position: absolute; inset: 0; display: flex; align-items: stretch; }
+.rt-dia-col { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center;
+  background: none; border: 0; padding: 0; cursor: default; border-radius: 3px; }
+.rt-dia-col:hover, .rt-dia-col:focus-visible { background: color-mix(in srgb, var(--text) 5%, transparent); outline: none; }
+.rt-dia-pila { width: min(24px, 72%); display: flex; flex-direction: column; gap: 2px; }
+.rt-dia-pila > i { display: block; min-height: 1px; }
+.rt-dia-pila > i:first-child { border-radius: 4px 4px 0 0; }
+.rt-dia-ejex { grid-column: 2; display: flex; padding-top: 6px; }
+.rt-dia-ejex span { flex: 1 1 0; min-width: 0; text-align: center; font-size: 10px; color: var(--text-3);
+  white-space: nowrap; overflow: visible; font-variant-numeric: tabular-nums; }
+.rt-tip { position: absolute; z-index: 5; pointer-events: none; min-width: 170px; padding: 9px 11px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.12); font-size: 12px; color: var(--text-2); }
+.rt-tip-tit { font-weight: 600; color: var(--text); margin-bottom: 5px; text-transform: capitalize; }
+.rt-tip-fila { display: flex; align-items: center; gap: 7px; margin: 2px 0; }
+.rt-tip-fila i { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.rt-tip-fila b { margin-left: auto; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rt-tip-tot { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 5px; }
+.rt-dia-tabla { margin: 14px 0 0; }
+.rt-dia-tabla > summary { padding: 7px 12px; font-size: 12px; }
+.rt-dia-tabla table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rt-dia-tabla-wrap { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 6px 6px; }
+.rt-dia-tabla th, .rt-dia-tabla td { padding: 5px 10px; border-bottom: 1px solid var(--border); text-align: right;
+  font-variant-numeric: tabular-nums; }
+.rt-dia-tabla th:first-child, .rt-dia-tabla td:first-child { text-align: left; }
+.rt-dia-tabla th { font-size: 10.5px; color: var(--text-3); font-weight: 600; position: sticky; top: 0; background: var(--bg-card); }
+
+/* ── Lo que más vendió ─────────────────────────────────────────────────── */
+.rt-top-fila { margin-bottom: 13px; }
+.rt-top-tit { font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt-top-barra { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.rt-top-barra > span { height: 10px; border-radius: 0 4px 4px 0; background: var(--text-3); opacity: .55; min-width: 2px; }
+.rt-top-barra > b { font-size: 12px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rt-top-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.rt-top-pie { font-size: 12px; color: var(--text-3); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+.rt-link { background: none; border: 0; padding: 0; font: inherit; color: var(--blue); cursor: pointer; }
+.rt-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 <div class="adm-wrap">
 
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=14"></script>
+<script src="/stockroom-sidebar.js?v=15"></script>
 
 <div class="adm-main">
   <header class="adm-header">
@@ -156,17 +259,15 @@ th.rt-sortable:hover { color: var(--text); }
   <main class="adm-content">
 
     <div class="rt-tools">
-      <div class="rt-field">
-        <label>Rango</label>
-        <div class="rt-seg" id="rt-rango">
-          <button data-dias="7">7 días</button>
-          <button data-dias="10">10 días</button>
-          <button data-dias="30">30 días</button>
-          <button data-dias="0" class="on">Todo</button>
-        </div>
+      <div class="rt-field" style="flex:1 1 100%">
+        <label>Período</label>
+        <!-- Los meses se generan en JS. Antes sólo había ventanas que terminaban
+             hoy (7/10/30 días), así que "cuánto vendí en agosto" no se podía
+             preguntar: ahora cada mes es un período cerrado con desde y hasta. -->
+        <div class="rt-seg" id="rt-rango"></div>
       </div>
       <div class="rt-field">
-        <label for="rt-periodo">Período (cobros)</label>
+        <label for="rt-periodo">Cobro puntual</label>
         <select id="rt-periodo"><option value="">Todos los períodos</option></select>
       </div>
       <div class="rt-field">
@@ -180,20 +281,71 @@ th.rt-sortable:hover { color: var(--text); }
       <button class="btn btn-ghost" id="rt-recalc" style="height:34px">↻ Recalcular</button>
     </div>
 
-    <div class="rt-acct-tabs" id="rt-acct-tabs" style="display:none"></div>
     <div class="rt-cober" id="rt-cober"></div>
-    <div class="rt-periodos" id="rt-periodos"></div>
+    <div class="rt-conc" id="rt-conc" hidden></div>
+    <!-- Los cobros del período son auditoría, no la respuesta: van plegados.
+         Adentro sólo los que entran en el rango; los de otros meses no le
+         dicen nada a quien mira este. -->
+    <details class="rt-plegable" id="rt-periodos-wrap" hidden>
+      <summary><span id="rt-periodos-resumen"></span><span class="rt-pleg-ver">ver</span></summary>
+      <div class="rt-periodos" id="rt-periodos"></div>
+    </details>
 
-    <div class="rt-kpis" id="rt-kpis" style="display:none">
-      <div class="rt-kpi"><div class="rt-kpi-lbl">Neto (ML deposita)</div><div class="rt-kpi-val" id="k-neto">$0</div><div class="rt-kpi-sub" id="k-neto-sub"></div></div>
-      <div class="rt-kpi costo"><div class="rt-kpi-lbl">Costo mercadería</div><div class="rt-kpi-val" id="k-costo">$0</div><div class="rt-kpi-sub" id="k-costo-sub"></div></div>
-      <div class="rt-kpi gan"><div class="rt-kpi-lbl">Ganancia</div><div class="rt-kpi-val" id="k-gan">$0</div><div class="rt-kpi-sub">neto − costo</div></div>
-      <div class="rt-kpi"><div class="rt-kpi-lbl">Margen s/ neto</div><div class="rt-kpi-val" id="k-margen">—</div><div class="rt-kpi-sub" id="k-margen-sub"></div></div>
+    <div class="rt-res" id="rt-kpis" style="display:none">
+      <!-- La pregunta que trae al usuario acá es "cuánto vendí de fundas en tal
+           período", así que el neto es el número grande y la ganancia pasa a ser
+           lectura de apoyo. -->
+      <div class="rt-res-lbl">Neto vendido en fundas <span id="k-periodo-lbl" style="color:var(--text-3);font-weight:400"></span></div>
+      <div class="rt-res-val" id="k-neto-hero">$0</div>
+      <div class="rt-res-cuenta">
+        <span><b id="k-gan">$0</b> de ganancia</span>
+        <span class="rt-res-margen">Margen <b id="k-margen">—</b> <span id="k-margen-sub" style="color:var(--text-3)"></span></span>
+        <span><b id="k-costo">$0</b> de costo <span id="k-costo-sub" style="color:var(--text-3)"></span></span>
+        <span><b id="k-neto">$0</b> <span id="k-neto-sub" style="color:var(--text-3)"></span></span>
+      </div>
+
+      <!-- Desglose por cuenta SIEMPRE visible: el neto combinado sin ver de
+           dónde sale no se puede auditar, y cada cuenta tributa distinto. -->
+      <div class="rt-cuentas" id="rt-cuentas"></div>
+
+      <div class="rt-nota" id="rt-warn" hidden>
+        <button type="button" class="rt-nota-btn" id="rt-nota-btn">
+          <span id="rt-nota-resumen"></span>
+          <svg class="rt-nota-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="rt-nota-cuerpo" id="rt-nota-cuerpo"></div>
+      </div>
     </div>
 
-    <div class="rt-warn" id="rt-warn"></div>
+    <!-- Reemplaza al mapa de burbujas (unidades vs margen): pedía interpretar
+         cuadrantes y medianas para sacar algo. Estos dos contestan directo
+         "cómo se repartió la venta en el período" y "qué la hizo". -->
+    <div class="rt-graficos rt-viz" id="rt-graficos" style="display:none">
+      <div class="adm-card">
+        <div class="adm-card-head rt-card-head">
+          <span class="adm-card-title" id="rt-dia-titulo">Ventas por día</span>
+          <div class="rt-leyenda" id="rt-leyenda"></div>
+        </div>
+        <div class="adm-card-body">
+          <div class="rt-dia-resumen" id="rt-dia-resumen"></div>
+          <div class="rt-dia" id="rt-dia"></div>
+          <details class="rt-plegable rt-dia-tabla">
+            <summary>Ver los números en una tabla<span class="rt-pleg-ver"></span></summary>
+            <div class="rt-dia-tabla-wrap" id="rt-dia-tabla"></div>
+          </details>
+        </div>
+      </div>
+      <div class="adm-card">
+        <div class="adm-card-head"><span class="adm-card-title">Lo que más vendió</span></div>
+        <div class="adm-card-body" id="rt-top"></div>
+      </div>
+    </div>
 
-    <div class="adm-card" id="rt-card" style="display:none">
+    <!-- El costo por publicación es para revisar y corregir, no para leer
+         cada vez: plegado, con el resumen de cuántas tienen costo real. -->
+    <details class="rt-plegable" id="rt-card" style="display:none">
+      <summary><span id="rt-tabla-resumen">Publicaciones y costos</span><span class="rt-pleg-ver"></span></summary>
+    <div class="adm-card">
       <div class="adm-card-body-flush">
         <div class="adm-table-wrap">
           <table class="adm-table">
@@ -211,6 +363,7 @@ th.rt-sortable:hover { color: var(--text); }
         </div>
       </div>
     </div>
+    </details>
 
     <div class="rt-empty" id="rt-empty" style="display:none">
       No hay períodos de cobros de fundas guardados todavía. Generá y guardá un cobro en la página <b>Cobros</b> y volvé acá.
@@ -242,12 +395,17 @@ let diasSel   = 0;    // 0 = todo lo guardado; 7 / 10 / 30 = ventana
 
 function setStatus(msg, ok) { const el = $('rt-status'); el.className = 'show ' + (ok ? 'ok' : 'err'); el.textContent = msg; }
 
+/* Ventana elegida. `mesSel` gana sobre `diasSel`: es un período cerrado
+   (desde/hasta) y el otro siempre termina hoy. */
+let mesSel = null;   // { desde, hasta, label }
+
 async function cargar() {
   const tc = parseInt($('rt-tc').value) || 1532;
   const cobros = $('rt-periodo').value;
   // flete_unit ya no se manda: el backend lo mide sobre los recibos reales
   const qs = new URLSearchParams({ tc });
-  if (diasSel > 0) qs.set('dias', String(diasSel));
+  if (mesSel) { qs.set('desde', mesSel.desde); qs.set('hasta', mesSel.hasta); }
+  else if (diasSel > 0) qs.set('dias', String(diasSel));
   if (cobros) qs.set('cobros', cobros);
   if (cuentaSel) qs.set('cuenta', cuentaSel);
   try {
@@ -264,8 +422,11 @@ async function cargar() {
       });
     }
     render();
+    // Una sola vez por sesión: el job la recalcula en el server cada 24 h.
+    if (conciliacion === null && !_concPedida) { _concPedida = true; cargarConciliacion(); }
   } catch (e) { setStatus('✕ ' + e.message, false); }
 }
+let _concPedida = false;
 
 // Flete + impuestos por unidad: ya no se escribe a mano, sale de los recibos
 // cargados en Costos de Pedidos. Mostramos de dónde salió para que se note.
@@ -311,29 +472,127 @@ function coberturaReal() {
 /* Hasta dónde llega REALMENTE cada cuenta dentro del rango elegido. Las
    liquidaciones no cierran el mismo día en las dos cuentas, así que un total
    sumado puede estar comparando 30 días de una contra 28 de la otra. */
+/* Desplegar la letra chica. Arranca cerrada: si el costo no está confirmado
+   conviene saberlo, pero no antes de haber leído el número. */
+document.addEventListener('click', e => {
+  const btn = e.target.closest('#rt-nota-btn');
+  if (!btn) return;
+  const nota = document.getElementById('rt-warn');
+  if (nota) nota.classList.toggle('open');
+});
+
 function renderCobertura() {
   const el = $('rt-cober'), r = data.rango;
   if (!r || !r.ventas) { el.classList.remove('show'); return; }
   const f = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
   const cuentas = r.por_cuenta || [];
   let txt = `<b>${f(r.desde)} – ${f(r.hasta)}</b> · ${r.ventas} ventas`;
+
+  /* La advertencia mira hasta dónde llega la DATA CARGADA de cada cuenta, no la
+     fecha de su última venta. Antes comparaba últimas ventas y saltaba siempre:
+     que ZETTAI vendiera por última vez el 30/08 y WZ el 31/08 no significa que
+     falten datos, sólo que ese día una no vendió. Lo que sí es un problema real
+     es que los cobros de una cuenta terminen antes del fin del período pedido:
+     ahí al total le falta plata. */
   if (cuentas.length > 1) {
-    txt += ' · ' + cuentas.map(c => `${esc(c.label)} hasta ${f(c.hasta)}`).join(' · ');
-    const hastas = [...new Set(cuentas.map(c => c.hasta))];
-    if (hastas.length > 1) {
-      txt += ` <span class="rt-gap">— las cuentas no cierran el mismo día, el total compara tramos distintos</span>`;
+    // Acotado a hoy: en el mes en curso el rango termina el 30 pero nadie puede
+    // tener datos del futuro, y ahí la advertencia saltaría todos los días.
+    const finPedido = r.hasta > HOY ? HOY : r.hasta;
+    const cubreHasta = {};
+    (data.periodos || []).forEach(p => {
+      const m = String(p.periodo || '').match(/(\d{4}-\d{2}-\d{2})\D+(\d{4}-\d{2}-\d{2})/);
+      if (!m) return;
+      const id = p.cuenta;
+      if (!cubreHasta[id] || m[2] > cubreHasta[id]) cubreHasta[id] = m[2];
+    });
+    const incompletas = cuentas.filter(c => cubreHasta[c.id] && cubreHasta[c.id] < finPedido);
+    if (incompletas.length) {
+      txt += ' · ' + incompletas
+        .map(c => `${esc(c.label)} con datos hasta ${f(cubreHasta[c.id])}`).join(' · ');
+      txt += ` <span class="rt-gap">— falta cargar el tramo final, al total le falta plata</span>`;
     }
   }
   el.innerHTML = txt;
   el.classList.add('show');
 }
 
-/* Qué cobros guardados está tomando el rango elegido. Los que quedan afuera se
-   apagan pero NO se ocultan: saber qué NO entró es la mitad de la lectura. */
+/* Conciliación: qué dice ML HOY sobre lo que se cargó a mano.
+   Se pide una sola vez y se guarda; el job de 24 h la recalcula en el server.
+   Sólo se muestran los hallazgos que caen dentro del rango que se está mirando,
+   si no el aviso aparecería siempre y dejaría de leerse. */
+let conciliacion = null;
+
+async function cargarConciliacion() {
+  try {
+    const r = await fetch('/cobro/conciliacion');
+    const c = await r.json();
+    conciliacion = (c && c.ok && !c.sin_datos) ? c : null;
+  } catch (e) { conciliacion = null; }
+  renderConciliacion();
+}
+
+function renderConciliacion() {
+  const el = $('rt-conc');
+  if (!conciliacion || !data || !data.rango) { el.hidden = true; return; }
+
+  const desde = data.rango.desde, hasta = data.rango.hasta;
+  const dentro = f => (!desde || f >= desde) && (!hasta || f <= hasta);
+
+  // Ventas ya descontadas por estar canceladas/devueltas, dentro del rango
+  const desc = (conciliacion.descontadas || [])
+    .filter(x => dentro(String(x.fecha || '')));
+
+  // Días que todavía muestran diferencia (paquetes estimados)
+  const dias = [];
+  (conciliacion.hallazgos || []).forEach(h => {
+    if (cuentaSel && h.cuenta !== cuentaSel) return;
+    (h.dias || []).forEach(d => { if (dentro(d.fecha)) dias.push({ ...d, cuenta_label: h.cuenta_label }); });
+  });
+  const estimados = dias.filter(d => !d.devueltas.length && (d.estimados.length || d.paquetes.length));
+  const platEstim = estimados.reduce((a, d) => a + Math.abs(d.dif), 0);
+
+  if (!desc.length && !estimados.length) { el.hidden = true; return; }
+
+  const fd = f => f.slice(8, 10) + '/' + f.slice(5, 7);
+  let h = '<div class="rt-conc-tit">Revisión contra lo que MercadoLibre reporta hoy</div>';
+
+  if (desc.length) {
+    const platDesc = desc.reduce((a, x) => a + (Number(x.neto) || 0), 0);
+    h += `<div class="rt-conc-it">· <b>${ars(platDesc)}</b> descontados: `
+       + `${desc.length === 1 ? 'una venta que ML reporta cancelada' : desc.length + ' ventas que ML reporta canceladas'}`
+       + ` o devuelta${desc.length === 1 ? '' : 's'}. Ya no suman al neto del período.</div>`;
+    h += '<details><summary>ver el detalle</summary>' + desc.map(x =>
+      `<div class="rt-conc-det">${fd(String(x.fecha))} · ${esc(x.cuenta_label || '')} · −${ars(x.neto)}<br>`
+      + '&nbsp;&nbsp;↳ ' + esc(String(x.titulo).slice(0, 70))
+      + (x.items || []).map(it => `<br>&nbsp;&nbsp;&nbsp;&nbsp;ML cancela: ${esc(String(it.titulo).slice(0, 56))}`).join('')
+      + '</div>').join('') + '</details>';
+  }
+
+  if (estimados.length) {
+    h += `<div class="rt-conc-it">· <b>${ars(platEstim)}</b> de diferencia en paquetes: el Excel de ML no `
+       + `trae el precio de cada producto del carrito, así que el neto de la funda se estima. `
+       + `Por API se calcula exacto.</div>`;
+  }
+
+  h += `<div class="rt-conc-pie">Las ventas de un solo producto coinciden exactamente entre los dos métodos. `
+     + `Última revisión: ${new Date(conciliacion.corrido_en).toLocaleString('es-AR')}.</div>`;
+
+  el.innerHTML = h;
+  el.hidden = false;
+}
+
+/* Qué cobros guardados forman el período elegido. Va plegado: es para auditar
+   de dónde sale el número, no la respuesta. Adentro sólo los que entran (entero
+   o en parte); los de otros meses no le dicen nada a quien mira este. */
 function renderPeriodos() {
-  const el = $('rt-periodos');
-  const ps = data.periodos || [];
-  if (!ps.length) { el.innerHTML = ''; return; }
+  const wrap = $('rt-periodos-wrap'), el = $('rt-periodos');
+  const ps = (data.periodos || []).filter(p => p.estado !== 'fuera');
+  if (!ps.length) { el.innerHTML = ''; wrap.hidden = true; return; }
+  const parciales = ps.filter(p => p.estado === 'parcial').length;
+  $('rt-periodos-resumen').innerHTML =
+    `<b>${ps.length}</b> cobro${ps.length === 1 ? '' : 's'} cargado${ps.length === 1 ? '' : 's'} forman este período`
+    + (parciales ? ` · ${parciales} entra${parciales === 1 ? '' : 'n'} sólo en parte` : '');
+  wrap.hidden = false;
   const f = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
   const clase = { completo: 'dentro', parcial: 'parcial', fuera: 'fuera' };
   const tag   = { completo: 'entero', parcial: 'parcial', fuera: 'fuera' };
@@ -353,23 +612,33 @@ function renderPeriodos() {
 
 function render() {
   const t = data.totales;
-  renderAcctTabs();
   renderCobertura();
+  renderConciliacion();
   renderPeriodos();
   renderExtra();   // antes del early-return: el dato vale aunque no haya cobros
   if (!data.publicaciones.length) {
     $('rt-kpis').style.display = 'none'; $('rt-card').style.display = 'none';
-    $('rt-empty').style.display = 'block'; $('rt-warn').classList.remove('show');
+    $('rt-graficos').style.display = 'none';
+    $('rt-empty').style.display = 'block'; $('rt-warn').hidden = true;
     return;
   }
   $('rt-empty').style.display = 'none';
-  $('rt-kpis').style.display = 'grid'; $('rt-card').style.display = 'block';
+  $('rt-kpis').style.display = 'block'; $('rt-card').style.display = 'block';
+  $('rt-graficos').style.display = 'grid';
 
-  $('k-neto').textContent = ars(t.neto);
-  $('k-neto-sub').textContent = `${t.publicaciones} publicaciones`;
+  $('k-neto-hero').textContent = ars(t.neto);
+  $('k-periodo-lbl').textContent = mesSel ? '· ' + mesSel.label
+                                : diasSel ? `· últimos ${diasSel} días`
+                                : '· todo lo cargado';
+  $('k-neto').textContent = `${t.publicaciones} publicaciones`;
+  $('k-neto-sub').textContent = '';
+  renderCuentas();
   $('k-costo').textContent = ars(t.costo);
   $('k-costo-sub').innerHTML = coberturaReal();
   $('k-gan').textContent = ars(t.ganancia);
+  /* Una pérdida tiene que verse como pérdida: el verde fijo hacía que un
+     número negativo pasara por buena noticia. */
+  $('k-gan').classList.toggle('neg', Number(t.ganancia) < 0);
   $('k-margen').textContent = pct(t.margen);
   $('k-margen-sub').textContent = t.items_sin_costo ? `sobre ${ars(t.neto_con_costo)} con costo` : 'sobre el neto total';
 
@@ -378,44 +647,287 @@ function render() {
   const sinCosto  = data.publicaciones.filter(p => p.costo_unit == null).length;
   const subvaluado = mercaderiaSubvaluada();
   if (inciertos || sinCosto || subvaluado) {
-    warn.classList.add('show');
+    /* Los avisos son la letra chica del número de arriba, no noticias de la
+       página: se resumen en una línea y el detalle se despliega si interesa.
+       El resumen dice CUÁNTAS publicaciones afecta, que es lo que decide si
+       vale la pena mirar. */
     const partes = [];
-    // Un aviso por línea, empezando por el número y la acción. Antes eran tres
-    // avisos distintos unidos con puntos en un solo párrafo, y no se leían.
-    if (sinCosto)  partes.push(`<b>${sinCosto}</b> sin costo <span class="rt-warn-x">— quedan fuera de la ganancia</span>`);
-    if (inciertos) partes.push(`<b>${inciertos}</b> con costo estimado a confirmar <span class="rt-warn-x">— Samsung premium o packs</span>`);
-    if (subvaluado) partes.push(`El costo estimado (${subvaluado.rango}) está por debajo del último recibo (<b>US$${subvaluado.real}</b>/u) <span class="rt-warn-x">— <a href="/orden-compra.html">vinculá el proveedor</a> y pasa a costo real</span>`);
-    warn.innerHTML = partes.map(x => `<div class="rt-warn-l">${x}</div>`).join('')
-      + `<div class="rt-warn-pie">El costo se edita en la columna “Costo/u”.</div>`;
-  } else warn.classList.remove('show');
+    if (sinCosto)  partes.push(`<b>${sinCosto}</b> sin costo — quedan fuera de la ganancia`);
+    if (inciertos) partes.push(`<b>${inciertos}</b> con costo estimado a confirmar — Samsung premium o packs`);
+    if (subvaluado) partes.push(`El costo estimado (${subvaluado.rango}) está por debajo del último recibo (<b>US$${subvaluado.real}</b>/u) — <a href="/orden-compra.html">vinculá el proveedor</a> y pasa a costo real`);
+
+    const afectadas = sinCosto + inciertos;
+    const resumen = afectadas
+      ? `${afectadas} publicación${afectadas === 1 ? '' : 'es'} con el costo sin confirmar`
+      : 'Hay una observación sobre el costo';
+    $('rt-nota-resumen').textContent = resumen;
+    $('rt-nota-cuerpo').innerHTML =
+      '<ul style="margin:0;padding-left:17px">' +
+      partes.map(x => `<li style="margin-bottom:4px">${x}</li>`).join('') +
+      '</ul><div style="margin-top:7px;color:var(--text-3)">El costo se edita en la columna “Costo/u” — '
+      + '<button type="button" class="rt-link" data-abrir-tabla>abrir la tabla de costos</button>.</div>';
+    warn.hidden = false;
+  } else {
+    warn.hidden = true;
+    warn.classList.remove('open');
+  }
 
   renderRows();
   markSortHeader();
+  renderTablaResumen();
+  renderDiario();
+  renderTop();
 }
 
-function renderAcctTabs() {
+/* Resumen de una línea del bloque plegado de costos: cuántas publicaciones y
+   cuántas tienen el costo sin confirmar, que es lo que decide si abrirlo. */
+function renderTablaResumen() {
+  const n = data.publicaciones.length;
+  const sinConfirmar = data.publicaciones.filter(p =>
+    p.costo_unit == null || (p.es_funda && !p.confiable && !p.costo_editado)).length;
+  $('rt-tabla-resumen').innerHTML = `Costos por publicación · <b>${n}</b> publicacion${n === 1 ? '' : 'es'}`
+    + (sinConfirmar ? ` · ${sinConfirmar} con el costo sin confirmar` : ' · todas con costo');
+}
+
+// ── Ventas por día ──────────────────────────────────────────────
+// Neto de cada día del período, apilado por cuenta. Contesta "cómo se
+// repartió la venta" sin interpretar nada: los días fuertes, los flojos y
+// los días sin ventas se ven de un vistazo, y la suma de las barras es el
+// número grande de arriba. Hecho en HTML (no canvas) para que tome los
+// colores del tema y se pueda recorrer con teclado.
+
+const DIAS_MAX_DIARIO = 45;   // más que esto, por semana: 90 barras no se leen
+
+// El color sigue a la cuenta, no a su posición: orden fijo por id, así un
+// filtro no repinta las que quedan.
+function slotCuenta(id) {
+  const ids = (data.por_cuenta || []).map(c => String(c.id)).sort();
+  const i = ids.indexOf(String(id));
+  return Math.min(Math.max(i, 0), 2) + 1;
+}
+const nombreCuenta = id => ((data.por_cuenta || []).find(c => String(c.id) === String(id)) || {}).label || id;
+
+const sumarDiasYmd = (ymd, n) => {
+  const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const fechaCorta = ymd => ymd.slice(8, 10) + '/' + ymd.slice(5, 7);
+const diaSemana  = ymd => new Date(ymd + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '');
+const arsCompacto = n => n >= 1e6 ? '$' + (n / 1e6).toFixed(1).replace('.', ',') + 'M'
+                       : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'k' : '$' + Math.round(n);
+
+/* Arma las barras: un día por barra (o una semana, si el rango es largo),
+   incluyendo los días SIN ventas — un hueco es información. */
+function bucketsDiarios() {
+  const pd = data.por_dia || [];
+  if (!pd.length) return null;
+  const p = data.params || {};
+  const ini = p.desde || pd[0].fecha;
+  let fin = p.hasta ? (p.hasta > HOY ? HOY : p.hasta) : (p.desde ? HOY : pd[pd.length - 1].fecha);
+  if (fin < ini) fin = ini;
+
+  const porFecha = new Map(pd.map(d => [d.fecha, d]));
+  const dias = [];
+  for (let d = ini; d <= fin; d = sumarDiasYmd(d, 1)) dias.push(d);
+  const semanal = dias.length > DIAS_MAX_DIARIO;
+
+  const buckets = [];
+  let actual = null;
+  for (const d of dias) {
+    // La semana arranca el lunes
+    const dow = new Date(d + 'T12:00:00Z').getUTCDay();
+    const clave = semanal ? sumarDiasYmd(d, -((dow + 6) % 7)) : d;
+    if (!actual || actual.clave !== clave) {
+      actual = { clave, desde: d, hasta: d, total: 0, ventas: 0, cuentas: {} };
+      buckets.push(actual);
+    }
+    actual.hasta = d;
+    const x = porFecha.get(d);
+    if (x) {
+      actual.total += x.total; actual.ventas += x.ventas;
+      for (const [c, n] of Object.entries(x.cuentas)) actual.cuentas[c] = (actual.cuentas[c] || 0) + n;
+    }
+  }
+  return { buckets, semanal };
+}
+
+// Escala con números redondos (0 / 50k / 100k …), 3 a 5 líneas
+function escalaY(max) {
+  const bruto = max / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(bruto || 1)));
+  const norm = bruto / mag;
+  const paso = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+  const tope = Math.max(paso, Math.ceil(max / paso) * paso);
+  const ticks = [];
+  for (let t = 0; t <= tope + 1e-6; t += paso) ticks.push(t);
+  return { tope, ticks };
+}
+
+let _buckets = [];
+
+function renderDiario() {
+  const cont = $('rt-dia');
+  const r = bucketsDiarios();
+  if (!r || !r.buckets.length) {
+    cont.innerHTML = '<div class="rt-sincosto" style="padding:30px 0;text-align:center">Sin ventas en el período</div>';
+    $('rt-dia-resumen').innerHTML = ''; $('rt-leyenda').innerHTML = ''; $('rt-dia-tabla').innerHTML = '';
+    return;
+  }
+  const { buckets, semanal } = r;
+  _buckets = buckets;
+  $('rt-dia-titulo').textContent = semanal ? 'Ventas por semana' : 'Ventas por día';
+
+  // Cuentas presentes, en su orden fijo de color
+  const cuentas = [...new Set(buckets.flatMap(b => Object.keys(b.cuentas)))]
+    .sort((a, b) => slotCuenta(a) - slotCuenta(b));
+
+  // Leyenda: siempre con 2+ series; con una sola el título ya alcanza
+  $('rt-leyenda').innerHTML = cuentas.length > 1
+    ? cuentas.map(c => `<span><i style="background:var(--serie-${slotCuenta(c)})"></i>${esc(nombreCuenta(c))}</span>`).join('')
+    : '';
+
+  // Lectura en una línea: el mejor tramo, el promedio y los huecos
+  const conVenta = buckets.filter(b => b.total > 0);
+  const mejor = conVenta.reduce((m, b) => (!m || b.total > m.total ? b : m), null);
+  const promedio = buckets.reduce((a, b) => a + b.total, 0) / buckets.length;
+  const vacios = buckets.length - conVenta.length;
+  const etq = b => semanal ? `semana del ${fechaCorta(b.desde)}` : `${diaSemana(b.desde)} ${fechaCorta(b.desde)}`;
+  $('rt-dia-resumen').innerHTML =
+    (mejor ? `<span>${semanal ? 'Mejor semana' : 'Mejor día'}: <b>${etq(mejor)}</b> · ${ars(mejor.total)}</span>` : '')
+    + `<span>Promedio: <b>${ars(promedio)}</b> por ${semanal ? 'semana' : 'día'}</span>`
+    + (vacios ? `<span>${vacios} ${semanal ? (vacios === 1 ? 'semana' : 'semanas') : (vacios === 1 ? 'día' : 'días')} sin ventas</span>` : '');
+
+  const { tope, ticks } = escalaY(Math.max(...buckets.map(b => b.total), 1));
+  const alto = v => (v / tope * 100).toFixed(3) + '%';
+
+  // Etiquetas del eje X: unas 8, siempre la primera y la última
+  const cada = Math.max(1, Math.ceil(buckets.length / 8));
+  const muestra = i => i === 0 || i === buckets.length - 1 || (i % cada === 0 && buckets.length - 1 - i >= cada / 2);
+
+  cont.innerHTML = `
+    <div class="rt-dia-grafico">
+      <div class="rt-dia-ejey">${ticks.map(t => `<span style="bottom:${alto(t)}">${arsCompacto(t)}</span>`).join('')}</div>
+      <div class="rt-dia-plot">
+        ${ticks.slice(1).map(t => `<i class="rt-dia-grid" style="bottom:${alto(t)}"></i>`).join('')}
+        <div class="rt-dia-cols">
+          ${buckets.map((b, i) => {
+            // Segmentos de arriba hacia abajo: la cuenta 1 queda sobre la base
+            const segs = cuentas.slice().reverse().filter(c => b.cuentas[c] > 0)
+              .map(c => `<i style="flex:${b.cuentas[c]} 0 0;background:var(--serie-${slotCuenta(c)})"></i>`).join('');
+            return `<button type="button" class="rt-dia-col" data-i="${i}"
+                      aria-label="${esc(etq(b))}: ${esc(ars(b.total))}">
+                      <span class="rt-dia-pila" style="height:${alto(b.total)}">${segs}</span>
+                    </button>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="rt-dia-ejex">${buckets.map((b, i) => `<span>${muestra(i) ? fechaCorta(b.desde) : ''}</span>`).join('')}</div>
+    </div>
+    <div class="rt-tip" id="rt-tip" hidden></div>`;
+
+  // Tabla equivalente: el gráfico no puede ser la única forma de leer el dato
+  $('rt-dia-tabla').innerHTML = `<table><thead><tr><th>${semanal ? 'Semana' : 'Día'}</th>`
+    + cuentas.map(c => `<th>${esc(nombreCuenta(c))}</th>`).join('')
+    + `<th>Total</th><th>Ventas</th></tr></thead><tbody>`
+    + buckets.map(b => `<tr><td>${esc(etq(b))}</td>`
+        + cuentas.map(c => `<td>${b.cuentas[c] ? ars(b.cuentas[c]) : '—'}</td>`).join('')
+        + `<td><b>${b.total ? ars(b.total) : '—'}</b></td><td>${b.ventas || '—'}</td></tr>`).join('')
+    + '</tbody></table>';
+}
+
+// Tooltip: una sola burbuja que se mueve, con el detalle por cuenta
+function mostrarTip(col) {
+  const b = _buckets[+col.dataset.i];
+  const tip = $('rt-tip');
+  if (!b || !tip) return;
+  const cuentas = Object.keys(b.cuentas).sort((x, y) => slotCuenta(x) - slotCuenta(y));
+  const semanal = $('rt-dia-titulo').textContent.includes('semana');
+  tip.innerHTML = `<div class="rt-tip-tit">${semanal
+      ? `Semana ${fechaCorta(b.desde)} – ${fechaCorta(b.hasta)}`
+      : `${diaSemana(b.desde)} ${fechaCorta(b.desde)}`}</div>`
+    + (b.total
+        ? cuentas.map(c => `<div class="rt-tip-fila"><i style="background:var(--serie-${slotCuenta(c)})"></i>`
+            + `${esc(nombreCuenta(c))}<b>${ars(b.cuentas[c])}</b></div>`).join('')
+          + `<div class="rt-tip-fila rt-tip-tot">Total · ${b.ventas} venta${b.ventas === 1 ? '' : 's'}<b>${ars(b.total)}</b></div>`
+        : '<div>Sin ventas</div>');
+  tip.hidden = false;
+  const caja = $('rt-dia').getBoundingClientRect();
+  const c = col.getBoundingClientRect();
+  const pila = col.querySelector('.rt-dia-pila').getBoundingClientRect();
+  let x = c.left + c.width / 2 - caja.left - tip.offsetWidth / 2;
+  x = Math.max(0, Math.min(x, caja.width - tip.offsetWidth));
+  const y = Math.max(0, Math.min(pila.top, c.bottom - 30) - caja.top - tip.offsetHeight - 8);
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+$('rt-dia').addEventListener('mouseover', e => { const c = e.target.closest('.rt-dia-col'); if (c) mostrarTip(c); });
+$('rt-dia').addEventListener('focusin',   e => { const c = e.target.closest('.rt-dia-col'); if (c) mostrarTip(c); });
+$('rt-dia').addEventListener('mouseleave', () => { const t = $('rt-tip'); if (t) t.hidden = true; });
+$('rt-dia').addEventListener('focusout',  () => { const t = $('rt-tip'); if (t) t.hidden = true; });
+
+// ── Lo que más vendió ───────────────────────────────────────────
+// Las 5 publicaciones con más neto del período. Es el resumen legible de
+// la tabla de costos, que ahora va plegada.
+function renderTop() {
+  const cont = $('rt-top');
+  const pubs = data.publicaciones.filter(p => (p.neto || 0) > 0).sort((a, b) => b.neto - a.neto);
+  if (!pubs.length) { cont.innerHTML = '<div class="rt-sincosto">Sin ventas en el período</div>'; return; }
+  const top = pubs.slice(0, 5);
+  const max = top[0].neto;
+  const tot = data.totales.neto || 1;
+  const parte = Math.round(top.reduce((a, p) => a + p.neto, 0) / tot * 100);
+  cont.innerHTML = top.map(p => `
+      <div class="rt-top-fila">
+        <div class="rt-top-tit" title="${esc(p.titulo)}">${esc(p.titulo)}</div>
+        <div class="rt-top-barra"><span style="width:${(p.neto / max * 72).toFixed(1)}%"></span><b>${ars(p.neto)}</b></div>
+        <div class="rt-top-sub">${p.unidades} unidad${p.unidades === 1 ? '' : 'es'}${p.margen != null ? ` · margen ${pct(p.margen)}` : ''}</div>
+      </div>`).join('')
+    + `<div class="rt-top-pie">${top.length < pubs.length ? `Estas ${top.length} son el <b>${parte}%</b> del neto. ` : ''}`
+    + `<button type="button" class="rt-link" data-abrir-tabla>Ver las ${data.publicaciones.length} publicaciones con su costo</button></div>`;
+}
+
+// Abrir la tabla de costos desde el ranking o desde la nota del costo
+document.addEventListener('click', e => {
+  if (!e.target.closest('[data-abrir-tabla]')) return;
+  const d = $('rt-card');
+  d.open = true;
+  d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+
+/* Neto de cada cuenta, siempre a la vista y en la misma ventana temporal que
+   el número grande. Antes esto vivía en pestañas: para saber cuánto puso cada
+   cuenta había que ir cambiando de solapa y el combinado no se podía auditar.
+   Además cada cuenta tributa distinto (una descuenta IVA y la otra no), así
+   que el desglose no es un detalle: es parte de leer bien el total. */
+function renderCuentas() {
+  const cont = $('rt-cuentas');
   const cuentas = data.por_cuenta || [];
-  const tabs = $('rt-acct-tabs');
-  // Solo mostrar pestañas si hay más de una cuenta con datos
-  if (cuentas.length < 2) { tabs.style.display = 'none'; return; }
-  tabs.style.display = 'flex';
-  const totalGan = cuentas.reduce((s, c) => s + (c.ganancia || 0), 0);
-  const chip = (id, name, gan, fiscal, active) => {
-    const fx = fiscal === 'monotributo'
-      ? `<span class="t-fiscal mono" title="Monotributo — neto sin IVA">sin IVA</span>`
-      : `<span class="t-fiscal resp" title="Responsable inscripto — neto con IVA">con IVA</span>`;
-    return `<button class="rt-acct-tab${active ? ' active' : ''}" data-cuenta="${id}">
-      <span class="t-name">${esc(name)} ${id ? fx : ''}</span>
-      <span class="t-gan">${ars(gan)}</span>
+  if (!cont) return;
+  if (cuentas.length < 2) { cont.innerHTML = ''; return; }
+
+  const tot = cuentas.reduce((s, c) => s + (c.neto || 0), 0);
+  cont.innerHTML = cuentas.map(c => {
+    const part = tot > 0 ? Math.round((c.neto || 0) / tot * 100) : 0;
+    const iva = c.fiscal === 'monotributo'
+      ? '<span class="rt-cta-iva" title="Monotributo: el neto no descuenta IVA">sin IVA</span>'
+      : '<span class="rt-cta-iva" title="Responsable inscripto: el neto ya descuenta IVA">con IVA</span>';
+    return `<button class="rt-cta${cuentaSel === c.id ? ' on' : ''}" data-cuenta="${esc(c.id)}">
+      <span class="rt-cta-top"><span class="rt-cta-name">${esc(c.label)}</span>${iva}</span>
+      <span class="rt-cta-neto">${ars(c.neto)}</span>
+      <span class="rt-cta-sub">${part}% del neto · ${ars(c.ganancia)} de ganancia</span>
     </button>`;
-  };
-  tabs.innerHTML =
-    chip('', 'Todas las cuentas', totalGan, null, cuentaSel === '') +
-    cuentas.map(c => chip(c.id, c.label.split('—').pop().trim() || c.label, c.ganancia, c.fiscal, cuentaSel === c.id)).join('');
-  tabs.querySelectorAll('.rt-acct-tab').forEach(b => b.addEventListener('click', () => {
+  }).join('') +
+  `<button class="rt-cta${cuentaSel === '' ? ' on' : ''}" data-cuenta="">
+     <span class="rt-cta-top"><span class="rt-cta-name">Las dos cuentas</span></span>
+     <span class="rt-cta-neto">${ars(tot)}</span>
+     <span class="rt-cta-sub">clic para quitar el filtro</span>
+   </button>`;
+
+  cont.querySelectorAll('.rt-cta').forEach(b => b.addEventListener('click', () => {
     cuentaSel = b.dataset.cuenta; cargar();
   }));
 }
+
 
 // De dónde salió el costo de la fila. Misma jerarquía y mismos nombres que
 // Orden de compra, para que un mismo producto se lea igual en las dos pantallas.
@@ -506,17 +1018,59 @@ $('rt-recalc').addEventListener('click', cargar);
 $('rt-periodo').addEventListener('change', cargar);
 $('rt-tc').addEventListener('keydown', e => { if (e.key === 'Enter') cargar(); });
 
+/* Botonera de período: los últimos 6 meses como períodos cerrados, más las
+   ventanas móviles de siempre. */
+const MESES_NOM = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+// Hoy como YYYY-MM-DD en hora local (no toISOString, que pasa a UTC y en
+// Argentina adelanta un día a partir de las 21 h).
+const HOY = (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date());
+
+function construirRango() {
+  const cont = $('rt-rango');
+  const hoy = new Date();
+  const botones = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    const ult = new Date(y, m + 1, 0).getDate();
+    const p2 = n => String(n).padStart(2, '0');
+    botones.push({
+      tipo: 'mes',
+      desde: `${y}-${p2(m + 1)}-01`,
+      hasta: `${y}-${p2(m + 1)}-${p2(ult)}`,
+      label: MESES_NOM[m] + (y !== hoy.getFullYear() ? ` ${String(y).slice(2)}` : ''),
+    });
+  }
+  cont.innerHTML =
+    botones.map((b, i) =>
+      `<button data-tipo="mes" data-desde="${b.desde}" data-hasta="${b.hasta}" data-label="${b.label}"${i === 0 ? ' class="on"' : ''}>${b.label}</button>`
+    ).join('') +
+    '<button data-dias="30">Últimos 30 días</button>' +
+    '<button data-dias="0">Todo</button>';
+
+  // Arranca en el mes en curso: es la pregunta más frecuente.
+  mesSel = { desde: botones[0].desde, hasta: botones[0].hasta, label: botones[0].label };
+}
+
 $('rt-rango').addEventListener('click', e => {
-  const b = e.target.closest('button[data-dias]');
+  const b = e.target.closest('button');
   if (!b) return;
-  diasSel = parseInt(b.dataset.dias) || 0;
+  if (b.dataset.tipo === 'mes') {
+    mesSel = { desde: b.dataset.desde, hasta: b.dataset.hasta, label: b.dataset.label };
+    diasSel = 0;
+  } else {
+    mesSel = null;
+    diasSel = parseInt(b.dataset.dias) || 0;
+  }
   [...$('rt-rango').children].forEach(x => x.classList.toggle('on', x === b));
   // El período de cobro y la ventana por fecha se pisarían entre sí: al elegir
   // un rango se vuelve a "todos los períodos" para que el total sea legible.
-  if (diasSel > 0) $('rt-periodo').value = '';
+  $('rt-periodo').value = '';
   cargar();
 });
 
+construirRango();
 cargar();
 </script>
 </body>

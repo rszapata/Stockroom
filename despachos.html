@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -107,6 +107,23 @@
 
 /* ── status bar ── */
 .pg .status-bar{min-height:22px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t2);margin-bottom:20px}
+/* Aviso de confianza. Va ARRIBA de los números a propósito: el error caro de
+   esta pantalla es leer un "0 paquetes" que en realidad significa "no pude
+   consultar", así que la advertencia tiene que verse antes que el número. */
+.pg .conf-banner{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:10px;margin-bottom:14px;font-size:12px;line-height:1.5;border:1px solid}
+.pg .conf-banner[hidden]{display:none}
+.pg .conf-banner.n-atencion{background:color-mix(in srgb,var(--ye) 9%,transparent);border-color:color-mix(in srgb,var(--ye) 32%,transparent);color:var(--ye)}
+.pg .conf-banner.n-alarma{background:color-mix(in srgb,var(--re) 11%,transparent);border-color:color-mix(in srgb,var(--re) 45%,transparent);color:var(--re)}
+.pg .conf-banner ul{margin:5px 0 0;padding-left:17px}
+.pg .conf-banner li{margin-top:2px}
+.pg .conf-banner .cb-ico{font-size:15px;line-height:1.25;flex-shrink:0}
+/* Números apagados = números que no se pueden creer. Un "0" en gris no se lee
+   como tranquilidad; un "0" normal sí, y ahí está el envío que no sale. */
+.pg .kpi-row.dudoso{opacity:.4;filter:grayscale(.7)}
+.pg #hdr-updated.vieja{color:var(--or);font-weight:600}
+.pg #hdr-updated.muy-vieja{color:var(--re);font-weight:700}
+.pg .duda-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--re) 10%,transparent);border:1px solid color-mix(in srgb,var(--re) 38%,transparent);color:var(--re);letter-spacing:.05em;font-weight:700;white-space:nowrap}
+.pg .nueva-badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;background:color-mix(in srgb,var(--cy) 12%,transparent);border:1px solid color-mix(in srgb,var(--cy) 38%,transparent);color:var(--cy);letter-spacing:.05em;font-weight:700;white-space:nowrap}
 
 /* ── kpi row ── */
 .pg .kpi-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
@@ -212,7 +229,7 @@
 
 <!-- ═══════════════════════════ SIDEBAR ════════════════════════ -->
 <aside class="adm-sidebar" id="sidebar" data-btm-nav></aside>
-<script src="/stockroom-sidebar.js?v=14"></script>
+<script src="/stockroom-sidebar.js?v=15"></script>
 
 <!-- ══════════════════════════ MAIN ════════════════════════ -->
 <div class="adm-main">
@@ -288,6 +305,8 @@
       </button>
     </div>
   </div>
+
+  <div class="conf-banner" id="conf-banner" hidden></div>
 
   <!-- KPI row -->
   <div class="kpi-row">
@@ -555,8 +574,7 @@ function renderData(d, ts) {
   const agenciaCount = new Set(hoyOrders.filter(o => !o.is_flex && !o.is_full).map(packKey)).size;
   $I('kpi-flex').textContent    = flexCount;
   $I('kpi-agencia').textContent = agenciaCount;
-  const timeStr = ts ? new Date(ts).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }) : fmtNow();
-  $I('hdr-updated').textContent = 'Última carga: ' + timeStr;
+  pintarEdad();
 
   // Botones globales
   $I('btn-pdf').disabled = flexCount === 0;
@@ -581,6 +599,11 @@ function renderData(d, ts) {
     if (acctOrders.length) metaParts.push(`${acctOrders.length} órdenes · ${acctUnits} u.`);
     if (acctFlexCount) metaParts.push(`${acctFlexCount} flex`);
     if (acctNonFlex)   metaParts.push(`${acctNonFlex} ${dispType}`);
+    // Lo que se está mostrando no salió de la consulta de recién.
+    if (acct.conservada)
+      metaParts.push(`<span style="color:var(--re);font-weight:700">⚠ datos de ${fmtTime(acct.fetched_at)} — la última consulta falló</span>`);
+    if (acct.degraded)
+      metaParts.push(`<span style="color:var(--or)">${acct.degraded} envío(s) sin confirmar</span>`);
 
     section.innerHTML = `
       <div class="acct-header">
@@ -613,8 +636,16 @@ function renderData(d, ts) {
     container.appendChild(section);
   }
 
+  const conf = evaluarConfianza(d, ts);
+  pintarBanner(conf);
+
   if (!d.totalOrders) {
-    setStatus('✓ Nada para despachar en ninguna cuenta.');
+    /* "Nada para despachar" es la frase más cara de esta pantalla. Dicha sobre
+       datos que no se pudieron confirmar, cierra el día con ventas sin
+       despachar. Solo se dice cuando no hay ni un motivo de duda. */
+    setStatus(conf.nivel === 'ok'
+      ? '✓ Nada para despachar en ninguna cuenta.'
+      : '⚠ La lista está vacía, pero los datos no son confiables — mirá el aviso de arriba.');
   } else {
     const errCount = d.accounts.filter(a => !a.ok).length;
     setStatus(errCount ? `⚠ ${errCount} cuenta(s) con error · ${d.totalOrders} órdenes encontradas` : `${d.totalOrders} órdenes listas para despachar`);
@@ -669,7 +700,7 @@ function renderOrders(acct) {
       return `
       <div class="pkg-item">
         ${i.picture
-          ? `<img src="${esc(i.picture)}" alt="Foto del producto — ampliar" class="item-img" loading="lazy" role="button" tabindex="0" onkeydown="teclaActiva(event,this)" onclick="openImg(this.src)"/>`
+          ? `<img src="${esc(i.picture)}" data-full="${esc(i.picture_full || i.picture)}" alt="Foto del producto — ampliar" class="item-img" loading="eager" decoding="async" role="button" tabindex="0" onkeydown="teclaActiva(event,this)" onclick="openImg(this.dataset.full)"/>`
           : `<div class="item-img"></div>`}
         <div style="flex:1;min-width:0">
           <div class="item-title">${esc(i.title)}</div>
@@ -683,6 +714,16 @@ function renderOrders(acct) {
     const sel = orderIds.every(id => isOrderSelected(id));
     const progBadge = o0.scheduled
       ? `<span class="prog-badge">🗓 despachar ${esc(fmtDispatchDay(o0.handling_date))}</span>`
+      : '';
+    /* El envío no se pudo leer de ML. Importa mostrarlo porque sin
+       logistic_type la venta cae en "todo lo que no es Flex es Agencia": si en
+       realidad era Flex, no entra en el PDF de etiquetas y el paquete no sale. */
+    const dudaBadge = o0.estado_incierto
+      ? '<span class="duda-badge" title="No se pudo confirmar el envío contra MercadoLibre — el tipo que figura puede no ser el real">⚠ SIN CONFIRMAR</span>'
+      : '';
+    // Apareció en el chequeo cruzado y no en la consulta principal de ML.
+    const nuevaBadge = o0.recuperada
+      ? '<span class="nueva-badge" title="Detectada por el chequeo cruzado: el buscador de ML todavía no la devolvía">✚ RECIÉN DETECTADA</span>'
       : '';
     // Badge claro de la composición de la venta (lo que pidió el usuario).
     const ventaBadge = isMulti
@@ -704,6 +745,8 @@ function renderOrders(acct) {
             onclick="togglePackSel('${esc(idsAttr)}')"
           />
           <span class="${cls}">${label}</span>
+          ${dudaBadge}
+          ${nuevaBadge}
           ${progBadge}
           <span class="pkg-id">${esc(ordChips)}</span>
           ${buyer ? `<span class="pkg-buyer">${esc(buyer)}</span>` : ''}
@@ -871,32 +914,195 @@ function updateSelectionUI() {
 }
 
 // ── caché local ───────────────────────────────────────────────
-const CACHE_KEY = 'stockroom_despachos_v1';
+/* v2: guarda el sello del SERVIDOR y la antigüedad por cuenta. Con la v1 no
+   había forma de distinguir "no hay nada que despachar" de "no pude
+   consultar", que es exactamente la confusión que hace perder un envío. */
+const CACHE_KEY = 'stockroom_despachos_v2';
 function saveCache(d) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ d, ts: new Date().toISOString() })); } catch(e) {}
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ d, ts: d.generated_at || new Date().toISOString() })); } catch(e) {}
 }
 function loadFromCache() {
   try { const s = localStorage.getItem(CACHE_KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; }
 }
 
+/* Una cuenta que falló NO pisa lo último que sí se pudo confirmar de ella.
+   Antes, un corte de red de dos segundos guardaba orders:[] encima de la lista
+   buena y la pantalla pasaba a decir "nada para despachar" — con las ventas
+   ahí, esperando. Mostrar de más se arregla mirando; mostrar de menos, no. */
+function fusionarCuentas(previo, nuevo) {
+  const antes = new Map(((previo && previo.accounts) || []).map(a => [a.accountId, a]));
+  nuevo.accounts = (nuevo.accounts || []).map(a => {
+    if (a.ok) return a;
+    const viejo = antes.get(a.accountId);
+    if (!viejo || !viejo.ok || !(viejo.orders || []).length) return a;
+    return { ...viejo, ok: true, conservada: true, error_ultimo: a.error };
+  });
+  nuevo.totalOrders = nuevo.accounts.reduce((t, a) => t + (a.orders || []).length, 0);
+  nuevo.totalUnits  = nuevo.accounts.reduce((t, a) =>
+    t + (a.orders || []).reduce((x, o) => x + (o.items || []).reduce((y, i) => y + (i.quantity || 0), 0), 0), 0);
+  return nuevo;
+}
+
+// ── confianza ─────────────────────────────────────────────────
+/* Único lugar donde se decide si los números de arriba se pueden creer. Todo
+   lo tranquilizador que muestre la pantalla tiene que pasar por acá. */
+const EDAD_ATENCION = 15 * 60 * 1000;
+const EDAD_ALARMA   = 40 * 60 * 1000;
+const diaAR = x => new Date(new Date(x).getTime() - 3 * 3600000).toISOString().slice(0, 10);
+function textoEdad(ms) {
+  const min = Math.floor(ms / 60000);
+  if (min < 1)  return 'menos de un minuto';
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60);
+  return h + ' h ' + (min % 60) + ' min';
+}
+
+let ultimaData = null, ultimoTs = null, ultimoFallo = null;
+
+function evaluarConfianza(d, ts) {
+  const motivos = [];
+  let nivel = 'ok';
+  const sube = n => { if (n === 'alarma' || nivel === 'ok') nivel = n; };
+
+  if (ultimoFallo) {
+    sube('alarma');
+    motivos.push('La última consulta a MercadoLibre falló (' + esc(ultimoFallo) +
+      '). Lo que ves es lo de antes.');
+  }
+
+  const edad = ts ? Date.now() - new Date(ts).getTime() : Infinity;
+  if (!ts) {
+    sube('alarma'); motivos.push('Todavía no se pudo traer ninguna lista.');
+  } else if (diaAR(ts) !== diaAR(Date.now())) {
+    sube('alarma'); motivos.push('Esta lista es de otro día.');
+  } else if (edad >= EDAD_ALARMA) {
+    sube('alarma'); motivos.push('La lista tiene ' + textoEdad(edad) + ': puede haber ventas nuevas sin mostrar.');
+  } else if (edad >= EDAD_ATENCION) {
+    sube('atencion'); motivos.push('La lista tiene ' + textoEdad(edad) + '.');
+  }
+
+  for (const a of (d && d.accounts) || []) {
+    const n = '<b>' + esc(a.label || a.accountId) + '</b>';
+    if (!a.ok) {
+      sube('alarma');
+      motivos.push(n + ': no se pudo consultar (' + esc(a.error || 'error') +
+        '). No se sabe qué tiene para despachar.' +
+        (a.token_ok === false ? ' No se pudo renovar el token.' : ''));
+      continue;
+    }
+    if (a.conservada) {
+      sube('alarma');
+      motivos.push(n + ': la última consulta falló (' + esc(a.error_ultimo || '') +
+        '). Se muestra lo confirmado a las ' + fmtTime(a.fetched_at) + ', que puede estar incompleto.');
+    }
+    if (a.truncated) {
+      sube('alarma');
+      motivos.push(n + ': ML informa ' + a.total_ml + ' órdenes y se pudieron traer ' +
+        (a.orders || []).length + '. Faltan ventas en la lista.');
+    }
+    if (a.degraded) {
+      sube('atencion');
+      motivos.push(n + ': ' + a.degraded + ' envío(s) no se pudieron confirmar — el tipo (Flex / Agencia) puede estar mal y la etiqueta no salir.');
+    }
+    if (a.cross_check === false) {
+      sube('atencion');
+      motivos.push(n + ': no se pudo hacer el chequeo cruzado, así que una venta muy reciente podría no figurar.');
+    }
+    if (a.recovered) {
+      sube('atencion');
+      motivos.push(n + ': ' + a.recovered + ' venta(s) las encontró el chequeo cruzado y no el buscador de ML. Están en la lista, marcadas.');
+    }
+  }
+  return { nivel, motivos };
+}
+
+function pintarBanner(conf) {
+  const el = $I('conf-banner');
+  const kpis = document.querySelector('.kpi-row');
+  if (conf.nivel === 'ok') {
+    el.hidden = true; el.className = 'conf-banner'; el.innerHTML = '';
+  } else {
+    el.hidden = false;
+    el.className = 'conf-banner n-' + conf.nivel;
+    el.innerHTML =
+      '<span class="cb-ico">' + (conf.nivel === 'alarma' ? '⛔' : '⚠') + '</span>' +
+      '<div><b>' + (conf.nivel === 'alarma'
+        ? 'No te fíes de estos números todavía'
+        : 'Mirá esto antes de despachar') + '</b><ul>' +
+      conf.motivos.map(m => '<li>' + m + '</li>').join('') + '</ul></div>';
+  }
+  if (kpis) kpis.classList.toggle('dudoso', conf.nivel === 'alarma');
+}
+
+/* El sello de antigüedad se repinta solo: un texto fijo que dice "09:15" se ve
+   igual a las 09:16 que a las 15:00, y las 15:00 es justo cuando hay que
+   desconfiar. Acá el color cambia con el paso del tiempo sin tocar nada. */
+function pintarEdad() {
+  const el = $I('hdr-updated');
+  if (!el) return;
+  if (!ultimoTs) { el.textContent = 'Sin datos todavía'; el.className = 'muy-vieja'; return; }
+  const edad    = Date.now() - new Date(ultimoTs).getTime();
+  const esDeHoy = diaAR(ultimoTs) === diaAR(Date.now());
+  const hora    = new Date(ultimoTs).toLocaleString('es-AR', esDeHoy
+    ? { hour: '2-digit', minute: '2-digit' }
+    : { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  el.textContent = (esDeHoy ? 'Última carga: ' : '⚠ Lista del ') + hora +
+    ' · ' + (edad < 60000 ? 'recién' : 'hace ' + textoEdad(edad));
+  el.className = (!esDeHoy || edad >= EDAD_ALARMA) ? 'muy-vieja'
+               : edad >= EDAD_ATENCION ? 'vieja' : '';
+}
+setInterval(() => {
+  pintarEdad();
+  if (ultimaData) pintarBanner(evaluarConfianza(ultimaData, ultimoTs));
+}, 15000);
+
 // ── carga de datos ──────────────────────────────────────────────
-async function load() {
+let _cargando = false;
+async function load(opts) {
+  // Los refrescos automáticos no bloquean los botones: apagar "Descargar PDF"
+  // cada 3 minutos justo cuando lo estás por tocar es peor que el problema.
+  const auto = !!(opts && opts.auto);
+  // Dos cargas encimadas (la automática al abrir + un clic) hacían que la
+  // primera en terminar apagara el indicador mientras la otra seguía.
+  if (_cargando) return;
+  _cargando = true;
+
   const btn = $I('btn-refresh');
-  btn.disabled = true;
+  const desde = Date.now();
+  if (!auto) {
+    btn.disabled = true;
+    $I('btn-pdf').disabled = true;
+    $I('btn-zpl').disabled = true;
+  }
   btn.classList.add('is-loading');
-  $I('btn-pdf').disabled = true;
-  $I('btn-zpl').disabled = true;
+  setStatus(auto ? 'Actualizando…' : 'Consultando MercadoLibre…', true);
   try {
-    const r = await fetch('/despachos-hoy-all');
+    // no-store: que ningún intermediario pueda devolver una lista de antes.
+    const r = await fetch('/despachos-hoy-all', { cache: 'no-store' });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Error del servidor');
-    saveCache(d);
-    renderData(d, new Date().toISOString());
+    const previo = loadFromCache();
+    const fusionado = fusionarCuentas(previo && previo.d, d);
+    ultimoFallo = null;
+    ultimaData  = fusionado;
+    ultimoTs    = fusionado.generated_at || new Date().toISOString();
+    saveCache(fusionado);
+    renderData(fusionado, ultimoTs);
   } catch(e) {
-    setStatus('❌ Error: ' + e.message);
+    /* Falla la consulta → NO se toca lo que ya está en pantalla ni la caché.
+       Se marca el fallo, que el banner convierte en alarma roja. */
+    ultimoFallo = e.message;
+    setStatus('❌ Error: ' + e.message + ' — lo que ves es de antes.');
+    pintarBanner(evaluarConfianza(ultimaData, ultimoTs));
   } finally {
+    /* Piso de 450ms SOLO para el indicador: los datos ya se pintaron arriba.
+       Sin esto una consulta de 1,8s se ve como que no pasó nada. */
+    const falta = 450 - (Date.now() - desde);
+    if (falta > 0) await new Promise(r => setTimeout(r, falta));
+    _cargando = false;
     btn.disabled = false;
     btn.classList.remove('is-loading');
+    pintarEdad();
     if (lastData) {
       const allOrd   = lastData.accounts.flatMap(a => a.orders||[]);
       const flexCount = allOrd.filter(o => o.is_flex).length;
@@ -906,15 +1112,37 @@ async function load() {
   }
 }
 
-// Al abrir la página: mostrar caché si existe, sin llamar a la API
-(function initFromCache() {
+/* Al abrir se pinta la caché para que la pantalla no arranque vacía, pero
+   SIEMPRE se consulta a ML. Antes solo se consultaba si la lista guardada era
+   de otro día: refrescar la página a las 15:00 repintaba la lista de las 09:00
+   sin pedir nada y se veía igual que una recién traída — ese era el "refresco
+   y parece que no hay novedades" con las ventas ahí esperando. */
+(function iniciar() {
   const cached = loadFromCache();
   if (cached) {
+    ultimaData = cached.d;
+    ultimoTs   = cached.ts;
     renderData(cached.d, cached.ts);
-  } else {
-    setStatus('Presioná Actualizar para cargar los pedidos.');
   }
+  pintarEdad();
+  load();
 })();
+
+/* Refresco automático. Esta pantalla se deja abierta toda la jornada: si no se
+   actualiza sola, "lo que veo es lo que hay" deja de ser cierto a los diez
+   minutos y nadie se entera. */
+const REFRESCO_MS = 3 * 60 * 1000;
+setInterval(() => { if (!document.hidden) load({ auto: true }); }, REFRESCO_MS);
+
+/* Volver a la pestaña es el momento exacto en que se mira el número para
+   decidir qué preparar. Si lo que hay es viejo, se pide de nuevo antes. */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  pintarEdad();
+  if (!ultimoTs || Date.now() - new Date(ultimoTs).getTime() > 60000) load({ auto: true });
+});
+// Al volver la conexión, lo primero que hay que rehacer es esta consulta.
+window.addEventListener('online', () => load({ auto: true }));
 
 // ── Descargar Flex seleccionadas (con merge si hay múltiples cuentas) ──────
 async function generarSeleccionadas() {

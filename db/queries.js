@@ -1747,6 +1747,36 @@ async function diasConStock(dias = 60) {
   return map;
 }
 
+/** Stock INMÓVIL: variantes que tuvieron stock todos los días medidos y
+ *  nunca bajaron una unidad. No es una estimación — es lo que muestra la foto
+ *  diaria. Sirve para ver capital parado sin esperar a tener 30 días.
+ *  excluirItems: publicaciones espejo de grupos vinculados (no contar 2 veces). */
+async function stockInmovil(dias = 60, excluirItems = []) {
+  const { rows } = await pool.query(`
+    WITH d AS (
+      SELECT item_id, variation_id, titulo, variante, cuenta, fecha, cantidad,
+             LAG(cantidad) OVER (PARTITION BY item_id, variation_id ORDER BY fecha) prev
+        FROM stock_historico
+       WHERE fecha >= CURRENT_DATE - $1::int
+         AND ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR NOT (item_id = ANY($2::text[])))
+    )
+    SELECT item_id, variation_id,
+           MAX(titulo)   AS titulo,
+           MAX(variante) AS variante,
+           MAX(cuenta)   AS cuenta,
+           COUNT(*)::int AS dias_medidos,
+           MIN(cantidad)::int AS stock_min,
+           (ARRAY_AGG(cantidad ORDER BY fecha DESC))[1]::int AS stock_actual,
+           COALESCE(SUM(GREATEST(prev - cantidad, 0)), 0)::int AS bajas
+      FROM d
+     GROUP BY item_id, variation_id
+    HAVING MIN(cantidad) > 0
+       AND COALESCE(SUM(GREATEST(prev - cantidad, 0)), 0) = 0
+       AND COUNT(*) >= 2
+     ORDER BY stock_actual DESC`, [dias, excluirItems]);
+  return rows;
+}
+
 /** Serie de una variante, para graficar o auditar. */
 async function serieStock(itemId, variationId = '', dias = 120) {
   const { rows } = await pool.query(
@@ -1757,13 +1787,18 @@ async function serieStock(itemId, variationId = '', dias = 120) {
 }
 
 /** Cobertura del histórico: desde cuándo hay datos y cuántos días. */
-async function coberturaHistorico() {
+// excluirItems: publicaciones ESPEJO de grupos vinculados (mismo producto en
+// las dos cuentas). Se guardan igual en el histórico, pero no se cuentan dos
+// veces en los totales.
+async function coberturaHistorico(excluirItems = []) {
   const { rows } = await pool.query(`
     SELECT MIN(fecha) AS desde, MAX(fecha) AS hasta,
            COUNT(DISTINCT fecha)::int AS dias,
            COUNT(*)::int              AS filas,
            COUNT(DISTINCT (item_id || '::' || variation_id))::int AS variantes
-      FROM stock_historico`);
+      FROM stock_historico
+     WHERE ($1::text[] IS NULL OR cardinality($1::text[]) = 0 OR NOT (item_id = ANY($1::text[])))`,
+    [excluirItems]);
   return rows[0] || null;
 }
 
@@ -1926,7 +1961,7 @@ module.exports = {
   getPendingStockAlerts,
   markStockAlertsNotified,
   countPendingStockAlertsByItem,
-  ensureStockHistoricoTable, guardarSnapshotStock, diasConStock,
+  ensureStockHistoricoTable, guardarSnapshotStock, diasConStock, stockInmovil,
   serieStock, coberturaHistorico, podarHistoricoStock,
   // Log de emails enviados
   ensureEmailLogTable,

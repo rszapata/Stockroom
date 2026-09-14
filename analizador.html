@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Analizador de publicaciones — Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=21">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.pg { font-family:'Inter',system-ui,sans-serif; font-size:13px; display:block; color:var(--text); }
+.pg *, .pg *::before, .pg *::after { box-sizing:border-box; }
+
+.az-card { background:var(--bg-card); border:1px solid var(--border); border-radius:6px; margin-bottom:20px; }
+.az-hd {
+  padding:13px 20px; border-bottom:1px solid var(--border);
+  font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-2);
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.az-body { padding:20px; }
+
+/* ── Barra de acciones ── */
+.az-run { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.az-btn {
+  padding:9px 16px; border-radius:5px; border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  display:inline-flex; align-items:center; gap:7px;
+}
+.az-btn:hover:not(:disabled) { border-color:var(--text-3); }
+.az-btn.primary { background:var(--text); color:var(--bg-card); border-color:var(--text); }
+.az-btn:disabled { opacity:.45; cursor:not-allowed; }
+.az-sel { padding:8px 10px; border:1px solid var(--border); border-radius:5px; background:var(--bg-card); color:var(--text); font-family:inherit; font-size:13px; }
+
+/* ── Progreso ── */
+.az-prog { display:none; margin-top:14px; }
+.az-prog.on { display:block; }
+.az-bar { height:6px; background:var(--bg); border-radius:99px; overflow:hidden; margin-top:8px; }
+.az-bar i { display:block; height:100%; background:var(--text); width:0%; transition:width .4s ease; }
+.az-prog-txt { font-size:12px; color:var(--text-2); }
+
+/* ── KPIs ── */
+.az-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
+.az-kpi { border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+.az-kpi b { display:block; font-size:22px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.az-kpi span { display:block; font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:.04em; margin-top:3px; }
+
+/* ── Tabla ── */
+/* overflow-x:auto crearía un contenedor de scroll propio y `position:sticky`
+   dejaría de pegarse al viewport, así que el wrap NO puede recortar acá: el
+   scroll horizontal se resuelve con el ancho mínimo de la tabla. */
+.az-tabla-wrap { overflow-x:visible; }
+table.az { width:100%; border-collapse:separate; border-spacing:0; font-size:12.5px; }
+table.az th {
+  text-align:left; padding:9px 10px;
+  font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3); font-weight:600; white-space:nowrap;
+  /* Se pega debajo del header del panel (que es sticky con height:--header-h).
+     z-index por debajo del 30 del header para no taparlo al scrollear. */
+  position:sticky; top:var(--header-h); z-index:8;
+  background:var(--bg-card);
+  box-shadow:inset 0 -1px 0 var(--border);
+}
+table.az th.num, table.az td.num { text-align:right; font-family:'JetBrains Mono',monospace; }
+table.az td { padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+table.az tr:hover td { background:var(--bg); }
+.az-tit { max-width:330px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+.az-tit a { color:var(--text); text-decoration:none; }
+.az-tit a:hover { text-decoration:underline; }
+
+/* Miniatura del producto a la izquierda del título */
+.az-prod { display:flex; align-items:center; gap:10px; }
+.az-thumb {
+  width:40px; height:40px; flex-shrink:0; border-radius:4px; overflow:hidden;
+  background:var(--bg); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+}
+.az-thumb img { width:100%; height:100%; object-fit:contain; display:block; }
+/* Sin foto: cuadrito vacío para que la columna no se desalinee */
+.az-thumb.vacio::after { content:''; width:14px; height:14px; border:1.5px solid var(--text-3); border-radius:2px; opacity:.45; }
+
+/* ── Etiquetas de cuadrante ── */
+.tag { display:inline-block; padding:3px 8px; border-radius:99px; font-size:10.5px; font-weight:600; white-space:nowrap; }
+.tag.funcionan   { background:#dcfce7; color:#166534; }
+.tag.exposicion  { background:#dbeafe; color:#1e40af; }
+.tag.conversion  { background:#fef3c7; color:#92400e; }
+.tag.rechazo     { background:#ffe4e6; color:#9f1239; }
+.tag.flojo       { background:#f3f4f6; color:#4b5563; }
+.tag.sin-trafico { background:#fee2e2; color:#991b1b; }
+[data-theme="dark"] .tag.funcionan   { background:#14532d; color:#bbf7d0; }
+[data-theme="dark"] .tag.exposicion  { background:#1e3a8a; color:#bfdbfe; }
+[data-theme="dark"] .tag.conversion  { background:#78350f; color:#fde68a; }
+[data-theme="dark"] .tag.rechazo     { background:#881337; color:#fecdd3; }
+[data-theme="dark"] .tag.flojo       { background:#374151; color:#d1d5db; }
+[data-theme="dark"] .tag.sin-trafico { background:#7f1d1d; color:#fecaca; }
+
+.az-filtros { display:flex; gap:8px; flex-wrap:wrap; }
+.az-chip {
+  padding:6px 12px; border:1px solid var(--border); border-radius:99px; background:var(--bg-card);
+  font-size:12px; cursor:pointer; color:var(--text-2); font-family:inherit;
+}
+.az-chip.on { background:var(--text); color:var(--bg-card); border-color:var(--text); }
+.az-vacio { padding:40px 20px; text-align:center; color:var(--text-3); font-size:13px; }
+.az-nota { font-size:11.5px; color:var(--text-3); line-height:1.6; margin-top:10px; }
+
+/* En pantallas angostas la tabla no entra: ahí sí conviene el scroll
+   horizontal, aunque eso desactive el encabezado fijo (un contenedor con
+   overflow rompe el sticky). En desktop, que es donde se lee el listado
+   largo, manda el encabezado fijo. */
+@media (max-width: 900px) {
+  .az-tabla-wrap { overflow-x:auto; }
+  table.az th { position:static; }
+  .az-tit { max-width:200px; }
+}
+</style>
+</head>
+<body>
+
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/stockroom-sidebar.js?v=15"></script>
+
+<div class="adm-main">
+<header class="adm-header">
+  <div class="adm-header-left">
+    <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div>
+      <div class="adm-page-title">Analizador de publicaciones</div>
+      <div class="adm-page-sub">Visitas contra ventas del mismo período — qué publicación desperdicia tráfico y cuál merece más exposición</div>
+    </div>
+  </div>
+</header>
+
+<main class="adm-content pg">
+
+  <!-- Acciones -->
+  <div class="az-card">
+    <div class="az-body">
+      <div class="az-run">
+        <label style="font-size:12px;color:var(--text-2)">Período
+          <select class="az-sel" id="dias">
+            <option value="15">15 días</option>
+            <option value="30" selected>30 días</option>
+            <option value="60">60 días</option>
+            <option value="90">90 días</option>
+          </select>
+        </label>
+        <button class="az-btn primary" id="btn-activas">Analizar activas</button>
+        <button class="az-btn" id="btn-pausadas">Analizar pausadas</button>
+        <span style="flex:1"></span>
+        <span id="generado" style="font-size:11.5px;color:var(--text-3)"></span>
+      </div>
+
+      <div class="az-prog" id="prog">
+        <div class="az-prog-txt" id="prog-txt">Iniciando…</div>
+        <div class="az-bar"><i id="prog-bar"></i></div>
+      </div>
+
+      <div class="az-nota">
+        Las visitas se piden de a una publicación (Mercado Libre no permite pedirlas en lote), así que una corrida
+        sobre el catálogo completo tarda algunos minutos. El resultado queda guardado: no hace falta recalcular para volver a mirarlo.
+      </div>
+    </div>
+  </div>
+
+  <div id="resultado" style="display:none">
+    <div class="az-card" id="aviso-viejo" style="display:none;border-color:#f59e0b">
+      <div class="az-body" style="font-size:12.5px">
+        <b>Este análisis es de la versión anterior.</b> La clasificación tenía un error
+        (marcaba como “funciona” a publicaciones sin ninguna venta) y ya está corregida.
+        Volvé a correr el análisis para ver los grupos y la plata en juego.
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="az-card">
+      <div class="az-hd">Resumen <span id="hd-estado" style="text-transform:none;font-weight:400"></span></div>
+      <div class="az-body"><div class="az-kpis" id="kpis"></div></div>
+    </div>
+
+    <!-- Por categoría -->
+    <div class="az-card">
+      <div class="az-hd">Conversión por categoría</div>
+      <div class="az-body az-tabla-wrap">
+        <table class="az">
+          <thead><tr>
+            <th>Categoría</th><th class="num">Publicaciones</th><th class="num">Visitas</th>
+            <th class="num">Ventas</th><th class="num">Conversión</th>
+          </tr></thead>
+          <tbody id="tb-cat"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detalle -->
+    <div class="az-card">
+      <div class="az-hd">
+        Publicaciones
+        <div class="az-filtros" id="filtros"></div>
+      </div>
+      <div class="az-body az-tabla-wrap">
+        <table class="az">
+          <thead><tr>
+            <th>Publicación</th><th>Diagnóstico</th>
+            <th class="num">Plata en juego</th>
+            <th class="num">Visitas</th><th class="num">Ventas</th><th class="num">Conv.</th>
+            <th class="num">Health</th><th class="num">Fotos</th><th class="num">Stock</th>
+          </tr></thead>
+          <tbody id="tb-pub"></tbody>
+        </table>
+        <div class="az-vacio" id="vacio" style="display:none">No hay publicaciones en este filtro.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="az-card" id="sin-datos">
+    <div class="az-vacio">Todavía no corriste el análisis. Elegí un período y tocá <b>Analizar activas</b>.</div>
+  </div>
+
+</main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let DATA = null, FILTRO = 'todos';
+
+/* Los grupos se nombran por lo que hay que HACER, y van en orden de impacto:
+   primero donde hay tráfico real desaprovechado (ahí está la plata), después
+   lo que necesita exposición, y al final lo que anda bien. */
+const ORDEN_CUADRANTE = ['rechazo','conversion','exposicion','sin-trafico','flojo','funcionan'];
+const LABEL = {
+  todos:'Todas',
+  rechazo:'La ven y no compran',
+  conversion:'Mejorar conversión',
+  exposicion:'Mejorar exposición',
+  'sin-trafico':'Nadie la ve',
+  flojo:'Flojas',
+  funcionan:'Funcionan',
+  ficha:'Completar ficha',
+};
+
+const fmt  = n => (n == null ? '—' : Number(n).toLocaleString('es-AR'));
+const pct  = n => (n == null ? '—' : n.toFixed(2).replace('.', ',') + '%');
+const esc  = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ── Correr análisis ── */
+async function correr(estado) {
+  const dias = $('dias').value;
+  $('btn-activas').disabled = true;
+  $('btn-pausadas').disabled = true;
+  $('prog').classList.add('on');
+  $('prog-txt').textContent = 'Iniciando…';
+  $('prog-bar').style.width = '0%';
+
+  try {
+    const r = await fetch('/analizador/run?estado=' + estado + '&dias=' + dias, { method: 'POST' });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'No se pudo iniciar');
+    pollear(estado);
+  } catch (e) {
+    $('prog-txt').textContent = 'Error: ' + e.message;
+    $('btn-activas').disabled = false;
+    $('btn-pausadas').disabled = false;
+  }
+}
+
+function pollear(estado) {
+  const timer = setInterval(async () => {
+    try {
+      const j = await (await fetch('/analizador/estado')).json();
+      if (j.fase === 'error') {
+        clearInterval(timer);
+        $('prog-txt').textContent = 'Error: ' + (j.error || 'desconocido');
+        $('btn-activas').disabled = false; $('btn-pausadas').disabled = false;
+        return;
+      }
+      const total = j.total || 0, hechas = j.hechas || 0;
+      const p = total ? Math.round(hechas / total * 100) : 0;
+      $('prog-bar').style.width = p + '%';
+      $('prog-txt').textContent =
+        j.fase === 'ventas'   ? 'Trayendo órdenes…' :
+        j.fase === 'catalogo' ? ('Catálogo: ' + (j.detalle || '')) :
+        j.fase === 'visitas'  ? ('Visitas: ' + hechas + ' de ' + total + ' (' + p + '%)') :
+        j.fase === 'listo'    ? 'Listo' : (j.detalle || j.fase || '');
+
+      if (!j.corriendo && j.fase === 'listo') {
+        clearInterval(timer);
+        $('prog').classList.remove('on');
+        $('btn-activas').disabled = false; $('btn-pausadas').disabled = false;
+        cargar(estado);
+      }
+    } catch (e) { /* reintenta en el próximo tick */ }
+  }, 1500);
+}
+
+/* ── Cargar resultado guardado ── */
+async function cargar(estado) {
+  try {
+    const r = await fetch('/analizador/resultado?estado=' + estado);
+    if (!r.ok) return false;
+    DATA = await r.json();
+    render();
+    return true;
+  } catch (e) { return false; }
+}
+
+function render() {
+  if (!DATA) return;
+  $('sin-datos').style.display = 'none';
+  $('resultado').style.display = 'block';
+
+  const t = DATA.totales;
+  const convGlobal = t.visitas ? (t.ventas / t.visitas * 100) : null;
+  $('hd-estado').textContent = '· ' + (DATA.estado === 'paused' ? 'pausadas' : 'activas') + ' · últimos ' + DATA.dias + ' días';
+  $('generado').textContent = 'Último análisis: ' + new Date(DATA.generado).toLocaleString('es-AR');
+
+  $('kpis').innerHTML = [
+    ['Publicaciones', fmt(t.publicaciones)],
+    ['De esas, vendieron', fmt(t.publicacionesQueVenden != null ? t.publicacionesQueVenden : '—')],
+    ['Visitas', fmt(t.visitas)],
+    ['Ventas', fmt(t.ventas)],
+    ['Conversión global', pct(convGlobal)],
+    ['Plata en juego / mes', t.plataEnJuegoTotal ? '$' + fmt(t.plataEnJuegoTotal) : '—'],
+  ].map(([l, v]) => '<div class="az-kpi"><b>' + v + '</b><span>' + l + '</span></div>').join('');
+
+  /* Los análisis guardados con la versión anterior traen los grupos viejos
+     (estrella/oportunidad/desperdicia) y no tienen la plata calculada: avisar
+     en vez de mostrar etiquetas que ya no significan lo mismo. */
+  const viejos = (DATA.filas || []).some(f => ['estrella','oportunidad','desperdicia'].includes(f.estado));
+  $('aviso-viejo').style.display = viejos ? 'block' : 'none';
+
+  $('tb-cat').innerHTML = (DATA.resumen || []).map(c =>
+    '<tr><td style="text-transform:capitalize">' + esc(c.categoria) + '</td>' +
+    '<td class="num">' + fmt(c.publicaciones) + '</td>' +
+    '<td class="num">' + fmt(c.visitas) + '</td>' +
+    '<td class="num">' + fmt(c.ventas) + '</td>' +
+    '<td class="num"><b>' + pct(c.conversion) + '</b></td></tr>'
+  ).join('');
+
+  // Chips de filtro con su conteo. "Completar ficha" va al final y es
+  // transversal: cruza con cualquiera de los otros grupos.
+  const cuenta = {};
+  (DATA.filas || []).forEach(f => { cuenta[f.estado] = (cuenta[f.estado] || 0) + 1; });
+  const conFicha = (DATA.filas || []).filter(f => f.fichaIncompleta).length;
+  const chips = ['todos', ...ORDEN_CUADRANTE.filter(k => cuenta[k])];
+  if (conFicha) chips.push('ficha');
+  $('filtros').innerHTML = chips.map(k =>
+    '<button class="az-chip' + (k === FILTRO ? ' on' : '') + '" data-f="' + k + '">' +
+    LABEL[k] + (k === 'todos' ? '' : ' (' + (k === 'ficha' ? conFicha : cuenta[k]) + ')') + '</button>'
+  ).join('');
+  $('filtros').querySelectorAll('.az-chip').forEach(b =>
+    b.addEventListener('click', () => { FILTRO = b.dataset.f; render(); }));
+
+  renderTabla();
+}
+
+function renderTabla() {
+  let filas = (DATA.filas || []).slice();
+  if (FILTRO === 'ficha')      filas = filas.filter(f => f.fichaIncompleta);
+  else if (FILTRO !== 'todos') filas = filas.filter(f => f.estado === FILTRO);
+
+  /* Orden por dónde está la plata: primero lo que tiene una cifra estimada
+     (ahí el tráfico ya existe y sólo falta convertirlo), de mayor a menor.
+     El resto queda debajo agrupado por prioridad de acción. */
+  const peso = {};
+  ORDEN_CUADRANTE.forEach((k, i) => { peso[k] = i; });
+  filas.sort((a, b) =>
+    (b.plataEnJuego || 0) - (a.plataEnJuego || 0) ||
+    ((peso[a.estado] ?? 9) - (peso[b.estado] ?? 9)) ||
+    (b.visitas - a.visitas));
+
+  $('vacio').style.display = filas.length ? 'none' : 'block';
+  $('tb-pub').innerHTML = filas.map(f =>
+    '<tr>' +
+      '<td><div class="az-prod">' +
+        // Los análisis guardados antes de esta versión no traen `thumb`:
+        // en ese caso va el placeholder hasta que se vuelva a correr.
+        (f.thumb
+          ? '<span class="az-thumb"><img src="' + esc(f.thumb) + '" alt="" loading="lazy" decoding="async" ' +
+            'onerror="this.closest(\'.az-thumb\').classList.add(\'vacio\');this.remove()"></span>'
+          : '<span class="az-thumb vacio"></span>') +
+        '<span style="min-width:0">' +
+        '<span class="az-tit" title="' + esc(f.titulo) + '">' +
+          (f.permalink ? '<a href="' + esc(f.permalink) + '" target="_blank" rel="noopener">' + esc(f.titulo) + '</a>' : esc(f.titulo)) +
+        '</span>' +
+        '<span style="font-size:10.5px;color:var(--text-3)">' + esc(f.id) + ' · ' + esc(f.cuenta) + '</span>' +
+        '</span>' +
+      '</div></td>' +
+      '<td><span class="tag ' + f.estado + '">' + (LABEL[f.estado] || f.estado) + '</span>' +
+      (f.fichaIncompleta ? '<span class="tag flojo" style="margin-left:5px">ficha</span>' : '') +
+      '<div style="font-size:10.5px;color:var(--text-3);margin-top:3px;max-width:230px">' + esc(f.accion) + '</div></td>' +
+      // Plata en juego: sólo cuando el tráfico ya existe y el cálculo se apoya
+      // en datos reales. Para las de poca exposición se muestra cuánto vale
+      // cada visita que hoy no está recibiendo.
+      '<td class="num">' +
+        (f.plataEnJuego ? '<b>$' + fmt(f.plataEnJuego) + '</b>'
+         : f.valorVisita ? '<span style="font-size:11px;color:var(--text-3)">$' + fmt(f.valorVisita) + ' / visita</span>'
+         : '<span style="color:var(--text-3)">—</span>') +
+      '</td>' +
+      '<td class="num">' + fmt(f.visitas) + '</td>' +
+      '<td class="num">' + fmt(f.ventas) + '</td>' +
+      '<td class="num"><b>' + pct(f.conversion) + '</b></td>' +
+      '<td class="num">' + (f.health == null ? '—' : f.health.toFixed(2)) + '</td>' +
+      '<td class="num">' + fmt(f.fotos) + '</td>' +
+      '<td class="num">' + fmt(f.stock) + '</td>' +
+    '</tr>'
+  ).join('');
+}
+
+$('btn-activas').addEventListener('click', () => correr('active'));
+$('btn-pausadas').addEventListener('click', () => correr('paused'));
+
+// Al entrar: mostrar el último resultado guardado, si hay
+cargar('active');
+</script>
+</body>
+</html>

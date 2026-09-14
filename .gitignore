@@ -25,9 +25,15 @@ ordenes.json
 sessions.json
 rate_limits.json
 alibaba-mapping.json
+alibaba-historial.json
+variantes-historial.json
+banner-fotos.json
+alibaba-recibos/
 tienda-cupones.json
 tienda-users.json
 telegram-notified-questions.json
+cobros-guardados.json
+conciliacion.json
 config.json.bak
 audit.log
 

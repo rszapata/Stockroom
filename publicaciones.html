@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <!-- Anti-FOUC -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -395,7 +395,9 @@
 /* 5 · Combobox de categorías — dropdown con buscador y árbol integrado */
 .pg .cat-combo     { position: relative; }
 .pg .cat-pop {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60;
+  /* top/left/width los calcula posCatPop(): el desplegable se cuelga del
+     body para que .card { overflow:hidden } no lo recorte. */
+  position: absolute; z-index: 600;
   display: flex; flex-direction: column; max-height: 360px; overflow: hidden;
   background: var(--bg-card); border: 1px solid var(--b2); border-radius:6px;
   box-shadow: 0 12px 32px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
@@ -436,6 +438,20 @@
   .pg .bulk-top .field { min-width: 100%; }
   .pg .attrs-grid    { grid-template-columns: 1fr; }
 }
+
+  /* Buscador de publicación (pestaña Agregar variante) */
+  .va-results { max-height: 260px; overflow-y: auto; border: 1px solid var(--border);
+                background: var(--bg-card); border-radius: 6px; margin-top: 6px; }
+  .va-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+             border-bottom: 1px solid var(--border); cursor: pointer; font-size: 12px;
+             transition: background .15s; }
+  .va-item:last-child { border-bottom: none; }
+  .va-item:hover { background: var(--bg); }
+  .va-item img { width: 34px; height: 34px; object-fit: cover; border-radius: 5px;
+                 border: 1px solid var(--border); flex-shrink: 0; }
+  .va-item-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .va-item-m { font-size: 10px; color: var(--text-3); white-space: nowrap; }
+  .va-item-v { font-size: 10px; font-weight: 600; color: var(--blue); white-space: nowrap; }
 </style>
 </head>
 
@@ -444,7 +460,7 @@
 
 <!-- SIDEBAR -->
 <aside class="adm-sidebar" id="sidebar" data-btm-nav></aside>
-<script src="/stockroom-sidebar.js?v=14"></script>
+<script src="/stockroom-sidebar.js?v=15"></script>
 
 <!-- MAIN -->
 <div class="adm-main">
@@ -494,6 +510,7 @@
     <button class="tab-btn active" onclick="switchTab('nueva')">NUEVA PUBLICACIÓN</button>
     <button class="tab-btn" onclick="switchTab('masiva')">CARGA MASIVA</button>
     <button class="tab-btn" onclick="switchTab('clonar')">CLONAR EXISTENTE</button>
+    <button class="tab-btn" onclick="switchTab('variante')">AGREGAR VARIANTE</button>
   </div>
 
   <!-- ═══ TAB: NUEVA PUBLICACIÓN ═══ -->
@@ -1043,7 +1060,14 @@
               <div class="hint">Por defecto: misma cuenta. El clon se publica en la cuenta activa: <strong id="cl-dst-name" style="color:var(--ye)">—</strong>.</div>
             </div>
             <div class="field">
-              <label>ID o URL de la publicación <span class="req">*</span></label>
+              <label for="cl-search">Buscar publicación por título</label>
+              <input type="text" id="cl-search" placeholder="Ej: funda cuero iPhone 16" autocomplete="off"
+                     oninput="clDebounce(this.value)" aria-label="Buscar publicación por título">
+              <div id="cl-results" class="va-results" style="display:none"></div>
+            </div>
+            <div id="cl-elegida" style="display:none;margin-bottom:12px"></div>
+            <div class="field">
+              <label>…o pegá el ID / URL <span class="req">*</span></label>
               <input type="text" id="cl-item-id" placeholder="MLA1234567890, MLAU1234567 o URL del producto"
                      onkeydown="if(event.key==='Enter'){event.preventDefault();cloneLoad();}" aria-label="MLA1234567890, MLAU1234567 o URL del producto">
               <div class="hint">
@@ -1136,6 +1160,78 @@
       </div>
     </div>
   </div><!-- /tab-clonar -->
+
+  <!-- ═══ TAB: AGREGAR VARIANTE ═══ -->
+  <div id="tab-variante" class="tab-content">
+    <div class="card">
+      <div class="card-head"><span class="card-title">Agregar una variante reusando las fotos de otra</span></div>
+      <div class="card-body">
+        <p class="hint" style="margin-top:0">
+          Crea variantes nuevas dentro de una publicación que ya existe, copiando las fotos de una variante actual.
+          Sirve para sumar un modelo nuevo (ej. <b>iPhone 18 Pro Max</b>) sin volver a subir imágenes ni entrar a MercadoLibre.
+        </p>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="va-acct">Cuenta</label>
+            <select id="va-acct"></select>
+          </div>
+          <div class="field">
+            <label for="va-search">Buscar publicación (título, MLA o URL)</label>
+            <input type="text" id="va-search" placeholder="Ej: funda cuero iPhone 16" autocomplete="off"
+                   oninput="vaDebounce(this.value)" aria-label="Buscar publicación">
+          </div>
+        </div>
+
+        <div id="va-results" class="va-results" style="display:none"></div>
+        <div id="va-info" class="hint" style="margin-top:10px"></div>
+
+        <div id="va-config" style="display:none;margin-top:16px">
+          <div class="grid-2">
+            <div class="field">
+              <label for="va-attr">Atributo que identifica el modelo</label>
+              <select id="va-attr" onchange="varRenderPreview()"></select>
+            </div>
+            <div class="field">
+              <label for="va-origen">Copiar las fotos de</label>
+              <select id="va-origen" onchange="varRenderPreview()"></select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="va-valor">Nombre de la variante nueva</label>
+              <input type="text" id="va-valor" placeholder="iPhone 18 Pro Max" oninput="varRenderPreview()" aria-label="Nombre de la variante nueva">
+            </div>
+            <div class="field">
+              <label for="va-stock">Stock inicial de cada variante nueva</label>
+              <input type="number" id="va-stock" value="0" min="0" aria-label="Stock inicial">
+            </div>
+          </div>
+
+          <div id="va-preview" style="margin-top:14px"></div>
+
+          <div style="display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap">
+            <button class="btn primary" onclick="varCrear()" id="va-crear-btn" disabled>CREAR VARIANTES EN ML</button>
+            <span id="va-status" class="hint"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="vhToggle(event)">
+        <span class="card-title">Historial de variantes creadas
+          <span id="vh-count" style="display:none;font-size:11px;font-weight:600;background:var(--blue);color:#fff;border-radius:9px;padding:1px 7px;margin-left:6px"></span>
+        </span>
+        <span id="vh-chevron" style="color:var(--text-3);display:flex;align-items:center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </div>
+      <div class="card-body" id="vh-body" style="display:none">
+        <div id="vh-list"></div>
+      </div>
+    </div>
+  </div><!-- /tab-variante -->
 
 
 </div><!-- /pg -->
@@ -1238,11 +1334,434 @@ function ed(ev, id) {
 //  TABS
 // ══════════════════════════════════════════════
 function switchTab(id) {
-  const order = ['nueva','masiva','clonar'];
+  const order = ['nueva','masiva','clonar','variante'];
   document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', order[i] === id));
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
   if (id === 'clonar') cloneInit();
+  if (id === 'variante') { varInit(); if (!vhCargado) vhCargar(); }
+}
+
+// ══════════════════════════════════════════════
+//  AGREGAR VARIANTE (reusando fotos de otra)
+// ══════════════════════════════════════════════
+// A diferencia de "Clonar existente" —que crea una publicación nueva— esto
+// agrega variantes DENTRO de una publicación que ya está en ML, copiando los
+// picture_ids de una variante actual. Las fotos ya están cargadas en el ítem,
+// así que no se sube nada nuevo.
+let vaItem = null, vaAcct = '';
+
+async function varInit() {
+  if (!clAccounts.length) await cloneInit();
+  const sel = document.getElementById('va-acct');
+  if (sel.options.length) return;
+  clAccounts.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.id;
+    o.textContent = a.label + (a.active ? ' * activa' : '');
+    if (a.active) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function varItemId(txt) {
+  const m = String(txt || '').match(/(ML[A-Z])-?([0-9]{6,})/i);
+  return m ? (m[1] + m[2]).toUpperCase() : '';
+}
+
+// ── Historial de variantes creadas ───────────────────────────────────────
+// Vive en el SERVIDOR (variantes-historial.json), no en localStorage: así
+// sobrevive a un reload y se ve desde cualquier equipo.
+let vhLista = [], vhOpen = false, vhCargado = false;
+
+function vhToggle(e) {
+  if (e && e.target.closest('button')) return;
+  vhOpen = !vhOpen;
+  document.getElementById('vh-body').style.display = vhOpen ? '' : 'none';
+  const chev = document.getElementById('vh-chevron');
+  if (chev) chev.style.transform = vhOpen ? 'rotate(180deg)' : '';
+  if (vhOpen && !vhCargado) vhCargar();
+}
+
+let vhSeq = 0;
+async function vhCargar() {
+  // Testigo de secuencia: si dos cargas se solapan, la que llega tarde no
+  // pisa a la más nueva (antes, una respuesta vieja que fallaba borraba el
+  // historial ya renderizado).
+  const mio = ++vhSeq;
+  try {
+    const r = await fetch('/api/stockroom/variantes/historial');
+    const d = await r.json();
+    if (mio !== vhSeq) return;
+    vhLista = (d.ok && d.entradas) || [];
+    vhCargado = true;
+    vhRender();
+  } catch (e) {
+    if (mio !== vhSeq) return;
+    document.getElementById('vh-list').innerHTML =
+      '<div class="hint">No se pudo cargar: ' + esc(e.message) + '</div>';
+  }
+}
+
+function vhFecha(ts) {
+  const d = new Date(ts), p2 = n => String(n).padStart(2, '0');
+  return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+}
+
+function vhRender() {
+  const cont = document.getElementById('vh-list');
+  const badge = document.getElementById('vh-count');
+  if (badge) { badge.textContent = vhLista.length; badge.style.display = vhLista.length ? '' : 'none'; }
+  if (!vhLista.length) {
+    cont.innerHTML = '<div class="hint">Todavia no se creo ninguna variante desde aca.</div>';
+    return;
+  }
+  cont.innerHTML = vhLista.map((e, i) => {
+    const chips = (e.creadas || []).map(c =>
+      '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:2px 8px 2px 2px;margin:2px 4px 2px 0;font-size:11px">' +
+        (c.foto ? '<img src="' + esc(c.foto) + '" style="width:20px;height:20px;object-fit:cover;border-radius:10px" onerror="this.style.display=' + "'none'" + '">' : '') +
+        esc(c.etiqueta) + '</span>').join('');
+    const accion = e.revertida
+      ? '<span style="font-size:11px;color:var(--text-3)">revertida</span>'
+      : '<button class="btn" style="font-size:11px;padding:3px 10px" onclick="vhRevertir(' + i + ')">Deshacer</button>';
+    return '<div style="border-top:1px solid var(--border);padding:9px 0' + (e.revertida ? ';opacity:.55' : '') + '">' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+        '<span style="font-size:11px;color:var(--text-3)">' + vhFecha(e.ts) + '</span>' +
+        '<span style="flex:1;min-width:0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.item_title || e.item_id) + '</span>' +
+        accion +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--text-3);margin-bottom:3px">' +
+        esc(e.creadas.length + ' variante(s) · ' + (e.valor || '') + ' (copiadas de ' + (e.origen || '') + ')') + '</div>' +
+      '<div>' + chips + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// Deshacer = borrar de ML las variantes que esta entrada creo. Se hace con un
+// PUT del item mandando las variaciones que QUEDAN: ML elimina las que no
+// vienen en la lista. Es el mismo endpoint que ya usa el panel, no hace falta
+// habilitar el borrado directo de variantes en el proxy.
+async function vhRevertir(i) {
+  const e = vhLista[i];
+  if (!e || e.revertida) return;
+  const ids = (e.creadas || []).map(c => c.variation_id).filter(Boolean);
+  if (!ids.length) {
+    alert('Esta entrada no guardo los ids de las variantes creadas, asi que no se puede deshacer automaticamente.');
+    return;
+  }
+  const NL = String.fromCharCode(10);
+  if (!confirm('Se van a ELIMINAR de MercadoLibre ' + ids.length + ' variante(s) de "' + (e.item_title || e.item_id) + '":' +
+      NL + NL + e.creadas.map(c => '- ' + c.etiqueta).join(NL) + NL + NL +
+      'Las que ya tengan ventas no se pueden borrar y van a quedar.')) return;
+
+  try {
+    const r = await fetch('/api-as/' + (e.account_id || vaAcct) + '/items/' + e.item_id);
+    const it = await r.json();
+    if (!r.ok || it.error) throw new Error(it.message || 'no se pudo leer la publicacion');
+
+    const conVentas = (it.variations || []).filter(v =>
+      ids.indexOf(v.id) !== -1 && (v.sold_quantity || 0) > 0);
+    if (conVentas.length) {
+      alert('No se puede: ' + conVentas.length + ' de esas variantes ya tienen ventas. MercadoLibre no permite borrarlas.');
+      return;
+    }
+    // Quedan todas menos las creadas por esta entrada
+    const quedan = (it.variations || [])
+      .filter(v => ids.indexOf(v.id) === -1)
+      .map(v => ({ id: v.id, available_quantity: v.available_quantity || 0 }));
+    if (!quedan.length) throw new Error('quedaria sin variantes: ML no lo permite');
+
+    const r2 = await fetch('/api-as/' + (e.account_id || vaAcct) + '/items/' + e.item_id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variations: quedan }),
+    });
+    const d2 = await r2.json();
+    if (!r2.ok || d2.error) {
+      const causa = Array.isArray(d2.cause) ? d2.cause.map(c => c.message || c.code).join('; ') : '';
+      throw new Error((d2.message || d2.error || 'error') + (causa ? ' - ' + causa : ''));
+    }
+    await fetch('/api/stockroom/variantes/historial/' + encodeURIComponent(e.id) + '/revertida', { method: 'POST' });
+    await vhCargar();
+    if (vaItem && vaItem.id === e.item_id) await varLoad(e.item_id);
+    alert('Listo: se eliminaron ' + ids.length + ' variante(s).');
+  } catch (err) {
+    alert('No se pudo deshacer: ' + err.message);
+  }
+}
+
+let vaTimer = null;
+
+// Mismo comportamiento que el buscador de Vinculaciones: espera a que dejes
+// de tipear, resuelve el ID directo si pegás un MLA/URL, y si no busca por
+// título dentro de la cuenta elegida.
+function vaDebounce(q) {
+  clearTimeout(vaTimer);
+  const txt = String(q || '').trim();
+  const results = document.getElementById('va-results');
+  const directo = varItemId(txt);
+  if (directo) {                       // pegó un MLA o una URL: cargar sin buscar
+    results.style.display = 'none';
+    vaTimer = setTimeout(() => varLoad(directo), 250);
+    return;
+  }
+  if (txt.length < 3) { results.style.display = 'none'; return; }
+  vaTimer = setTimeout(() => vaBuscar(txt), 400);
+}
+
+async function vaBuscar(q) {
+  const acctId = document.getElementById('va-acct').value;
+  const acct = clAccounts.find(a => a.id === acctId);
+  const results = document.getElementById('va-results');
+  results.style.display = 'block';
+  results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-3)">Buscando...</div>';
+  if (!acct || !acct.user_id) {
+    results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--red,#dc2626)">La cuenta no tiene user_id.</div>';
+    return;
+  }
+  try {
+    const r = await fetch('/api-as/' + acctId + '/users/' + acct.user_id +
+                          '/items/search?q=' + encodeURIComponent(q) + '&limit=20');
+    const d = await r.json();
+    if (!d.results || !d.results.length) {
+      results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--text-3)">Sin resultados</div>';
+      return;
+    }
+    const r2 = await fetch('/api-as/' + acctId + '/items?ids=' + d.results.slice(0, 20).join(','));
+    const raw = await r2.json();
+    const items = Array.isArray(raw) ? raw.map(x => x.body || x).filter(x => x && x.id) : [];
+    vaRenderResultados(items);
+  } catch (e) {
+    results.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--red,#dc2626)">Error: ' + esc(e.message) + '</div>';
+  }
+}
+
+function vaRenderResultados(items) {
+  const results = document.getElementById('va-results');
+  // Sin variantes no hay fotos de variante que copiar: se marca y no se puede elegir
+  results.innerHTML = items.map(it => {
+    const nv = (it.variations || []).length;
+    const thumb = it.thumbnail
+      ? '<img src="' + esc(it.thumbnail) + '" loading="lazy" onerror="this.style.display=' + "'none'" + '">'
+      : '<div style="width:34px;height:34px;border-radius:5px;border:1px dashed var(--border);flex-shrink:0"></div>';
+    const marca = nv
+      ? '<span class="va-item-v">' + nv + ' var.</span>'
+      : '<span class="va-item-m">sin variantes</span>';
+    const attrs = nv
+      ? 'class="va-item" onclick="vaElegir(' + "'" + esc(it.id) + "'" + ')"'
+      : 'class="va-item" style="opacity:.5;cursor:not-allowed" title="Sin variantes: no hay fotos de variante para copiar"';
+    return '<div ' + attrs + '>' + thumb +
+      '<span class="va-item-t">' + esc(it.title) + '</span>' +
+      marca + '<span class="va-item-m">' + esc(it.id) + '</span></div>';
+  }).join('');
+  results.style.display = 'block';
+}
+
+// URL de una foto a partir de su picture_id. Se busca primero en el array
+// pictures del item (trae secure_url ya armada); si no está, se arma con el
+// patrón de ML usando el sufijo -I (miniatura), igual que en alibaba.html.
+function vaFotoUrl(pid) {
+  if (!pid) return '';
+  const p = (vaItem && vaItem.pictures || []).find(x => x.id === pid);
+  if (p && (p.secure_url || p.url)) return p.secure_url || p.url;
+  return 'https://http2.mlstatic.com/D_' + pid + '-I.webp';
+}
+
+function vaElegir(id) {
+  document.getElementById('va-results').style.display = 'none';
+  varLoad(id);
+}
+
+async function varLoad(idForzado) {
+  const id = idForzado || varItemId(document.getElementById('va-search').value);
+  const info = document.getElementById('va-info');
+  if (!id) { info.textContent = 'Busca una publicacion por titulo, o pega su MLA / URL.'; return; }
+  vaAcct = document.getElementById('va-acct').value;
+  info.textContent = 'Cargando...';
+  try {
+    const r = await fetch('/api-as/' + vaAcct + '/items/' + id);
+    const it = await r.json();
+    if (!r.ok || it.error) throw new Error(it.message || it.error || 'no se pudo leer');
+    if (!it.variations || !it.variations.length)
+      throw new Error('Esta publicacion no tiene variantes: no hay fotos de variante para copiar.');
+    vaItem = it;
+    const foto = it.thumbnail || ((it.pictures || [])[0] || {}).secure_url || '';
+    info.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        (foto ? '<img src="' + esc(foto) + '" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display=' + "'none'" + '">' : '') +
+        '<div style="min-width:0">' +
+          '<div style="font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(it.title) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-3)">' + it.variations.length +
+            ' variantes &middot; ' + (it.pictures || []).length + ' fotos &middot; ' + esc(it.status) + '</div>' +
+        '</div>' +
+      '</div>';
+    varBuildSelectors();
+    document.getElementById('va-config').style.display = '';
+    varRenderPreview();
+  } catch (e) {
+    vaItem = null;
+    document.getElementById('va-config').style.display = 'none';
+    info.textContent = 'Error: ' + e.message;
+  }
+}
+
+function varBuildSelectors() {
+  // Atributos que participan de la combinacion (ej. COLOR + PATTERN_NAME)
+  const ids = [];
+  for (const v of vaItem.variations)
+    for (const a of (v.attribute_combinations || []))
+      if (a.id && ids.indexOf(a.id) === -1) ids.push(a.id);
+
+  const selA = document.getElementById('va-attr');
+  selA.innerHTML = ids.map(id => {
+    let nombre = id;
+    for (const v of vaItem.variations) {
+      const a = (v.attribute_combinations || []).find(x => x.id === id);
+      if (a && a.name) { nombre = a.name; break; }
+    }
+    return '<option value="' + esc(id) + '">' + esc(nombre) + ' (' + esc(id) + ')</option>';
+  }).join('');
+  // PATTERN_NAME es donde este catalogo guarda el modelo de telefono
+  if (ids.indexOf('PATTERN_NAME') !== -1) selA.value = 'PATTERN_NAME';
+
+  varBuildOrigen();
+  selA.onchange = () => { varBuildOrigen(); varRenderPreview(); };
+}
+
+function varBuildOrigen() {
+  const attr = document.getElementById('va-attr').value;
+  const vistos = [];
+  for (const v of vaItem.variations) {
+    const a = (v.attribute_combinations || []).find(x => x.id === attr);
+    const val = a ? a.value_name : '(sin valor)';
+    if (vistos.indexOf(val) === -1) vistos.push(val);
+  }
+  document.getElementById('va-origen').innerHTML =
+    vistos.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
+}
+
+// Las variantes a crear = las del valor ORIGEN, con el valor nuevo. Si la
+// publicacion combina COLOR + modelo, se crea una por cada color existente.
+function varPlan() {
+  const attr   = document.getElementById('va-attr').value;
+  const origen = document.getElementById('va-origen').value;
+  const nuevo  = document.getElementById('va-valor').value.trim();
+  const stock  = Math.max(0, parseInt(document.getElementById('va-stock').value) || 0);
+  if (!nuevo) return { error: 'Escribi el nombre de la variante nueva.' };
+
+  const base = vaItem.variations.filter(v =>
+    (v.attribute_combinations || []).some(a => a.id === attr && a.value_name === origen));
+  if (!base.length) return { error: 'No encontre variantes con ese valor de origen.' };
+
+  const clave = combo => combo.map(a => a.id + '=' + a.value_name).sort().join('|');
+  const existentes = vaItem.variations.map(v => clave(v.attribute_combinations || []));
+
+  const yaExisten = [], nuevas = [];
+  for (const v of base) {
+    const combo = (v.attribute_combinations || []).map(a =>
+      a.id === attr ? { id: a.id, value_name: nuevo } : { id: a.id, value_name: a.value_name });
+    const etiqueta = combo.map(a => a.value_name).join(' / ');
+    // No duplicar: si esa combinacion ya existe en la publicacion, se omite
+    if (existentes.indexOf(clave(combo)) !== -1) { yaExisten.push(etiqueta); continue; }
+    nuevas.push({
+      etiqueta,
+      fotos: (v.picture_ids || []).length,
+      foto: vaFotoUrl((v.picture_ids || [])[0]),
+      payload: {
+        attribute_combinations: combo,
+        price: v.price || vaItem.price,
+        available_quantity: stock,
+        picture_ids: (v.picture_ids || []).map(String),
+      },
+    });
+  }
+  return { nuevas, yaExisten, attr, origen, nuevo };
+}
+
+function varRenderPreview() {
+  const cont = document.getElementById('va-preview');
+  const btn  = document.getElementById('va-crear-btn');
+  if (!vaItem) { cont.innerHTML = ''; btn.disabled = true; return; }
+  const p = varPlan();
+  if (p.error) { cont.innerHTML = '<div class="hint">' + esc(p.error) + '</div>'; btn.disabled = true; return; }
+
+  const sinFotos = p.nuevas.filter(x => x.fotos === 0).length;
+  // Con la foto al lado se verifica de un vistazo que el color y el modelo
+  // que se van a crear son los correctos, sin abrir MercadoLibre.
+  const filas = p.nuevas.map(x =>
+    '<div style="display:flex;align-items:center;gap:9px;padding:5px 0;border-top:1px solid var(--border)">' +
+      (x.foto
+        ? '<img src="' + esc(x.foto) + '" loading="lazy" style="width:38px;height:38px;object-fit:cover;border-radius:5px;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display=' + "'none'" + '">'
+        : '<div style="width:38px;height:38px;border-radius:5px;border:1px dashed var(--red,#dc2626);flex-shrink:0"></div>') +
+      '<span style="flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(x.etiqueta) + '</span>' +
+      '<span style="font-size:11px;color:' + (x.fotos ? 'var(--text-3)' : 'var(--red,#dc2626)') + ';white-space:nowrap">' +
+        (x.fotos ? x.fotos + ' foto(s)' : 'sin fotos') + '</span>' +
+    '</div>').join('');
+
+  cont.innerHTML =
+    '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg)">' +
+    '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);margin-bottom:8px">' +
+      'Se van a crear ' + p.nuevas.length + ' variante(s)</div>' +
+    (p.nuevas.length ? '<div style="margin-bottom:4px">' + filas + '</div>'
+                     : '<div class="hint">Nada para crear.</div>') +
+    (p.yaExisten.length ? '<div class="hint" style="margin-top:6px">Ya existen y se omiten: ' + esc(p.yaExisten.join(', ')) + '</div>' : '') +
+    (sinFotos ? '<div class="hint" style="margin-top:6px;color:var(--red,#dc2626)">' + sinFotos + ' quedarian sin fotos: elegi otro origen.</div>' : '') +
+    '<div class="hint" style="margin-top:8px">Todavia no se escribio nada en MercadoLibre.</div>' +
+    '</div>';
+  btn.disabled = p.nuevas.length === 0;
+}
+
+async function varCrear() {
+  const p = varPlan();
+  if (p.error || !p.nuevas.length) return;
+  const NL = String.fromCharCode(10);
+  const resumen = p.nuevas.map(x => '- ' + x.etiqueta).join(NL);
+  const aviso = 'Se van a crear ' + p.nuevas.length + ' variante(s) en "' + vaItem.title + '":' +
+    NL + NL + resumen + NL + NL +
+    'Esto escribe en MercadoLibre. Borrar una variante despues NO se puede desde aca.';
+  if (!confirm(aviso)) return;
+
+  const btn = document.getElementById('va-crear-btn');
+  const st  = document.getElementById('va-status');
+  btn.disabled = true;
+  let ok = 0; const errores = [], creadas = [];
+  for (const n of p.nuevas) {
+    st.textContent = 'Creando ' + (ok + errores.length + 1) + ' de ' + p.nuevas.length + '...';
+    try {
+      const r = await fetch('/api-as/' + vaAcct + '/items/' + vaItem.id + '/variations', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(n.payload),
+      });
+      const d = await r.json();
+      if (!r.ok || d.error) {
+        const causa = Array.isArray(d.cause) ? d.cause.map(c => c.message || c.code).join('; ') : '';
+        throw new Error((d.message || d.error || 'error') + (causa ? ' - ' + causa : ''));
+      }
+      // ML devuelve la variante creada con su id: se guarda para poder deshacerla
+      creadas.push({ etiqueta: n.etiqueta, variation_id: d.id || (d.variations && d.variations[0] && d.variations[0].id) || null, foto: n.foto || '' });
+      ok++;
+    } catch (e) { errores.push(n.etiqueta + ': ' + e.message); }
+  }
+
+  // Registro en el servidor: sin esto no queda rastro de qué se creó
+  if (creadas.length) {
+    try {
+      await fetch('/api/stockroom/variantes/historial', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ts: Date.now(), account_id: vaAcct, item_id: vaItem.id, item_title: vaItem.title,
+          atributo: p.attr, valor: p.nuevo, origen: p.origen, creadas,
+        }),
+      });
+      await vhCargar();
+    } catch (e) {
+      alert('Las variantes se crearon, pero NO se pudo guardar el historial: ' + e.message);
+    }
+  }
+  st.innerHTML = ok + ' creada(s)' +
+    (errores.length ? ' &middot; <span style="color:var(--red,#dc2626)">' + errores.length + ' con error</span>' : '');
+  if (errores.length) alert('Errores:' + NL + errores.join(NL));
+  btn.disabled = false;
+  await varLoad();   // releer de ML para ver el resultado real
 }
 
 // ══════════════════════════════════════════════
@@ -1346,6 +1865,98 @@ async function fetchFamilyItems(srcId, siteId, familyId, status) {
   return items;
 }
 
+// ── Buscador de publicación para clonar ─────────────────────────────────
+// Mismo patrón que la pestaña "Agregar variante": espera a que dejes de
+// tipear y busca por título en la cuenta de origen. Muestra la foto de cada
+// resultado para no tener que abrir MercadoLibre a verificar cuál es.
+let clTimer = null;
+
+function clDebounce(q) {
+  clearTimeout(clTimer);
+  const txt = String(q || '').trim();
+  const box = document.getElementById('cl-results');
+  if (txt.length < 3) { box.style.display = 'none'; return; }
+  clTimer = setTimeout(() => clBuscar(txt), 400);
+}
+
+async function clBuscar(q) {
+  const acctId = document.getElementById('cl-src-acct').value;
+  const acct = clAccounts.find(a => a.id === acctId);
+  const box = document.getElementById('cl-results');
+  box.style.display = 'block';
+  box.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--t3)">Buscando...</div>';
+  if (!acct || !acct.user_id) {
+    box.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--rd,#dc2626)">La cuenta no tiene user_id.</div>';
+    return;
+  }
+  try {
+    const r = await fetch('/api-as/' + acctId + '/users/' + acct.user_id +
+                          '/items/search?q=' + encodeURIComponent(q) + '&limit=20');
+    const d = await r.json();
+    if (!d.results || !d.results.length) {
+      box.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--t3)">Sin resultados</div>';
+      return;
+    }
+    const r2 = await fetch('/api-as/' + acctId + '/items?ids=' + d.results.slice(0, 20).join(','));
+    const raw = await r2.json();
+    const items = Array.isArray(raw) ? raw.map(x => x.body || x).filter(x => x && x.id) : [];
+    box.innerHTML = items.map(it => {
+      const nv = (it.variations || []).length;
+      // Con variantes se muestra la foto de la PRIMERA variante: es la que
+      // distingue el color, no la de portada.
+      let foto = it.thumbnail || '';
+      if (nv && it.variations[0].picture_ids && it.variations[0].picture_ids[0]) {
+        const pid = it.variations[0].picture_ids[0];
+        const p = (it.pictures || []).find(x => x.id === pid);
+        foto = (p && (p.secure_url || p.url)) || 'https://http2.mlstatic.com/D_' + pid + '-I.webp';
+      }
+      const thumb = foto
+        ? '<img src="' + esc(foto) + '" loading="lazy" onerror="this.style.display=' + "'none'" + '">'
+        : '<div style="width:34px;height:34px;border-radius:5px;border:1px dashed var(--b2);flex-shrink:0"></div>';
+      return '<div class="va-item" onclick="clElegir(' + "'" + esc(it.id) + "'" + ')">' + thumb +
+        '<span class="va-item-t">' + esc(it.title) + '</span>' +
+        (nv ? '<span class="va-item-v">' + nv + ' var.</span>' : '') +
+        '<span class="va-item-m">' + esc(it.id) + '</span></div>';
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--rd,#dc2626)">Error: ' + esc(e.message) + '</div>';
+  }
+}
+
+function clElegir(id) {
+  document.getElementById('cl-results').style.display = 'none';
+  document.getElementById('cl-item-id').value = id;
+  cloneLoad();
+}
+
+// Tarjeta con la publicación elegida (foto + título), para confirmar de un
+// vistazo que es la correcta antes de configurar el clon.
+function clMostrarElegida(item) {
+  const box = document.getElementById('cl-elegida');
+  if (!box) return;
+  if (!item) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  let foto = item.thumbnail || '';
+  const v0 = (item.variations || [])[0];
+  if (v0 && v0.picture_ids && v0.picture_ids[0]) {
+    const pid = v0.picture_ids[0];
+    const p = (item.pictures || []).find(x => x.id === pid);
+    foto = (p && (p.secure_url || p.url)) || 'https://http2.mlstatic.com/D_' + pid + '-I.webp';
+  } else if ((item.pictures || [])[0]) {
+    foto = item.pictures[0].secure_url || item.pictures[0].url || foto;
+  }
+  box.style.display = '';
+  box.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--b2);border-radius:6px;background:var(--bg)">' +
+      (foto ? '<img src="' + esc(foto) + '" style="width:46px;height:46px;object-fit:cover;border-radius:6px;border:1px solid var(--b2);flex-shrink:0" onerror="this.style.display=' + "'none'" + '">' : '') +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(item.title || '') + '</div>' +
+        '<div style="font-size:10px;color:var(--t3)">' + esc(item.id || '') +
+          ((item.variations || []).length ? ' &middot; ' + item.variations.length + ' variantes' : '') +
+          ((item.pictures || []).length ? ' &middot; ' + item.pictures.length + ' fotos' : '') + '</div>' +
+      '</div>' +
+    '</div>';
+}
+
 async function cloneLoad() {
   const srcId = document.getElementById('cl-src-acct').value;
   const raw = document.getElementById('cl-item-id').value;
@@ -1362,6 +1973,7 @@ async function cloneLoad() {
   document.getElementById('cl-edit-card').classList.add('hidden');
   document.getElementById('cl-result-card').classList.add('hidden');
   clSrcItem = null;
+  clMostrarElegida(null);
   clSrcFamily = null;
 
   try {
@@ -1413,6 +2025,7 @@ async function cloneLoad() {
     } catch(e) {}
 
     clSrcItem = item;
+    clMostrarElegida(item);
     clSrcDescription = desc;
     clSrcFamily = familyId ? { allItems, familyId } : null;
 
@@ -1846,22 +2459,54 @@ function onCatSearch(val) {
 }
 
 /* Combobox: el árbol vive en un popover anclado al input — no empuja el formulario */
+// Ancla original del desplegable, para devolverlo al cerrarse.
+let catPopHome = null;
+
+function posCatPop() {
+  const pop = document.getElementById('cat-pop');
+  const inp = document.getElementById('f-cat-search');
+  if (!pop || !inp || pop.classList.contains('hidden') || pop.parentElement !== document.body) return;
+  const r = inp.getBoundingClientRect();
+  pop.style.position = 'absolute';
+  pop.style.width = r.width + 'px';
+  pop.style.left = (r.left + window.scrollX) + 'px';
+  const alto = pop.offsetHeight || 360;
+  const libreAbajo = window.innerHeight - r.bottom - 8;
+  // Si no entra abajo pero sí arriba, se abre hacia arriba
+  pop.style.top = (alto > libreAbajo && r.top - 8 > libreAbajo)
+    ? Math.max(0, r.top + window.scrollY - alto - 6) + 'px'
+    : (r.bottom + window.scrollY + 6) + 'px';
+}
+
 function openCatPop() {
   if (selCat) return;
   const pop = document.getElementById('cat-pop');
   if (!pop || !pop.classList.contains('hidden')) return;
+  if (pop.parentElement !== document.body) {
+    catPopHome = pop.parentElement;              // para restaurarlo al cerrar
+    document.body.appendChild(pop);
+  }
   pop.classList.remove('hidden');
   document.getElementById('f-cat-search').setAttribute('aria-expanded', 'true');
   if (!catCurrent.length && !catPath.length) { catCurrent = ROOT_CATS; renderCatList(); }
   renderBreadcrumb();
+  posCatPop();
 }
 function closeCatPop() {
   const pop = document.getElementById('cat-pop');
   if (!pop || pop.classList.contains('hidden')) return;
   pop.classList.add('hidden');
+  pop.removeAttribute('style');                  // limpiar el posicionado
+  if (catPopHome && pop.parentElement === document.body) catPopHome.appendChild(pop);
   document.getElementById('f-cat-search').setAttribute('aria-expanded', 'false');
 }
-document.addEventListener('click', e => { if (!e.target.closest('.cat-combo')) closeCatPop(); });
+// Al estar colgado del body ya no es descendiente de .cat-combo: hay que
+// contemplarlo aparte o el primer clic dentro del desplegable lo cerraria.
+document.addEventListener('click', e => {
+  if (!e.target.closest('.cat-combo') && !e.target.closest('#cat-pop')) closeCatPop();
+});
+window.addEventListener('scroll', posCatPop, true);
+window.addEventListener('resize', posCatPop);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCatPop(); });
 
 // Intentar obtener info de una categoría por ID (nombre, path, hijos)

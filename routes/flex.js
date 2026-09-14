@@ -6,7 +6,10 @@ const { spawn } = require('child_process');
 const { json } = require('../lib/http');
 const { parseMultipart } = require('../lib/files');
 
-const FLEX_TARIFFS  = { caba: 4490, gba_cerca: 6490, gba_lejos: 8490 };
+/* gba_lejos pasó de $8.490 a $8.690 (la suba de junio 2026, visible en los
+   resúmenes: desde julio no aparece ni una entrega a $8.490). Con el valor
+   viejo el informe de costos de Flex subestimaba $200 por envío. */
+const FLEX_TARIFFS  = { caba: 4490, gba_cerca: 6490, gba_lejos: 8690 };
 const FLEX_ZONES_PATH = path.join(__dirname, '..', 'flex_zones.json');
 
 function loadFlexZones() {

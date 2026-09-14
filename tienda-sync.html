@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <!-- Anti-FOUC: tema guardado antes del primer paint -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
@@ -16,7 +16,7 @@
 .soon-tag {
   display: inline-block; font-size: 9px; font-weight: 700;
   padding: 1px 6px; border-radius: 100px;
-  background: var(--yellow-light); color: #8a5c00;
+  background: var(--yellow-light); color: var(--yellow-ink);
   letter-spacing: .04em; text-transform: uppercase;
   vertical-align: middle; margin-left: 4px;
 }
@@ -42,7 +42,7 @@
 .log-info  { color: #6b7280; }
 .log-ok    { color: #34d399; }
 .log-warn  { color: #fbbf24; }
-.log-err   { color: #f87171; }
+.log-err   { color: var(--red-ink); }
 .log-dim   { color: #374151; }
 
 /* ── Sync button ────────────────────────────────────────── */
@@ -99,7 +99,7 @@
 
 /* ── Stock colors ───────────────────────────────────────── */
 .stock-ok    { color: var(--green-ink); font-weight: 700; }
-.stock-low   { color: #d97706;      font-weight: 700; }
+.stock-low   { color: var(--yellow-ink);      font-weight: 700; }
 .stock-empty { color: var(--red);   font-weight: 700; }
 
 /* ── Status badge inside header ─────────────────────────── */

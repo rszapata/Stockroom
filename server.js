@@ -58,7 +58,17 @@ const { mpCreatePreference, mpGetPaymentById, mpSearchPaymentByExternalRef, mpGe
 const firebaseAuth = require('./lib/firebase-admin');
 const { createMpHelpers } = require('./lib/mp-helpers');
 const { _detectarMarca, _parsePrecioUsd, _sugerirCategoriaPropia, parseListaProveedorWhatsApp } = require('./lib/whatsapp-parser');
-const { buildProductMetaDescription, buildProductJsonLd } = require('./lib/seo');
+const { buildProductMetaDescription, buildProductJsonLd, buildProductTitle,
+        buildProductGroupJsonLd, buildBreadcrumbJsonLd, wzCleanTitle } = require('./lib/seo');
+const { buildCatalogSeo, catalogSitemapUrls } = require('./lib/seo-catalogo');
+const { buildMerchantFeedXml } = require('./lib/feed');
+const { productCardHtmlSSR, buildHomeBestsellersSSR, buildHomeCategorySSR, esMalla, esProtector, esFunda, esCombo,
+        buildCatalogGridSSR } = require('./lib/ssr-cards');
+const { analizar: analizarPublicaciones } = require('./lib/analizador');
+
+// Estado del análisis de publicaciones en curso (ver /analizador/run). Vive en
+// memoria a propósito: si el server reinicia, el trabajo se perdió igual.
+let _analizadorJob = { corriendo: false, fase: 'inactivo', hechas: 0, total: 0, detalle: '', error: null };
 const { createSystemStatus, formatStatusForTelegram } = require('./lib/system-status');
 
 require('./lib/dns-cache');
@@ -67,11 +77,22 @@ require('./lib/dns-cache');
 const handlePdfResumenes   = require('./routes/pdf-resumenes');
 const _mkHandlePreguntas   = require('./routes/preguntas');
 const _mkHandleBackup      = require('./routes/backup');
+const { loadVariantesHistorial: db_varHistLoad, saveVariantesHistorial: db_varHistSave } = require('./lib/json-store');
+const { loadBannerFotos: db_bannerLoad, saveBannerFotos: db_bannerSave } = require('./lib/json-store');
 const _mkHandleAlibaba     = require('./routes/alibaba');
 const _mkHandlePedidosCost = require('./routes/pedidos-costos');
 const _mkHandleVinculaciones = require('./routes/vinculaciones');
 const _mkHandleFlex        = require('./routes/flex');
 const _mkHandleDespachos   = require('./routes/despachos');
+const { crearCorreoClient } = require('./lib/correo-client');
+/* Perezoso a propósito: el loader de .env corre más abajo en este mismo
+   archivo, así que crear el cliente acá lo dejaba sin credenciales
+   (configurado:false) y la tienda caía al respaldo para siempre. */
+let _correoClient = null;
+const correoClient = {
+  get configurado() { return (_correoClient || (_correoClient = crearCorreoClient())).configurado; },
+  cotizar(...args)  { return (_correoClient || (_correoClient = crearCorreoClient())).cotizar(...args); },
+};
 
 const PORT    = parseInt(process.env.PORT) || 3000;
 // Bind to 127.0.0.1 by default — only the local machine (and cloudflared) can reach it.
@@ -544,6 +565,7 @@ function _saveSessions() {
 const _loginAttempts = new Map(); // ip -> { count, since } — rate limiting login
 let _statsCache = null;          // { data, expiry } — global stats agregadas
 let _statsRefreshRunning = false;
+const _homeReviewsCache = new Map(); // ids-key -> { data, at } (ver /api/tienda/home-reviews)
 async function _refreshStatsCache() {
   if (_statsRefreshRunning) return;
   _statsRefreshRunning = true;
@@ -685,9 +707,12 @@ function isAuthed(req) {
 // auth gate lo redirija a /login.html — fetch() sigue redirects por defecto,
 // así que sin esto la respuesta termina siendo el HTML del login y
 // r.json() explota con "Unexpected token < in JSON at position 0".
-function fetchInterno(path) {
+// `opts` permite POST con cuerpo JSON (lo usa el refresco automático de
+// cobros, que reutiliza /cobro/ml tal cual en vez de duplicar el cálculo).
+function fetchInterno(path, opts = {}) {
   return fetch(`http://127.0.0.1:${PORT || 3000}${path}`, {
-    headers: { 'X-Internal-Token': INTERNAL_TOKEN },
+    ...opts,
+    headers: { 'X-Internal-Token': INTERNAL_TOKEN, ...(opts.headers || {}) },
   });
 }
 
@@ -827,6 +852,28 @@ function getProductCache() {
   return items;
 }
 
+/* Misma lista de productos que ve el público en /api/tienda/productos: la
+   cache de ML MENOS lo que el admin marcó "oculto", CON sus overrides de
+   título/descripción/imagen aplicados, MÁS los productos propios (no-ML)
+   activos. getProductCache() sola no alcanza — es la cache cruda de ML sin
+   ninguna de esas tres capas; usarla directamente (como hacía la SSR de
+   home/catálogo al principio) podía mostrarle a un bot un producto que el
+   admin ocultó, o el título viejo de uno que editó, y nunca mostraba los
+   productos propios. Extraída del handler de /api/tienda/productos para
+   que la SSR (ver lib/ssr-cards.js) use exactamente los mismos datos. */
+async function getPublicProductList() {
+  let overridesMap = {};
+  try { overridesMap = await db.getAllProductOverrides(); } catch {}
+  let productos = getProductCache()
+    .filter(p => !(overridesMap[p.id] && overridesMap[p.id].oculto))
+    .map(p => applyProductOverride(p, overridesMap[p.id]));
+  try {
+    const propios = await db.getProductosPropios({ soloActivos: true });
+    productos = productos.concat(propios.map(localProductoToItem));
+  } catch {}
+  return productos;
+}
+
 // Cotiza el envío de un item para un CP: caché persistente (6h) y, si no hay,
 // ML en vivo (probando cada cuenta hasta la dueña de la publicación). Devuelve
 // { zip_code, options:[{id,name,cost,free,type,estimate}] } o null si no se
@@ -856,6 +903,10 @@ async function quoteShipping(itemId, cp) {
       cost:     typeof opt.cost === 'number' ? opt.cost : null,
       free:     opt.cost === 0,
       type:     opt.shipping_option_type || '',
+      /* same_day | next_day | express | slow | standard. Es lo que dice si el
+         envío en el día llega a ese CP: ML lo devuelve donde hay cobertura y
+         lo omite donde no. La tienda lo usa para decidir si ofrece Flex. */
+      metodo:   opt.shipping_method_type || '',
       estimate: formatDeliveryEstimate(opt.estimated_delivery_time),
     })).filter(o => o.cost !== null),
   };
@@ -870,8 +921,18 @@ async function quoteShipping(itemId, cp) {
 // el costo real de ML cacheado). Nunca rechaza un precio legítimo (la tabla
 // fija y las cotizaciones reales siempre pasan); bloquea ceros/undercuts en
 // métodos pagos. Devuelve el precio saneado o lanza Error('shipping_invalido').
-const SHIP_FIXED = [5000, 6500, 8500];   // tabla del checkout (flex/correo)
+/* El piso más bajo es el del reparto propio en CABA. Salió de los resúmenes
+   reales de la logística (ver Stockroom/scripts/flex-tarifas.js): $4.490. Con
+   el 5000 anterior, un envío Flex legítimo a CABA se rechazaba por
+   "shipping_invalido" — el checkout cobraba menos que el piso del validador. */
+const SHIP_FIXED = [4490, 6490, 8690, 9990];   // tramos reales de Flex + Correo
 const SHIP_MAX   = 20000;
+/* Umbral de envío gratis. Tiene que coincidir con WZ_ENVIO_GRATIS_MIN de
+   tienda/components/cart.js: el front decide qué mostrar y el server qué
+   cobrar, y si se separan el cliente ve un precio y paga otro. */
+const ENVIO_GRATIS_MIN = 33000;
+// Caché de cotizaciones de Correo por CP (ver /api/tienda/envio-correo).
+const _correoCache = new Map();
 async function resolveShippingPrice(envio, cp, orderItems) {
   let precio = Math.max(0, Math.min(SHIP_MAX, parseFloat(envio?.precio) || 0));
   const tag = String(envio?.empresa || envio?.nombre || envio?.metodo || '').toLowerCase();
@@ -1005,7 +1066,8 @@ const server = http.createServer((req, res) => {
       pathname.startsWith('/uploads/videos/') ||
       pathname.startsWith('/uploads/resenas/') ||
       pathname === '/robots.txt' ||
-      pathname === '/sitemap.xml';
+      pathname === '/sitemap.xml' ||
+      pathname === '/feed.xml';
     if (!isPublic) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not found');
@@ -1032,6 +1094,18 @@ const server = http.createServer((req, res) => {
       'Allow: /tienda/',
       'Allow: /uploads/',
       'Allow: /sitemap.xml',
+      'Allow: /feed.xml',
+      /* Búsqueda interna y rangos de precio: combinaciones infinitas, ningún
+         valor de búsqueda propio — ya van con noindex en el HTML (ver
+         seo-catalogo.js), esto además evita que Google gaste rastreo en
+         pedirlas. Son más específicas que "Allow: /tienda/" (path más largo
+         gana), así que sólo bloquean estas combinaciones puntuales, no el
+         catálogo entero. cat= y compat= NO se tocan: esas sí son búsquedas
+         reales con canónica propia. */
+      'Disallow: /tienda/catalogo.html?*q=',
+      'Disallow: /tienda/catalogo.html?*precio_min=',
+      'Disallow: /tienda/catalogo.html?*precio_max=',
+      'Disallow: /tienda/catalogo.html?*orden=',
       'Disallow: /',
       '', 'Sitemap: https://wzmallas.com/sitemap.xml',
     ].join('\n'));
@@ -1048,24 +1122,63 @@ const server = http.createServer((req, res) => {
         const products = getProductCache();
         const base = 'https://wzmallas.com/tienda';
         const now  = new Date().toISOString().slice(0, 10);
+        /* Sin changefreq ni priority: Google los ignora desde hace años y eran
+           la mitad del peso del archivo. */
         const staticUrls = [
-          { loc: base + '/',              priority: '1.0', freq: 'daily'   },
-          { loc: base + '/catalogo.html', priority: '0.9', freq: 'daily'   },
+          { loc: base + '/' },
+          { loc: base + '/catalogo.html' },
+          /* Las legales también van: Merchant Center las quiere accesibles y
+             fuera del pie de página no reciben ningún enlace. */
+          { loc: base + '/quienes-somos.html' },
+          { loc: base + '/contacto.html' },
+          { loc: base + '/preguntas-frecuentes.html' },
+          { loc: base + '/envios-y-plazos.html' },
+          { loc: base + '/cambios-y-devoluciones.html' },
+          { loc: base + '/terminos-condiciones.html' },
+          { loc: base + '/politica-privacidad.html' },
+          { loc: base + '/politica-cookies.html' },
+          { loc: base + '/arrepentimiento.html' },
+          /* Categorías y dispositivos: ahora que cada uno tiene canónica propia
+             tiene sentido declararlos. Son las páginas que compiten por las
+             búsquedas de intención media ("fundas de cuero para iPhone"), que es
+             donde una tienda chica le puede ganar a un marketplace — y las que
+             menos enlaces internos reciben fuera del menú. */
+          ...catalogSitemapUrls().map(loc => ({ loc })),
         ];
+        /* lastmod real por publicación. Antes las 387 URLs llevaban la fecha de
+           generación: como el sitemap se arma en cada request, eso decía "todo
+           cambió hoy" todos los días y Google termina ignorando la señal. */
+        const fecha = v => {
+          const d = v ? new Date(v) : null;
+          return (d && !isNaN(d)) ? d.toISOString().slice(0, 10) : now;
+        };
         const productUrls = products.slice(0, 2000).map(p => ({
           loc: `${base}/producto.html?id=${encodeURIComponent(p.id)}`,
-          priority: (p.sold_quantity || 0) > 50 ? '0.8' : '0.6',
-          freq: 'weekly',
+          mod: fecha(p.last_updated),
         }));
         const xml = ['<?xml version="1.0" encoding="UTF-8"?>',
           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
           ...[...staticUrls, ...productUrls].map(u =>
-            `  <url><loc>${u.loc}</loc><lastmod>${now}</lastmod><changefreq>${u.freq}</changefreq><priority>${u.priority}</priority></url>`
+            `  <url><loc>${u.loc}</loc><lastmod>${u.mod || now}</lastmod></url>`
           ), '</urlset>'].join('\n');
         res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
         res.end(xml);
       } catch(e) { res.writeHead(500); res.end('Error'); }
     })();
+    return;
+  }
+
+  // ── feed.xml para Google Merchant Center ────────────────────────────────
+  // Sin esto no hay fichas gratuitas de Shopping: las cuatro rutas habituales
+  // (feed.xml, merchant.xml, google-feed.xml, api/tienda/feed) daban 404. Se
+  // genera desde la base local (getProductCache), no en vivo contra ML — ver
+  // lib/feed.js.
+  if (pathname === '/feed.xml' || pathname === '/tienda/feed.xml') {
+    try {
+      const xml = buildMerchantFeedXml(getProductCache());
+      res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+      res.end(xml);
+    } catch (e) { res.writeHead(500); res.end('Error'); }
     return;
   }
 
@@ -1225,22 +1338,9 @@ const server = http.createServer((req, res) => {
       (async () => { try {
       const params  = new URL(req.url, 'http://localhost').searchParams;
 
-      // Aplicar capa de personalización (overrides admin Tienda):
-      // oculta los productos marcados "oculto" y mergea título/descripción/
-      // imagen de portada/video/destacado custom sobre el ítem de ML.
-      let overridesMap = {};
-      try { overridesMap = await db.getAllProductOverrides(); } catch {}
-      let productos = getProductCache()
-        .filter(p => !(overridesMap[p.id] && overridesMap[p.id].oculto))
-        .map(p => applyProductOverride(p, overridesMap[p.id]));
-
-      // Mezclar productos propios (no-ML, alta manual / proveedor) — solo
-      // los activos se muestran al público. Conviven con el catálogo de ML
-      // porque tienen el mismo "shape" de ítem (ver localProductoToItem).
-      try {
-        const propios = await db.getProductosPropios({ soloActivos: true });
-        productos = productos.concat(propios.map(localProductoToItem));
-      } catch {}
+      // Overrides (oculto/título/descripción/imagen) + productos propios
+      // mezclados — ver getPublicProductList().
+      let productos = await getPublicProductList();
 
       // Filtro por categoría tienda — mlCat() usa wz_categoria_fija para productos propios
       // y regex sobre título para productos de ML
@@ -1331,8 +1431,15 @@ const server = http.createServer((req, res) => {
         'parent_item_id','domain_id','catalog_product_id','sub_status','warranty',
         'listing_source','start_time','stop_time','end_time','expiration_time',
         'date_created','last_updated','buying_mode','listing_type_id','site_id',
-        'family_name','condition','location','shipping','descriptions','video_id',
-        'accepts_mercadopago','thumbnail_id','base_price','original_price','currency_id'];
+        'family_name','condition','location','shipping','descriptions',
+        /* video_id NO se borra: es el video que el vendedor vinculó en la
+           publicación de ML y la ficha lo muestra en la galería. Es un id de
+           YouTube, once caracteres: no pesa nada. */
+        // original_price NO se borra: la tarjeta del catálogo muestra el precio
+        // ancla tachado y el "% OFF" a partir de él. Solo viene cuando la
+        // publicación tiene un descuento cargado en ML; si no, la tarjeta no
+        // dibuja ni la insignia ni el ancla.
+        'accepts_mercadopago','thumbnail_id','base_price','currency_id'];
       let safePaged = paged.map(p => {
         const out = { ...p };
         for (const f of STRIP_FIELDS) delete out[f];
@@ -1658,7 +1765,35 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // ── POST /api/tienda/admin/productos/:id/video ────────────
+    /* Saca un cuadro del video y lo guarda como .jpg al lado del archivo.
+   Devuelve la ruta pública, o null si no se pudo (sin ffmpeg, video corto,
+   formato raro). Nunca lanza: la subida del video no depende de esto. */
+function generarPosterVideo(rutaVideo) {
+  return new Promise(resolve => {
+    const salida = rutaVideo.replace(/\.[^.]+$/, '') + '.jpg';
+    /* -ss 0.5 se saltea el arranque, que suele ser negro o un fundido, y el
+       filtro `thumbnail` elige el cuadro más representativo del tramo en vez
+       del primero que encuentre. 640px de ancho alcanza: se muestra a 72px en
+       la tira y como póster del reproductor. */
+    const args = ['-loglevel', 'error', '-ss', '0.5', '-i', rutaVideo,
+                  '-vf', 'thumbnail,scale=640:-2', '-frames:v', '1',
+                  '-q:v', '4', '-y', salida];
+    let listo = false;
+    const fin = ok => { if (listo) return; listo = true; resolve(ok ? salida : null); };
+    try {
+      const p = spawn('ffmpeg', args, { stdio: 'ignore' });
+      // Tope de tiempo: un video dañado puede dejar a ffmpeg colgado.
+      const reloj = setTimeout(() => { try { p.kill('SIGKILL'); } catch {} fin(false); }, 20000);
+      p.on('error', () => { clearTimeout(reloj); fin(false); });
+      p.on('close', code => {
+        clearTimeout(reloj);
+        fin(code === 0 && fs.existsSync(salida) && fs.statSync(salida).size > 0);
+      });
+    } catch { fin(false); }
+  });
+}
+
+// ── POST /api/tienda/admin/productos/:id/video ────────────
     // Asigna un video al producto. 3 fuentes posibles:
     //   · Link de YouTube         → { fuente:'youtube',    url }
     //   · Link de Alibaba/AliEx.  → { fuente:'alibaba'|'aliexpress', url }
@@ -1717,14 +1852,22 @@ const server = http.createServer((req, res) => {
               const prevOv = await db.getProductOverride(id);
               if (prevOv?.video_fuente === 'upload' && prevOv.video_url) {
                 try { fs.unlinkSync(path.join(__dirname, prevOv.video_url.replace(/^\//, ''))); } catch {}
+                // Y su póster, que si no queda huérfano en el disco.
+                if (prevOv.video_thumb_url) {
+                  try { fs.unlinkSync(path.join(__dirname, prevOv.video_thumb_url.replace(/^\//, ''))); } catch {}
+                }
               }
             } catch {}
             const fname = `${id}_${Date.now()}${ext}`;
-            fs.writeFileSync(path.join(dir, fname), file.data);
+            const rutaVideo = path.join(dir, fname);
+            fs.writeFileSync(rutaVideo, file.data);
+            /* Póster del propio video: sin esto la miniatura de la galería es
+               un recuadro gris con un triángulo y parece un placeholder. */
+            const poster = await generarPosterVideo(rutaVideo);
             fields = {
               video_url:       `/uploads/videos/${fname}`,
               video_fuente:    'upload',
-              video_thumb_url: null,
+              video_thumb_url: poster ? `/uploads/videos/${path.basename(poster)}` : null,
             };
           } else {
             // ── Link externo (YouTube / Alibaba / AliExpress) ──
@@ -2548,7 +2691,19 @@ const server = http.createServer((req, res) => {
           // Cupón de envío gratis: se valida el precio real (arriba) y acá se
           // bonifica → el cliente paga 0 de envío. envioCalc real se guarda como
           // descuento_envio (lo que absorbe el negocio) y data.envio.precio=0.
-          const envioCobrado = envioGratisCupon ? 0 : envioCalc;
+          /* Envío gratis por monto ($33.000), la promesa que la tienda hace en
+             la ficha, en el carrito y en el meta description. Antes sólo se
+             bonificaba por cupón y el umbral no se aplicaba en ningún lado:
+             un carrito de $42.500 pagaba el envío igual.
+             El exprés no entra: cuesta bastante más que el estándar (en
+             Patagonia más del doble) y quien lo elige está pagando por la
+             velocidad, no por el envío. */
+          const nombreEnvio = String(
+            (data.envio && (data.envio.nombre || data.envio.metodo || data.envio.empresa)) || ''
+          ).toLowerCase();
+          const esExpres = /expr[eé]s|express/.test(nombreEnvio);
+          const envioGratisPorMonto = subtotalCalc >= ENVIO_GRATIS_MIN && !esExpres;
+          const envioCobrado = (envioGratisCupon || envioGratisPorMonto) ? 0 : envioCalc;
           if (data.envio) data.envio.precio = envioCobrado;
           if (data.pago) {
             data.pago.descuento_transferencia = descuentoCalc;
@@ -3592,7 +3747,11 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
     if (pathname === '/api/tienda/me' && req.method === 'GET') {
       (async () => {
         const session = await getTiendaUserFromReq(req);
-        if (!session) { res.writeHead(401); res.end(JSON.stringify({ error: 'No autenticado' })); return; }
+        // Sin sesión: 200 con null, no 401. El header consulta esto en CADA
+        // página, y el 401 quedaba como error de consola para todo visitante
+        // anónimo (le bajaba "Buenas prácticas" en PageSpeed). Los que llaman
+        // chequean que venga un usuario, no el status.
+        if (!session) { json(res, 200, null); return; }
         const user = await db.getUserById(session.user_id);
         if (!user) { res.writeHead(404); res.end(JSON.stringify({ error: 'Usuario no encontrado' })); return; }
         res.writeHead(200);
@@ -4256,6 +4415,43 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
     // por mlGetAuth, con auto-refresh) que sea dueña de la publicación.
     // Resultado cacheado en DB (TTL 6h) para no consumir cuota de la API
     // de ML en cada visita a la ficha.
+    /* GET /api/tienda/envio-correo?cp=1425
+       Tarifa y plazo REALES de Correo Argentino. Se sirve aparte del de ML
+       para que cada fila de la tienda venga del transportista que la presta:
+       mezclarlos era lo que hacía que una opción de Correo Clásico dijera
+       "Llega mañana".
+       Caché en memoria por CP: la cotización trae validTo y no cambia entre
+       pedidos del mismo día, así que no tiene sentido pegarle a Correo en cada
+       tecla del calculador de envío. */
+    if (pathname === '/api/tienda/envio-correo' && req.method === 'GET') {
+      (async () => {
+        const cp = (new URL(req.url, 'http://localhost').searchParams.get('cp') || '').replace(/\D/g, '');
+        if (!/^\d{4}$/.test(cp)) return json(res, 400, { error: 'Código postal inválido (debe tener 4 dígitos)' });
+        if (!correoClient.configurado) {
+          // Sin credenciales no se inventa nada: el front cae a lo de antes.
+          return json(res, 200, { configured: false });
+        }
+        const ahora = Date.now();
+        const cacheado = _correoCache.get(cp);
+        if (cacheado && cacheado.hasta > ahora) return json(res, 200, cacheado.datos);
+        try {
+          const r = await correoClient.cotizar({ cp });
+          if (!r || !r.opciones.length) return json(res, 200, { configured: false });
+          const datos = { configured: true, cp, validTo: r.validTo, opciones: r.opciones };
+          /* Se respeta el validTo que manda Correo, con un techo de 6 h para
+             no quedarse con una tarifa vieja si ese campo viene raro. */
+          const vence = r.validTo ? new Date(r.validTo).getTime() : 0;
+          const hasta = Math.min(vence > ahora ? vence : ahora + 6 * 3600e3, ahora + 6 * 3600e3);
+          _correoCache.set(cp, { hasta, datos });
+          return json(res, 200, datos);
+        } catch (e) {
+          console.error('[tienda/envio-correo]', e.message || e);
+          return json(res, 200, { configured: false });
+        }
+      })();
+      return;
+    }
+
     if (pathname === '/api/tienda/envio' && req.method === 'GET') {
       (async () => {
         try {
@@ -4374,6 +4570,526 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
       return;
     }
 
+    // ── Curaduría del banner ────────────────────────────────
+    //    banner-fotos.json guarda, por categoría, qué eligió el dueño:
+    //      { fundas: { fotos: ['url',...], resenas: ['393565128', ...] } }
+    //    El formato viejo (solo un array de URLs de fotos) se sigue leyendo.
+    const _curaduria = (cat) => {
+      const raw = db_bannerLoad()[String(cat).toLowerCase()];
+      if (Array.isArray(raw)) return { fotos: raw, resenas: [] };
+      return { fotos: (raw && raw.fotos) || [], resenas: (raw && raw.resenas) || [] };
+    };
+    const _guardarCuraduria = (cat, patch) => {
+      const k   = String(cat).toLowerCase();
+      const all = db_bannerLoad();
+      const act = { ..._curaduria(k), ...patch };
+      if (act.fotos.length || act.resenas.length) all[k] = act;
+      else delete all[k];                    // todo vacío = volver a automático
+      db_bannerSave(all);
+      return act;
+    };
+
+    // Lee de una sola pasada las reseñas de ML de una categoría y devuelve
+    // tanto las reseñas (deduplicadas) como las fotos que trajeron.
+    //
+    // La deduplicación por texto NO es cosmética: las publicaciones espejo
+    // entre las dos cuentas repiten la misma reseña (34 de 120 en fundas),
+    // así que sin esto el banner mostraría la misma opinión dos veces.
+    const _datosDeCategoria = async (cat) => {
+      const esDeCat = (t) => {
+        const x = String(t || '').toLowerCase();
+        if (cat === 'fundas')      return /funda|carcasa|cover/.test(x);
+        if (cat === 'mallas')      return /malla|correa|milanese/.test(x) && !/funda|carcasa/.test(x);
+        if (cat === 'protectores') return /protector|cobertor|bumper|templado|bisel|vidrio/.test(x) && !/funda|carcasa/.test(x);
+        if (cat === 'cables')      return /cable|cargador/.test(x);
+        return false;
+      };
+      const titulos = {};
+      for (const it of (getProductCache() || [])) titulos[it.id] = it.title || '';
+      const { rows } = await db.pool.query('SELECT item_id, data FROM ml_reviews_cache');
+
+      const fotos = [], resenas = [];
+      const vistoTxt = new Set();
+      let suma = 0, conRate = 0;
+
+      for (const row of rows) {
+        if (!esDeCat(titulos[row.item_id])) continue;
+        let d = row.data;
+        if (typeof d === 'string') { try { d = JSON.parse(d); } catch { continue; } }
+        for (const rv of ((d && (d.reviews || d.results)) || [])) {
+          if (typeof rv.rate === 'number') { suma += rv.rate; conRate++; }
+          const pics = (rv.photos || rv.pictures || rv.images || []).filter(p => p && (p.thumb || p.full));
+          for (const p of pics) {
+            fotos.push({
+              thumb: p.thumb || p.full, full: p.full || p.thumb,
+              rate: rv.rate || null, item_id: row.item_id,
+              titulo: titulos[row.item_id] || '',
+            });
+          }
+          const txt = String(rv.content || '').replace(/\s+/g, ' ').trim();
+          if (!txt) continue;
+          const clave = txt.toLowerCase();
+          if (vistoTxt.has(clave)) continue;   // misma reseña en publicación espejo
+          vistoTxt.add(clave);
+          resenas.push({
+            id: rv.id != null ? String(rv.id) : ('t-' + clave.length + '-' + clave.slice(0, 24)),
+            rate: rv.rate || null,
+            texto: txt,
+            largo: txt.length,
+            foto: pics.length ? (pics[0].thumb || pics[0].full) : null,
+            item_id: row.item_id,
+            titulo: titulos[row.item_id] || '',
+            fecha: rv.date_created || null,
+          });
+        }
+      }
+      return {
+        fotos, resenas,
+        promedio: conRate ? +(suma / conRate).toFixed(1) : null,
+        total: conRate,
+      };
+    };
+
+    // Elección automática de reseñas cuando el dueño no curó ninguna.
+    //
+    // El filtro de reparos es una heurística, NO una garantía: hay reseñas de
+    // 5 estrellas que igual meten una queja ("muy buena funda, salvo el imán"),
+    // y esas no pueden ir en un banner. Descarta las obvias; para el resto
+    // está la curaduría manual en /tienda-banner.html.
+    const RE_REPAROS = /\b(pero|salvo|aunque|l[áa]stima|le falta|no me gust|no es|malo|problema|defect|se rompi|devol|tard)/i;
+
+    // Medido en la tarjeta real (207px de ancho, 4 líneas): entran ~110
+    // caracteres. Más largo que eso se corta a mitad de frase, que queda peor
+    // que una cita corta. Por eso el ideal es ~90 y el techo blando 115.
+    const CITA_IDEAL = 90, CITA_MAX = 115, CITA_MIN = 55;
+    const _resenasAuto = (resenas, max) => {
+      const limpias = resenas.filter(r =>
+        r.rate === 5 && r.largo >= CITA_MIN && r.largo <= 200 && !RE_REPAROS.test(r.texto));
+      // Rankea por: primero las que entran enteras en la tarjeta, después las
+      // que tienen foto (la cita se ve más real con avatar), y entre esas las
+      // de largo más cercano al ideal. Sin repetir producto, para que no sean
+      // 3 opiniones de la misma funda.
+      const orden = limpias.slice().sort((a, b) =>
+        ((a.largo <= CITA_MAX ? 0 : 1) - (b.largo <= CITA_MAX ? 0 : 1)) ||
+        ((b.foto ? 1 : 0) - (a.foto ? 1 : 0)) ||
+        (Math.abs(a.largo - CITA_IDEAL) - Math.abs(b.largo - CITA_IDEAL)));
+      const vistos = new Set(), out = [];
+      for (const r of orden) {
+        if (vistos.has(r.item_id)) continue;
+        vistos.add(r.item_id); out.push(r);
+        if (out.length >= max) break;
+      }
+      for (const r of orden) {            // si no alcanzó, se repite producto
+        if (out.length >= max) break;
+        if (!out.includes(r)) out.push(r);
+      }
+      return out;
+    };
+
+    // ── GET /api/tienda/ratings ─────────────────────────────
+    //    { "MLA123": [4.9, 127] } — promedio y cantidad de opiniones por
+    //    publicación. Las tarjetas del catálogo muestran prueba social sin
+    //    pedir una llamada por producto (serían cientos). Sale del mismo
+    //    cache de reseñas de ML que ya usa la ficha de producto.
+    if (pathname === '/api/tienda/ratings' && req.method === 'GET') {
+      (async () => {
+        try {
+          const { rows } = await db.pool.query('SELECT item_id, data FROM ml_reviews_cache');
+          const out = {};
+          for (const row of rows) {
+            let d = row.data;
+            if (typeof d === 'string') { try { d = JSON.parse(d); } catch { continue; } }
+            if (!d) continue;
+            const lista = d.reviews || d.results || [];
+            const total = typeof d.total === 'number' ? d.total : lista.length;
+            if (!total) continue;
+            let prom = d.rating_average;
+            if (typeof prom !== 'number') {
+              let suma = 0, n = 0;
+              for (const rv of lista) if (typeof rv.rate === 'number') { suma += rv.rate; n++; }
+              prom = n ? suma / n : null;
+            }
+            if (typeof prom !== 'number' || !isFinite(prom)) continue;
+            out[row.item_id] = [+prom.toFixed(1), total];
+          }
+          res.setHeader('Cache-Control', 'public, max-age=600');
+          json(res, 200, { ok: true, ratings: out });
+        } catch (e) {
+          console.error('[tienda/ratings]', e.message);
+          json(res, 500, { ok: false, error: e.message });
+        }
+      })();
+      return;
+    }
+
+    // ── GET /api/tienda/resenas-banner?cat=&limit= ──────────
+    //    Público: alimenta el banner de categoría de la tienda.
+    if (pathname === '/api/tienda/resenas-banner' && req.method === 'GET') {
+      (async () => {
+        try {
+          const qp  = new URL(req.url, 'http://localhost').searchParams;
+          const cat = String(qp.get('cat') || '').toLowerCase();
+          const max = Math.min(6, Math.max(1, parseInt(qp.get('limit')) || 3));
+
+          const { resenas, promedio, total } = await _datosDeCategoria(cat);
+          const curadas = _curaduria(cat).resenas;
+
+          let elegidas = null;
+          if (curadas.length) {
+            const porId = {};
+            for (const r of resenas) porId[r.id] = r;
+            elegidas = curadas.map(id => porId[String(id)]).filter(Boolean).slice(0, max);
+          }
+          // Si curó pero ninguna sobrevivió (se cayeron del cache de ML), no
+          // dejamos el banner vacío: se cae al automático.
+          if (!elegidas || !elegidas.length) elegidas = _resenasAuto(resenas, max);
+
+          json(res, 200, {
+            ok: true, cat, promedio, total,
+            curado: curadas.length > 0,
+            resenas: elegidas.map(r => ({
+              id: r.id, rate: r.rate, texto: r.texto, foto: r.foto,
+            })),
+          });
+        } catch (e) {
+          console.error('[tienda/resenas-banner]', e.message);
+          json(res, 500, { ok: false, error: e.message });
+        }
+      })();
+      return;
+    }
+
+    // ── GET /api/tienda/admin/banner-resenas?cat= ───────────
+    //    Todas las reseñas con texto de la categoría + cuáles están elegidas.
+    if (pathname === '/api/tienda/admin/banner-resenas' && req.method === 'GET') {
+      (async () => {
+        try {
+          const cat = String(new URL(req.url, 'http://localhost').searchParams.get('cat') || '').toLowerCase();
+          const { resenas, promedio, total } = await _datosDeCategoria(cat);
+          const elegidas = _curaduria(cat).resenas;
+          json(res, 200, {
+            ok: true, cat, promedio, total,
+            duplicadas: total - resenas.length,
+            elegidas,
+            hayCuraduria: elegidas.length > 0,
+            sugeridas: _resenasAuto(resenas, 3).map(r => r.id),
+            resenas: resenas.slice().sort((a, b) => (b.rate || 0) - (a.rate || 0) || b.largo - a.largo),
+          });
+        } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+      })();
+      return;
+    }
+
+    // ── POST /api/tienda/admin/banner-resenas ───────────────
+    if (pathname === '/api/tienda/admin/banner-resenas' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', () => {
+        try {
+          const { cat, resenas } = JSON.parse(body || '{}');
+          if (!cat) { json(res, 400, { ok: false, error: 'Falta cat' }); return; }
+          const lista = Array.isArray(resenas) ? resenas.map(String).slice(0, 12) : [];
+          const act = _guardarCuraduria(cat, { resenas: lista });
+          json(res, 200, { ok: true, elegidas: act.resenas });
+        } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+      });
+      return;
+    }
+
+    // Junta todas las fotos de compradores de una categoría. Lo usan el
+    // endpoint público del banner y el de curaduría del admin, para que
+    // ambos vean exactamente el mismo conjunto.
+    const _fotosDeCategoria = async (cat) => {
+      const esDeCat = (t) => {
+        const x = String(t || '').toLowerCase();
+        if (cat === 'fundas')      return /funda|carcasa|cover/.test(x);
+        if (cat === 'mallas')      return /malla|correa|milanese/.test(x) && !/funda|carcasa/.test(x);
+        if (cat === 'protectores') return /protector|cobertor|bumper|templado|bisel|vidrio/.test(x) && !/funda|carcasa/.test(x);
+        if (cat === 'cables')      return /cable|cargador/.test(x);
+        return false;
+      };
+      const titulos = {};
+      for (const it of (getProductCache() || [])) titulos[it.id] = it.title || '';
+      const { rows } = await db.pool.query('SELECT item_id, data FROM ml_reviews_cache');
+      const fotos = [];
+      let suma = 0, conRate = 0;
+      for (const row of rows) {
+        if (!esDeCat(titulos[row.item_id])) continue;
+        let d = row.data;
+        if (typeof d === 'string') { try { d = JSON.parse(d); } catch { continue; } }
+        for (const rv of ((d && (d.reviews || d.results)) || [])) {
+          if (typeof rv.rate === 'number') { suma += rv.rate; conRate++; }
+          for (const p of (rv.photos || rv.pictures || rv.images || [])) {
+            if (!p || !(p.thumb || p.full)) continue;
+            fotos.push({
+              thumb: p.thumb || p.full, full: p.full || p.thumb,
+              rate: rv.rate || null, item_id: row.item_id,
+              titulo: titulos[row.item_id] || '',
+            });
+          }
+        }
+      }
+      return { fotos, promedio: conRate ? +(suma / conRate).toFixed(1) : null, resenas: conRate };
+    };
+
+    // ── GET /api/tienda/admin/banner-fotos?cat= ─────────────
+    //    Todas las fotos disponibles + cuáles están elegidas, para curar.
+    if (pathname === '/api/tienda/admin/banner-fotos' && req.method === 'GET') {
+      (async () => {
+        try {
+          const cat = String(new URL(req.url, 'http://localhost').searchParams.get('cat') || '').toLowerCase();
+          const { fotos, promedio, resenas } = await _fotosDeCategoria(cat);
+          const elegidas = _curaduria(cat).fotos;
+          json(res, 200, {
+            ok: true, cat, promedio, resenas,
+            elegidas,
+            hayCuraduria: elegidas.length > 0,
+            fotos,
+          });
+        } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+      })();
+      return;
+    }
+
+    // ── POST /api/tienda/admin/banner-fotos ─────────────────
+    if (pathname === '/api/tienda/admin/banner-fotos' && req.method === 'POST') {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', () => {
+        try {
+          const { cat, fotos } = JSON.parse(body || '{}');
+          if (!cat) { json(res, 400, { error: 'Falta cat' }); return; }
+          const lista = Array.isArray(fotos) ? fotos.slice(0, 24) : [];
+          const act = _guardarCuraduria(cat, { fotos: lista });
+          json(res, 200, { ok: true, elegidas: act.fotos });
+        } catch (e) { json(res, 500, { error: e.message }); }
+      });
+      return;
+    }
+
+    // ── GET /api/tienda/fotos-clientes?cat= ─────────────────
+    //    Fotos que subieron los compradores en sus reseñas de ML, filtradas
+    //    por categoría. Alimenta el banner de categoría de la tienda: son
+    //    fotos del producto en uso real, mucho mejor prueba social que las
+    //    fotos de catálogo (que además ya se ven en las tarjetas de abajo).
+    if (pathname === '/api/tienda/fotos-clientes' && req.method === 'GET') {
+      (async () => {
+        try {
+          const qp  = new URL(req.url, 'http://localhost').searchParams;
+          const cat = String(qp.get('cat') || '').toLowerCase();
+          const max = Math.min(24, Math.max(1, parseInt(qp.get('limit')) || 12));
+
+          const { fotos, promedio, resenas } = await _fotosDeCategoria(cat);
+
+          // Si el dueño curó fotos para esta categoría, mandan las suyas y en
+          // su orden. Si no eligió ninguna, se eligen solas.
+          const curadas = _curaduria(cat).fotos;
+          let elegidas;
+          if (curadas.length) {
+            const porThumb = {};
+            for (const f of fotos) porThumb[f.thumb] = f;
+            elegidas = curadas.map(u => porThumb[u]).filter(Boolean).slice(0, max);
+          } else {
+            // Automático: mejor puntuadas y sin repetir producto, para que el
+            // banner muestre variedad.
+            const orden = [...fotos].sort((a, b) => (b.rate || 0) - (a.rate || 0));
+            const vistos = new Set(); elegidas = [];
+            for (const f of orden) {
+              if (vistos.has(f.item_id)) continue;
+              vistos.add(f.item_id); elegidas.push(f);
+              if (elegidas.length >= max) break;
+            }
+            for (const f of orden) {
+              if (elegidas.length >= max) break;
+              if (!elegidas.includes(f)) elegidas.push(f);
+            }
+          }
+
+          json(res, 200, {
+            ok: true, cat,
+            total_fotos: fotos.length,
+            promedio, resenas,
+            curado: curadas.length > 0,
+            fotos: elegidas,
+          });
+        } catch (e) {
+          console.error('[tienda/fotos-clientes]', e.message);
+          json(res, 500, { ok: false, error: e.message });
+        }
+      })();
+      return;
+    }
+
+    // ── Temas repetidos en las reseñas ───────────────────────
+    /* Las etiquetas están definidas acá, pero los NÚMEROS salen de contar
+       reseñas reales: un tema aparece sólo si alguien lo escribió, y se
+       cuenta una vez por reseña aunque lo repita. Van también los negativos:
+       la mezcla honesta convierte mejor y baja las devoluciones. */
+    const TEMAS_RESENAS = [
+      { etiqueta: 'Buena calidad',        re: /\b(buena|excelente|muy buena|gran)\s+calidad|buen(os)? material|calidad excelente|re buena\b|precio y calidad|calidad precio|y calidad\b/ },
+      { etiqueta: 'Buenas terminaciones', re: /terminacion|bien terminad|\bprolij|acabado/ },
+      { etiqueta: 'Lo recomiendan',       re: /recomend|recomiend/ },
+      { etiqueta: 'Tal cual la descripción', re: /a la descripcion|como se describe|cumple con lo|lo que esperaba|lo esperado/ },
+      { etiqueta: 'Calce perfecto',       re: /\bcalza|\bcalce|\bjusta?\b|encaja|a medida|le queda perfect|queda perfect/ },
+      { etiqueta: 'Llegó rápido',         re: /\brapid|\bantes de lo previsto|llego antes|enseguida|puntual|a tiempo|\bveloz/ },
+      { etiqueta: 'Igual a la foto',      re: /tal cual|como en la foto|igual a la foto|identic|como se ve/ },
+      { etiqueta: 'Cómoda de usar',       re: /\bcomod|\bsuave|livian|no molesta|agradable al tacto/ },
+      { etiqueta: 'Protege bien',         re: /\bproteg|proteccion|\bgolpe|\bcaida|resistente/ },
+      { etiqueta: 'Linda estéticamente',  re: /\blind[oa]|\bhermos|elegante|\bdiseño|estetic|\bpreciosa?\b/ },
+      { etiqueta: 'Buen precio',          re: /buen precio|precio justo|barat|vale la pena|relacion precio/ },
+      // Negativos
+      { etiqueta: 'El color no es el de la foto', re: /color.{0,25}(distint|diferent|mas oscur|mas clar|no es el|no era)|no es el color/, neg: true },
+      { etiqueta: 'Cuesta colocarla',     re: /\bdur[oa] de|cuesta (poner|colocar|entrar)|dificil de (poner|colocar)|no entra bien/, neg: true },
+      { etiqueta: 'Se marca con el uso',  re: /se (raya|marca|mancha)|\brayad|\bmarcad|se despint/, neg: true },
+      { etiqueta: 'Más chica de lo esperado', re: /mas (chic|pequeñ|cort)|(chic|cort)[ao] de lo|no me entro|quedo grande/, neg: true },
+    ];
+
+    // Acentos fuera y todo en minúscula: "rápido" y "rapido" son lo mismo.
+    const _normalizar = t => String(t || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    function contarTemas(textos) {
+      const cuenta = TEMAS_RESENAS.map(() => 0);
+      for (const t of textos) {
+        const n = _normalizar(t);
+        if (!n) continue;
+        TEMAS_RESENAS.forEach((tema, i) => { if (tema.re.test(n)) cuenta[i]++; });
+      }
+      return TEMAS_RESENAS
+        .map((tema, i) => ({ termino: tema.etiqueta, cuenta: cuenta[i], neg: !!tema.neg }))
+        // Con una sola mención no es algo que "se repita"
+        .filter(t => t.cuenta >= 2)
+        .sort((a, b) => b.cuenta - a.cuenta)
+        .slice(0, 6);
+    }
+
+    /* Trae todas las reseñas del ítem (de a 50) para poder contar sobre el
+       conjunto entero. Se cachea 24h con la misma tabla que las páginas,
+       usando offset -1 como clave: el conteo no cambia seguido y no vale la
+       pena repetir 2-4 llamadas a ML en cada visita a la ficha. */
+    async function resumenDeItem(itemId) {
+      const CLAVE_OFFSET = -1, CLAVE_LIMIT = 0, DIA = 24 * 60 * 60 * 1000;
+      const VACIO = { temas: [], con_foto: 0 };
+      try {
+        const cache = await db.getReviewsCache(itemId, CLAVE_OFFSET, CLAVE_LIMIT, DIA);
+        // Las entradas viejas del caché no traen con_foto: se recalculan en vez
+        // de devolver un 0 que no es real.
+        if (cache && cache.temas && cache.con_foto !== undefined) {
+          return { temas: cache.temas, con_foto: cache.con_foto };
+        }
+      } catch {}
+
+      const allAccts = (fullConfig.accounts || [config]);
+      const textos = [];
+      let conFoto = 0;
+      try {
+        for (let pag = 0; pag < 4; pag++) {          // tope: 200 reseñas
+          let lote = null;
+          for (const acct of allAccts) {
+            try { lote = await mlGetAuth(acct, `/reviews/item/${itemId}?offset=${pag * 50}&limit=50`); break; }
+            catch (e) { if (e.status !== 403) throw e; }
+          }
+          const lista = (lote && lote.reviews) || [];
+          lista.forEach(r => {
+            textos.push((r.title || '') + ' ' + (r.content || ''));
+            const fotos = (r.media || []).filter(m => m.type === 'photo' && m.status === 'published');
+            if (fotos.length) conFoto++;
+          });
+          if (lista.length < 50) break;
+        }
+      } catch (e) {
+        console.log('[tienda/reviews] resumen', itemId, e.message);
+        return VACIO;
+      }
+
+      // Con muy pocas reseñas escritas el recuento no dice nada
+      const temas = textos.length >= 8 ? contarTemas(textos) : [];
+      const salida = { temas, con_foto: conFoto };
+      try { await db.setReviewsCache(itemId, CLAVE_OFFSET, CLAVE_LIMIT, salida); } catch {}
+      return salida;
+    }
+
+    // ── GET /api/tienda/home-reviews?ids=&limit= ────────────
+    //    Reseñas destacadas (con foto, buen rating) para el carrusel del
+    //    home. Antes el cliente disparaba hasta 16 fetch en paralelo a
+    //    /api/tienda/reviews/:id (uno por candidato) sólo para quedarse
+    //    con ~10 — acá se resuelve en una sola request, leyendo el mismo
+    //    cache persistente de reseñas (sin pegarle a ML si no está cacheado:
+    //    best-effort, igual que antes) + un cache en memoria propio para no
+    //    releer la DB en cada visita al home. `ids` es la lista de candidatos
+    //    ya priorizada por el cliente (prioriza los NO mostrados arriba en
+    //    los carruseles, para no repetir siempre los mismos más vendidos) —
+    //    si no viene, se cae a los más vendidos del catálogo.
+    if (pathname === '/api/tienda/home-reviews' && req.method === 'GET') {
+      (async () => {
+        try {
+          const qp  = new URL(req.url, 'http://localhost').searchParams;
+          const max = Math.min(10, Math.max(1, parseInt(qp.get('limit')) || 10));
+          const idsParam = String(qp.get('ids') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 16);
+          const cacheKey = idsParam.length ? idsParam.join(',') : '__default__';
+
+          const HOME_REVIEWS_TTL = 15 * 60 * 1000;
+          const hit = _homeReviewsCache.get(cacheKey);
+          if (hit && (Date.now() - hit.at) < HOME_REVIEWS_TTL) {
+            json(res, 200, { ok: true, resenas: hit.data.slice(0, max) });
+            return;
+          }
+
+          const porId = {};
+          getProductCache().forEach(p => { porId[p.id] = p; });
+          const candidatos = idsParam.length
+            ? idsParam.map(id => porId[id]).filter(Boolean)
+            : getProductCache().slice().sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0)).slice(0, 16);
+
+          const porProducto = await Promise.all(candidatos.map(async p => {
+            try {
+              let cached = await db.getReviewsCache(p.id, 0, 12, 10 * 60 * 1000);
+              if (!cached) {
+                // Cache frío (nadie visitó esa PDP todavía): se resuelve acá
+                // mismo por loopback en vez de dejar la sección vacía — mismo
+                // endpoint que usa la PDP (con su fallback multi-cuenta a ML
+                // y su propio guardado en cache), pero server-to-server, sin
+                // que el cliente tenga que disparar 16 requests él mismo.
+                const r = await fetchInterno(`/api/tienda/reviews/${encodeURIComponent(p.id)}?offset=0&limit=12`);
+                cached = r.ok ? await r.json() : null;
+              }
+              const reviews = (cached && cached.reviews) || [];
+              return reviews.map(r => ({ ...r, productId: p.id, productTitle: p.title }));
+            } catch { return []; }
+          }));
+          const all = porProducto.flat();
+
+          // Mismo criterio que antes tenía el cliente: buena calificación +
+          // contenido con sustancia, priorizando fuerte las que traen foto
+          // real de cliente (más confianza que el texto solo).
+          let pool = all.filter(r => (r.rate || 0) >= 4 && (r.content || '').trim().length >= 30);
+          pool.sort((a, b) => {
+            const photoDiff = (b.photos?.length || 0) - (a.photos?.length || 0);
+            if (photoDiff !== 0) return photoDiff;
+            return (b.rate || 0) - (a.rate || 0);
+          });
+
+          const seen = new Set(), unique = [];
+          for (const r of pool) {
+            if (seen.has(r.productId)) continue;
+            seen.add(r.productId);
+            unique.push(r);
+            if (unique.length === 10) break;
+          }
+
+          // No cachear un resultado vacío: si dio 0 es probablemente una
+          // carrera con el arranque (cache de productos/reseñas todavía
+          // frío), y dejarlo pisado 15min mostraría la sección vacía en el
+          // home hasta que expire — mejor reintentar en la próxima visita.
+          if (unique.length) _homeReviewsCache.set(cacheKey, { data: unique, at: Date.now() });
+          json(res, 200, { ok: true, resenas: unique.slice(0, max) });
+        } catch (e) {
+          json(res, 200, { ok: true, resenas: [] }); // fail-soft: la sección se oculta si no hay datos
+        }
+      })();
+      return;
+    }
+
     // ── GET /api/tienda/reviews/:itemId ─────────────────────
     if (pathname.match(/^\/api\/tienda\/reviews\/[^/]+$/) && req.method === 'GET') {
       (async () => {
@@ -4401,7 +5117,18 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
           const total = mlTotal + ownCount;
           const avg = total ? (mlAvg * mlTotal + ownSum) / total : 0;
           const reviews = offset === 0 ? [...ownMapped, ...(ml.reviews || [])] : (ml.reviews || []);
-          return { ...ml, rating_average: avg, total, offset, limit, reviews };
+          // La distribución tiene que sumar el mismo total que se muestra: si
+          // las propias entran en el promedio, también entran en las barras.
+          let levels = ml.rating_levels || null;
+          if (levels && ownCount) {
+            const clave = ['', 'one_star', 'two_star', 'three_star', 'four_star', 'five_star'];
+            levels = { ...levels };
+            for (const r of ownMapped) {
+              const k = clave[r.rate];
+              if (k) levels[k] = (levels[k] || 0) + 1;
+            }
+          }
+          return { ...ml, rating_average: avg, total, offset, limit, reviews, rating_levels: levels };
         };
 
         // Productos locales (no-ML) no tienen reseñas en ML → solo las propias.
@@ -4422,8 +5149,10 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
           // las reseñas propias se mergean fresco en cada request.
           const cached = await db.getReviewsCache(itemId, offset, limit, 10 * 60 * 1000);
           if (cached) {
+            const salida = mergeOwn(cached);
+            if (offset === 0) Object.assign(salida, await resumenDeItem(itemId));
             res.writeHead(200);
-            res.end(JSON.stringify(mergeOwn(cached)));
+            res.end(JSON.stringify(salida));
             return;
           }
           // Intentar con la cuenta activa; si falla por permisos probar las demás
@@ -4437,6 +5166,9 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
           const result = {
             rating_average : raw.rating_average || 0,
             total          : raw.paging?.total  || 0,
+            // Distribución por estrella: la ficha dibuja con esto las 5 barras.
+            // ML la devuelve como { one_star, ..., five_star }.
+            rating_levels  : raw.rating_levels || null,
             offset,
             limit,
             reviews: (raw.reviews || []).map(r => ({
@@ -4460,8 +5192,10 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
           };
           // Guardar en caché persistente (solo ML; las propias se mergean fresco)
           await db.setReviewsCache(itemId, offset, limit, result);
+          const salida = mergeOwn(result);
+          if (offset === 0) Object.assign(salida, await resumenDeItem(itemId));
           res.writeHead(200);
-          res.end(JSON.stringify(mergeOwn(result)));
+          res.end(JSON.stringify(salida));
         } catch(e) {
           console.error(`[tienda/reviews] Error ${itemId}:`, e.message);
           res.writeHead(500);
@@ -4892,45 +5626,81 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
         // así que se pide una ventana más ancha y se recorta acá.
         const fromStr = `${correr(desde, -25)}T00:00:00.000-0300`;
         const toStr   = `${correr(hasta,   2)}T23:59:59.000-0300`;
-        const filas = [];
-        let offset = 0, total = Infinity, ordenes = 0, fuera = 0;
 
-        while (offset < total && offset < 2000) {
-          const r = await mlGetAuth(acct,
-            `/orders/search?seller=${acct.user_id}` +
-            `&order.date_created.from=${encodeURIComponent(fromStr)}` +
-            `&order.date_created.to=${encodeURIComponent(toStr)}` +
-            `&sort=date_desc&limit=50&offset=${offset}`);
-          total = (r && r.paging && r.paging.total != null) ? r.paging.total : 0;
-          const results = (r && r.results) || [];
-          if (!results.length) break;
-          for (const o of results) {
-            ordenes++;
-            const cierre = o.date_closed || o.date_created;
-            const dia = ymdAR(cierre);
-            if (!dia || dia < desde || dia > hasta) { fuera++; continue; }
-            // es_valida() de genera_cobro.py descarta por las palabras "cancelad"
-            // y "devoluci", así que alcanza con traducir el status a ese vocabulario.
-            const anulada = ['cancelled', 'invalid'].includes(String(o.status || ''));
-            for (const oi of (o.order_items || [])) {
-              const qty = oi.quantity || 0;
-              if (!qty) continue;
-              filas.push({
-                id:         String(o.id),
-                fecha_str:  fechaEs(cierre),
-                estado:     anulada ? 'Cancelada' : 'Entregado',
-                desc:       '',
-                paquete:    o.pack_id ? 'Sí' : 'No',
-                titulo:     (oi.item && oi.item.title) || '',
-                ingresos:   (oi.unit_price || 0) * qty,
-                cargo:      -((oi.sale_fee || 0) * qty),   // cargo por venta + costo fijo
-                costo_fijo: 0,
-                pub_id:     (oi.item && oi.item.id) || ''
-              });
-            }
+        // Las órdenes se juntan en un Map por id, NO en un array.
+        //
+        // /orders/search pagina por offset sobre un sort inestable: dos órdenes
+        // del mismo paquete se crean en el mismo segundo, ML las devuelve en
+        // orden arbitrario entre llamadas, y en el borde de página una se sirve
+        // en las dos páginas mientras la otra se pierde. Verificado pidiendo el
+        // mismo rango seis veces: en unas corridas la orden 2000017426590736
+        // venía duplicada y faltaba 2000017426577548, y el neto del período
+        // saltaba $2.676 entre llamadas idénticas.
+        const vistas = new Map();
+        const barrer = async (desdeISO, hastaISO) => {
+          let offset = 0, total = Infinity;
+          while (offset < total && offset < 2000) {
+            const r = await mlGetAuth(acct,
+              `/orders/search?seller=${acct.user_id}` +
+              `&order.date_created.from=${encodeURIComponent(desdeISO)}` +
+              `&order.date_created.to=${encodeURIComponent(hastaISO)}` +
+              `&sort=date_desc&limit=50&offset=${offset}`);
+            total = (r && r.paging && r.paging.total != null) ? r.paging.total : 0;
+            const results = (r && r.results) || [];
+            if (!results.length) break;
+            for (const o of results) if (o && o.id != null) vistas.set(String(o.id), o);
+            offset += 50;
           }
-          offset += 50;
+          return total;
+        };
+
+        const esperadas = await barrer(fromStr, toStr);
+
+        // Si el barrido trajo menos órdenes ÚNICAS que las que ML dice que hay,
+        // alguna se perdió en un borde de página. Se rebarre día por día: cada
+        // día entra en una sola página, así que no hay borde donde perderse.
+        if (Number.isFinite(esperadas) && vistas.size < esperadas) {
+          const faltan = esperadas - vistas.size;
+          let d = correr(desde, -25);
+          const fin = correr(hasta, 2);
+          while (d <= fin) {
+            await barrer(`${d}T00:00:00.000-0300`, `${d}T23:59:59.000-0300`);
+            d = correr(d, 1);
+          }
+          console.log(`[cobro/ml] barrido por offset perdió ${faltan} orden(es);`
+            + ` rebarrido día por día → ${vistas.size}/${esperadas}`);
         }
+
+        const filas = [];
+        let ordenes = 0, fuera = 0;
+        for (const o of vistas.values()) {
+          ordenes++;
+          const cierre = o.date_closed || o.date_created;
+          const dia = ymdAR(cierre);
+          if (!dia || dia < desde || dia > hasta) { fuera++; continue; }
+          // es_valida() de genera_cobro.py descarta por las palabras "cancelad"
+          // y "devoluci", así que alcanza con traducir el status a ese vocabulario.
+          const anulada = ['cancelled', 'invalid'].includes(String(o.status || ''));
+          for (const oi of (o.order_items || [])) {
+            const qty = oi.quantity || 0;
+            if (!qty) continue;
+            filas.push({
+              id:         String(o.id),
+              fecha_str:  fechaEs(cierre),
+              estado:     anulada ? 'Cancelada' : 'Entregado',
+              desc:       '',
+              paquete:    o.pack_id ? 'Sí' : 'No',
+              titulo:     (oi.item && oi.item.title) || '',
+              ingresos:   (oi.unit_price || 0) * qty,
+              cargo:      -((oi.sale_fee || 0) * qty),   // cargo por venta + costo fijo
+              costo_fijo: 0,
+              pub_id:     (oi.item && oi.item.id) || ''
+            });
+          }
+        }
+        // Orden estable: si dos filas llegan al script en distinto orden entre
+        // corridas, los paquetes se agrupan distinto y el neto cambia.
+        filas.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
         if (!filas.length) {
           json(res, 200, { ok: false, error: `No hay ventas de ${acct.label || acct.id} entre ${desde} y ${hasta}` });
@@ -5126,10 +5896,48 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
         if (lista.length > 200) lista.length = 200; // tope defensivo
         writeJsonAtomic(COBROS_GUARDADOS_PATH, lista);
         json(res, 200, { ok: true, id: rec.id });
+        // Lo manual gana, y tiene que ganar YA: si el cobro automático del
+        // mismo tramo sigue guardado, hasta la próxima corrida del job (24 h)
+        // las mismas ventas quedan contadas dos veces. Pasó el 11/09: un cobro
+        // manual de WZ del 01/09 al 10/09 convivió con el automático y
+        // septiembre sumó $335.166 de más. Se recalcula en segundo plano.
+        if (rec.modo === 'fundas') {
+          setTimeout(() => refrescarCobrosAuto()
+            .catch(e => console.error('[cobros-auto] tras guardar un cobro manual:', e.message)), 0);
+        }
       } catch (e) {
         json(res, 500, { error: 'No se pudo guardar', detail: e.message });
       }
     });
+    return;
+  }
+
+  // Estado del refresco automático (lo lee Rentabilidad para mostrar desde
+  // cuándo están al día los números y si alguna cuenta falló).
+  if (pathname === '/cobro/auto/estado' && req.method === 'GET') {
+    json(res, 200, { ok: true, ..._cobrosAutoEstado, cada_horas: 24 });
+    return;
+  }
+
+  // Conciliación de lo cargado a mano contra lo que ML reporta hoy.
+  // Devuelve lo guardado por el job; null si todavía no corrió.
+  if (pathname === '/cobro/conciliacion' && req.method === 'GET') {
+    const c = leerConciliacion();
+    json(res, 200, c ? { ok: true, ...c } : { ok: true, sin_datos: true });
+    return;
+  }
+
+  // Forzar la conciliación a mano, sin esperar las 24 h.
+  if (pathname === '/cobro/conciliacion/correr' && req.method === 'POST') {
+    conciliarCobrosAuto().then(r => json(res, 200, { ok: true, ...r }))
+                         .catch(e => json(res, 500, { ok: false, error: e.message }));
+    return;
+  }
+
+  // Forzar el refresco a mano, sin esperar las 24 h.
+  if (pathname === '/cobro/auto/refrescar' && req.method === 'POST') {
+    refrescarCobrosAuto().then(r => json(res, 200, r))
+                         .catch(e => json(res, 500, { ok: false, error: e.message }));
     return;
   }
 
@@ -5267,7 +6075,7 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
   // Importa porque las liquidaciones de las dos cuentas no terminan el mismo
   // día: si una llega al 10 y la otra al 8, sumar "los últimos 30 días" sin
   // aclararlo hace parecer que una vendió menos de lo que vendió.
-  function rangoCubierto(cobros, desde, dias) {
+  function rangoCubierto(cobros, desde, dias, hasta = null) {
     const porCuenta = new Map();
     let min = null, max = null, n = 0;
     for (const c of cobros) {
@@ -5275,7 +6083,7 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
       for (const v of (c.ventas || [])) {
         if (v.excluida) continue;
         const f = String(v.fecha || '');
-        if (!f || (desde && f < desde)) continue;
+        if (!f || (desde && f < desde) || (hasta && f.slice(0, 10) > hasta)) continue;
         n++;
         if (!min || f < min) min = f;
         if (!max || f > max) max = f;
@@ -5295,12 +6103,19 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
   //   parcial  — el rango lo corta por la mitad (pasa siempre que el corte de
   //              30 días cae dentro de una liquidación larga)
   //   fuera    — ninguna de sus ventas entra
-  function periodosConEstado(cobros, desde, soloIds) {
+  // `hasta` importa tanto como `desde`: con los meses cerrados un cobro
+  // automático arranca en agosto y sigue corriendo en septiembre, así que
+  // filtrar solo por el borde de abajo lo mostraba entero (y como "completo")
+  // dentro del mes de agosto, mientras los totales sí lo recortaban bien.
+  function periodosConEstado(cobros, desde, soloIds, hasta = null) {
     return cobros.map(c => {
       const vs = (c.ventas || []).filter(v => !v.excluida);
-      const dentro = vs.filter(v => !desde || String(v.fecha || '') >= desde);
+      const dentro = vs.filter(v => {
+        const f = String(v.fecha || '');
+        return (!desde || f >= desde) && (!hasta || f <= hasta);
+      });
       const fechas = vs.map(v => String(v.fecha || '')).filter(Boolean).sort();
-      const estado = !desde ? 'completo'
+      const estado = (!desde && !hasta) ? 'completo'
                    : dentro.length === 0 ? 'fuera'
                    : dentro.length === vs.length ? 'completo' : 'parcial';
       return {
@@ -5322,7 +6137,7 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
   const _cobroCuentaLabel = c => (c.cuenta && c.cuenta.label) ? c.cuenta.label : 'WZ — WZMALLAS';
 
   // Agrega una lista de cobros a {publicaciones, totales} cruzando neto × costo.
-  function agregarCobros(cobros, tc, fleteUnit, overrides, reales = {}, desde = null) {
+  function agregarCobros(cobros, tc, fleteUnit, overrides, reales = {}, desde = null, hasta = null) {
     const porPub = new Map();
     for (const c of cobros) {
       for (const v of (c.ventas || [])) {
@@ -5330,7 +6145,9 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
         // Ventana por fecha de venta. Se filtra por VENTA y no por período de
         // cobro: los cobros de las dos cuentas no arrancan ni terminan el mismo
         // día, así que recortar por cobro daría un total sesgado.
-        if (desde && String(v.fecha || '') < desde) continue;
+        const _f = String(v.fecha || '').slice(0, 10);
+        if (desde && _f < desde) continue;
+        if (hasta && _f > hasta) continue;
         const titulo = v.titulo || '(sin título)';
         const neto = Number(v.neto) || 0, ingresos = Number(v.ingresos) || 0;
         const sug = costoSugerido(titulo, tc, fleteUnit);
@@ -5397,13 +6214,20 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
 
     const overrides = leerCostosPub();
     const reales    = costosPorTitulo(tc, fleteUnit);
-    const todos = leerCobrosGuardados().filter(c => c.modo === 'fundas');
+    const todos = sinSolapeAuto(leerCobrosGuardados().filter(c => c.modo === 'fundas'));
 
-    // Ventana temporal (7 / 10 / 30 días…). 0 o ausente = todo lo guardado.
+    /* Ventana temporal. Dos formas:
+       · desde/hasta → período cerrado (ej. todo agosto). Es lo que necesita
+         la pregunta "cuánto vendí de fundas en tal mes": con `dias` solo se
+         podían pedir ventanas que terminan hoy, así que un mes ya cerrado
+         era imposible de aislar.
+       · dias → los últimos N días. 0 o ausente = todo lo guardado. */
+    const _ymd  = s => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) ? String(s) : null);
     const dias  = Math.max(0, parseInt(qp.get('dias') || '0') || 0);
-    const desde = dias > 0
+    const hasta = _ymd(qp.get('hasta'));
+    const desde = _ymd(qp.get('desde')) || (dias > 0
       ? new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10)
-      : null;
+      : null);
 
     // Resumen por cuenta (siempre sobre TODOS los períodos, para las pestañas).
     const cuentasMap = new Map();
@@ -5413,27 +6237,48 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
       cuentasMap.get(id).cobros.push(c);
     }
     const por_cuenta = [...cuentasMap.values()].map(cu => {
-      const { totales } = agregarCobros(cu.cobros, tc, fleteUnit, overrides, reales, desde);
-      return { id: cu.id, label: cu.label, fiscal: cu.fiscal, neto: totales.neto, costo: totales.costo, ganancia: totales.ganancia, margen: totales.margen };
+      const { totales } = agregarCobros(cu.cobros, tc, fleteUnit, overrides, reales, desde, hasta);
+      return { id: cu.id, label: cu.label, fiscal: cu.fiscal, neto: totales.neto, costo: totales.costo,
+               ganancia: totales.ganancia, margen: totales.margen, publicaciones: totales.publicaciones };
     });
 
     // Set filtrado (por cuenta y/o períodos) → detalle de la vista actual.
     let cobros = todos;
     if (cuentaF) cobros = cobros.filter(c => _cobroCuenta(c) === cuentaF);
     if (soloIds.length) cobros = cobros.filter(c => soloIds.includes(c.id));
-    const { publicaciones, totales } = agregarCobros(cobros, tc, fleteUnit, overrides, reales, desde);
+    const { publicaciones, totales } = agregarCobros(cobros, tc, fleteUnit, overrides, reales, desde, hasta);
+
+    // Neto por día y por cuenta, para el gráfico de ventas diarias. Mismo
+    // filtro que los totales (cuenta, cobros puntuales, rango por fecha de
+    // venta, sin excluidas), así la suma de las barras da el número grande.
+    const porDiaMap = new Map();
+    for (const c of cobros) {
+      const cid = _cobroCuenta(c);
+      for (const v of (c.ventas || [])) {
+        if (v.excluida) continue;
+        const f = String(v.fecha || '').slice(0, 10);
+        if (!f || (desde && f < desde) || (hasta && f > hasta)) continue;
+        const d = porDiaMap.get(f) || { fecha: f, total: 0, ventas: 0, cuentas: {} };
+        const n = Number(v.neto) || 0;
+        d.total += n; d.ventas++;
+        d.cuentas[cid] = (d.cuentas[cid] || 0) + n;
+        porDiaMap.set(f, d);
+      }
+    }
+    const por_dia = [...porDiaMap.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
 
     json(res, 200, {
+      por_dia,
       ok: true,
-      params: { tc, flete_unit: fleteUnit, cuenta: cuentaF || null },
-      rango: rangoCubierto(cobros, desde, dias),
+      params: { tc, flete_unit: fleteUnit, cuenta: cuentaF || null, desde: desde || null, hasta: hasta || null, dias },
+      rango: rangoCubierto(cobros, desde, dias, hasta),
       costos_extra: extra,
       por_cuenta,
       // Se listan TODOS los cobros de la cuenta activa (no solo los del rango):
       // el valor está justamente en ver cuáles quedaron afuera y cuáles entraron
       // a medias, que es lo que un total solo no cuenta.
       periodos: periodosConEstado(cuentaF ? todos.filter(c => _cobroCuenta(c) === cuentaF) : todos,
-                                  desde, soloIds),
+                                  desde, soloIds, hasta),
       totales,
       publicaciones,
     });
@@ -5885,13 +6730,91 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
     return;
   }
 
+  // ══ ANALIZADOR DE PUBLICACIONES ═══════════════════════════════════
+  //    Cruza visitas contra ventas del mismo período para diagnosticar cada
+  //    publicación (ver lib/analizador.js). Corre en background: son ~600
+  //    publicaciones activas y las visitas van de a una (el bulk de ML acepta
+  //    1 id por request), así que la corrida entera tarda minutos y no entra
+  //    en el timeout de un request normal.
+  if (pathname === '/analizador/run' && req.method === 'POST') {
+    (async () => {
+      try {
+        const q      = parsed.query || {};
+        const estado = q.estado === 'paused' ? 'paused' : 'active';
+        const dias   = Math.min(120, Math.max(7, parseInt(q.dias) || 30));
+
+        if (_analizadorJob.corriendo) {
+          json(res, 409, { ok: false, error: 'Ya hay un análisis corriendo', progreso: _analizadorJob });
+          return;
+        }
+
+        // Cuentas con token válido — SIEMPRE las dos: una publicación puede
+        // recibir visitas en una cuenta y venderse en la otra.
+        const cuentas = [];
+        for (const acct of (fullConfig.accounts || [config])) {
+          if (!acct.access_token) continue;
+          try { await refreshAccountToken(acct); } catch (e) { /* seguimos con el token actual */ }
+          try {
+            const me = await mlGetAuth(acct, '/users/me');
+            if (me && me.id) cuentas.push({ acct, userId: me.id, label: acct.label || acct.id });
+          } catch (e) {
+            console.warn(`[analizador] cuenta ${acct.label || acct.id} sin acceso: ${e.message}`);
+          }
+        }
+        if (!cuentas.length) { json(res, 400, { ok: false, error: 'Ninguna cuenta de ML respondió' }); return; }
+
+        _analizadorJob = { corriendo: true, estado, dias, fase: 'arrancando', hechas: 0, total: 0, detalle: '', error: null, inicio: Date.now() };
+        json(res, 202, { ok: true, iniciado: true, estado, dias, cuentas: cuentas.map(c => c.label) });
+
+        // A partir de acá ya respondimos: el trabajo sigue en background.
+        analizarPublicaciones(mlGetAuth, cuentas, {
+          estado, dias,
+          onProgress: p => { _analizadorJob = { ..._analizadorJob, ...p }; },
+        }).then(resultado => {
+          const dir = path.join(__dirname, 'cache');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(path.join(dir, `analizador-${estado}.json`), JSON.stringify(resultado));
+          _analizadorJob = { corriendo: false, estado, dias, fase: 'listo', hechas: resultado.filas.length,
+            total: resultado.filas.length, detalle: `${resultado.filas.length} publicaciones`, error: null,
+            fin: Date.now(), inicio: _analizadorJob.inicio };
+          console.log(`  ✓ [analizador] ${estado}: ${resultado.filas.length} publicaciones, ${resultado.totales.visitas} visitas, ${resultado.totales.ventas} ventas`);
+        }).catch(err => {
+          _analizadorJob = { ..._analizadorJob, corriendo: false, fase: 'error', error: err.message };
+          console.error('[analizador] falló:', err.message);
+        });
+      } catch (e) {
+        _analizadorJob = { corriendo: false, fase: 'error', error: e.message };
+        try { json(res, 500, { ok: false, error: e.message }); } catch (_) {}
+      }
+    })();
+    return;
+  }
+
+  // Progreso del análisis en curso (lo pollea la pantalla mientras corre)
+  if (pathname === '/analizador/estado' && req.method === 'GET') {
+    json(res, 200, { ok: true, ..._analizadorJob });
+    return;
+  }
+
+  // Último resultado guardado para ese estado (active | paused)
+  if (pathname === '/analizador/resultado' && req.method === 'GET') {
+    try {
+      const estado = (parsed.query && parsed.query.estado) === 'paused' ? 'paused' : 'active';
+      const fp = path.join(__dirname, 'cache', `analizador-${estado}.json`);
+      if (!fs.existsSync(fp)) { json(res, 404, { ok: false, error: 'Todavía no se corrió el análisis' }); return; }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(fs.readFileSync(fp));
+    } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    return;
+  }
+
   // ── /stock-historico/cobertura GET → desde cuándo hay datos ──
   //    Mientras el histórico se llena, sirve para saber cuándo empieza a ser
   //    confiable el cálculo de demanda descensurada.
   if (pathname === '/stock-historico/cobertura' && req.method === 'GET') {
     (async () => {
       try {
-        const c = await db.coberturaHistorico();
+        const c = await db.coberturaHistorico([..._itemsEspejo()]);
         const dias = c && c.dias ? c.dias : 0;
         json(res, 200, {
           ok: true, ...c,
@@ -5900,6 +6823,102 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
           faltan_dias: Math.max(0, 30 - dias),
         });
       } catch (e) { json(res, 500, { ok: false, error: e.message }); }
+    })();
+    return;
+  }
+
+  // ── /api/stockroom/variantes/historial ──────────────────────
+  //    Registro de las variantes creadas desde "Agregar variante".
+  //    Vive en el servidor (no en localStorage) para que sobreviva a un
+  //    reload y se vea desde cualquier equipo, igual que el de Alibaba.
+  if (pathname === '/api/stockroom/variantes/historial' && req.method === 'GET') {
+    json(res, 200, { ok: true, entradas: db_varHistLoad() });
+    return;
+  }
+  if (pathname === '/api/stockroom/variantes/historial' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const e = JSON.parse(body || '{}');
+        if (!e.item_id || !Array.isArray(e.creadas) || !e.creadas.length)
+          { json(res, 400, { error: 'Faltan item_id o creadas' }); return; }
+        const lista = db_varHistLoad();
+        const nueva = {
+          id: `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+          ts: e.ts || Date.now(),
+          account_id: e.account_id || '',
+          item_id: e.item_id,
+          item_title: e.item_title || '',
+          atributo: e.atributo || '',
+          valor: e.valor || '',
+          origen: e.origen || '',
+          creadas: e.creadas,      // [{ etiqueta, variation_id, foto }]
+          revertida: false,
+        };
+        lista.unshift(nueva);
+        db_varHistSave(lista);
+        json(res, 200, { ok: true, entrada: nueva });
+      } catch (err) { json(res, 500, { error: err.message }); }
+    });
+    return;
+  }
+  const mVarRev = pathname.match(/^\/api\/stockroom\/variantes\/historial\/([^/]+)\/revertida$/);
+  if (mVarRev && req.method === 'POST') {
+    const lista = db_varHistLoad();
+    const e = lista.find(x => x.id === decodeURIComponent(mVarRev[1]));
+    if (!e) { json(res, 404, { error: 'Entrada no encontrada' }); return; }
+    e.revertida = true;
+    e.revertidaAt = new Date().toISOString();
+    db_varHistSave(lista);
+    json(res, 200, { ok: true });
+    return;
+  }
+  const mVarDel = pathname.match(/^\/api\/stockroom\/variantes\/historial\/([^/]+)$/);
+  if (mVarDel && req.method === 'DELETE') {
+    const id = decodeURIComponent(mVarDel[1]);
+    db_varHistSave(db_varHistLoad().filter(x => x.id !== id));
+    json(res, 200, { ok: true });
+    return;
+  }
+
+  // ── /stock-historico/inmovil GET?dias= → capital parado ──
+  //    Variantes con stock TODOS los días medidos y CERO bajas: no vendieron
+  //    ni una unidad. Hecho medido, no extrapolación — por eso ya sirve con
+  //    pocos días de histórico, al revés que la demanda descensurada.
+  if (pathname === '/stock-historico/inmovil' && req.method === 'GET') {
+    (async () => {
+      try {
+        const q = parsed.query || {};
+        const dias = Math.min(400, Math.max(2, parseInt(q.dias) || 60));
+        const filas = await db.stockInmovil(dias, [..._itemsEspejo()]);
+
+        // Agrupado por publicación para el treemap (producto → variante)
+        const porProd = new Map();
+        let unidades = 0;
+        for (const f of filas) {
+          unidades += f.stock_actual || 0;
+          const k = f.titulo || f.item_id;
+          if (!porProd.has(k)) porProd.set(k, { titulo: k, item_id: f.item_id, cuenta: f.cuenta, unidades: 0, variantes: [] });
+          const p = porProd.get(k);
+          p.unidades += f.stock_actual || 0;
+          p.variantes.push({ variante: f.variante || 'única', unidades: f.stock_actual || 0,
+                             variation_id: f.variation_id, dias: f.dias_medidos });
+        }
+        const productos = [...porProd.values()].sort((a, b) => b.unidades - a.unidades);
+        productos.forEach(p => p.variantes.sort((a, b) => b.unidades - a.unidades));
+
+        json(res, 200, {
+          ok: true, dias,
+          variantes: filas.length,
+          productos: productos.length,
+          unidades,
+          detalle: productos,
+        });
+      } catch (e) {
+        console.error('[stock-hist/inmovil] ERROR:', e.message);
+        json(res, 500, { ok: false, error: e.message });
+      }
     })();
     return;
   }
@@ -5926,6 +6945,9 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
       try {
         const q = parsed.query || {};
         const dias = Math.min(400, Math.max(7, parseInt(q.dias) || 60));
+        // Días CON STOCK mínimos para animarse a extrapolar una demanda
+        // mensual. Con menos, la muestra es demasiado chica (ver abajo).
+        const MIN_DIAS_CON_STOCK = 7;
         // Mismo alcance que la orden de compra: por defecto sólo fundas
         const todos = String(q.all_products || '') === '1';
         const [conStock, ventas] = await Promise.all([
@@ -5941,7 +6963,16 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
           .map(vNorm).filter(Boolean).sort().join('|');
 
         const out = [];
-        for (const it of getProductCache()) {
+        // Ambas cuentas: los ítems de RZ-ZETTAI que NO están vinculados a uno
+        // de WZ no aparecían en ningún lado (el loop sólo recorría la cuenta
+        // activa). Los vinculados igual consolidan sus ventas en el ítem de WZ,
+        // así que no se duplican: la fila espejo queda en 0 y se filtra sola.
+        const vistos = new Set();
+        const espejo = _itemsEspejo();
+        for (const { cuenta, items } of _itemsPorCuenta()) {
+        for (const it of items) {
+          if (vistos.has(it.id) || espejo.has(String(it.id))) continue;
+          vistos.add(it.id);
           if (!todos && !esFundaCosto(it.title)) continue;
           const vars = (it.variations && it.variations.length) ? it.variations : [null];
           for (const v of vars) {
@@ -5961,20 +6992,31 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
             // A medida que el histórico crece, la estimación se vuelve exacta.
             const proporcion = medidos > 0 ? dcs / medidos : 1;
             const diasEfectivos = dias * proporcion;
+            // Extrapolar un mes desde muy pocos días con stock da números
+            // absurdos: una variante repuesta hace 2 días (2 de 16 medidos)
+            // multiplica la demanda x8 = +700%. Además los días posteriores a
+            // una reposición suelen traer demanda contenida, así que el sesgo
+            // es sistemático hacia arriba. Bajo el mínimo no se estima.
+            const muestraSuficiente = dcs >= MIN_DIAS_CON_STOCK;
             out.push({
-              item_id: it.id, variation_id: vid, titulo: it.title, variante: label,
+              item_id: it.id, variation_id: vid, titulo: it.title, variante: label, cuenta,
               unidades: u, dias_medidos: medidos, dias_con_stock: dcs,
               dias_sin_stock: medidos - dcs,
               pct_con_stock: +(proporcion * 100).toFixed(0),
               // Lo que el sistema calcula hoy: reparte sobre TODA la ventana
               demanda_mensual_actual: +(u / (dias / 30)).toFixed(2),
               // Corregida: reparte sólo sobre los días en que se pudo vender
-              demanda_mensual_real: diasEfectivos > 0
+              demanda_mensual_real: (diasEfectivos > 0 && muestraSuficiente)
                 ? +(u / (diasEfectivos / 30)).toFixed(2) : null,
+              // Muestra insuficiente: hubo ventas pero en muy pocos días con
+              // stock — se muestra el dato crudo y se omite la corrección.
+              muestra_chica: !muestraSuficiente,
+              dias_con_stock_min: MIN_DIAS_CON_STOCK,
               // Con pocos días medidos la proporción es ruidosa: se avisa
-              confiable: medidos >= 30,
+              confiable: medidos >= 30 && muestraSuficiente,
             });
           }
+        }
         }
         out.sort((a, b) => (b.demanda_mensual_real ?? 0) - (a.demanda_mensual_real ?? 0));
         const medidosMax = out.reduce((m, x) => Math.max(m, x.dias_medidos), 0);
@@ -7165,6 +8207,12 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
         ? 'public, max-age=31536000, immutable'
         : 'public, max-age=3600';
     }
+    // Fuentes propias: el nombre del archivo lleva la versión (inter-latin-v20),
+    // así que el contenido de esa URL no cambia nunca → immutable 1 año.
+    if (ext === '.woff2') {
+      tiendaHeaders['Cache-Control'] = 'public, max-age=31536000, immutable';
+      tiendaHeaders['Access-Control-Allow-Origin'] = '*';
+    }
     // Agregar headers de seguridad a páginas HTML de la tienda pública
     if (ext === '.html') {
       tiendaHeaders['X-Frame-Options'] = 'DENY';
@@ -7172,15 +8220,178 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
       tiendaHeaders['Referrer-Policy'] = 'strict-origin-when-cross-origin';
       tiendaHeaders['Content-Security-Policy'] =
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://www.mercadopago.com https://www.googletagmanager.com https://*.googletagmanager.com https://www.gstatic.com https://apis.google.com; " +
+        // static.cloudflareinsights.com: el beacon de Cloudflare Web Analytics
+        // lo inyecta Cloudflare en el borde; sin esto la CSP lo bloqueaba (error
+        // de consola en cada visita y la analítica de Cloudflare sin datos).
+        "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://www.mercadopago.com https://www.googletagmanager.com https://*.googletagmanager.com https://www.gstatic.com https://apis.google.com https://static.cloudflareinsights.com; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
         "img-src 'self' data: blob: https://*.mlstatic.com http://*.mlstatic.com https://mlstatic.com https://http2.mlstatic.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.googleusercontent.com; " +
-        "connect-src 'self' https://api.mercadolibre.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://*.firebaseapp.com; " +
+        "connect-src 'self' https://api.mercadolibre.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://*.firebaseapp.com https://cloudflareinsights.com; " +
         "frame-src https://www.mercadopago.com https://*.mercadopago.com https://www.google.com https://maps.google.com https://www.youtube.com https://www.youtube-nocookie.com https://www.googletagmanager.com https://*.firebaseapp.com https://accounts.google.com https://apis.google.com; " +
         "media-src 'self' blob:; " +
         "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
     }
+    /* index.html → cards reales en vez de los skeletons, en TODAS las tiras
+       del home (Más vendidos + Mallas/Protectores/Fundas/Combos). Fases 1 y 3
+       de SSR (ver lib/ssr-cards.js): el home entero armaba su grid
+       client-side, así que un bot que no ejecuta JS (o un link-preview de
+       WhatsApp/Facebook, que nunca lo hace) veía la página vacía. El JS del
+       cliente sigue pisando estos mismos contenedores con su propio fetch
+       apenas carga — esto sólo cambia qué hay ANTES de que corra: cards
+       reales en vez de skeleton. Si falla algo, cae al stream normal con los
+       skeletons de siempre (el cliente los llena igual). */
+    if (ext === '.html' && path.basename(resolvedNorm).toLowerCase() === 'index.html') {
+      (async () => {
+        // Sirve el archivo tal cual, sin SSR — mismo fallback que el stream
+        // normal de más abajo (acá hay que replicarlo: al ser async, no hay
+        // vuelta atrás a ese código si esto ya decidió responder la request).
+        const servePlain = () => {
+          res.writeHead(200, tiendaHeaders);
+          fs.createReadStream(resolvedNorm).pipe(res);
+        };
+        try {
+          // Misma lista que ve el público (oculto/overrides/propios aplicados
+          // — ver getPublicProductList()); getProductCache() sola mostraría
+          // productos que el admin ocultó o con su título viejo.
+          const productos = await getPublicProductList();
+          let html = fs.readFileSync(resolvedNorm, 'utf8');
+          let huboCambios = false;
+
+          // Inyecta las cards de un carrusel en su <div class="carousel-track">,
+          // delimitado por el botón "siguiente" que le sigue (mismo data-carousel).
+          const injectTrack = (trackId, dataCarousel, cards) => {
+            if (!cards.length) return;
+            const cardsHtml = cards.map((p, i) => productCardHtmlSSR(p, wzCleanTitle, { priority: i < 5 })).join('');
+            const re = new RegExp(
+              `(<div class="carousel-track" id="${trackId}">)[\\s\\S]*?(<\\/div>\\s*<button class="carousel-arrow" data-carousel="${dataCarousel}" data-dir="1")`
+            );
+            // Reemplazo con función, no con string: un string de reemplazo
+            // interpreta "$1", "$2", etc. como backreferences — y los precios
+            // reales dentro de cardsHtml traen "$" seguido de números ("$19.500"
+            // empieza con "$1"), así que un reemplazo por string corrompía la
+            // card pisando el precio con el HTML de un grupo capturado.
+            if (re.test(html)) { html = html.replace(re, (_m, g1, g2) => g1 + cardsHtml + g2); huboCambios = true; }
+          };
+          // Además de llenar el track, saca el style="display:none" de la
+          // <section> — si no, el contenido real queda invisible hasta que el
+          // JS del cliente decida mostrarla.
+          const unhideSection = (sectionId) => {
+            const re = new RegExp(`(<section class="products-section" id="${sectionId}")\\s+style="display:none"`);
+            if (re.test(html)) { html = html.replace(re, '$1'); huboCambios = true; }
+          };
+
+          const bestsellers = buildHomeBestsellersSSR(productos);
+          injectTrack('bestsellers-track', 'bestsellers', bestsellers);
+
+          const mallas = buildHomeCategorySSR(productos, esMalla);
+          injectTrack('mallas-track', 'mallas', mallas);
+          if (mallas.length) unhideSection('mallas-section');
+
+          const protectores = buildHomeCategorySSR(productos, esProtector);
+          injectTrack('protectores-track', 'protectores', protectores);
+          if (protectores.length) unhideSection('protectores-section');
+
+          const fundas = buildHomeCategorySSR(productos, esFunda);
+          injectTrack('fundas-track', 'fundas', fundas);
+          if (fundas.length) unhideSection('fundas-section');
+
+          const combos = buildHomeCategorySSR(productos, esCombo);
+          injectTrack('combos-track', 'combos', combos);
+          if (combos.length) unhideSection('combos-section');
+
+          if (huboCambios) {
+            const buf = Buffer.from(html, 'utf8');
+            res.writeHead(200, { ...tiendaHeaders, 'Content-Length': Buffer.byteLength(buf) });
+            res.end(buf);
+          } else {
+            servePlain();
+          }
+        } catch (e) { servePlain(); }
+      })();
+      return;
+    }
+
+    /* catalogo.html → título, descripción, H1 y canónica propios por categoría.
+       Sin esto las tres categorías devolvían el mismo HTML con la misma
+       canónica, y Google sólo podía indexar una página de catálogo. */
+    if (ext === '.html'
+        && path.basename(resolvedNorm).toLowerCase() === 'catalogo.html') {
+      (async () => {
+        const servePlain = () => {
+          res.writeHead(200, tiendaHeaders);
+          fs.createReadStream(resolvedNorm).pipe(res);
+        };
+        try {
+        const seo     = buildCatalogSeo(parsed.query || {});
+        const escAttr = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        let html = fs.readFileSync(resolvedNorm, 'utf8');
+        html = html.replace(/<title>[^<]*<\/title>/i,
+          '<title>' + escAttr(seo.title) + ' | WZMALLAS</title>');
+        html = html.replace(/<meta\s+name="description"[^>]*>/i,
+          '<meta name="description" content="' + escAttr(seo.desc) + '">');
+        html = html.replace(/<link\s+rel="canonical"[^>]*>/i,
+          '<link rel="canonical" href="' + escAttr(seo.canonical) + '">');
+        html = html.replace(/<meta\s+name="robots"[^>]*>/i,
+          '<meta name="robots" content="' + escAttr(seo.robots) + '">');
+        /* El H1 estaba escrito fijo como "Todos los productos" y lo cambiaba el
+           JS. Se inyecta acá también para que un rastreador que no ejecute
+           scripts no lea la categoría de mallas como si fuera otra cosa. */
+        if (seo.h1) {
+          html = html.replace(/(<h1 class="catalog-page-title" id="catalog-title">)[^<]*(<\/h1>)/i,
+            '$1' + escAttr(seo.h1) + '$2');
+          /* La categoría "fundas" tiene además un banner con su propio H1
+             escrito fijo, y es el que se ve: sin esto la página mostraba
+             "Fundas" mientras el H1 oculto decía otra cosa. */
+          html = html.replace(/(<h1 class="cat-hero-title">)[^<]*(<\/h1>)/i,
+            '$1' + escAttr(seo.h1) + '$2');
+        }
+        /* Huella del filtro que se renderizó acá. La lee el catálogo para saber
+           si todavía manda el título del servidor o si el visitante ya cambió
+           un filtro y le toca titular a él. */
+        const ogTags =
+          '<meta name="wz-seo-ssr" content="' + escAttr(seo.estado || '') + '">\n' +
+          '<meta property="og:type" content="website">\n' +
+          '<meta property="og:title" content="' + escAttr(seo.title) + ' | WZMALLAS">\n' +
+          '<meta property="og:description" content="' + escAttr(seo.desc) + '">\n' +
+          '<meta property="og:url" content="' + escAttr(seo.canonical) + '">\n';
+        html = html.replace('</head>', ogTags + '</head>');
+
+        /* Fase 2 de SSR (ver lib/ssr-cards.js): la grilla de productos vive
+           enteramente client-side (#products-wrap arranca vacío), así que
+           estas páginas — las que están en el sitemap — quedaban en blanco
+           para cualquiera que no ejecute JS. Sólo se inyecta en la vista
+           "limpia" (sin q=/precio_min=/precio_max=/orden=, los mismos que
+           bloquea robots.txt): son las únicas indexables, y las únicas donde
+           el orden/resultado no depende de una elección del visitante. */
+        const queryKeys = Object.keys(parsed.query || {});
+        const esVistaIndexable = queryKeys.every(k => k === 'cat');
+        if (esVistaIndexable) {
+          try {
+            // Misma lista que ve el público (oculto/overrides/propios
+            // aplicados — ver getPublicProductList()).
+            const productos = await getPublicProductList();
+            const grid = buildCatalogGridSSR(productos, parsed.query.cat || '');
+            if (grid.length) {
+              const gridHtml = grid.map((p, i) => productCardHtmlSSR(p, wzCleanTitle, { priority: i < 8 })).join('');
+              // Reemplazo con función: mismo motivo que en injectTrack() de
+              // index.html — gridHtml trae precios reales con "$", y un
+              // string de reemplazo puede interpretar secuencias "$&"/"$`"/"$'"
+              // como especiales aunque el patrón de búsqueda no tenga grupos.
+              html = html.replace('<div id="products-wrap"></div>',
+                () => '<div id="products-wrap" class="catalog-grid">' + gridHtml + '</div>');
+            }
+          } catch (e) { /* sin grid SSR, el cliente la arma igual */ }
+        }
+
+        const buf = Buffer.from(html, 'utf8');
+        res.writeHead(200, { ...tiendaHeaders, 'Content-Length': Buffer.byteLength(buf) });
+        res.end(buf);
+        } catch (e) { servePlain(); }
+      })();
+      return;
+    }
+
     // producto.html?id=… → inyectar JSON-LD server-side (SEO). Si falla algo,
     // cae al stream normal (el schema client-side sigue funcionando).
     if (ext === '.html'
@@ -7191,9 +8402,18 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
         if (prod) {
           const host = (req.headers['host'] || 'wzmallas.com').split(':')[0];
           const desc = buildProductMetaDescription(prod);
-          const ld   = buildProductJsonLd(prod, parsed.query.id, host, desc);
+          // ProductGroup cuando la estructura de variaciones es de un eje limpio
+          // (ver lib/seo.js): una ficha con doce combos de color × modelo pasa a
+          // declarar sus doce ofertas en vez de una sola. Si no resuelve (más de
+          // dos ejes, o un atributo combinado en un solo campo de texto), cae al
+          // Product plano de siempre — no se rompe nada, se pierde la mejora.
+          const ld = buildProductGroupJsonLd(prod, parsed.query.id, host, desc)
+                  || buildProductJsonLd(prod, parsed.query.id, host, desc);
           const tag  = '<script type="application/ld+json" id="product-schema">'
                      + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
+          const tituloLimpio = buildProductTitle(prod.title);
+          const bcTag = '<script type="application/ld+json" id="breadcrumb-schema">'
+                      + JSON.stringify(buildBreadcrumbJsonLd(prod, tituloLimpio)).replace(/</g, '\\u003c') + '</script>';
           // Canónica server-side: URL limpia (solo ?id=), dominio fijo wzmallas.com.
           // Antes la canónica se seteaba sólo por JS (a location.href, con params
           // de tracking) → Google elegía otra canónica y marcaba "Duplicada".
@@ -7203,7 +8423,11 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
           // genérico "Producto · WZMALLAS" en el HTML server-side → Google las
           // veía como casi-duplicadas y no las indexaba. Ahora cada una lleva su
           // nombre. Imagen para Open Graph (redes + señal SEO).
-          const tituloProd = escAttr(String(prod.title || 'Producto').replace(/\s+/g, ' ').trim().slice(0, 68));
+          // Antes iba el título de ML tal cual, recortado a 68: Title Case de
+          // marketplace, punto final y relleno de SEO. 23 de 40 pasaban los 60
+          // caracteres que muestra Google, así que lo que distinguía a una malla
+          // de otra quedaba después del corte.
+          const tituloProd = escAttr(tituloLimpio);
           const ogImg = (prod.pictures && prod.pictures[0] && (prod.pictures[0].secure_url || prod.pictures[0].url)) || prod.thumbnail || '';
           const ogTags =
             '<meta property="og:type" content="product">\n' +
@@ -7211,7 +8435,7 @@ if (pathname === '/api/tienda/sync/stock' && req.method === 'POST') {
             '<meta property="og:description" content="' + escAttr(desc) + '">\n' +
             '<meta property="og:url" content="' + escAttr(canonical) + '">\n' +
             (ogImg ? '<meta property="og:image" content="' + escAttr(ogImg) + '">\n' : '');
-          const headTags  = '<link rel="canonical" href="' + escAttr(canonical) + '">\n' + ogTags + tag;
+          const headTags  = '<link rel="canonical" href="' + escAttr(canonical) + '">\n' + ogTags + tag + bcTag;
           let html = fs.readFileSync(resolvedNorm, 'utf8');
           // Título específico del producto
           html = html.replace(/<title>[^<]*<\/title>/i, '<title>' + tituloProd + ' · WZMALLAS</title>');
@@ -9426,28 +10650,79 @@ db.ensureStockHistoricoTable()
   .then(() => { snapshotStock('arranque'); })
   .catch(e => console.log('[stock-hist] Error en init de tabla:', e.message));
 
-async function snapshotStock(motivo = 'diario') {
+// Fotografía TODAS las cuentas, no sólo la activa: antes el histórico sólo
+// tenía WZ y RZ-ZETTAI quedaba sin datos (y el dato de un día no se puede
+// recuperar después). Cada cuenta tiene su cache propio items-<id>.json;
+// se cae a getProductCache() sólo si no hay caches por cuenta.
+// Publicaciones ESPEJO: en un grupo vinculado, el mismo producto físico está
+// publicado en las dos cuentas y ambas muestran el mismo stock. Guardamos las
+// dos filas en el histórico (ver cuándo se desincronizan es justamente lo que
+// vigila vinculaciones), pero al SUMAR hay que contar una sola: si no, las
+// unidades del par se cuentan dos veces (~13% del total medido).
+function _itemsEspejo() {
   try {
-    const items = getProductCache();
-    if (!items || !items.length) { console.log('[stock-hist] cache vacío, se omite'); return; }
-    const cuenta = config.label || config.id || '';
-    const filas = [];
-    for (const it of items) {
-      const vars = (it.variations && it.variations.length) ? it.variations : null;
-      if (vars) {
-        for (const v of vars) filas.push({
-          item_id: it.id, variation_id: String(v.id || ''), cantidad: v.available_quantity ?? 0,
-          cuenta, titulo: it.title,
-          variante: (v.attribute_combinations || []).map(a => `${a.name}: ${a.value_name}`).join(' · '),
-        });
-      } else {
-        filas.push({ item_id: it.id, variation_id: '', cantidad: it.available_quantity ?? 0,
-                     cuenta, titulo: it.title, variante: '' });
+    const v = JSON.parse(fs.readFileSync(path.join(__dirname, 'vinculaciones.json'), 'utf8'));
+    const activa = (config && config.id) || '';
+    const espejo = new Set();
+    for (const g of (v.groups || [])) {
+      const its = g.items || [];
+      const cuentas = new Set(its.map(i => i.accountId));
+      if (cuentas.size < 2) continue;                 // no cruza cuentas: nada que deduplicar
+      const tieneActiva = its.some(i => i.accountId === activa);
+      // Se conserva el lado de la cuenta activa; si ninguno lo es, el primero.
+      for (const it of its) {
+        const esPrincipal = tieneActiva ? (it.accountId === activa) : (it === its[0]);
+        if (!esPrincipal) espejo.add(String(it.itemId));
       }
     }
-    const n = await db.guardarSnapshotStock(filas);
-    const sin = filas.filter(f => (f.cantidad || 0) === 0).length;
-    console.log(`[stock-hist] foto ${motivo}: ${n} variantes (${sin} sin stock) — cuenta ${cuenta}`);
+    return espejo;
+  } catch { return new Set(); }
+}
+
+function _itemsPorCuenta() {
+  const cacheDir = path.join(__dirname, 'cache');
+  const accounts = (fullConfig && Array.isArray(fullConfig.accounts) && fullConfig.accounts.length)
+    ? fullConfig.accounts
+    : (config && config.id ? [config] : []);
+  const salida = [];
+  for (const acct of accounts) {
+    const etiqueta = acct.label || acct.id || '';
+    try {
+      const raw = JSON.parse(fs.readFileSync(path.join(cacheDir, `items-${acct.id}.json`), 'utf8'));
+      const items = Array.isArray(raw) ? raw : (raw.items || []);
+      if (items.length) salida.push({ cuenta: etiqueta, items });
+    } catch { /* esa cuenta todavía no tiene cache propio */ }
+  }
+  if (salida.length) return salida;
+  const items = getProductCache() || [];
+  return items.length ? [{ cuenta: config.label || config.id || '', items }] : [];
+}
+
+async function snapshotStock(motivo = 'diario') {
+  try {
+    const porCuenta = _itemsPorCuenta();
+    if (!porCuenta.length) { console.log('[stock-hist] cache vacío, se omite'); return; }
+
+    for (const { cuenta, items } of porCuenta) {
+      const filas = [];
+      for (const it of items) {
+        const vars = (it.variations && it.variations.length) ? it.variations : null;
+        if (vars) {
+          for (const v of vars) filas.push({
+            item_id: it.id, variation_id: String(v.id || ''), cantidad: v.available_quantity ?? 0,
+            cuenta, titulo: it.title,
+            variante: (v.attribute_combinations || []).map(a => `${a.name}: ${a.value_name}`).join(' · '),
+          });
+        } else {
+          filas.push({ item_id: it.id, variation_id: '', cantidad: it.available_quantity ?? 0,
+                       cuenta, titulo: it.title, variante: '' });
+        }
+      }
+      if (!filas.length) continue;
+      const n = await db.guardarSnapshotStock(filas);
+      const sin = filas.filter(f => (f.cantidad || 0) === 0).length;
+      console.log(`[stock-hist] foto ${motivo}: ${n} variantes (${sin} sin stock) — cuenta ${cuenta}`);
+    }
   } catch (e) { console.log('[stock-hist] Error al guardar la foto:', e.message); }
 }
 
@@ -9702,3 +10977,149 @@ server.listen(PORT, BIND, () => {
     console.log('');
   }
 });
+
+// ── Refresco automático de cobros (cada 24 h) ─────────────────────────────
+// Mantiene la rentabilidad de fundas al día sin que nadie cargue nada a mano.
+// La lógica (qué tramo le toca a cada cuenta, cómo no pisar lo manual) vive en
+// lib/cobros-auto.js; acá va sólo el cableado y el calendario.
+const { refrescarCobros: _refrescarCobros } = require('./lib/cobros-auto');
+let _cobrosAutoEstado = { corriendo: false, ultimo: null };
+
+async function refrescarCobrosAuto() {
+  if (_cobrosAutoEstado.corriendo) return { ok: false, error: 'ya está corriendo' };
+  _cobrosAutoEstado.corriendo = true;
+  try {
+    const cuentas = (fullConfig.accounts || [config])
+      .filter(a => a.access_token && a.user_id)
+      .map(a => ({ id: a.id, label: a.label || a.id, fiscal: a.fiscal === 'monotributo' ? 'monotributo' : 'responsable' }));
+
+    const r = await _refrescarCobros({
+      cuentas,
+      leerCobros: () => {
+        try { return JSON.parse(fs.readFileSync(COBROS_GUARDADOS_PATH, 'utf8')); }
+        catch (e) { return []; }
+      },
+      escribirCobros: lista => writeJsonAtomic(COBROS_GUARDADOS_PATH, lista),
+      fetchInterno,
+      log: msg => console.log(msg),
+    });
+    _cobrosAutoEstado.ultimo = r;
+    // Después de refrescar, auditar lo cargado a mano contra lo que ML reporta
+    // hoy (devoluciones posteriores, paquetes estimados). Va acá y no en la
+    // carga de la página porque cada período cuesta una consulta a ML.
+    try { await conciliarCobrosAuto(); }
+    catch (e) { console.error('[conciliar] falló:', e.message); }
+    return r;
+  } catch (e) {
+    console.error('[cobros-auto] falló:', e.message);
+    _cobrosAutoEstado.ultimo = { ok: false, error: e.message, corrido_en: new Date().toISOString() };
+    return _cobrosAutoEstado.ultimo;
+  } finally {
+    _cobrosAutoEstado.corriendo = false;
+  }
+}
+
+// ── Conciliación de lo cargado a mano ──────────────────────────────────
+// Corre pegada al refresco automático. El resultado se guarda en disco para
+// que Rentabilidad lo lea sin gastar llamadas a ML en cada carga de página.
+const { conciliarTodo: _conciliarTodo, aplicarDevoluciones: _aplicarDevoluciones } = require('./lib/conciliar');
+const CONCILIACION_PATH = path.join(__dirname, 'conciliacion.json');
+
+/* "Lo manual gana" aplicado al LEER, no sólo en el job: una venta de un cobro
+   automático que cae dentro de un período cargado a mano de la misma cuenta
+   no se cuenta. Cubre la ventana entre que alguien guarda un cobro manual y
+   la corrida que recorta el automático. Se compara por fecha y no por id
+   porque entre el Excel y la API los ids no siempre coinciden. */
+function sinSolapeAuto(cobros) {
+  const rango = c => {
+    const m = String(c.periodo || '').match(/(\d{4}-\d{2}-\d{2})\D+(\d{4}-\d{2}-\d{2})/);
+    return m ? [m[1], m[2]] : null;
+  };
+  const cta = c => (c.cuenta && c.cuenta.id) ? String(c.cuenta.id) : 'wz';   // legacy sin tag = WZ
+  const manuales = {};
+  for (const c of cobros) {
+    if (c.auto) continue;
+    const r = rango(c);
+    if (r) (manuales[cta(c)] = manuales[cta(c)] || []).push(r);
+  }
+  return cobros.map(c => {
+    const rs = c.auto && manuales[cta(c)];
+    if (!rs) return c;
+    const pisada = v => {
+      const f = String(v.fecha || '').slice(0, 10);
+      return rs.some(([d, h]) => f >= d && f <= h);
+    };
+    const ventas = (c.ventas || []).filter(v => !pisada(v));
+    return ventas.length === (c.ventas || []).length ? c : { ...c, ventas };
+  }).filter(c => !c.auto || (c.ventas || []).length);
+}
+
+function leerConciliacion() {
+  try { return JSON.parse(fs.readFileSync(CONCILIACION_PATH, 'utf8')); }
+  catch (e) { return null; }
+}
+
+async function conciliarCobrosAuto() {
+  const cobros = (() => {
+    try { return JSON.parse(fs.readFileSync(COBROS_GUARDADOS_PATH, 'utf8')); }
+    catch (e) { return []; }
+  })();
+
+  // Sólo los últimos 120 días: más atrás ya está liquidado y no hay nada que
+  // hacer con el hallazgo, y cada período cuesta una consulta a ML.
+  const desdeMin = (() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 120);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const r = await _conciliarTodo({
+    cobros, desdeMin,
+    log: msg => console.log(msg),
+    pedirApi: async ({ desde, hasta, cuenta, fiscal }) => {
+      const resp = await fetchInterno('/cobro/ml', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          desde, hasta, modo: 'fundas',
+          sin_iva: fiscal === 'monotributo' ? '1' : '',
+          cuenta: String(cuenta),
+        }),
+      });
+      const d = await resp.json();
+      if (!d || !d.ok) throw new Error((d && (d.detail || d.error)) || 'respuesta inválida');
+      return d.ventas || [];
+    },
+  });
+
+  // Si ML la da por cancelada o devuelta, no es una venta: se descuenta.
+  // El Excel de liquidación no se entera de las devoluciones posteriores al
+  // pago, y en los datos no hay un solo neto negativo, así que si no se
+  // descuentan acá quedan contadas para siempre.
+  const { cobros: cobrosNuevos, aplicadas } = _aplicarDevoluciones(cobros, r.hallazgos);
+  if (aplicadas.length) {
+    writeJsonAtomic(COBROS_GUARDADOS_PATH, cobrosNuevos);
+    aplicadas.forEach(a => console.log(`[conciliar] descontada ${a.fecha} ${a.cuenta_label}`
+      + ` ${Math.round(a.neto)} — ${String(a.titulo).slice(0, 60)}`));
+  }
+
+  // Historial acumulado: una vez descontada, la venta deja de aparecer como
+  // hallazgo (ya está excluida), y sin este registro no quedaría rastro de
+  // por qué el período bajó.
+  const previo = leerConciliacion();
+  const historial = ((previo && previo.descontadas) || []).slice();
+  const yaEsta = new Set(historial.map(x => `${x.cobro}|${x.id}`));
+  aplicadas.forEach(a => { if (!yaEsta.has(`${a.cobro}|${a.id}`)) historial.push(a); });
+
+  writeJsonAtomic(CONCILIACION_PATH, { ...r, descontadas: historial,
+    descontado_total: historial.reduce((a, x) => a + (Number(x.neto) || 0), 0) });
+  console.log(`[conciliar] ${r.revisados} período(s) revisado(s) · ${r.periodos_con_diferencia} con diferencia`
+    + ` · descontadas ahora ${aplicadas.length} · por estimación ${Math.round(r.total_por_estimacion)}`);
+  return { ...r, aplicadas: aplicadas.length, descontadas: historial.length };
+}
+
+const COBROS_AUTO_INTERVAL = 24 * 60 * 60 * 1000;
+setInterval(refrescarCobrosAuto, COBROS_AUTO_INTERVAL);
+// Primera corrida diferida 5 min: al arranque compiten el sync de stock, el
+// polling de MP y la restauración de sesiones; esto no es urgente.
+setTimeout(refrescarCobrosAuto, 5 * 60 * 1000);

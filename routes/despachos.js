@@ -66,33 +66,132 @@ module.exports = function(ctx) {
     });
   }
 
+  /* Recorre con un tope de tareas en paralelo. Sin esto, 21 envíos disparan
+     42 pedidos simultáneos y ML empieza a demorar los últimos. */
+  async function mapLimit(lista, limite, fn) {
+    const salida = new Array(lista.length);
+    let siguiente = 0;
+    const obreros = Array.from({ length: Math.min(limite, lista.length) }, async () => {
+      for (;;) {
+        const i = siguiente++;
+        if (i >= lista.length) return;
+        salida[i] = await fn(lista[i], i);
+      }
+    });
+    await Promise.all(obreros);
+    return salida;
+  }
+
+  /* Reintenta lo que vale la pena reintentar: throttling (429), errores del
+     lado de ML (5xx) y cortes de red. Un 401/404 no se reintenta. */
+  async function conReintento(fn, intentos = 3) {
+    let ultimo;
+    for (let n = 0; n < intentos; n++) {
+      try { return await fn(); }
+      catch (e) {
+        ultimo = e;
+        const vaDeNuevo = !e.status || e.status === 429 || e.status >= 500;
+        if (!vaDeNuevo || n === intentos - 1) break;
+        await new Promise(r => setTimeout(r, 400 * Math.pow(2, n)));
+      }
+    }
+    throw ultimo;
+  }
+
+  /* ML publica la misma foto en varios tamaños según el sufijo: -O es la
+     original (~88 KB) y -I es de 90px (~6 KB). La lista las muestra a 44px,
+     así que mandar la original es tirar ~15x de ancho de banda por ítem. */
+  const miniatura = url => String(url || '')
+    .replace(/([-_])[A-Z]\.(webp|jpe?g|png)(\?.*)?$/i, (m, sep, ext, qs) => `${sep}I.webp${qs || ''}`);
+
+  /* Recorre TODAS las páginas del resultado. Antes se pedía limit=50 y no se
+     miraba paging.total: con 51 ventas listas, la 51 no aparecía y no había
+     forma de notarlo. El tope es un cinturón — si se llega, se avisa
+     (truncated) en vez de recortar en silencio. */
+  const TOPE_ORDENES = 300;
+  async function buscarOrdenes(acct, filtro) {
+    const porPagina = 50;
+    const lista = [];
+    let offset = 0, total = 0;
+    for (;;) {
+      const p = `/orders/search?seller=${acct.user_id}&${filtro}` +
+                `&sort=date_desc&limit=${porPagina}&offset=${offset}`;
+      const data = await conReintento(() => mlGetAuth(acct, p));
+      const lote = data.results || [];
+      lista.push(...lote);
+      total = (data.paging && typeof data.paging.total === 'number') ? data.paging.total : lista.length;
+      offset += porPagina;
+      if (!lote.length || lista.length >= total || offset >= TOPE_ORDENES) break;
+    }
+    return { lista, total, truncado: lista.length < total };
+  }
+
   async function getDespachosPendientes(acct) {
-    try { await refreshAccountToken(acct); } catch(e) {}
+    const _t0 = Date.now();
+    const tokenOk = await refreshAccountToken(acct).catch(() => false);
 
     const DISPATCHED = new Set(['picked_up','dropped_off','in_hub','in_packing_list',
       'shipped','delivered','not_delivered','cancelled','returning_to_sender','returned','forwarded_to_third']);
 
-    const mlPath = `/orders/search?seller=${acct.user_id}&shipping.status=ready_to_ship&order.status=paid&sort=date_desc&limit=50`;
-    const data   = await mlGetAuth(acct, mlPath);
-    const rawOrders = data.results || [];
+    // Fuente principal: lo que ML considera listo para despachar.
+    const base = await buscarOrdenes(acct, 'shipping.status=ready_to_ship&order.status=paid');
+    const rawOrders = base.lista.slice();
+    const yaEstan = new Set(rawOrders.map(o => String(o.id)));
 
+    /* Segunda fuente, independiente de la primera. El índice de búsqueda de ML
+       se atrasa: una venta puede tener el envío en ready_to_ship y todavía no
+       salir en la consulta filtrada por ese estado. Se piden las pagadas más
+       recientes SIN filtro de envío y se agrega lo que falte.
+       No alcanza con avisar: un envío que no se ve termina en un envío no
+       hecho, así que la orden se suma a la lista y se marca. Más abajo pasa
+       por el mismo control de estado real que las demás, o sea que si en
+       realidad ya se despachó, se filtra igual.
+       Una sola página: el atraso del índice se mide en minutos y las 50 ventas
+       más recientes cubren esa ventana de sobra. */
+    let recuperadas = 0, cruceOk = false;
+    try {
+      const rec = await conReintento(() => mlGetAuth(acct,
+        `/orders/search?seller=${acct.user_id}&order.status=paid&sort=date_desc&limit=50`));
+      cruceOk = true;
+      for (const o of (rec.results || [])) {
+        const est = o.shipping && o.shipping.status;
+        const sub = o.shipping && o.shipping.substatus;
+        if (est !== 'ready_to_ship') continue;
+        if (sub && DISPATCHED.has(sub)) continue;
+        if (yaEstan.has(String(o.id))) continue;
+        yaEstan.add(String(o.id));
+        o._recuperada = true;
+        rawOrders.push(o);
+        recuperadas++;
+      }
+    } catch (e) {
+      console.warn(`[despachos-hoy] cruce falló en ${acct.label || acct.id}: ${e.message}`);
+    }
+
+    /* Un pack son varias órdenes con el MISMO shipping id: antes se pedía el
+       envío una vez por orden, duplicando llamadas sin necesidad. */
     const shipmentStatus = {};
-    await Promise.all(rawOrders.map(async o => {
-      const sid = o.shipping?.id;
-      if (!sid) return;
+    /* Envíos que no se pudieron consultar. Antes esto era un catch vacío y el
+       precio de fallar era alto: sin logistic_type la orden cae en el "todo lo
+       que no es Flex es Agencia", así que un Flex real se mostraba como
+       AGENCIA, no entraba en el PDF de etiquetas y el paquete no salía. Ahora
+       se reintenta y, si igual falla, la orden queda marcada. */
+    const sinEstado = [];
+    const sidsUnicos = [...new Set(rawOrders.map(o => o.shipping?.id).filter(Boolean))];
+    await mapLimit(sidsUnicos, 6, async sid => {
       try {
         // /sla → expected_date = fecha límite de despacho REAL de ML (contempla
         // corte horario, días hábiles y feriados). Igual criterio que el dashboard.
         const [sh, sla] = await Promise.all([
-          mlGetAuth(acct, '/shipments/' + sid),
+          conReintento(() => mlGetAuth(acct, '/shipments/' + sid)),
           mlGetAuth(acct, '/shipments/' + sid + '/sla').catch(() => null),
         ]);
         shipmentStatus[sid] = {
           status: sh.status, substatus: sh.substatus, logistic_type: sh.logistic_type,
           dispatch: sla?.expected_date || sh.lead_time?.estimated_handling_limit?.date || null,
         };
-      } catch(e) {}
-    }));
+      } catch(e) { sinEstado.push(String(sid)); }
+    });
 
     const validOrders = rawOrders.filter(o => {
       const sid = o.shipping?.id;
@@ -106,10 +205,15 @@ module.exports = function(ctx) {
 
     const itemIds = new Set();
     for (const o of validOrders) for (const i of (o.order_items || [])) if (i.item?.id) itemIds.add(i.item.id);
+    /* Solo los campos que se usan para la miniatura: el item completo son
+       ~17 KB cada uno (320 KB por cuenta) y de eso se lee la foto nomás. */
     const itemCache = {};
-    await Promise.all([...itemIds].map(async id => {
-      try { itemCache[id] = await mlGetAuth(acct, '/items/' + id); } catch(e) {}
-    }));
+    await mapLimit([...itemIds], 6, async id => {
+      try {
+        itemCache[id] = await mlGetAuth(acct,
+          '/items/' + id + '?attributes=id,thumbnail,pictures,variations');
+      } catch(e) {}
+    });
 
     const _arToday = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
     const _arDate = iso => { if (!iso) return null; const t = new Date(iso).getTime(); return isNaN(t) ? null : new Date(t - 3 * 3600000).toISOString().slice(0, 10); };
@@ -126,10 +230,18 @@ module.exports = function(ctx) {
       // aparecía como si hubiera que despacharlo a mano.
       const isFull = logisticType === 'fulfillment';
       const handling_date = _arDate(sh?.dispatch);           // 'YYYY-MM-DD' AR o null
+      /* Sin fecha de despacho confirmada NO se programa a futuro: programado
+         es lo único que sale deseleccionado, y deseleccionar por no haber
+         podido leer el dato es justamente cómo se pierde un envío. */
       const scheduled = !!(handling_date && handling_date > _arToday); // se despacha a futuro
       return {
         id: o.id,
         handling_date, scheduled,
+        // No se pudo confirmar el envío contra ML: el tipo (Flex/Agencia/Full)
+        // que se muestra es el del listado, que puede no ser el real.
+        estado_incierto: !sh,
+        // Apareció en el cruce y no en la consulta principal (atraso del índice).
+        recuperada: !!o._recuperada,
         // pack_id: ML parte una compra de varios productos en varias órdenes que
         // comparten este id (y el mismo shipping_id). El front las agrupa en una
         // sola venta. Null/ausente → compra de un solo ítem.
@@ -157,11 +269,31 @@ module.exports = function(ctx) {
             if (!picture) picture = full.thumbnail;
           }
           return { title: i.item?.title || '—', quantity: i.quantity,
-            variation_attributes: i.item?.variation_attributes || [], picture };
+            variation_attributes: i.item?.variation_attributes || [],
+            // picture = la chica que se pinta en la fila; picture_full = la que
+            // abre el visor al hacer clic.
+            picture: picture ? miniatura(picture) : null,
+            picture_full: picture || null };
         }),
       };
     });
-    return { orders, filtered: rawOrders.length - validOrders.length };
+    console.log(`[despachos-hoy] ${acct.label || acct.id}: ${orders.length} órdenes · ` +
+      `${sidsUnicos.length} envíos · ${itemIds.size} ítems · ${Date.now() - _t0}ms` +
+      (base.truncado ? ` · ⚠ TRUNCADO (${base.total} en ML)` : '') +
+      (recuperadas ? ` · ${recuperadas} recuperada(s) por cruce` : '') +
+      (sinEstado.length ? ` · ⚠ ${sinEstado.length} envío(s) sin estado` : '') +
+      (cruceOk ? '' : ' · ⚠ cruce no disponible'));
+    return {
+      orders,
+      filtered: rawOrders.length - validOrders.length,
+      // Todo lo que el front necesita para decidir si puede confiar en el número.
+      token_ok: tokenOk,
+      total_ml: base.total,
+      truncated: base.truncado,
+      degraded: sinEstado.length,
+      recovered: recuperadas,
+      cross_check: cruceOk,
+    };
   }
 
   return function handleDespachos(req, res, pathname, parsed) {
@@ -174,17 +306,28 @@ module.exports = function(ctx) {
           if (!allAccounts.length) { json(res, 400, { error: 'Sin cuentas configuradas' }); return; }
 
           const results = await Promise.all(allAccounts.map(async acct => {
+            const base = { accountId: acct.id, label: acct.label || acct.id };
             try {
-              const { orders, filtered } = await getDespachosPendientes(acct);
-              return { accountId: acct.id, label: acct.label || acct.id, ok: true, orders, filtered };
+              const r = await getDespachosPendientes(acct);
+              return { ...base, ok: true, fetched_at: new Date().toISOString(), ...r };
             } catch(e) {
-              return { accountId: acct.id, label: acct.label || acct.id, ok: false, error: e.message, orders: [], filtered: 0 };
+              /* orders:[] acá NO significa "no hay nada que despachar", significa
+                 "no pude ver". El front tiene que poder distinguirlos: por eso
+                 va ok:false y nunca pisa lo último confirmado de esta cuenta. */
+              return { ...base, ok: false, error: e.message, orders: [], filtered: 0 };
             }
           }));
 
           const totalOrders = results.reduce((s, r) => s + r.orders.length, 0);
           const totalUnits  = results.reduce((s, r) => s + r.orders.reduce((a, o) => a + o.items.reduce((b, i) => b + (i.quantity||0), 0), 0), 0);
-          json(res, 200, { ok: true, accounts: results, totalOrders, totalUnits });
+          json(res, 200, {
+            ok: true, accounts: results, totalOrders, totalUnits,
+            // Sello del servidor: el front mide la antigüedad contra esto y no
+            // contra el reloj de la máquina, que puede estar corrido.
+            generated_at: new Date().toISOString(),
+            // true solo si TODAS las cuentas respondieron y ninguna quedó a medias.
+            complete: results.every(r => r.ok && !r.truncated && r.cross_check !== false),
+          });
         } catch(e) { json(res, 500, { error: e.message }); }
       })();
       return true;

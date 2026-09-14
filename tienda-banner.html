@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Banner de categoría — Admin Tienda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css?v=21">
+<script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
+<style>
+.fb-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Vista previa: réplica del banner de la tienda */
+.fb-vista { margin-top: 14px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.fb-vista-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.fb-vq { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 11px; display: flex; flex-direction: column; }
+.fb-vq-stars { color: #E5A21E; font-size: 11px; letter-spacing: 1px; line-height: 1; }
+.fb-vq-txt { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text); overflow: hidden;
+             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; }
+.fb-vq-foot { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 8px; }
+.fb-vq-av { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--bg); display: block; }
+.fb-vq-ver { font-size: var(--fs-sm); color: var(--text-3); }
+.fb-vacio { font-size: var(--fs-base); color: var(--text-3); }
+
+/* Lista de reseñas para elegir */
+.fb-lista { display: flex; flex-direction: column; gap: 8px; }
+.fb-r {
+  display: flex; gap: 11px; align-items: flex-start; cursor: pointer;
+  padding: 11px 12px; background: var(--bg-card);
+  border: 2px solid var(--border); border-radius: var(--r-lg);
+  transition: border-color .15s, box-shadow .15s;
+}
+.fb-r:hover { box-shadow: var(--shadow); }
+.fb-r.elegida { border-color: var(--blue); background: var(--blue-light); }
+.fb-r-av { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--bg); }
+.fb-r-av.sinfoto { display: flex; align-items: center; justify-content: center; color: var(--text-3); }
+.fb-r-body { flex: 1; min-width: 0; }
+.fb-r-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+.fb-r-stars { color: #E5A21E; font-size: var(--fs-md); letter-spacing: 1px; }
+.fb-r-meta { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-3); }
+.fb-r-txt { font-size: var(--fs-lg); line-height: 1.5; color: var(--text); margin: 0; }
+.fb-r-prod { font-size: var(--fs-sm); color: var(--text-3); margin: 5px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-r-num {
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 600;
+  border: 1px solid var(--border); color: var(--text-3); background: var(--bg);
+}
+.fb-r.elegida .fb-r-num { background: var(--blue); border-color: var(--blue); color: var(--on-blue); }
+.fb-msg { font-size: var(--fs-base); font-weight: 600; }
+.fb-msg.ok  { color: var(--green); }
+.fb-msg.err { color: var(--red); }
+.fb-nota { margin: 10px 0 0; font-size: var(--fs-md); color: var(--text-3); line-height: 1.55; }
+.fb-filtros { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: var(--fs-base); }
+.fb-filtros label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="adm-wrap">
+
+<!-- ════════════════════════ SIDEBAR ═════════════════════════ -->
+<aside class="adm-sidebar" id="sidebar"></aside>
+<script src="/admin-sidebar.js?v=6"></script>
+<div class="adm-sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ═══════════════════════ MAIN ══════════════════════════════ -->
+<div class="adm-main">
+  <header class="adm-header">
+    <div class="adm-header-left">
+      <button class="adm-hamburger" id="btn-hamburger" aria-label="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="adm-page-title">Banner de categoría</div>
+        <div class="adm-page-sub"><span id="page-sub">Cargando…</span></div>
+      </div>
+    </div>
+    <div class="adm-header-right">
+      <button class="adm-theme-btn" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <a class="btn btn-ghost" href="/tienda/catalogo.html?cat=fundas" target="_blank" id="btn-ver" style="font-size:13px;">Ver en la tienda</a>
+    </div>
+  </header>
+
+  <div class="adm-content adm-content-narrow">
+
+    <div class="adm-card">
+      <div class="adm-card-head">
+        <span class="adm-card-title">Cómo se ve el banner</span>
+        <div class="adm-card-actions">
+          <span id="fb-modo" class="badge badge-gray"></span>
+        </div>
+      </div>
+      <div class="adm-card-body">
+        <div class="fb-top">
+          <label class="adm-label" for="fb-cat" style="margin:0;">Categoría</label>
+          <select class="adm-select" id="fb-cat" style="width:auto;min-width:160px;" aria-label="Categoría">
+            <option value="fundas">Fundas</option>
+            <option value="mallas">Mallas</option>
+            <option value="protectores">Protectores</option>
+            <option value="cables">Cables</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="btn-guardar">Guardar</button>
+          <button class="btn btn-ghost btn-sm" id="btn-sugerir">Usar las sugeridas</button>
+          <button class="btn btn-ghost btn-sm" id="btn-limpiar">Volver a automático</button>
+          <span class="fb-msg" id="fb-msg"></span>
+        </div>
+
+        <div class="fb-vista"><div class="fb-vista-row" id="fb-vista"></div></div>
+
+        <p class="fb-nota">
+          Sin reseñas elegidas el banner se arma solo: 5 estrellas, priorizando las que entran
+          enteras en la tarjeta (hasta 115 caracteres), sin repetir producto y descartando las
+          que tienen un reparo evidente.
+          Ese último filtro es una heurística y se le escapan casos — hay reseñas de 5 estrellas
+          que igual meten una queja al final. Elegirlas a mano es la única forma de estar seguro.
+        </p>
+      </div>
+    </div>
+
+    <div class="adm-card">
+      <div class="adm-card-head">
+        <span class="adm-card-title">Reseñas de la categoría</span>
+        <div class="adm-card-actions">
+          <span id="fb-conteo" style="font-size:var(--fs-md);color:var(--text-3);"></span>
+        </div>
+      </div>
+      <div class="adm-card-body">
+        <div class="fb-filtros" style="margin-bottom:14px;">
+          <label><input type="checkbox" id="f-5e" checked> Solo 5 estrellas</label>
+          <label><input type="checkbox" id="f-largo" checked> Solo las que entran enteras en la tarjeta</label>
+          <label><input type="checkbox" id="f-foto"> Solo con foto</label>
+        </div>
+        <div class="fb-lista" id="fb-lista"></div>
+        <div id="fb-estado" style="display:none;font-size:var(--fs-lg);color:var(--text-2);padding:24px 0;"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+/* ─── Theme / Sidebar ─────────────────────────────────────── */
+document.getElementById('btn-theme').addEventListener('click', function (e) {
+  e.stopPropagation();
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('adminTheme', next); } catch {}
+});
+const hamburger = document.getElementById('btn-hamburger');
+const sidebar   = document.getElementById('sidebar');
+const sidebarOv = document.getElementById('sidebar-overlay');
+hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); sidebarOv.classList.toggle('open'); });
+sidebarOv.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOv.classList.remove('open'); });
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+const $ = id => document.getElementById(id);
+
+/* ─── Estado ──────────────────────────────────────────────────
+   `elegidas` son ids de reseña de ML, en el orden en que se tocaron
+   (que es el orden en que salen en el banner). El banner muestra 3. */
+const MAX_BANNER = 3;
+/* Medido sobre la tarjeta real de la tienda (207px de ancho, 4 líneas):
+   entran unos 110 caracteres. Más largo que eso se corta a mitad de frase. */
+const CITA_MIN = 55, CITA_MAX = 115;
+let resenas = [], elegidas = [], sugeridas = [], cargando = 0;
+
+function msg(txt, tipo = 'ok') {
+  const el = $('fb-msg');
+  el.textContent = txt;
+  el.className = 'fb-msg ' + (txt ? tipo : '');
+}
+const estrellas = n => '★'.repeat(Math.max(1, Math.min(5, Math.round(n || 5))));
+
+async function cargar() {
+  const cat = $('fb-cat').value;
+  const seq = ++cargando;
+  msg('');
+  $('fb-lista').innerHTML = '';
+  $('fb-estado').style.display = '';
+  $('fb-estado').textContent = 'Cargando reseñas…';
+  $('fb-conteo').textContent = '';
+  $('btn-ver').href = '/tienda/catalogo.html?cat=' + encodeURIComponent(cat);
+  try {
+    const r = await fetch('/api/tienda/admin/banner-resenas?cat=' + encodeURIComponent(cat));
+    const d = await r.json();
+    if (seq !== cargando) return;            // respuesta vieja, la descartamos
+    if (!r.ok || !d.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    resenas   = d.resenas || [];
+    elegidas  = (d.elegidas || []).slice();
+    sugeridas = d.sugeridas || [];
+    $('page-sub').textContent =
+      d.total + ' reseñas · ' + resenas.length + ' con texto único' +
+      (d.duplicadas ? ' · ' + d.duplicadas + ' duplicadas descartadas' : '') +
+      (d.promedio ? ' · ' + d.promedio + '★' : '');
+    render();
+  } catch (e) {
+    if (seq !== cargando) return;
+    resenas = []; elegidas = []; sugeridas = [];
+    $('fb-lista').innerHTML = '';
+    $('fb-estado').style.display = '';
+    $('fb-estado').textContent = 'No se pudieron cargar las reseñas: ' + e.message;
+    $('page-sub').textContent = 'Error';
+    renderVista();
+  }
+}
+
+function visibles() {
+  const s5 = $('f-5e').checked, lg = $('f-largo').checked, ft = $('f-foto').checked;
+  return resenas.filter(r =>
+    (!s5 || r.rate === 5) &&
+    (!lg || (r.largo >= CITA_MIN && r.largo <= CITA_MAX)) &&
+    (!ft || !!r.foto));
+}
+
+function render() {
+  $('fb-modo').textContent = elegidas.length ? 'Manual · ' + elegidas.length : 'Automático';
+  $('fb-modo').className   = 'badge ' + (elegidas.length ? 'badge-blue' : 'badge-gray');
+
+  const lista = visibles();
+  $('fb-conteo').textContent = lista.length + ' de ' + resenas.length + ' reseñas';
+
+  if (!lista.length) {
+    $('fb-lista').innerHTML = '';
+    $('fb-estado').style.display = '';
+    $('fb-estado').textContent = resenas.length
+      ? 'Ninguna reseña pasa los filtros de arriba.'
+      : 'Esta categoría todavía no tiene reseñas con texto.';
+    renderVista();
+    return;
+  }
+  $('fb-estado').style.display = 'none';
+  $('fb-lista').innerHTML = lista.map(r => {
+    const pos = elegidas.indexOf(r.id);
+    return '<div class="fb-r' + (pos >= 0 ? ' elegida' : '') + '" data-id="' + esc(r.id) + '">' +
+      '<span class="fb-r-num">' + (pos >= 0 ? pos + 1 : '') + '</span>' +
+      (r.foto
+        ? '<img class="fb-r-av" src="' + esc(r.foto) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
+        : '<span class="fb-r-av sinfoto">—</span>') +
+      '<div class="fb-r-body">' +
+        '<div class="fb-r-head">' +
+          '<span class="fb-r-stars">' + estrellas(r.rate) + '</span>' +
+          '<span class="fb-r-meta">' + r.largo + ' caracteres</span>' +
+          (sugeridas.includes(r.id) ? '<span class="badge badge-green">sugerida</span>' : '') +
+          (r.largo > CITA_MAX ? '<span class="badge badge-yellow">se corta en la tarjeta</span>' : '') +
+        '</div>' +
+        '<p class="fb-r-txt">' + esc(r.texto) + '</p>' +
+        '<p class="fb-r-prod">' + esc(r.titulo || r.item_id) + '</p>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  renderVista();
+}
+
+/* Réplica de lo que va a servir el backend: si hay curaduría manda esa,
+   si no manda la sugerencia automática. */
+function renderVista() {
+  const v = $('fb-vista');
+  const porId = {};
+  for (const r of resenas) porId[r.id] = r;
+  const ids = elegidas.length ? elegidas : sugeridas;
+  const lista = ids.map(id => porId[id]).filter(Boolean).slice(0, MAX_BANNER);
+  if (!lista.length) {
+    v.innerHTML = '<span class="fb-vacio">Sin reseñas para mostrar — el banner se esconde y queda el título solo.</span>';
+    return;
+  }
+  v.innerHTML = lista.map(r =>
+    '<figure class="fb-vq">' +
+      '<span class="fb-vq-stars">' + estrellas(r.rate) + '</span>' +
+      '<blockquote class="fb-vq-txt">' + esc(r.texto) + '</blockquote>' +
+      '<figcaption class="fb-vq-foot">' +
+        (r.foto ? '<img class="fb-vq-av" src="' + esc(r.foto) + '" alt="">' : '<span class="fb-vq-av"></span>') +
+        '<span class="fb-vq-ver">Compra verificada</span>' +
+      '</figcaption>' +
+    '</figure>').join('');
+}
+
+$('fb-lista').addEventListener('click', (ev) => {
+  const fila = ev.target.closest('.fb-r');
+  if (!fila) return;
+  const id  = fila.dataset.id;
+  const pos = elegidas.indexOf(id);
+  if (pos >= 0) { elegidas.splice(pos, 1); msg(''); }
+  else if (elegidas.length >= MAX_BANNER) {
+    msg('El banner muestra ' + MAX_BANNER + ': sacá una antes de agregar otra.', 'err');
+    return;
+  } else { elegidas.push(id); msg(''); }
+  render();
+});
+
+for (const f of ['f-5e', 'f-largo', 'f-foto']) $(f).addEventListener('change', render);
+$('fb-cat').addEventListener('change', cargar);
+
+$('btn-sugerir').addEventListener('click', () => {
+  if (!sugeridas.length) { msg('No hay sugerencias para esta categoría.', 'err'); return; }
+  elegidas = sugeridas.slice(0, MAX_BANNER);
+  render();
+  msg('Cargué las sugeridas — revisalas y dale Guardar.', 'ok');
+});
+
+$('btn-limpiar').addEventListener('click', () => {
+  elegidas = [];
+  render();
+  msg('Sin selección — dale Guardar para que el banner vuelva a elegir solo.', 'ok');
+});
+
+$('btn-guardar').addEventListener('click', async () => {
+  const cat = $('fb-cat').value;
+  const btn = $('btn-guardar');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/tienda/admin/banner-resenas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cat, resenas: elegidas })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    msg(elegidas.length
+      ? 'Guardado: ' + elegidas.length + ' reseña' + (elegidas.length > 1 ? 's' : '') + ' en el banner.'
+      : 'Guardado: el banner vuelve a elegir solo.', 'ok');
+  } catch (e) {
+    msg('No se pudo guardar: ' + e.message, 'err');
+  } finally { btn.disabled = false; }
+});
+
+/* ─── Init ────────────────────────────────────────────────── */
+cargar();
+</script>
+</body>
+</html>

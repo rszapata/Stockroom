@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Page scope ── */
@@ -22,10 +22,13 @@
 .pg *, .pg *::before, .pg *::after { box-sizing:border-box; }
 
 /* ── Upload zone ── */
+/* Zona de carga compacta: se usa UNA vez por sesión, así que no justifica
+   ocupar media pantalla. Al cargar el archivo se colapsa (ver fileLoadedBar)
+   y el espacio queda para la tabla, que es donde se trabaja de verdad. */
 .upload-zone {
   border: 2px dashed var(--border);
   border-radius: var(--r-lg);
-  padding: 48px 24px;
+  padding: 20px 24px;
   text-align: center;
   cursor: pointer;
   transition: border-color .2s, background .2s;
@@ -39,10 +42,21 @@
 .upload-zone input[type=file] {
   position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
 }
+/* Fila horizontal: ícono + textos + botones. Ocupa ~1/3 de lo que ocupaba
+   apilado en vertical. En pantallas chicas vuelve a apilarse. */
+.upload-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; flex-wrap: wrap; text-align: left;
+}
+.upload-texts { min-width: 0; }
 .upload-icon {
-  width: 48px; height: 48px; margin: 0 auto 12px;
+  width: 24px; height: 24px; flex-shrink: 0;
   color: var(--text-3);
   transition: color .2s;
+}
+@media (max-width: 560px) {
+  .upload-row   { flex-direction: column; text-align: center; gap: 10px; }
+  .upload-texts { text-align: center; }
 }
 .upload-zone:hover .upload-icon, .upload-zone.drag-over .upload-icon { color: var(--blue); }
 .upload-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
@@ -57,6 +71,15 @@
 .upload-btn:hover { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
 .upload-btn-primary { background: var(--blue); color: var(--on-blue); border-color: var(--blue); }
 .upload-btn-primary:hover { opacity: .88; color: var(--on-blue); background: var(--blue); }
+/* Ayuda de "guardar la página completa": es un caso de borde, va plegada. */
+.upload-help { margin-top: 10px; font-size: 12px; color: var(--text-3); }
+.upload-help > summary {
+  cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 5px;
+  color: var(--text-2); font-size: 11px;
+}
+.upload-help > summary::-webkit-details-marker { display: none; }
+.upload-help > summary:hover { color: var(--blue); }
+.upload-help p { margin: 8px 0 0; line-height: 1.5; }
 
 /* ── Estado de procesamiento ── */
 .parse-state {
@@ -74,9 +97,9 @@
   padding: 2px 8px; border-radius: 100px;
   font-size: 11px; font-weight: 600; letter-spacing: .3px;
 }
-.parse-badge.ok  { background: var(--green-light); color: #15803d; }
-.parse-badge.warn { background: #fef9c3; color: #854d0e; }
-.parse-badge.err { background: var(--red-light, #fee2e2); color: #b91c1c; }
+.parse-badge.ok  { background: var(--green-light); color: var(--green-ink); }
+.parse-badge.warn { background: var(--yellow-light); color: #854d0e; }
+.parse-badge.err { background: var(--red-light, var(--red-light)); color: var(--red-ink); }
 
 /* ── Raw text collapsible ── */
 .raw-toggle {
@@ -115,8 +138,10 @@
   vertical-align: middle;
 }
 .ali-table tbody tr:hover { background: var(--bg); }
-.ali-table tbody tr.unmapped { background: #fffbeb; }
-[data-theme="dark"] .ali-table tbody tr.unmapped { background: #2d2500; }
+.ali-table tbody tr.unmapped { background: var(--yellow-light); }
+[data-theme="dark"] .ali-table tbody tr.unmapped { background: var(--yellow); }
+.ali-table tbody tr.fuzzy-match { box-shadow: inset 3px 0 0 var(--yellow); }
+.ali-table tbody tr.needs-variant { box-shadow: inset 3px 0 0 var(--red, #dc2626); }
 .ali-table tbody tr.excluded { opacity: .5; }
 
 /* Inline editable inputs */
@@ -144,9 +169,14 @@
   position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
   pointer-events: none; color: var(--text-3);
 }
+/* El desplegable se cuelga de <body> al abrirse (ver portalDropdown) y se
+   posiciona en coordenadas de página. Antes vivía dentro de la celda de la
+   tabla, y .ali-table-wrap tiene overflow-x:auto — con un eje distinto de
+   visible el otro también recorta, así que la lista quedaba cortada al pasar
+   el borde de la tarjeta. Fuera del contenedor no la recorta nada. */
 .combobox-dropdown {
-  position: absolute; z-index: 200; left: 0; top: calc(100% + 2px);
-  min-width: 100%; width: max-content; max-width: 420px;
+  position: absolute; z-index: 200;
+  width: max-content; max-width: 420px;
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--r); box-shadow: 0 4px 16px rgba(0,0,0,.1);
   max-height: 280px; overflow-y: auto;
@@ -187,7 +217,7 @@
 .stock-cell { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 .stock-current { color: var(--text-2); }
 .stock-arrow { color: var(--text-3); margin: 0 4px; }
-.stock-new { font-weight: 700; color: var(--green, #16a34a); }
+.stock-new { font-weight: 700; color: var(--green, var(--green-ink)); }
 
 /* ── PDF product thumbnail (manual) ── */
 .pdf-thumb {
@@ -270,6 +300,12 @@
   background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8;
 }
 [data-theme="dark"] .ali-badge-model { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+/* Fila auto-completada por similitud de texto (no nombre exacto) — el
+   mapping guardado puede ser de otra variante con nombre parecido. */
+.ali-badge-fuzzy {
+  background: var(--yellow-light); border: 1px solid color-mix(in srgb, var(--yellow) 32%, transparent); color: var(--yellow-ink); cursor: help;
+}
+[data-theme="dark"] .ali-badge-fuzzy { background: var(--yellow); border-color: var(--yellow); color: var(--yellow); }
 
 /* ── ML product thumbnail ── */
 .ml-thumb {
@@ -292,7 +328,7 @@
   transition: color .15s, background .15s, border-color .15s;
   flex-shrink: 0;
 }
-.row-del-btn:hover { color: var(--red, #dc2626); border-color: var(--red, #dc2626); background: var(--red-light, #fee2e2); }
+.row-del-btn:hover { color: var(--red, var(--red-ink)); border-color: var(--red, var(--red)); background: var(--red-light, var(--red-light)); }
 
 /* ── Summary bar ── */
 .ali-summary {
@@ -327,8 +363,8 @@
   border-radius: var(--r); margin-bottom: 6px; font-size: 13px;
   border: 1px solid var(--border);
 }
-.result-row.ok-row  { border-color: #bbf7d0; background: #f0fdf4; }
-.result-row.err-row { border-color: #fecaca; background: #fef2f2; }
+.result-row.ok-row  { border-color: color-mix(in srgb, var(--green) 32%, transparent); background: var(--green-light); }
+.result-row.err-row { border-color: color-mix(in srgb, var(--red) 32%, transparent); background: var(--red-light); }
 .result-icon { flex-shrink: 0; }
 .result-title { font-weight: 600; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .result-detail { font-size: 12px; color: var(--text-2); white-space: nowrap; }
@@ -349,7 +385,7 @@
   display: flex; align-items: center; justify-content: center;
   transition: color .12s;
 }
-.mapping-del:hover { color: var(--red, #dc2626); }
+.mapping-del:hover { color: var(--red, var(--red-ink)); }
 
 /* ── Empty state ── */
 .empty-state {
@@ -362,7 +398,7 @@
 .prox-banner {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
-  background: #fef9c3; border: 1px solid #fde047;
+  background: var(--yellow-light); border: 1px solid #fde047;
   border-radius: var(--r); font-size: 13px; color: #713f12;
   margin-bottom: 4px;
 }
@@ -400,7 +436,25 @@
   border-radius: 4px; font-size: 11px; color: var(--text-3); line-height: 1;
   transition: color .15s, background .15s;
 }
-.actlog-del-btn:hover { color: var(--red, #dc2626); background: var(--red-light, #fee2e2); }
+.actlog-del-btn:hover { color: var(--red, var(--red-ink)); background: var(--red-light, var(--red-light)); }
+.actlog-revert-btn {
+  background: none; border: 1px solid var(--border); cursor: pointer;
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+  color: var(--text-2); line-height: 1.6; transition: background .15s, border-color .15s, color .15s;
+}
+.actlog-revert-btn:hover { color: var(--red, var(--red-ink)); border-color: var(--red, var(--red)); background: var(--red-light, var(--red-light)); }
+.actlog-revert-btn:disabled { opacity: .5; cursor: not-allowed; }
+.actlog-reverted-badge { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.recibo-tag {
+  display: inline-block; font-size: 10px; font-weight: 600; padding: 1px 6px;
+  border-radius: 4px; margin-left: 6px; white-space: nowrap; vertical-align: 1px;
+}
+.recibo-tag-ok   { background: var(--green-light); color: var(--green-ink); }
+.recibo-tag-pend { background: var(--bg); color: var(--text-3); border: 1px solid var(--border); }
+.recibo-tag-rev  { background: var(--yellow-light); color: var(--yellow-ink); }
+[data-theme="dark"] .recibo-tag-ok   { background: #052e16; color: #86efac; }
+[data-theme="dark"] .recibo-tag-rev  { background: var(--yellow); color: var(--yellow); }
+.actlog-entry.reverted { opacity: .55; }
 .actlog-items { display: flex; flex-direction: column; gap: 3px; }
 .actlog-item {
   display: flex; align-items: center; gap: 7px;
@@ -412,7 +466,7 @@
 }
 .actlog-item-var { color: var(--text-2); font-size: 12px; white-space: nowrap; }
 .actlog-item-stock {
-  color: var(--green, #16a34a); font-weight: 600;
+  color: var(--green, var(--green-ink)); font-weight: 600;
   font-size: 12px; white-space: nowrap; font-family: 'JetBrains Mono', monospace;
 }
 .actlog-item-delta { color: var(--text-3); font-size: 11px; white-space: nowrap; }
@@ -432,7 +486,7 @@
 
 <!-- ─────────────────── SIDEBAR ─────────────────── -->
 <aside class="adm-sidebar" id="sidebar"></aside>
-<script src="/stockroom-sidebar.js?v=14"></script>
+<script src="/stockroom-sidebar.js?v=15"></script>
 
 <!-- ─────────────────── MAIN ─────────────────── -->
 <div class="adm-main">
@@ -521,7 +575,7 @@
   <div class="adm-card" id="card-upload">
     <div class="adm-card-head">
       <span class="adm-card-title">
-        <span class="step-badge">1</span> Subir PDF
+        <span class="step-badge">1</span> Subir recibo
       </span>
     </div>
     <div class="adm-card-body">
@@ -531,27 +585,40 @@
         <input type="file" id="file-input" accept=".pdf,application/pdf,.html,text/html" style="display:none">
         <!-- Input para seleccionar carpeta completa (HTML + imágenes) -->
         <input type="file" id="folder-input" webkitdirectory style="display:none" onchange="processFolderInput(this)">
+        <div class="upload-row">
         <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
           <line x1="12" y1="18" x2="12" y2="12"/>
           <polyline points="9 15 12 12 15 15"/>
         </svg>
-        <div class="upload-title">Arrastrá el recibo acá</div>
-        <div class="upload-sub" style="margin-bottom:10px">PDF, HTML, o la carpeta completa del pedido</div>
+        <div class="upload-texts">
+          <div class="upload-title">Arrastrá el recibo acá</div>
+          <div class="upload-sub">PDF, HTML, o la carpeta completa del pedido</div>
+        </div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-          <button type="button" class="upload-btn" onclick="event.stopPropagation();$('file-input').click()">
-            📄 Seleccionar archivo
+          <button type="button" class="upload-btn upload-btn-primary" onclick="event.stopPropagation();$('file-input').click()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Seleccionar archivo
           </button>
-          <button type="button" class="upload-btn upload-btn-primary" onclick="event.stopPropagation();$('folder-input').click()">
-            📁 Seleccionar carpeta del pedido
+          <button type="button" class="upload-btn" onclick="event.stopPropagation();$('folder-input').click()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            Carpeta del pedido
           </button>
         </div>
-        <div class="upload-hint" style="margin-top:10px">
-          Para incluir todas las imágenes: en el navegador abrí el pedido → <strong>Ctrl+S</strong> → guardá como
-          <em>Página web, completa</em> → seleccioná la carpeta creada
         </div>
+        <details class="upload-help" onclick="event.stopPropagation()">
+          <summary>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            ¿Cómo incluyo las imágenes del pedido?
+          </summary>
+          <p>En el navegador abrí el pedido → <strong>Ctrl+S</strong> → guardá como
+          <em>Página web, completa</em> → acá elegí <strong>Carpeta del pedido</strong> y seleccioná la carpeta creada.</p>
+        </details>
       </div>
+
+      <!-- Reemplaza a la zona de carga una vez procesado el archivo -->
+      <div id="file-loaded-bar" style="display:none"></div>
 
       <div id="parse-state-wrap" style="display:none; margin-top:14px"></div>
 
@@ -626,6 +693,11 @@
               <span class="ali-summary-label">sin vincular</span>
             </div>
           </div>
+          <button class="adm-btn adm-btn-sm" id="btn-preview" onclick="previsualizarCarga()" disabled
+                  title="Consulta el stock real en ML y muestra qué quedaría, sin escribir nada">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Previsualizar
+          </button>
           <button class="ali-apply-btn" id="btn-apply" disabled>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Aplicar stock en ML
@@ -642,7 +714,7 @@
   <!-- ── Registrar costos (del recibo → Rentabilidad) ──── -->
   <div class="adm-card" id="card-costos" style="display:none">
     <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span class="adm-card-title">💲 Registrar costos del recibo</span>
+      <span class="adm-card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> Registrar costos del recibo</span>
       <div style="display:flex;gap:8px;align-items:flex-end">
         <div style="display:flex;flex-direction:column;gap:3px">
           <label style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600" for="cst-tc">TC</label>
@@ -660,7 +732,6 @@
       <p style="margin:0 0 12px;font-size:12px;color:var(--text-3)">
         El recibo trae el costo FOB en USD por producto. Asigná cada uno a su publicación de la tienda; el costo ARS = FOB×TC + flete/u alimenta el dashboard de <b>Rentabilidad</b>. (Los costos de ML ya están en el neto.)
       </p>
-      <datalist id="titulos-datalist"></datalist>
       <div id="costos-list"></div>
     </div>
   </div>
@@ -687,13 +758,36 @@
     <div class="adm-card-body" id="results-body"></div>
   </div>
 
+  <!-- ── Recibos archivados ─────────────────────────── -->
+  <div class="adm-card" id="card-recibos">
+    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleRecibos(event)">
+      <span class="adm-card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;color:var(--blue)"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Recibos archivados
+        <span class="adm-badge" id="recibos-count" style="display:none">0</span>
+      </span>
+      <span id="recibos-chevron" style="color:var(--text-3);display:flex;align-items:center">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+    <div class="adm-card-body" id="recibos-body" style="display:none">
+      <div id="recibos-list"></div>
+    </div>
+  </div>
+
   <!-- ── Vínculos guardados ─────────────────────────── -->
   <div class="adm-card" id="card-mappings">
-    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between">
-      <span class="adm-card-title">Vínculos guardados</span>
-      <span class="adm-badge" id="mappings-count" style="display:none">0</span>
+    <div class="adm-card-head" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleMappings(event)">
+      <span class="adm-card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;color:var(--blue)"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        Vínculos guardados
+        <span class="adm-badge" id="mappings-count" style="display:none">0</span>
+      </span>
+      <span id="mappings-chevron" style="color:var(--text-3);display:flex;align-items:center">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
     </div>
-    <div class="adm-card-body" id="mappings-body">
+    <div class="adm-card-body" id="mappings-body" style="display:none">
       <div class="empty-state">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
         <p>Aún no hay vínculos guardados.</p>
@@ -718,12 +812,12 @@
   <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px">Imagen del producto</div>
   <input type="text" id="img-popover-url" placeholder="URL de imagen o página de Alibaba…" autocomplete="off" aria-label="URL de imagen o página de Alibaba…">
   <div class="img-popover-row">
-    <button class="img-popover-btn" onclick="imgPopoverFile()">📁 Archivo</button>
-    <button class="img-popover-btn primary" id="img-popover-fetch-btn" onclick="imgPopoverFetch()">🔗 Usar URL</button>
+    <button class="img-popover-btn" onclick="imgPopoverFile()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Archivo</button>
+    <button class="img-popover-btn primary" id="img-popover-fetch-btn" onclick="imgPopoverFetch()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> Usar URL</button>
   </div>
   <div class="img-popover-status" id="img-popover-status"></div>
   <div style="font-size:10px;color:var(--text-3);line-height:1.4;border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
-    💡 En Alibaba: clic derecho sobre la foto del producto → <strong>Copiar enlace de imagen</strong>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M9 18h6M10 22h4M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A5.06 5.06 0 018.91 14"/></svg> En Alibaba: clic derecho sobre la foto del producto → <strong>Copiar enlace de imagen</strong>
   </div>
 </div>
 <input type="file" accept="image/*" id="img-popover-file-input" style="display:none" onchange="imgPopoverApplyFile(this)">
@@ -758,13 +852,21 @@ const $ = id => document.getElementById(id);
 // Debe declararse ANTES del IIFE para evitar temporal dead zone
 const ALIBABA_ENABLED_IDS = ['nueva'];   // ID de RZ-ZETTAI en config
 
+// Recibo (PDF) guardado en el server para la carga en curso
+let _reciboActual = null;
+
 // ── Init ──────────────────────────────────────────────────
 (async function init() {
   setupUpload();
+  await fetchActivityLog();       // historial del SERVIDOR
+  await migrarHistorialLocal();   // sube lo que haya quedado en este navegador
   renderActivityLog();
-  // Si hay entradas guardadas, abrir el panel al cargar
-  if (loadActivityLog().length) toggleActlog();
+  // El panel arranca plegado: el contador del encabezado ya avisa cuántas
+  // cargas hay, y abrirlo solo empujaba el trabajo real hacia abajo.
   await Promise.all([loadMlItems(), loadMappings(), loadAccounts()]);
+  // loadMappings puede haber corrido antes que loadMlItems (van en paralelo):
+  // sin el catálogo no hay miniaturas, así que se repinta una vez con todo listo.
+  renderMappingsList();
 })();
 
 async function loadAccounts() {
@@ -936,13 +1038,16 @@ async function processFile(file) {
     const res  = await fetch('/api/stockroom/alibaba/parse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: dataB64 }),
+      body: JSON.stringify({ data: dataB64, filename: file.name }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error del servidor');
 
     rawText    = data.rawText || '';
     parsedRows = data.rows || [];
+    // Nombre del PDF ya guardado en el server: queda enganchado a la entrada
+    // del historial para poder abrir el recibo original desde ahí.
+    _reciboActual = data.recibo || null;
 
     showParseState('ok', file.name, data.totalPages, parsedRows.length, data.usedOcr);
     renderItemsTable();
@@ -962,6 +1067,10 @@ async function processHtmlFile(file, imgMap = {}) {
     const rows = parseAlibabaOrderHtml(html, imgMap);
     rawText    = `[HTML] ${rows.length} items extraídos`;
     parsedRows = rows;
+    // El HTML se parsea acá en el navegador y nunca pasaba por el servidor,
+    // así que el recibo no quedaba guardado. Se sube aparte para poder
+    // consultarlo después desde el historial.
+    _reciboActual = await guardarReciboEnServidor(file);
     showParseState('ok', file.name, null, rows.length, false);
     renderItemsTable();
     renderCostos();
@@ -1065,6 +1174,24 @@ function fileToText(file) {
   });
 }
 
+// Sube el recibo al servidor para archivarlo. Si falla no interrumpe la
+// carga: el usuario igual tiene que poder cargar el stock.
+async function guardarReciboEnServidor(file) {
+  try {
+    const b64 = (await fileToBase64(file)).split(',')[1];
+    const r = await fetch('/api/stockroom/alibaba/recibo', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, filename: file.name }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'error del servidor');
+    return d.recibo || null;
+  } catch (e) {
+    showToast('El recibo no se pudo archivar: ' + e.message, false);
+    return null;
+  }
+}
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1072,6 +1199,28 @@ function fileToBase64(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+// Colapsa la zona de carga y deja una barra fina con el archivo cargado.
+// Devuelve el espacio a la tabla, que es donde se trabaja de verdad.
+function collapseUploadZone(nombreArchivo) {
+  const zona = $('upload-zone');
+  const barra = $('file-loaded-bar');
+  if (!zona || !barra) return;
+  zona.style.display = 'none';
+  barra.style.display = '';
+  barra.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span style="flex:1;min-width:0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(nombreArchivo)}">${escHtml(nombreArchivo)}</span>
+      <button type="button" class="upload-btn" onclick="reopenUploadZone()">Cambiar archivo</button>
+    </div>`;
+}
+
+function reopenUploadZone() {
+  const zona = $('upload-zone'), barra = $('file-loaded-bar');
+  if (zona)  zona.style.display = '';
+  if (barra) { barra.style.display = 'none'; barra.innerHTML = ''; }
 }
 
 function showParseState(type, ...args) {
@@ -1090,6 +1239,7 @@ function showParseState(type, ...args) {
     </div>`;
   } else if (type === 'ok') {
     const [fname, pages, found, usedOcr] = args;
+    collapseUploadZone(fname);
     const badge = found > 0
       ? `<span class="parse-badge ok">✓ ${found} item${found !== 1 ? 's' : ''} detectado${found !== 1 ? 's' : ''}</span>`
       : `<span class="parse-badge warn">⚠ Sin items detectados automáticamente</span>`;
@@ -1110,13 +1260,14 @@ function showParseState(type, ...args) {
         <div style="margin-top:6px">
           <button class="raw-toggle" id="btn-raw-toggle" onclick="toggleRaw()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            Ver texto extraído del PDF
+            <span class="raw-toggle-label">Ver texto extraído del PDF</span>
           </button>
         </div>
         <div id="raw-box" class="raw-box" style="display:none">${escHtml(rawText)}</div>
       </div>
     </div>`;
   } else {
+    reopenUploadZone();   // que pueda reintentar con otro archivo
     wrap.innerHTML = `<div class="parse-state">
       <div class="parse-state-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
@@ -1135,7 +1286,9 @@ function toggleRaw() {
   if (!box || !btn) return;
   const show = box.style.display === 'none';
   box.style.display = show ? '' : 'none';
-  btn.textContent = show ? 'Ocultar texto extraído' : 'Ver texto extraído del PDF';
+  // Se cambia SOLO el <span>: usar btn.textContent borraba el SVG del botón.
+  const label = btn.querySelector('.raw-toggle-label');
+  if (label) label.textContent = show ? 'Ocultar texto extraído' : 'Ver texto extraído del PDF';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1171,15 +1324,26 @@ async function loadMappings() {
 //  TABLA DE ITEMS
 // ══════════════════════════════════════════════════════════
 // ── Registrar costos del recibo → Rentabilidad ─────────────────
-let _titulosCache = null;
-async function cargarTitulos() {
-  if (_titulosCache) return _titulosCache;
+// Costos ya asignados, por título normalizado. Viene de Rentabilidad, que
+// sólo conoce publicaciones CON ventas — por eso no se usa como fuente de la
+// lista (dejaba afuera lo que todavía no vendió y no trae foto), sino sólo
+// para marcar cuáles ya tienen costo.
+let _costosCache = null;
+const _normTitulo = t => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+async function cargarCostosAsignados() {
+  if (_costosCache) return _costosCache;
+  _costosCache = new Map();
   try {
     const r = await fetch('/api/stockroom/rentabilidad');
     const d = await r.json();
-    _titulosCache = (d.ok && Array.isArray(d.publicaciones)) ? d.publicaciones.map(p => p.titulo) : [];
-  } catch (e) { _titulosCache = []; }
-  return _titulosCache;
+    if (d.ok && Array.isArray(d.publicaciones)) {
+      for (const p of d.publicaciones) {
+        if (p.costo_unit != null) _costosCache.set(_normTitulo(p.titulo), p);
+      }
+    }
+  } catch (e) { /* sin datos de costo: la lista igual funciona */ }
+  return _costosCache;
 }
 
 async function renderCostos() {
@@ -1188,8 +1352,7 @@ async function renderCostos() {
   if (!conCosto.length) { card.style.display = 'none'; return; }
   card.style.display = '';
 
-  const titulos = await cargarTitulos();
-  $('titulos-datalist').innerHTML = titulos.map(t => `<option value="${escAttr(t)}">`).join('');
+  await cargarCostosAsignados();
 
   const tc = parseFloat($('cst-tc').value) || 1532;
   const flete = parseFloat($('cst-flete').value) || 1928;
@@ -1202,10 +1365,86 @@ async function renderCostos() {
           <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(nombre)}">${escHtml(nombre)}</div>
           <div style="font-size:11px;color:var(--text-3);font-family:var(--font-mono)">FOB u$${r.unit_usd} × ${r.qty} u · costo ARS/u: <b>$${costoArs.toLocaleString('es-AR')}</b></div>
         </div>
-        <input class="cst-titulo" list="titulos-datalist" data-usd="${r.unit_usd}" placeholder="→ Publicación de la tienda…"
-               style="flex:1.4;min-width:0;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px" aria-label="→ Publicación de la tienda…">
+        <div class="ml-thumb-wrap" style="flex:1.4;min-width:0">
+          <div class="ml-thumb" id="cst-thumb-${i}">${_thumbPlaceholder()}</div>
+          <div class="combobox-wrap" id="cst-wrap-${i}">
+            <input class="cst-titulo combobox-input" id="cst-input-${i}" data-usd="${r.unit_usd}"
+                   placeholder="→ Publicación de la tienda…" autocomplete="off" aria-label="Publicación de la tienda">
+            <svg class="combobox-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="combobox-dropdown" id="cst-dd-${i}"></div>
+          </div>
+        </div>
       </div>`;
   }).join('');
+
+  limpiarDropdownsHuerfanos();
+  conCosto.forEach((_, i) => setupCostCombobox(i));
+}
+
+function _thumbPlaceholder() {
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+}
+
+// Combobox de publicación para la fila de costos. Usa el catálogo de ML
+// (mlItems) como fuente: tiene la foto y cubre TODAS las publicaciones,
+// también las que todavía no vendieron. El costo ya asignado sólo se muestra
+// como aviso para no pisarlo sin darse cuenta.
+function setupCostCombobox(i) {
+  const input = $(`cst-input-${i}`);
+  const dd    = $(`cst-dd-${i}`);
+  const wrap  = $(`cst-wrap-${i}`);
+  if (!input || !dd) return;
+
+  const abrir = () => {
+    const q = input.value.toLowerCase().trim();
+    let lista = mlItems;
+    if (q) lista = mlItems.filter(p => p.title.toLowerCase().includes(q));
+    lista = lista.slice(0, 40);
+
+    dd.innerHTML = lista.length
+      ? lista.map(p => {
+          const ya = _costosCache?.get(_normTitulo(p.title));
+          const aviso = ya
+            ? `<div style="font-size:10px;color:var(--text-3)">ya tiene costo: $${Number(ya.costo_unit).toLocaleString('es-AR')}/u · se reemplaza</div>`
+            : '';
+          const th = p.thumbnail
+            ? `<img src="${escAttr(p.thumbnail)}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;border:1px solid var(--border)" loading="lazy" onerror="this.style.display='none'">`
+            : `<div style="width:36px;height:36px;flex-shrink:0;border-radius:4px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-3)">${_thumbPlaceholder()}</div>`;
+          return `<div class="combobox-item" data-title="${escAttr(p.title)}" data-thumb="${escAttr(p.thumbnail || '')}">
+            <div style="display:flex;align-items:center;gap:8px">
+              ${th}
+              <div style="min-width:0">
+                <div class="combobox-item-title">${escHtml(p.title)}</div>
+                <div class="combobox-item-id">${escHtml(p.id)}</div>
+                ${aviso}
+              </div>
+            </div>
+          </div>`;
+        }).join('')
+      : `<div class="combobox-empty">Sin resultados para "${escHtml(input.value)}"</div>`;
+
+    dd.querySelectorAll('.combobox-item').forEach(el => {
+      el.addEventListener('click', () => {
+        input.value = el.dataset.title;
+        const th = $(`cst-thumb-${i}`);
+        if (th) th.innerHTML = el.dataset.thumb
+          ? `<img src="${escAttr(el.dataset.thumb)}" onerror="this.style.display='none'">`
+          : _thumbPlaceholder();
+        dd.classList.remove('open');
+      });
+    });
+
+    portalDropdown(dd);
+    dd.classList.add('open');
+    positionFixedDropdown(input, dd);
+  };
+
+  input.addEventListener('focus', abrir);
+  input.addEventListener('input', abrir);
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') { dd.classList.remove('open'); input.blur(); } });
+  document.addEventListener('click', e => {
+    if (!wrap.contains(e.target) && !dd.contains(e.target)) dd.classList.remove('open');
+  }, true);
 }
 async function guardarCostos() {
   const tc = parseFloat($('cst-tc').value) || 1532;
@@ -1245,6 +1484,7 @@ function renderItemsTable() {
     return;
   }
   tbody.innerHTML = '';
+  limpiarDropdownsHuerfanos();
   for (const row of parsedRows) {
     const savedMapping = findMapping(row.name);
     addTableRow(row.name, row.qty, savedMapping, row.color || '', row.model || '', row.title || '');
@@ -1260,7 +1500,11 @@ function findMapping(name) {
   // Exact match
   let m = mappings.find(m => m.alibaba_name.toLowerCase() === nl);
   if (m) return m;
-  // Partial match (≥80% word overlap)
+  // Partial match (≥75% word overlap) — riesgoso: nombres que difieren solo
+  // en la palabra de color/modelo (ej. "S23" vs "S23 Ultra") pueden superar
+  // el umbral y traer la variante de OTRO producto. Se marca con __fuzzy
+  // para que la fila se resalte y el usuario la revise antes de aplicar
+  // (no se descarta el auto-fill, solo se avisa — sigue siendo útil).
   const nameWords = new Set(nl.split(/\s+/));
   let best = null, bestScore = 0;
   for (const m of mappings) {
@@ -1269,7 +1513,7 @@ function findMapping(name) {
     const score = overlap / Math.max(mWords.length, nameWords.size);
     if (score > bestScore && score >= 0.75) { best = m; bestScore = score; }
   }
-  return best;
+  return best ? { ...best, __fuzzy: true } : null;
 }
 
 function addTableRow(name = '', qty = 1, savedMapping = null, color = '', model = '', title = '') {
@@ -1291,12 +1535,16 @@ function addTableRow(name = '', qty = 1, savedMapping = null, color = '', model 
 
   // Nombre display: si hay color/model → mostrar badges; si no → texto plano
   const displayTitle = title || name;
-  const nameCellHtml = (color || model)
+  const fuzzyBadge = savedMapping?.__fuzzy
+    ? `<span class="ali-badge ali-badge-fuzzy" title="No coincide exacto con ningún mapping guardado — se usó el más parecido por texto. Puede ser la variante de OTRO color/modelo, revisá antes de aplicar.">⚠ revisar variante</span>`
+    : '';
+  const nameCellHtml = (color || model || fuzzyBadge)
     ? `<div class="ali-item-info">
          <div class="ali-item-title">${escHtml(displayTitle)}</div>
          <div class="ali-item-badges">
-           ${color ? `<span class="ali-badge ali-badge-color">🎨 ${escHtml(color)}</span>` : ''}
-           ${model ? `<span class="ali-badge ali-badge-model">📱 ${escHtml(model)}</span>` : ''}
+           ${color ? `<span class="ali-badge ali-badge-color"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg> ${escHtml(color)}</span>` : ''}
+           ${model ? `<span class="ali-badge ali-badge-model"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg> ${escHtml(model)}</span>` : ''}
+           ${fuzzyBadge}
          </div>
        </div>`
     : `<div class="ali-item-title" style="padding:2px 0">${escHtml(displayTitle || name)}</div>`;
@@ -1305,6 +1553,7 @@ function addTableRow(name = '', qty = 1, savedMapping = null, color = '', model 
   tr.id    = `row-${id}`;
   tr.dataset.rowid = id;
   if (!savedMapping) tr.classList.add('unmapped');
+  if (savedMapping?.__fuzzy) tr.classList.add('fuzzy-match');
 
   tr.innerHTML = `
     <td style="text-align:center; padding:4px 8px">
@@ -1399,8 +1648,10 @@ function setupCombobox(id) {
     else if (e.key === 'Escape') { closeDropdown(id); input.blur(); }
   });
 
+  // dd ya no está dentro de wrap (se porta al body), así que hay que
+  // contemplarlo aparte o el primer clic sobre una opción cerraría el panel.
   document.addEventListener('click', e => {
-    if (!wrap.contains(e.target)) closeDropdown(id);
+    if (!wrap.contains(e.target) && !dd.contains(e.target)) closeDropdown(id);
   }, true);
 }
 
@@ -1447,8 +1698,73 @@ function openDropdown(id) {
     }).join('');
   }
 
+  portalDropdown(dd);
   dd.classList.add('open');
+  positionDropdown(id);
 }
+
+// Ubica el desplegable (position:fixed) pegado al input. Si no entra abajo
+// pero sí arriba, lo abre hacia arriba en vez de dejarlo fuera de pantalla.
+function positionDropdown(id) {
+  positionFixedDropdown($(`cb-input-${id}`), $(`cb-dd-${id}`));
+}
+
+// Mueve el desplegable a <body> ("portal"). Dentro de la celda de la tabla el
+// `top` de position:fixed quedaba clavado en 0 (verificado en el navegador:
+// mismo elemento, en body respeta top; en la celda no) y además lo recortaba
+// el overflow-x del contenedor. Colgado del body funciona y no lo recorta nada.
+function portalDropdown(dd) {
+  if (dd && dd.parentElement !== document.body) document.body.appendChild(dd);
+}
+
+// Los desplegables portados sobreviven al borrado de su fila: se limpian los
+// que quedaron sin su input.
+function limpiarDropdownsHuerfanos() {
+  document.querySelectorAll('body > .combobox-dropdown').forEach(dd => {
+    const idInput = dd.id.replace('cb-dd-', 'cb-input-').replace('cst-dd-', 'cst-input-');
+    if (!document.getElementById(idInput)) dd.remove();
+  });
+}
+
+function positionFixedDropdown(input, dd) {
+  if (!input || !dd || !dd.classList.contains('open')) return;
+
+  // Coordenadas de PÁGINA (rect es relativo al viewport + scroll), porque el
+  // desplegable está colgado del body con position:absolute.
+  const r  = input.getBoundingClientRect();
+  const sx = window.scrollX, sy = window.scrollY;
+  dd.style.minWidth = `${r.width}px`;
+  dd.style.left = `${r.left + sx}px`;
+
+  const alto        = dd.offsetHeight;
+  const abajoLibre  = window.innerHeight - r.bottom - 6;
+  const arribaLibre = r.top - 6;
+
+  // Si no entra abajo pero sí arriba, se abre hacia arriba.
+  if (alto > abajoLibre && arribaLibre > abajoLibre) {
+    dd.style.top = `${Math.max(0, r.top + sy - alto - 2)}px`;
+  } else {
+    dd.style.top = `${r.bottom + sy + 2}px`;
+  }
+  // No dejar que se pase del borde derecho de la ventana
+  const ancho = dd.offsetWidth;
+  if (r.left + ancho > window.innerWidth - 6) {
+    dd.style.left = `${Math.max(0, window.innerWidth - ancho - 6 + sx)}px`;
+  }
+}
+
+// Con position:fixed el desplegable no sigue al input al hacer scroll:
+// se reubica (capture:true para oír también el scroll de la tabla).
+function _reubicarAbiertos() {
+  document.querySelectorAll('.combobox-dropdown.open').forEach(dd => {
+    // El input ya no es hermano del desplegable (está portado al body):
+    // se resuelve por id (cb-dd-N → cb-input-N, cst-dd-N → cst-input-N).
+    const input = $(dd.id.replace('cb-dd-', 'cb-input-').replace('cst-dd-', 'cst-input-'));
+    positionFixedDropdown(input, dd);
+  });
+}
+window.addEventListener('scroll', _reubicarAbiertos, true);
+window.addEventListener('resize', _reubicarAbiertos);
 
 // ── Popover de imagen para productos del recibo ──────────────
 let _imgPopoverRowId = null;
@@ -1543,7 +1859,8 @@ async function imgPopoverFetch() {
 
 // ── Lightbox ─────────────────────────────────────────────
 function zoomThumb(thumbEl) {
-  const img = thumbEl.querySelector('img');
+  // Acepta el contenedor (thumb de la tabla) o la <img> misma (vínculos)
+  const img = thumbEl.tagName === 'IMG' ? thumbEl : thumbEl.querySelector('img');
   if (!img || !img.src || img.style.display === 'none') return;
   $('img-lightbox-img').src = img.src;
   $('img-lightbox').classList.add('open');
@@ -1688,6 +2005,14 @@ function onVariantChange(rowId) {
   updateVariantThumb(rowId, product);
   updateStockPreview(rowId);
   updateSummary();
+  // Elegir variante a mano resuelve tanto el faltante como la duda del
+  // auto-match por texto: sacamos ambas marcas de revisión.
+  const tr = $(`row-${rowId}`);
+  if (tr && $(`var-sel-${rowId}`)?.value) {
+    tr.classList.remove('needs-variant');
+    tr.classList.remove('fuzzy-match');
+    tr.querySelector('.ali-badge-fuzzy')?.remove();
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1772,6 +2097,8 @@ function updateSummary() {
 
   const applyBtn = $('btn-apply');
   if (applyBtn) applyBtn.disabled = linked === 0;
+  const prevBtn = $('btn-preview');
+  if (prevBtn) prevBtn.disabled = linked === 0;
 
   syncCheckAll();
 }
@@ -1809,6 +2136,7 @@ $('btn-add-row').addEventListener('click', () => {
 function deleteRow(id) {
   const tr = $(`row-${id}`);
   if (tr) tr.remove();
+  limpiarDropdownsHuerfanos();
   updateSummary();
 }
 
@@ -1856,6 +2184,28 @@ $('btn-save-mappings').addEventListener('click', async () => {
 $('btn-apply').addEventListener('click', async () => {
   const rows = getTableRows().filter(r => r.mlId && r.qty > 0 && r.checked);
   if (!rows.length) return;
+
+  // Publicación con variantes y ninguna elegida: no hay dónde imputar la
+  // cantidad. El backend lo rechaza igual, pero avisar acá evita el viaje
+  // a ML y señala exactamente qué fila corregir.
+  const sinVariante = rows.filter(r => {
+    const p = mlItems.find(x => x.id === r.mlId);
+    return p?.variations?.length && !r.varId;
+  });
+  if (sinVariante.length) {
+    showToast(`Elegí la variante en ${sinVariante.length} fila${sinVariante.length !== 1 ? 's' : ''} antes de aplicar`, false);
+    sinVariante.forEach(r => $(`row-${r.rowId}`)?.classList.add('needs-variant'));
+    $(`row-${sinVariante[0].rowId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  // Aviso final para filas auto-completadas por similitud de texto: es el
+  // caso que puede mandar la cantidad a la variante de otro color/modelo.
+  const dudosas = rows.filter(r => $(`row-${r.rowId}`)?.classList.contains('fuzzy-match'));
+  if (dudosas.length) {
+    const detalle = dudosas.map(r => `• ${r.mlTitle}${r.varLabel ? ' · ' + r.varLabel : ''} (+${r.qty})`).join('\n');
+    if (!confirm(`${dudosas.length} fila${dudosas.length !== 1 ? 's' : ''} se autocompletó por parecido de texto y puede apuntar a la variante equivocada:\n\n${detalle}\n\n¿Aplicar igual?`)) return;
+  }
 
   const btn = $('btn-apply');
   btn.disabled = true;
@@ -1989,17 +2339,46 @@ async function retryFailed() {
 // ══════════════════════════════════════════════════════════
 //  ACTIVITY LOG
 // ══════════════════════════════════════════════════════════
-const ACTLOG_KEY = 'alibaba_activity_log';
-const ACTLOG_MAX = 100;
+// El historial vive en el SERVIDOR (alibaba-historial.json). Antes estaba en
+// localStorage y se perdía al entrar por otra URL o desde otro equipo —
+// justo cuando hacía falta para revertir. `_actlog` es la copia en memoria
+// que renderiza la UI; el servidor es la fuente de verdad.
+const ACTLOG_KEY = 'alibaba_activity_log';   // sólo para migrar lo viejo
+let _actlog = [];
 
-function loadActivityLog() {
-  try { return JSON.parse(localStorage.getItem(ACTLOG_KEY) || '[]'); } catch { return []; }
-}
-function saveActivityLog(entries) {
-  try { localStorage.setItem(ACTLOG_KEY, JSON.stringify(entries.slice(0, ACTLOG_MAX))); } catch {}
+function loadActivityLog() { return _actlog; }
+
+async function fetchActivityLog() {
+  try {
+    const r = await fetch('/api/stockroom/alibaba/historial');
+    const d = await r.json();
+    _actlog = (d.ok && Array.isArray(d.entradas)) ? d.entradas : [];
+  } catch (e) { _actlog = []; }
+  return _actlog;
 }
 
-function addActivityEntry(results, sentItems) {
+// Sube al servidor lo que haya quedado en localStorage de la etapa anterior,
+// para no perder el historial de cargas ya hechas. Se corre una sola vez.
+async function migrarHistorialLocal() {
+  let viejas = [];
+  try { viejas = JSON.parse(localStorage.getItem(ACTLOG_KEY) || '[]'); } catch { return; }
+  if (!Array.isArray(viejas) || !viejas.length) return;
+
+  const yaEnServidor = new Set(_actlog.map(e => String(e.ts)));
+  const pendientes = viejas.filter(e => e && Array.isArray(e.items) && e.items.length && !yaEnServidor.has(String(e.ts)));
+  for (const e of pendientes.reverse()) {   // reverse: unshift en el server preserva el orden
+    try {
+      await fetch('/api/stockroom/alibaba/historial', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ts: e.ts, items: e.items }),
+      });
+    } catch (err) { return; }   // si falla, se reintenta la próxima vez
+  }
+  localStorage.removeItem(ACTLOG_KEY);
+  await fetchActivityLog();
+}
+
+async function addActivityEntry(results, sentItems) {
   const varLabelMap = {};
   for (const item of (sentItems || [])) {
     varLabelMap[`${item.ml_item_id}:${item.variation_id || ''}`] = item.ml_variant_label || '';
@@ -2008,6 +2387,7 @@ function addActivityEntry(results, sentItems) {
     .filter(r => r.ok)
     .map(r => ({
       ml_item_id:       r.ml_item_id,
+      account_id:       r.account_id || null,
       ml_title:         r.ml_title,
       variation_id:     r.variation_id || null,
       ml_variant_label: varLabelMap[`${r.ml_item_id}:${r.variation_id || ''}`] || '',
@@ -2017,24 +2397,97 @@ function addActivityEntry(results, sentItems) {
       newStock:         r.newStock,
     }));
   if (!okItems.length) return;
-  const entries = loadActivityLog();
-  entries.unshift({ ts: Date.now(), items: okItems });
-  saveActivityLog(entries);
+  try {
+    const r = await fetch('/api/stockroom/alibaba/historial', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ts: Date.now(), items: okItems, recibo: _reciboActual }),
+    });
+    if (!r.ok) throw new Error('el servidor rechazó el registro');
+    await fetchActivityLog();
+  } catch (e) {
+    // El stock YA se aplicó en ML: avisar fuerte, porque sin registro no hay
+    // botón de revertir y hay que corregir a mano.
+    showToast('Stock aplicado, pero NO se pudo guardar en el historial: ' + e.message, false);
+    _actlog = [{ ts: Date.now(), items: okItems, reverted: false, _sinGuardar: true }, ..._actlog];
+  }
   renderActivityLog();
   // Abrir el panel automáticamente para que el usuario vea el nuevo registro
   if (!_actlogOpen) toggleActlog();
 }
 
-function deleteActivityEntry(idx) {
-  const entries = loadActivityLog();
-  entries.splice(idx, 1);
-  saveActivityLog(entries);
+async function deleteActivityEntry(idx) {
+  const entry = _actlog[idx];
+  if (!entry) return;
+  if (entry.id) {
+    try {
+      await fetch(`/api/stockroom/alibaba/historial/${encodeURIComponent(entry.id)}`, { method: 'DELETE' });
+    } catch (e) { showToast('No se pudo borrar del historial: ' + e.message, false); return; }
+  }
+  await fetchActivityLog();
   renderActivityLog();
 }
 
-function clearActivityLog() {
-  if (!confirm('¿Borrar todo el historial de actualizaciones?')) return;
+// Deshace una entrada del historial: resta en ML exactamente lo que esa
+// entrada había sumado (por variation_id, no por nombre) y la marca como
+// revertida. No la borra — queda como registro de que se corrigió.
+async function revertActivityEntry(idx) {
+  const entries = loadActivityLog();
+  const entry   = entries[idx];
+  if (!entry || entry.reverted) return;
+
+  const missingAcct = entry.items.some(it => !it.account_id);
+  if (missingAcct) {
+    showToast('Esta entrada es de antes de que se guardara la cuenta — no se puede revertir automáticamente.', false);
+    return;
+  }
+
+  const resumen = entry.items.map(it => `• ${it.ml_title}${it.ml_variant_label ? ' · ' + it.ml_variant_label : ''} (−${it.deltaQty})`).join('\n');
+  if (!confirm(`¿Revertir esta carga? Se va a restar en MercadoLibre lo mismo que se sumó:\n\n${resumen}`)) return;
+
+  const btn = document.querySelector(`.actlog-revert-btn[data-idx="${idx}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Revirtiendo…'; }
+
+  try {
+    const items = entry.items.map(it => ({
+      ml_item_id:   it.ml_item_id,
+      variation_id: it.variation_id,
+      account_id:   it.account_id,
+      qty:          it.deltaQty,
+    }));
+    const res  = await fetch('/api/stockroom/alibaba/revert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+
+    if (data.failed > 0) {
+      const errs = data.results.filter(r => !r.ok).map(r => r.error).join('; ');
+      showToast(`Revertido con errores (${data.succeeded} OK, ${data.failed} error): ${errs}`, false);
+    } else {
+      showToast(`Revertido: ${data.succeeded} variante${data.succeeded !== 1 ? 's' : ''}`, true);
+    }
+
+    if (entry.id) {
+      await fetch(`/api/stockroom/alibaba/historial/${encodeURIComponent(entry.id)}/revertida`, { method: 'POST' });
+    }
+    await fetchActivityLog();
+    renderActivityLog();
+  } catch(e) {
+    showToast('Error al revertir: ' + e.message, false);
+    if (btn) { btn.disabled = false; btn.textContent = 'Revertir'; }
+  }
+}
+
+async function clearActivityLog() {
+  if (!confirm('¿Borrar todo el historial de actualizaciones? (no revierte el stock, sólo borra el registro)')) return;
+  for (const e of [..._actlog]) {
+    if (!e.id) continue;
+    try { await fetch(`/api/stockroom/alibaba/historial/${encodeURIComponent(e.id)}`, { method: 'DELETE' }); } catch (err) {}
+  }
   localStorage.removeItem(ACTLOG_KEY);
+  await fetchActivityLog();
   renderActivityLog();
 }
 
@@ -2079,18 +2532,194 @@ function renderActivityLog() {
         <span class="actlog-item-delta">(+${item.deltaQty})</span>
       </div>`;
     }).join('');
-    return `<div class="actlog-entry">
+    const revertBtnHtml = entry.reverted
+      ? `<span class="actlog-reverted-badge" title="Ya se restó este ajuste en ML">↩ revertido</span>`
+      : `<button class="actlog-revert-btn" data-idx="${idx}" onclick="revertActivityEntry(${idx})" title="Restar en ML lo mismo que se sumó acá">Revertir</button>`;
+    return `<div class="actlog-entry${entry.reverted ? ' reverted' : ''}">
       <div class="actlog-ts">
         <span class="actlog-ts-label">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           ${escHtml(formatActlogTs(entry.ts))}
           <span style="color:var(--text-3);font-size:10px">&nbsp;·&nbsp;${entry.items.length} producto${entry.items.length !== 1 ? 's' : ''}</span>
+          ${entry.recibo ? `<a href="/api/stockroom/alibaba/recibo/${encodeURIComponent(entry.recibo)}" target="_blank" rel="noopener"
+              style="font-size:10px;color:var(--blue);text-decoration:none" title="Abrir el recibo original">· ver recibo</a>` : ''}
+          ${entry._sinGuardar ? `<span style="font-size:10px;color:var(--red,#dc2626)" title="El stock se aplicó pero no se pudo registrar en el servidor">· sin guardar</span>` : ''}
         </span>
-        <button class="actlog-del-btn" onclick="deleteActivityEntry(${idx})" title="Eliminar esta entrada">✕</button>
+        <span style="display:flex;align-items:center;gap:6px">
+          ${revertBtnHtml}
+          <button class="actlog-del-btn" onclick="deleteActivityEntry(${idx})" title="Eliminar esta entrada">✕</button>
+        </span>
       </div>
       <div class="actlog-items">${itemsHtml}</div>
     </div>`;
   }).join('');
+}
+
+// Recibos archivados: los PDF/HTML que se subieron, para poder contrastar
+// una carga vieja contra el papel original.
+let _recibosOpen = false, _recibosCargados = false;
+
+function toggleRecibos(e) {
+  if (e && e.target.closest('button')) return;
+  _recibosOpen = !_recibosOpen;
+  $('recibos-body').style.display = _recibosOpen ? '' : 'none';
+  const chev = $('recibos-chevron');
+  if (chev) chev.style.transform = _recibosOpen ? 'rotate(180deg)' : '';
+  if (_recibosOpen && !_recibosCargados) cargarRecibos();
+}
+
+async function cargarRecibos() {
+  const cont = $('recibos-list');
+  cont.innerHTML = '<div class="actlog-empty">Cargando…</div>';
+  try {
+    const r = await fetch('/api/stockroom/alibaba/recibos');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'error');
+    _recibosCargados = true;
+    renderRecibos(d.recibos || []);
+  } catch (e) {
+    cont.innerHTML = '<div class="actlog-empty">No se pudieron cargar: ' + escHtml(e.message) + '</div>';
+  }
+}
+
+function renderRecibos(lista) {
+  const cont = $('recibos-list');
+  const badge = $('recibos-count');
+  if (badge) { badge.textContent = lista.length; badge.style.display = lista.length ? '' : 'none'; }
+
+  if (!lista.length) {
+    cont.innerHTML = '<div class="actlog-empty">Todavía no hay recibos archivados. Se guardan solos al subir un PDF, un HTML o la carpeta del pedido.</div>';
+    return;
+  }
+  const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  cont.innerHTML = lista.map(x => {
+    const esPdf = x.archivo.toLowerCase().endsWith('.pdf');
+    // El nombre guardado es "AAAA-MM-DD-HH-MM-SS__original.ext"
+    const partes = x.archivo.split('__');
+    const original = partes.length > 1 ? partes.slice(1).join('__') : x.archivo;
+    return `<div class="mapping-row" style="align-items:center">
+      <span style="flex-shrink:0;color:${esPdf ? '#dc2626' : 'var(--text-3)'}" title="${esPdf ? 'PDF' : 'HTML/texto'}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </span>
+      <span class="mapping-ml" title="${escAttr(x.archivo)}">${escHtml(original)}${estadoRecibo(x)}</span>
+      <span style="font-size:11px;color:var(--text-3);white-space:nowrap">${escHtml(formatActlogTs(x.ts))}</span>
+      <span style="font-size:11px;color:var(--text-3);white-space:nowrap;font-family:'JetBrains Mono',monospace">${kb(x.bytes)}</span>
+      <a class="upload-btn" href="/api/stockroom/alibaba/recibo/${encodeURIComponent(x.archivo)}" target="_blank" rel="noopener"
+         style="text-decoration:none;flex-shrink:0">${esPdf ? 'Ver' : 'Descargar'}</a>
+      <button class="mapping-del" onclick="borrarRecibo('${escAttr(x.archivo)}')" title="Eliminar este recibo" aria-label="Eliminar recibo">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// Simulacro de la carga: pide al servidor el stock REAL de cada variante en
+// ML y muestra cómo quedaría, sin escribir. Sirve para cazar variantes mal
+// vinculadas antes de tocar el stock, no después.
+async function previsualizarCarga() {
+  const rows = getTableRows().filter(r => r.mlId && r.qty > 0 && r.checked);
+  if (!rows.length) return;
+
+  const btn = $('btn-preview');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Consultando ML…';
+  try {
+    const items = rows.map(r => ({
+      ml_item_id: r.mlId, variation_id: r.varId || null,
+      account_id: r.acctId, qty: r.qty, ml_variant_label: r.varLabel,
+    }));
+    const res = await fetch('/api/stockroom/alibaba/preview', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+    mostrarPreview(data, items);
+  } catch (e) {
+    showToast('No se pudo previsualizar: ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+function mostrarPreview(data, items) {
+  const body = $('results-body');
+  const varLabel = {};
+  for (const i of items) varLabel[i.ml_item_id + ':' + (i.variation_id || '')] = i.ml_variant_label || '';
+
+  const filas = data.results.map(r => {
+    if (r.ok) {
+      const lbl = varLabel[r.ml_item_id + ':' + (r.variation_id || '')];
+      return `<div class="result-row ok-row" style="gap:10px">
+        <div class="result-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        ${r.variation_thumb ? `<img src="${escAttr(r.variation_thumb)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display='none'">` : ''}
+        <div class="result-title" title="${escAttr(r.ml_title)}">${escHtml(r.ml_title)}${lbl ? escHtml(' · ' + lbl) : ''}</div>
+        <div class="result-detail">${r.prevStock} + ${r.deltaQty} → <strong>${r.newStock}</strong></div>
+      </div>`;
+    }
+    return `<div class="result-row err-row">
+      <div class="result-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+      <div class="result-title">${escHtml(r.ml_title || r.ml_item_id)}</div>
+      <div class="result-detail" style="color:var(--red,#dc2626)">${escHtml(r.error || 'error')}</div>
+    </div>`;
+  }).join('');
+
+  const aviso = data.failed > 0
+    ? `<div class="alerta-ambar" style="margin-bottom:12px"><b>${data.failed}</b> fila(s) con problema — corregilas antes de aplicar.</div>`
+    : '<div style="margin-bottom:12px;font-size:12px;color:var(--text-2)">Todo listo para aplicar.</div>';
+
+  body.innerHTML = `<div class="ali-summary" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#2563eb">Previsualización</span>
+        <span style="font-size:12px;color:var(--text-3)">stock real leído de ML · todavía no se escribió nada</span>
+      </div>
+    </div>` + aviso + filas;
+
+  const retry = $('btn-retry-failed');
+  if (retry) retry.style.display = 'none';
+  $('card-results').style.display = '';
+  $('card-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Distingue el recibo que YA se aplicó a ML del que sólo se archivó. Un
+// recibo sin carga asociada suele ser uno que se subió y quedó a medias.
+function estadoRecibo(x) {
+  if (!x.aplicado) {
+    return ` <span class="recibo-tag recibo-tag-pend" title="Se archivó, pero no hay ninguna carga de stock asociada">sin aplicar</span>`;
+  }
+  const u = x.unidades > 0 ? ` +${x.unidades} u.` : '';
+  const c = x.cargas > 1 ? ` en ${x.cargas} cargas` : '';
+  const rev = x.revertidas
+    ? ` <span class="recibo-tag recibo-tag-rev" title="${x.revertidas} de esas cargas se revirtieron">${x.revertidas} revertida${x.revertidas > 1 ? 's' : ''}</span>`
+    : '';
+  return ` <span class="recibo-tag recibo-tag-ok" title="Aplicado a MercadoLibre${c}">aplicado al stock${u}</span>${rev}`;
+}
+
+async function borrarRecibo(archivo) {
+  const original = archivo.split('__').slice(1).join('__') || archivo;
+  const aviso = '¿Eliminar el recibo "' + original + '"?' + String.fromCharCode(10,10) + "Se borra del servidor y no se puede recuperar. Las cargas del historial que lo usaban quedan sin enlace, pero NO se tocan ni se revierten.";
+  if (!confirm(aviso)) return;
+  try {
+    const r = await fetch('/api/stockroom/alibaba/recibo/' + encodeURIComponent(archivo), { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'error del servidor');
+    showToast('Recibo eliminado' + (d.desvinculadas ? ' · ' + d.desvinculadas + ' carga(s) quedaron sin recibo' : ''), true);
+    await cargarRecibos();
+    if (d.desvinculadas) { await fetchActivityLog(); renderActivityLog(); }
+  } catch (e) { showToast('No se pudo eliminar: ' + e.message, false); }
+}
+
+// Vínculos guardados: plegado por defecto. Es una lista de referencia que
+// crece con el uso y empujaba la tabla de trabajo fuera de pantalla.
+let _mappingsOpen = false;
+function toggleMappings(e) {
+  if (e && e.target.closest('button')) return;   // el botón de borrar no pliega
+  _mappingsOpen = !_mappingsOpen;
+  $('mappings-body').style.display = _mappingsOpen ? '' : 'none';
+  const chev = $('mappings-chevron');
+  if (chev) chev.style.transform = _mappingsOpen ? 'rotate(180deg)' : '';
 }
 
 let _actlogOpen = false;
@@ -2139,6 +2768,7 @@ function renderMappingsList() {
 
   body.innerHTML = mappings.map(m => `
     <div class="mapping-row">
+      ${mappingThumb(m)}
       <span class="mapping-ali" title="${escAttr(m.alibaba_name)}">${escHtml(m.alibaba_name)}</span>
       <svg class="mapping-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       <span class="mapping-ml" title="${escAttr(m.ml_title || m.ml_item_id)}">
@@ -2150,6 +2780,28 @@ function renderMappingsList() {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>`).join('');
+}
+
+// Miniatura de la publicación vinculada. Si el vínculo apunta a una variante
+// concreta se muestra LA FOTO DE ESA VARIANTE (no la de portada): es lo que
+// permite confirmar de un vistazo que el color vinculado es el correcto.
+function mappingThumb(m) {
+  const p = mlItems.find(x => x.id === m.ml_item_id);
+  let url = '';
+  if (p && m.variation_id) {
+    const v = (p.variations || []).find(v => String(v.id) === String(m.variation_id));
+    if (v) url = variantImageUrl(v);
+  }
+  if (!url && p) url = p.thumbnail || '';
+  const caja = 'width:34px;height:34px;flex-shrink:0;border-radius:5px;border:1px solid var(--border)';
+  if (!url) {
+    return `<div style="${caja};display:flex;align-items:center;justify-content:center;color:var(--text-3);background:var(--bg)" title="Sin imagen disponible">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </div>`;
+  }
+  return `<img src="${escAttr(url)}" loading="lazy" style="${caja};object-fit:cover;cursor:zoom-in"
+    title="${escAttr((m.ml_title || '') + (m.ml_variant_label ? ' · ' + m.ml_variant_label : ''))}"
+    onclick="zoomThumb(this)" onerror="this.style.display='none'">`;
 }
 
 async function deleteMapping(name) {

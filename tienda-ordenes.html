@@ -8,13 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/admin.css?v=20">
+<link rel="stylesheet" href="/admin.css?v=21">
 <!-- Anti-FOUC: tema guardado antes del primer paint -->
 <script>(function(){ try { var t=localStorage.getItem('adminTheme')||'light'; document.documentElement.setAttribute('data-theme',t); } catch(e){} })();</script>
 <style>
 /* ── Status badges ─────────────────────────────────────── */
 .badge-pendiente      { background: var(--bg); color: var(--text-2); border: 1px solid var(--border-2); }
-.badge-pendiente_pago { background: var(--yellow-light); color: #8a5c00; border: 1px solid #f5d9a8; }
+.badge-pendiente_pago { background: var(--yellow-light); color: var(--yellow-ink); border: 1px solid #f5d9a8; }
 .badge-pagado         { background: var(--green-light);  color: var(--green-ink); border: 1px solid #b3e8cf; }
 .badge-despachado     { background: var(--blue-light);   color: var(--blue);  border: 1px solid #b3d0fd; }
 .badge-entregado      { background: #e6f9f0; color: #007a3d; border: 1px solid #9adfc2; }
@@ -120,7 +120,7 @@
 .soon-tag {
   display: inline-block; font-size: 9px; font-weight: 700;
   padding: 1px 6px; border-radius: 100px;
-  background: var(--yellow-light); color: #8a5c00;
+  background: var(--yellow-light); color: var(--yellow-ink);
   letter-spacing: .04em; text-transform: uppercase;
   vertical-align: middle; margin-left: 4px;
 }
