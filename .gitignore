@@ -9,8 +9,6 @@ accounts.json
 auth.json
 auth*.json
 *.key
-.env
-.env.*
 firebase-service-account.json
 *firebase-adminsdk*.json
 
@@ -59,7 +57,6 @@ todo.md
 
 # ── IDEs ──────────────────────────────────────────────────────
 .idea/
-.vscode/
 
 # ── Archivos de test/preview ──────────────────────────────────
 test_flex_preview.pdf
@@ -73,3 +70,4 @@ proveedor-links.json
 # Costos confirmados por publicación (estado operativo)
 costos-publicacion.json
 vinculaciones-historico.ndjson
+config.bat
